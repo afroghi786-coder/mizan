@@ -369,29 +369,68 @@ function LoginScreen() {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
+
   async function submit() {
     if (!email || !pass) return Alert.alert('خطا', 'ایمیل و رمز را وارد کن');
+    if (pass.length < 6) return Alert.alert('خطا', 'رمز باید حداقل ۶ کاراکتر باشد');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Alert.alert('خطا', 'ایمیل معتبر وارد کن');
+
     setLoading(true);
     try {
-      const fn = isLogin ? supabase.auth.signInWithPassword({ email, password: pass }) : supabase.auth.signUp({ email, password: pass });
-      const { error } = await fn;
-      if (error) throw error;
-      if (!isLogin) Alert.alert('✅ ثبت‌نام موفق', 'حالا وارد شو');
-    } catch (e: any) { Alert.alert('خطا', e.message); } finally { setLoading(false); }
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password: pass });
+
+      if (loginError) {
+        const { error: signupError } = await supabase.auth.signUp({ email, password: pass });
+        if (signupError) throw signupError;
+
+        const { error: retryError } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (retryError) throw retryError;
+      }
+    } catch (e: any) {
+      Alert.alert('خطا', e.message || 'مشکلی پیش آمد');
+    } finally {
+      setLoading(false);
+    }
   }
+
   return (
     <KeyboardAvoidingView style={s.loginWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.loginCard}>
         <Text style={s.loginLogo}>⚖️</Text>
         <Text style={s.loginTitle}>میزان</Text>
-        <Text style={s.loginSub}>{isLogin ? 'ورود' : 'ثبت‌نام'}</Text>
-        <TextInput style={s.loginInp} value={email} onChangeText={setEmail} placeholder="ایمیل" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
-        <TextInput style={s.loginInp} value={pass} onChangeText={setPass} placeholder="رمز" placeholderTextColor="#94a3b8" secureTextEntry />
-        <TouchableOpacity style={s.btn} onPress={submit} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnT}>{isLogin ? 'ورود' : 'ثبت‌نام'}</Text>}
+        <Text style={s.loginSub}>ورود یا ثبت‌نام</Text>
+
+        <TextInput
+          style={s.loginInp}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="ایمیل"
+          placeholderTextColor="#94a3b8"
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={s.loginInp}
+          value={pass}
+          onChangeText={setPass}
+          placeholder="رمز (حداقل ۶ کاراکتر)"
+          placeholderTextColor="#94a3b8"
+          secureTextEntry
+        />
+
+        <TouchableOpacity
+          style={[s.btn, { backgroundColor: '#1e3a8a' }]}
+          onPress={submit}
+          disabled={loading}
+        >
+          {loading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={s.btnT}>ورود / ثبت‌نام</Text>}
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setIsLogin(!isLogin)}><Text style={s.loginSwitch}>{isLogin ? 'حساب نداری؟ ثبت‌نام' : 'حساب داری؟ ورود'}</Text></TouchableOpacity>
+
+        <Text style={{ textAlign: 'center', color: '#64748b', fontSize: 11, marginTop: 12, lineHeight: 18 }}>
+          اگر حساب ندارید، خودکار ساخته می‌شود
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );

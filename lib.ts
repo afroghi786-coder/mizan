@@ -5,8 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // ═══════════════════════════════════════════════════
 // 🔌 Supabase
 // ═══════════════════════════════════════════════════
-const SUPABASE_URL = 'https://xxx.supabase.co';       // ← عوض کن
-const SUPABASE_ANON = 'eyJhbGciOi...';                 // ← عوض کن
+const SUPABASE_URL = 'https://paslxvwlbojdzflbmyoh.supabase.co';       // ← عوض کن
+const SUPABASE_ANON = 'sb_publishable_YR1dct7WS_i6-8nqqw5dWQ_qaxFBlQN';                 // ← عوض کن
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {

@@ -20,7 +20,9 @@
       "package": "com.mezan786.mizan"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "static",
+      "baseUrl": "/mizan"
     },
     "extra": {
       "eas": {

@@ -1,6 +1,6 @@
 {
   "expo": {
-   "name": "میزان",
+    "name": "میزان",
     "slug": "mizan",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -27,6 +27,9 @@
         "projectId": "22c7aaeb-2a8a-46c6-bd20-14eeefc5bc29"
       }
     },
-    "owner": "mezan786"
+    "owner": "mezan786",
+    "plugins": [
+      "expo-sharing"
+    ]
   }
 }

@@ -43,13 +43,15 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  useEffect(() => {
-    loadCalType().then(() => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setSession(session);
-        setLoading(false);
-      });
-    });
+useEffect(() => {
+    // 🔓 اول قفل رو باز می‌کنیم — صفحه باید هر طوری شده نمایش داده بشه
+    setLoading(false);
+
+    // در پس‌زمینه سشن رو چک می‌کنیم
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => setSession(session))
+      .catch((err) => console.error('Auth error:', err));
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => subscription.unsubscribe();
   }, []);

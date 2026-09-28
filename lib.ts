@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // 🔌 Supabase
 // ═══════════════════════════════════════════════════
 const SUPABASE_URL = 'https://paslxvwlbojdzflbmyoh.supabase.co';       // ← عوض کن
-const SUPABASE_ANON = 'sb_publishable_YR1dct7WS_i6-8nqqw5dWQ_qaxFBlQN';                 // ← عوض کن
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhc2x4dndsYm9qZHpmbGJteW9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjA5MTAsImV4cCI6MjEwNTQ5NjkxMH0.gOkwEyVlRi0C11277KxswLFiMFGf4c-ctMgsGLZQuk4';                 // ← عوض کن
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {

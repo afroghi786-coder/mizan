@@ -244,7 +244,8 @@ export async function getProducts(): Promise<Product[]> {
   return (data || []) as Product[];
 }
 export async function createProduct(p: Product) {
-  const { error } = await supabase.from('products').insert(p);
+  const { id, ...rest } = p as any;
+  const { error } = await supabase.from('products').insert(rest);
   if (error) throw new Error(error.message);
 }
 export async function updateProduct(id: string, p: Partial<Product>) {

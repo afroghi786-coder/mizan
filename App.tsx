@@ -1576,18 +1576,27 @@ function SourcesSection({ showToast }: any) {
 
   const save = async () => {
     if (!editing) return;
-    if (!editing.code || !editing.name) return showToast('کد و نام الزامی', true);
+    if (!editing.code || !editing.name) {
+      Alert.alert('⚠️ خطا', 'کد و نام الزامی است');
+      return;
+    }
     try {
-      if (editing.id) await updateProduct(editing.id, editing);
-      else await createProduct(editing);
-      showToast('✅ ذخیره شد'); setEditing(null); load();
-    } catch (e: any) { showToast(e.message, true); }
-  };
-  const remove = (id: string) => {
-    Alert.alert('حذف', 'این کالا حذف شود؟', [
-      { text: 'لغو', style: 'cancel' },
-      { text: 'حذف', style: 'destructive', onPress: async () => { try { await deleteProduct(id); load(); showToast('✅ حذف شد'); } catch (e: any) { showToast(e.message, true); } } },
-    ]);
+      const payload: any = { ...editing };
+      if (editing.id) {
+        // ویرایش
+        delete payload.id;
+        await updateProduct(editing.id, payload);
+      } else {
+        // جدید — id رو حذف کن تا Supabase خودکار بسازه
+        delete payload.id;
+        await createProduct(payload);
+      }
+      setEditing(null);
+      Alert.alert('✅ موفق', `کالا «${editing.name}» ذخیره شد`);
+      load();
+    } catch (e: any) {
+      Alert.alert('❌ خطا', e?.message || 'ذخیره نشد — دوباره امتحان کن');
+    }
   };
 
   return (

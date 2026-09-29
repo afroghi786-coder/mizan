@@ -538,37 +538,68 @@ function PurchaseScreen({ showToast }: any) {
   const remaining = grandTotal - paidAmt;
 
   const submit = () => {
-    if (!sName || sName.length < 2) return showToast('نام تأمین‌کننده الزامی', true);
-    if (!manualInv) return showToast('شماره فاکتور دستی الزامی', true);
+    // چک نام تأمین‌کننده
+    if (!sName || sName.length < 2) {
+      Alert.alert('⚠️ خطا', 'نام تأمین‌کننده الزامی است');
+      return;
+    }
+    // چک شماره فاکتور
+    if (!manualInv) {
+      Alert.alert('⚠️ خطا', 'شماره فاکتور دستی الزامی است');
+      return;
+    }
+    // چک اقلام
     const valid = items.filter((it) => it.modelName && it.quantity > 0);
     const amt = parseNum(payAmt);
-    if (!valid.length && amt <= 0) return showToast('حداقل یک مدل یا مبلغ پرداخت', true);
+    if (!valid.length && amt <= 0) {
+      Alert.alert('⚠️ خطا', 'حداقل یک مدل یا یک مبلغ پرداخت وارد کن');
+      return;
+    }
+    // محاسبه جمع کل
+    const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
 
-    setConfirm({
-      title: 'تأیید خرید', color: '#166534',
-      info: (<View>
-        <Row k="🏭 تأمین‌کننده" v={sName} />
-        <Row k="🧾 شماره فاکتور" v={manualInv} />
-        {valid.length > 0 && <Row k="📦 تعداد اقلام" v={String(valid.length)} />}
-        {valid.length > 0 && <Row k="🔢 جمع تعداد" v={toFaNum(grandQty)} />}
-        {valid.length > 0 && <Row k="💰 مبلغ کل" v={fmt(grandTotal) + ' تومان'} gold />}
-        <Row k="💵 پرداخت نقدی" v={fmt(amt) + ' تومان'} />
-        {valid.length > 0 && <Row k="📌 مانده" v={fmt(grandTotal - amt) + ' تومان'} />}
-      </View>),
-      onConfirm: async () => {
-        setSaving(true);
-        try {
-          const inv = await generateInvoiceNumber();
-          await createPurchase({ invoiceNumber: inv, manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: valid, paymentAmount: amt, paymentDate: payDate, bankAccount: bankAcc, payerName, receiverAccount: receiverAcc, note });
-          showToast('✅ ثبت شد: ' + inv);
-          setSName(''); setSCode(''); setSPhone(''); setManualInv(''); setItems([]);
-          setPayAmt(''); setBankAcc(''); setPayerName(''); setReceiverAcc(''); setNote('');
-          setView('list'); load();
-        } catch (e: any) { showToast(e.message, true); } finally { setSaving(false); }
-      },
-    });
+    // نمایش تأیید با Alert
+    Alert.alert(
+      '📋 تأیید خرید',
+      `🏭 تأمین‌کننده: ${sName}\n🧾 شماره فاکتور: ${manualInv}\n📦 اقلام: ${valid.length}\n💰 مبلغ کل: ${fmt(total)}\n💵 پرداخت: ${fmt(amt)}`,
+      [
+        { text: '✏️ انصراف', style: 'cancel' },
+        {
+          text: '✅ تأیید و ثبت',
+          onPress: async () => {
+            setSaving(true);
+            try {
+              const inv = await generateInvoiceNumber();
+              await createPurchase({
+                invoiceNumber: inv,
+                manualInvoice: manualInv,
+                supplierName: sName,
+                supplierCode: sCode,
+                supplierPhone: sPhone,
+                items: valid,
+                paymentAmount: amt,
+                paymentDate: payDate,
+                bankAccount: bankAcc,
+                payerName,
+                receiverAccount: receiverAcc,
+                note,
+              });
+              Alert.alert('✅ موفق', 'فاکتور خرید ثبت شد:\n' + inv);
+              setSName(''); setSCode(''); setSPhone(''); setManualInv('');
+              setItems([]); setPayAmt(''); setBankAcc('');
+              setPayerName(''); setReceiverAcc(''); setNote('');
+              setView('list');
+              load();
+            } catch (e: any) {
+              Alert.alert('❌ خطا در ثبت', e?.message || String(e) || 'خطای نامشخص');
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
+      ]
+    );
   };
-
   if (view === 'form') return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={s.content} contentContainerStyle={{ padding: 12, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">

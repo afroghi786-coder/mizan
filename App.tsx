@@ -1,4 +1,3 @@
-// App.tsx — نسخه کامل میزان با همه قابلیت‌ها
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
@@ -45,15 +44,29 @@ const C = {
   get input()   { return IS_DARK ? '#1a2332' : '#ffffff'; },
 };
 
+const alertMsg = (title: string, msg: string) => {
+  if (Platform.OS === 'web') window.alert(title + '\n\n' + msg);
+  else Alert.alert(title, msg);
+};
+const confirmMsg = (title: string, msg: string): Promise<boolean> => {
+  if (Platform.OS === 'web') return Promise.resolve(window.confirm(title + '\n\n' + msg));
+  return new Promise((resolve) => {
+    Alert.alert(title, msg, [
+      { text: 'انصراف', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'تأیید', onPress: () => resolve(true) },
+    ]);
+  });
+};
+
 // ══════════════════════════════════════════════════════════
 //  ROOT
 // ══════════════════════════════════════════════════════════
 export default function App() {
   const [fontsLoaded] = useFonts({ Orbitron_900Black, Orbitron_700Bold, ShareTechMono_400Regular });
-   // ⭐ هم روی وب، هم موبایل، منتظر فونت بمون (با timeout 3 ثانیه)
   const [fontTimeout, setFontTimeout] = useState(false);
   useEffect(() => { const t = setTimeout(() => setFontTimeout(true), 3000); return () => clearTimeout(t); }, []);
   const fontsReady = fontsLoaded || fontTimeout;
+
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -64,9 +77,7 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  useEffect(() => {
-    setDark(theme === 'dark');
-  }, [theme]);
+  useEffect(() => { setDark(theme === 'dark'); }, [theme]);
 
   useEffect(() => {
     const failsafe = setTimeout(() => setLoading(false), 5000);
@@ -91,23 +102,6 @@ export default function App() {
 }
 
 // ══════════════════════════════════════════════════════════
-//  Web alert helpers
-// ══════════════════════════════════════════════════════════
-const alertMsg = (title: string, msg: string) => {
-  if (Platform.OS === 'web') window.alert(title + '\n\n' + msg);
-  else Alert.alert(title, msg);
-};
-const confirmMsg = (title: string, msg: string): Promise<boolean> => {
-  if (Platform.OS === 'web') return Promise.resolve(window.confirm(title + '\n\n' + msg));
-  return new Promise((resolve) => {
-    Alert.alert(title, msg, [
-      { text: 'انصراف', style: 'cancel', onPress: () => resolve(false) },
-      { text: 'تأیید', onPress: () => resolve(true) },
-    ]);
-  });
-};
-
-// ══════════════════════════════════════════════════════════
 //  MAIN
 // ══════════════════════════════════════════════════════════
 function MainApp({ showToast, theme, setTheme }: any) {
@@ -123,10 +117,9 @@ function MainApp({ showToast, theme, setTheme }: any) {
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    setDark(newTheme === 'dark');
-    if (settings) updateSettings({ ...settings, theme: newTheme }).catch(() => {});
+    const nt = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nt); setDark(nt === 'dark');
+    if (settings) updateSettings({ ...settings, theme: nt }).catch(() => {});
   };
 
   const tabs = [
@@ -281,7 +274,7 @@ function DateField({ value, onChange, compact, defaultToToday }: any) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  DIGITAL DASHBOARD
+//  DASHBOARD
 // ══════════════════════════════════════════════════════════
 function DigitalDashboard({ refreshKey, settings }: any) {
   const [now, setNow] = useState(new Date());
@@ -308,12 +301,7 @@ function DigitalDashboard({ refreshKey, settings }: any) {
       <View style={s.clockRow}><Text style={s.time}>{time}</Text><Text style={s.dateTxt}>{date}</Text></View>
       <View style={s.profitBox}>
         <Text style={s.profitLbl}>💰 سود خالص</Text>
-               <Text style={[s.profitVal, {
-          color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88',
-          textShadowColor: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88',
-        }]}>
-          {fmt(profit)}
-        </Text>
+        <Text style={[s.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>{fmt(profit)}</Text>
         <Text style={s.profitUnit}>تومان</Text>
       </View>
       {loading ? <ActivityIndicator color="#00ff88" /> : (
@@ -322,20 +310,15 @@ function DigitalDashboard({ refreshKey, settings }: any) {
           {filter !== 'sales' && <DCard i="📦" l="کل خرید" v={fmt(stats?.totalPurchases || 0)} c="#fb923c" />}
           {filter !== 'purchase' && <DCard i="💳" l="پرداخت مشتری" v={fmt(stats?.customerPaid || 0)} c="#34d399" />}
           {filter !== 'purchase' && <DCard i="📌" l="بدهی مشتری" v={fmt(stats?.customerDebt || 0)} c="#fb923c" />}
-          {filter !== 'sales' && <DCard i="💵" l="پرداخت تأمین‌کننده" v={fmt(stats?.supplierPaid || 0)} c="#34d399" />}
-          {filter !== 'sales' && <DCard i="📌" l="بدهی تأمین‌کننده" v={fmt(stats?.supplierDebt || 0)} c="#f87171" />}
+          {filter !== 'sales' && <DCard i="💵" l="پرداخت به تأمین‌کننده" v={fmt(stats?.supplierPaid || 0)} c="#34d399" />}
+          {filter !== 'sales' && <DCard i="📌" l="بدهی به تأمین‌کننده" v={fmt(stats?.supplierDebt || 0)} c="#f87171" />}
         </View>
       )}
     </View>
   );
 }
 function DCard({ i, l, v, c }: any) {
-  return (
-    <View style={s.dItem}>
-      <Text style={s.dLbl}>{i} {l}</Text>
-      <Text style={[s.dVal, { color: c, textShadowColor: c }]} numberOfLines={1}>{v}</Text>
-    </View>
-  );
+  return (<View style={s.dItem}><Text style={s.dLbl}>{i} {l}</Text><Text style={[s.dVal, { color: c, textShadowColor: c }]} numberOfLines={1}>{v}</Text></View>);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -453,39 +436,67 @@ function SalesScreen({ showToast }: any) {
         <Autocomplete label="🚚 باربری *" value={shipping} onChange={setShipping} options={[...new Set([...SHIPPINGS, ...prods.map(p => p.shipping_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
 
         <Text style={s.secT}>📦 اقلام فروش ({toFaNum(items.length)})</Text>
-        {items.map((it, i) => {
-          const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
-          const lineBalance = lineTotal - (Number(it.payment) || 0);
-          return (
-            <View key={i} style={[s.itemCard, { backgroundColor: C.card, borderColor: C.border }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={s.itemN}>#{toFaNum(i + 1)}</Text>
-                <TouchableOpacity onPress={() => delItem(i)} style={s.delBtnRound}><Text style={{ fontSize: 14, color: '#fff' }}>🗑</Text></TouchableOpacity>
-              </View>
-              <Autocomplete label="نام مدل *" value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="کلیک یا تایپ..." />
-              <Text style={[s.lblS, { color: C.textMut }]}>کد مدل</Text>
-              <View style={[s.readonlyBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={s.readonlyTxt}>{it.modelCode || '—'}</Text></View>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>تعداد *</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} /></View>
-                <View style={{ flex: 1.3 }}><Text style={[s.lblS, { color: C.textMut }]}>قیمت *</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} /></View>
-                <View style={{ flex: 1.3 }}><Text style={[s.lblS, { color: C.textMut }]}>پرداخت</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => updItem(i, 'payment', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} /></View>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>💰 مبلغ کل</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={s.autoCalcTxt}>{lineTotal ? toFaNum(fmt(lineTotal)) : '—'}</Text></View></View>
-                <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>⚖️ مانده</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: lineBalance > 0 ? '#dc2626' : lineBalance < 0 ? '#059669' : C.border }]}><Text style={[s.autoCalcTxt, { color: lineBalance > 0 ? '#dc2626' : lineBalance < 0 ? '#059669' : '#94a3b8' }]}>{lineTotal ? toFaNum(fmt(lineBalance)) : '—'}</Text></View></View>
-              </View>
-              <Text style={[s.lblS, { color: C.textMut }]}>📅 تاریخ واریز</Text>
-              <DateField value={it.depositDate} onChange={(v: string) => updItem(i, 'depositDate', v)} compact />
-              <Autocomplete label="🏦 بانک" value={it.bankName} onChange={(v) => updItem(i, 'bankName', v)} options={BANKS} placeholder="کلیک..." />
-              <Autocomplete label="👤 صاحب حساب" value={it.accountHolder} onChange={(v) => updItem(i, 'accountHolder', v)} options={prods.map(p => p.supplier_name || '').filter(Boolean)} placeholder="کلیک..." />
-              <Text style={[s.lblS, { color: C.textMut }]}>📝 شرح</Text>
-              <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="اختیاری" placeholderTextColor={C.textMut} />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+          <View>
+            <View style={s.tblHeader}>
+              <Text style={[s.thCell, { width: 36 }]}>#</Text>
+              <Text style={[s.thCell, { width: 160 }]}>نام مدل</Text>
+              <Text style={[s.thCell, { width: 70 }]}>کد</Text>
+              <Text style={[s.thCell, { width: 70 }]}>تعداد</Text>
+              <Text style={[s.thCell, { width: 110 }]}>قیمت</Text>
+              <Text style={[s.thCell, { width: 120 }]}>مبلغ کل</Text>
+              <Text style={[s.thCell, { width: 100 }]}>پرداخت</Text>
+              <Text style={[s.thCell, { width: 110 }]}>مانده</Text>
+              <Text style={[s.thCell, { width: 190 }]}>تاریخ واریز</Text>
+              <Text style={[s.thCell, { width: 100 }]}>بانک</Text>
+              <Text style={[s.thCell, { width: 120 }]}>صاحب حساب</Text>
+              <Text style={[s.thCell, { width: 140 }]}>شرح</Text>
+              <Text style={[s.thCell, { width: 56 }]}>حذف</Text>
             </View>
-          );
-        })}
+            {items.map((it, i) => {
+              const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+              const lineBalance = lineTotal - (Number(it.payment) || 0);
+              return (
+                <View key={i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+                  <Text style={[s.tdCell, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
+                  <View style={{ width: 160, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.modelName} onChangeText={(v) => { updItem(i, 'modelName', v); }} onBlur={() => setModel(i, it.modelName)} placeholder="نام مدل" placeholderTextColor={C.textMut} />
+                  </View>
+                  <Text style={[s.tdCell, { width: 70, color: '#7c3aed', fontWeight: 'bold' }]}>{it.modelCode || '—'}</Text>
+                  <View style={{ width: 70, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" />
+                  </View>
+                  <View style={{ width: 110, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" />
+                  </View>
+                  <Text style={[s.tdCell, { width: 120, color: '#00ff88', fontWeight: 'bold' }]}>{lineTotal ? fmt(lineTotal) : '—'}</Text>
+                  <View style={{ width: 100, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => updItem(i, 'payment', parseNum(v))} keyboardType="numeric" />
+                  </View>
+                  <Text style={[s.tdCell, { width: 110, color: lineBalance > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{lineTotal ? fmt(lineBalance) : '—'}</Text>
+                  <View style={{ width: 190, paddingHorizontal: 3 }}>
+                    <DateField value={it.depositDate} onChange={(v: string) => updItem(i, 'depositDate', v)} compact />
+                  </View>
+                  <View style={{ width: 100, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.bankName} onChangeText={(v) => updItem(i, 'bankName', v)} placeholder="بانک" placeholderTextColor={C.textMut} />
+                  </View>
+                  <View style={{ width: 120, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.accountHolder} onChangeText={(v) => updItem(i, 'accountHolder', v)} placeholder="صاحب حساب" placeholderTextColor={C.textMut} />
+                  </View>
+                  <View style={{ width: 140, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="شرح" placeholderTextColor={C.textMut} />
+                  </View>
+                  <TouchableOpacity onPress={() => delItem(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>🗑</Text></TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+
         <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>➕ افزودن مدل</Text></TouchableOpacity>
         <View style={s.grandSummary}>
-          <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع مبلغ کل</Text><Text style={s.gsVal}>{toFaNum(fmt(grandTotal))}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع مبلغ کل</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
           <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>📦 تعداد اقلام</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
         </View>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
@@ -513,13 +524,12 @@ function SalesScreen({ showToast }: any) {
             <TouchableOpacity onPress={() => remove(inv.invoice)}><Text style={{ fontSize: 18 }}>🗑</Text></TouchableOpacity>
           </View>
           <Text style={s.invCust}>👤 {inv.name} — {inv.phone}</Text>
-          <Text style={s.invStat}>💰 {toFaNum(fmt(inv.total))} | 💳 {toFaNum(fmt(inv.paid))}</Text>
+          <Text style={s.invStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
         </View>
       ))}
     </ScrollView>
   );
 }
-
 // ══════════════════════════════════════════════════════════
 //  PURCHASE SCREEN
 // ══════════════════════════════════════════════════════════
@@ -603,40 +613,63 @@ function PurchaseScreen({ showToast }: any) {
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sPhone} onChangeText={setSPhone} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor={C.textMut} />
         <Text style={[s.lbl, { color: C.textMut }]}>🧾 شماره فاکتور دستی *</Text>
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={manualInv} onChangeText={setManualInv} placeholder="شماره روی فاکتور" placeholderTextColor={C.textMut} />
+
         <Text style={s.secT}>📦 اقلام خرید ({toFaNum(items.length)})</Text>
-        {items.map((it, i) => {
-          const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
-          return (
-            <View key={i} style={[s.itemCard, { backgroundColor: C.card, borderColor: C.border }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={s.itemN}>#{toFaNum(i + 1)}</Text>
-                <TouchableOpacity onPress={() => delItem(i)} style={s.delBtnRound}><Text style={{ fontSize: 14, color: '#fff' }}>🗑</Text></TouchableOpacity>
-              </View>
-              <Autocomplete label="نام مدل" value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="کلیک..." />
-              <Text style={[s.lblS, { color: C.textMut }]}>کد مدل</Text>
-              <View style={[s.readonlyBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={s.readonlyTxt}>{it.modelCode || '—'}</Text></View>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>تعداد</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} /></View>
-                <View style={{ flex: 1.3 }}><Text style={[s.lblS, { color: C.textMut }]}>قیمت خرید</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} /></View>
-              </View>
-              <View style={{ marginTop: 8 }}><Text style={[s.lblS, { color: C.textMut }]}>💰 مبلغ کل</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={s.autoCalcTxt}>{lineTotal ? toFaNum(fmt(lineTotal)) : '—'}</Text></View></View>
-              <Text style={[s.lblS, { color: C.textMut }]}>📝 شرح</Text>
-              <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="اختیاری" placeholderTextColor={C.textMut} />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+          <View>
+            <View style={s.tblHeader}>
+              <Text style={[s.thCell, { width: 36 }]}>#</Text>
+              <Text style={[s.thCell, { width: 180 }]}>نام مدل</Text>
+              <Text style={[s.thCell, { width: 80 }]}>کد</Text>
+              <Text style={[s.thCell, { width: 80 }]}>تعداد</Text>
+              <Text style={[s.thCell, { width: 120 }]}>قیمت خرید</Text>
+              <Text style={[s.thCell, { width: 130 }]}>مبلغ کل</Text>
+              <Text style={[s.thCell, { width: 160 }]}>شرح</Text>
+              <Text style={[s.thCell, { width: 56 }]}>حذف</Text>
             </View>
-          );
-        })}
+            {items.map((it, i) => {
+              const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+              return (
+                <View key={i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+                  <Text style={[s.tdCell, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
+                  <View style={{ width: 180, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.modelName} onChangeText={(v) => updItem(i, 'modelName', v)} onBlur={() => setModel(i, it.modelName)} placeholder="نام مدل" placeholderTextColor={C.textMut} />
+                  </View>
+                  <Text style={[s.tdCell, { width: 80, color: '#7c3aed', fontWeight: 'bold' }]}>{it.modelCode || '—'}</Text>
+                  <View style={{ width: 80, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" />
+                  </View>
+                  <View style={{ width: 120, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" />
+                  </View>
+                  <Text style={[s.tdCell, { width: 130, color: '#00ff88', fontWeight: 'bold' }]}>{lineTotal ? fmt(lineTotal) : '—'}</Text>
+                  <View style={{ width: 160, paddingHorizontal: 3 }}>
+                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="شرح" placeholderTextColor={C.textMut} />
+                  </View>
+                  <TouchableOpacity onPress={() => delItem(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>🗑</Text></TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+
         <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>➕ افزودن مدل</Text></TouchableOpacity>
+
         <View style={s.grandSummary}>
-          <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع مبلغ کل</Text><Text style={s.gsVal}>{toFaNum(fmt(grandTotal))}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع مبلغ کل</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
           <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>📦 تعداد اقلام</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
         </View>
+
         <Text style={s.secT}>💳 اطلاعات پرداخت</Text>
         <Text style={[s.lbl, { color: C.textMut }]}>مبلغ پرداخت نقدی</Text>
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={payAmt} onChangeText={setPayAmt} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-          <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>💵 پرداخت</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: '#059669' }]}><Text style={[s.autoCalcTxt, { color: '#059669' }]}>{paidAmt ? toFaNum(fmt(paidAmt)) : '—'}</Text></View></View>
-          <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>📌 مانده</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.autoCalcTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? toFaNum(fmt(remaining)) : '—'}</Text></View></View>
+          <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>💵 پرداخت</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: '#059669' }]}><Text style={[s.autoCalcTxt, { color: '#059669' }]}>{paidAmt ? fmt(paidAmt) : '—'}</Text></View></View>
+          <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>📌 مانده</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.autoCalcTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? fmt(remaining) : '—'}</Text></View></View>
         </View>
+
         <Text style={[s.lbl, { color: C.textMut }]}>📅 تاریخ پرداخت</Text>
         <DateField value={payDate} onChange={setPayDate} compact defaultToToday />
         <Text style={[s.lbl, { color: C.textMut }]}>🏦 حساب پرداخت‌کننده</Text>
@@ -646,6 +679,7 @@ function PurchaseScreen({ showToast }: any) {
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAcc} onChangeText={setReceiverAcc} placeholder="اختیاری" placeholderTextColor={C.textMut} />
         <Text style={[s.lbl, { color: C.textMut }]}>📝 شرح</Text>
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder="توضیحات..." placeholderTextColor={C.textMut} />
+
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
           <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setView('list')}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
           <TouchableOpacity style={[s.btn, { flex: 2, backgroundColor: '#166534' }]} onPress={submit} disabled={saving}>
@@ -659,13 +693,15 @@ function PurchaseScreen({ showToast }: any) {
   return (
     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
       <DigitalDashboard refreshKey={0} settings={settings} />
-      <TouchableOpacity style={[s.addBtn, { backgroundColor: '#166534', marginTop: 8 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}><Text style={s.btnTxt}>➕ فاکتور خرید جدید</Text></TouchableOpacity>
+      <TouchableOpacity style={[s.addBtn, { backgroundColor: '#166534', marginTop: 8 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
+        <Text style={s.btnTxt}>➕ فاکتور خرید جدید</Text>
+      </TouchableOpacity>
       <Text style={s.secT}>📄 خریدها ({toFaNum(list.length)})</Text>
       {loading ? <ActivityIndicator color="#34d399" /> : list.map((inv: any) => (
         <View key={inv.invoice} style={[s.invCard, { backgroundColor: C.card, borderRightColor: '#166534' }]}>
           <Text style={s.invNum}>{inv.invoice}</Text>
           <Text style={s.invCust}>🏭 {inv.name}</Text>
-          <Text style={s.invStat}>💰 {toFaNum(fmt(inv.total))} | 💳 {toFaNum(fmt(inv.paid))}</Text>
+          <Text style={s.invStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
         </View>
       ))}
     </ScrollView>
@@ -766,8 +802,8 @@ function PrintScreen({ showToast }: any) {
                 <Text style={s.invNum}>{r.invoice}</Text>
                 <Text style={{ color: C.textMut, fontSize: 11 }}>{displayDateOnly(r.date)}</Text>
               </View>
-              {mode === 'full' && r.items?.map((it: any, j: number) => (<Text key={j} style={s.itemRow}>📦 {it.modelName} — {toFaNum(it.quantity)} × {toFaNum(fmt(it.priceUnit))}</Text>))}
-              <Text style={s.invStat}>💰 {toFaNum(fmt(r.total))} | 💳 {toFaNum(fmt(r.paid))} | 📌 {toFaNum(fmt(r.total - r.paid))}</Text>
+              {mode === 'full' && r.items?.map((it: any, j: number) => (<Text key={j} style={s.itemRow}>📦 {it.modelName} — {toFaNum(it.quantity)} × {fmt(it.priceUnit)}</Text>))}
+              <Text style={s.invStat}>💰 {fmt(r.total)} | 💳 {fmt(r.paid)} | 📌 {fmt(r.total - r.paid)}</Text>
             </View>
           ))}
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -779,6 +815,7 @@ function PrintScreen({ showToast }: any) {
     </ScrollView>
   );
 }
+
 // ══════════════════════════════════════════════════════════
 //  PROFIT SCREEN
 // ══════════════════════════════════════════════════════════
@@ -801,7 +838,7 @@ function ProfitScreen({ showToast, settings }: any) {
       <DigitalDashboard refreshKey={0} settings={settings} />
       <View style={[s.statsCard, { marginTop: 8 }]}>
         <Text style={s.statsLbl}>💰 سود کل ({stats?.rangeLabel || 'ماه'})</Text>
-        <Text style={[s.statsVal, { color: total >= 0 ? '#00ff88' : '#ff3355' }]}>{toFaNum(fmt(total))}</Text>
+        <Text style={[s.statsVal, { color: total >= 0 ? '#00ff88' : '#ff3355' }]}>{fmt(total)}</Text>
         <Text style={s.statsUnit}>تومان</Text>
       </View>
       {stats?.estimatedCount > 0 && (<View style={s.warnBox}><Text style={s.warnTxt}>📊 {stats.estimatedCount} مدل بدون خرید — سود {Math.round((stats.defaultMargin || 0.1) * 100)}٪ تخمین زده شد</Text></View>)}
@@ -810,12 +847,12 @@ function ProfitScreen({ showToast, settings }: any) {
         <View key={i} style={[s.pCard, m.estimated && { backgroundColor: '#f5f3ff' }]}>
           <Text style={s.pName}>{m.name}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-            <Text style={s.pStat}>📦 فروش: {toFaNum(m.totalQty)}</Text>
-            <Text style={s.pStat}>💰 {toFaNum(fmt(m.totalSales))}</Text>
+            <Text style={s.pStat}>📦 فروش: {fmt(m.totalQty)}</Text>
+            <Text style={s.pStat}>💰 {fmt(m.totalSales)}</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-            <Text style={s.pStat}>🛒 خرید: {m.purchasePrice ? toFaNum(fmt(Math.round(m.purchasePrice))) : '—'}</Text>
-            <Text style={[s.pStat, { color: m.totalProfit >= 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }]}>💹 سود: {toFaNum(fmt(m.totalProfit))}</Text>
+            <Text style={s.pStat}>🛒 خرید: {m.purchasePrice ? fmt(Math.round(m.purchasePrice)) : '—'}</Text>
+            <Text style={[s.pStat, { color: m.totalProfit >= 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }]}>💹 سود: {fmt(m.totalProfit)}</Text>
           </View>
           <Text style={[s.badge, m.priceSource === 'same-month' && { backgroundColor: '#d1fae5', color: '#065f46' }, m.priceSource === 'historical' && { backgroundColor: '#d1fae5', color: '#065f46' }, m.priceSource === 'estimated' && { backgroundColor: '#ede9fe', color: '#6d28d9' }]}>
             {m.priceSource === 'same-month' ? '✅ خرید هم‌ماه' : m.priceSource === 'historical' ? '📜 خرید تاریخی' : m.priceSource === 'estimated' ? `📊 تخمینی ${Math.round((stats?.defaultMargin || 0.1) * 100)}٪` : '—'}
@@ -877,7 +914,7 @@ function InventoryScreen({ showToast }: any) {
       <DigitalDashboard refreshKey={0} settings={{}} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
         {[{ l: '📊 مدل‌ها', v: stats.totalModels || 0, c: '#60a5fa' }, { l: '📦 جمع', v: stats.totalQty || 0, c: '#34d399' }, { l: '⚠️ کمبود', v: stats.lowStock || 0, c: '#fb923c' }, { l: '🔴 ناموجود', v: stats.outOfStock || 0, c: '#f87171' }, { l: '⚫ منفی', v: stats.negative || 0, c: '#94a3b8' }].map((b, i) => (
-          <View key={i} style={s.sBox}><Text style={s.sBoxL}>{b.l}</Text><Text style={[s.sBoxV, { color: b.c }]}>{toFaNum(b.v)}</Text></View>
+          <View key={i} style={s.sBox}><Text style={s.sBoxL}>{b.l}</Text><Text style={[s.sBoxV, { color: b.c }]}>{fmt(b.v)}</Text></View>
         ))}
       </View>
       <View style={[s.thresholdBox, { backgroundColor: C.card }]}>
@@ -898,9 +935,9 @@ function InventoryScreen({ showToast }: any) {
         <View key={i} style={[s.invItem, { backgroundColor: C.card }, m.status === 'negative' && { backgroundColor: '#f1f5f9', borderRightColor: '#475569' }, m.status === 'out' && { backgroundColor: '#fef2f2', borderRightColor: '#dc2626' }, m.status === 'low' && { backgroundColor: '#fffbeb', borderRightColor: '#f59e0b' }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
             <View style={{ flex: 1 }}><Text style={s.invCode}>{m.code}</Text><Text style={[s.invName, { color: C.text }]}>{m.name}</Text></View>
-            <Text style={[s.invQty, { color: statusColor(m.status) }]}>{toFaNum(m.currentQty)}</Text>
+            <Text style={[s.invQty, { color: statusColor(m.status) }]}>{fmt(m.currentQty)}</Text>
           </View>
-          <Text style={s.invStat}>📥 {toFaNum(m.bought)} | 📤 {toFaNum(m.sold)}</Text>
+          <Text style={s.invStat}>📥 {fmt(m.bought)} | 📤 {fmt(m.sold)}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
             <TouchableOpacity onPress={() => { setEditItem(m); setShelfVal(m.shelf || ''); }} style={s.shelfBtn}><Text style={s.shelfTxt}>📍 {m.shelf || 'قفسه ثبت نشده'}</Text></TouchableOpacity>
             <Text style={[s.statusTag, { color: statusColor(m.status) }]}>{statusLabel(m.status)}</Text>
@@ -912,7 +949,7 @@ function InventoryScreen({ showToast }: any) {
           <View style={[s.modalHead, { backgroundColor: '#7c3aed' }]}><Text style={s.modalHeadTxt}>📍 قفسه — {editItem?.name}</Text><TouchableOpacity onPress={() => setEditItem(null)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 16 }}>
             <Text style={[s.modalLbl, { color: C.textMut }]}>کد: <Text style={s.modalVal}>{editItem?.code}</Text></Text>
-            <Text style={[s.modalLbl, { color: C.textMut }]}>موجودی: <Text style={s.modalVal}>{toFaNum(editItem?.currentQty || 0)} عدد</Text></Text>
+            <Text style={[s.modalLbl, { color: C.textMut }]}>موجودی: <Text style={s.modalVal}>{fmt(editItem?.currentQty || 0)} عدد</Text></Text>
             <Text style={[s.modalLbl, { color: C.textMut }]}>موقعیت قفسه:</Text>
             <TextInput style={[s.modalInp, { color: C.text, borderColor: '#a78bfa' }]} value={shelfVal} onChangeText={setShelfVal} placeholder="مثلاً A-12" placeholderTextColor={C.textMut} />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
@@ -990,7 +1027,7 @@ function UnpaidSection({ showToast }: any) {
             <View style={{ flex: 1 }}>
               <Text style={s.invNum}>{inv.invoice}</Text>
               <Text style={s.invCust}>👤 {inv.name} — {inv.phone}</Text>
-              <Text style={s.invStat}>💰 {toFaNum(fmt(inv.total))} | 💳 {toFaNum(fmt(inv.paid))}</Text>
+              <Text style={s.invStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -1072,35 +1109,51 @@ function NewOrderSection({ showToast }: any) {
       <Text style={[s.lbl, { color: C.textMut }]}>🧾 شماره فاکتور (خودکار)</Text>
       <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={invoice} editable={false} />
       <Text style={s.secT}>📦 اقلام</Text>
-      {items.map((it, i) => {
-        const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
-        const lineBalance = lineTotal - (Number(it.payment) || 0);
-        return (
-          <View key={i} style={[s.itemCard, { backgroundColor: C.card, borderColor: C.border }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={s.itemN}>#{toFaNum(i + 1)}</Text>
-              <TouchableOpacity onPress={() => del(i)} style={s.delBtnRound}><Text style={{ fontSize: 14, color: '#fff' }}>🗑</Text></TouchableOpacity>
-            </View>
-            <Autocomplete label="نام مدل" value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="کلیک..." />
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>تعداد</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>قیمت</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => upd(i, 'priceUnit', parseNum(v))} keyboardType="numeric" /></View>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>پرداخت</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => upd(i, 'payment', parseNum(v))} keyboardType="numeric" /></View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>💰 مبلغ کل</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={s.autoCalcTxt}>{lineTotal ? toFaNum(fmt(lineTotal)) : '—'}</Text></View></View>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>⚖️ مانده</Text><View style={[s.autoCalcBox, { backgroundColor: C.cardAlt, borderColor: lineBalance > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.autoCalcTxt, { color: lineBalance > 0 ? '#dc2626' : '#059669' }]}>{lineTotal ? toFaNum(fmt(lineBalance)) : '—'}</Text></View></View>
-            </View>
-            <Text style={[s.lblS, { color: C.textMut }]}>📅 تاریخ واریز</Text>
-            <DateField value={it.depositDate} onChange={(v: string) => upd(i, 'depositDate', v)} compact />
-            <Autocomplete label="🏦 بانک" value={it.bankName} onChange={(v) => upd(i, 'bankName', v)} options={BANKS} placeholder="کلیک..." />
-            <Autocomplete label="👤 صاحب حساب" value={it.accountHolder} onChange={(v) => upd(i, 'accountHolder', v)} options={prods.map(p => p.supplier_name || '').filter(Boolean)} placeholder="کلیک..." />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator>
+        <View>
+          <View style={s.tblHeader}>
+            <Text style={[s.thCell, { width: 36 }]}>#</Text>
+            <Text style={[s.thCell, { width: 160 }]}>نام مدل</Text>
+            <Text style={[s.thCell, { width: 70 }]}>کد</Text>
+            <Text style={[s.thCell, { width: 70 }]}>تعداد</Text>
+            <Text style={[s.thCell, { width: 110 }]}>قیمت</Text>
+            <Text style={[s.thCell, { width: 110 }]}>مبلغ</Text>
+            <Text style={[s.thCell, { width: 100 }]}>پرداخت</Text>
+            <Text style={[s.thCell, { width: 100 }]}>مانده</Text>
+            <Text style={[s.thCell, { width: 190 }]}>تاریخ واریز</Text>
+            <Text style={[s.thCell, { width: 100 }]}>بانک</Text>
+            <Text style={[s.thCell, { width: 130 }]}>صاحب حساب</Text>
+            <Text style={[s.thCell, { width: 56 }]}>حذف</Text>
           </View>
-        );
-      })}
+          {items.map((it, i) => {
+            const lt = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+            const lb = lt - (Number(it.payment) || 0);
+            return (
+              <View key={i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+                <Text style={[s.tdCell, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
+                <View style={{ width: 160, paddingHorizontal: 3 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.modelName} onChangeText={(v) => upd(i, 'modelName', v)} onBlur={() => setModel(i, it.modelName)} placeholder="نام مدل" placeholderTextColor={C.textMut} />
+                </View>
+                <Text style={[s.tdCell, { width: 70, color: '#7c3aed', fontWeight: 'bold' }]}>{it.modelCode || '—'}</Text>
+                <View style={{ width: 70, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
+                <View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => upd(i, 'priceUnit', parseNum(v))} keyboardType="numeric" /></View>
+                <Text style={[s.tdCell, { width: 110, color: '#00ff88', fontWeight: 'bold' }]}>{lt ? fmt(lt) : '—'}</Text>
+                <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => upd(i, 'payment', parseNum(v))} keyboardType="numeric" /></View>
+                <Text style={[s.tdCell, { width: 100, color: lb > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{lt ? fmt(lb) : '—'}</Text>
+                <View style={{ width: 190, paddingHorizontal: 3 }}><DateField value={it.depositDate} onChange={(v: string) => upd(i, 'depositDate', v)} compact /></View>
+                <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.bankName} onChangeText={(v) => upd(i, 'bankName', v)} placeholder="بانک" placeholderTextColor={C.textMut} /></View>
+                <View style={{ width: 130, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.accountHolder} onChangeText={(v) => upd(i, 'accountHolder', v)} placeholder="صاحب حساب" placeholderTextColor={C.textMut} /></View>
+                <TouchableOpacity onPress={() => del(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>🗑</Text></TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
+      </ScrollView>
+
       <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>➕ افزودن ردیف</Text></TouchableOpacity>
       <View style={s.grandSummary}>
-        <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع کل</Text><Text style={s.gsVal}>{toFaNum(fmt(grandTotal))}</Text></View>
+        <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع کل</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
         <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>📦 تعداد</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
       </View>
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={submit} disabled={saving}>
@@ -1189,28 +1242,48 @@ function SearchSection({ showToast }: any) {
             <Text style={{ color: '#fff', fontSize: 11, opacity: 0.9 }}>{editing.name} | {editing.code} | {editRows.length} ردیف</Text>
           </View>
         </View>
-        {editRows.map((r, i) => (
-          <View key={i} style={[s.itemCard, { backgroundColor: C.card, borderColor: C.border }, r._deleted && { opacity: 0.4 }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={s.itemN}>#{toFaNum(i + 1)}</Text>
-              <TouchableOpacity onPress={() => delRow(i)}><Text style={{ fontSize: 18 }}>{r._deleted ? '↺' : '🗑'}</Text></TouchableOpacity>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+          <View>
+            <View style={s.tblHeader}>
+              <Text style={[s.thCell, { width: 36 }]}>#</Text>
+              <Text style={[s.thCell, { width: 90 }]}>کد</Text>
+              <Text style={[s.thCell, { width: 160 }]}>نام مدل</Text>
+              <Text style={[s.thCell, { width: 80 }]}>تعداد</Text>
+              <Text style={[s.thCell, { width: 110 }]}>قیمت</Text>
+              <Text style={[s.thCell, { width: 100 }]}>مبلغ</Text>
+              <Text style={[s.thCell, { width: 100 }]}>پرداخت</Text>
+              <Text style={[s.thCell, { width: 100 }]}>مانده</Text>
+              <Text style={[s.thCell, { width: 190 }]}>تاریخ واریز</Text>
+              <Text style={[s.thCell, { width: 100 }]}>بانک</Text>
+              <Text style={[s.thCell, { width: 130 }]}>صاحب حساب</Text>
+              <Text style={[s.thCell, { width: 140 }]}>شرح</Text>
+              <Text style={[s.thCell, { width: 56 }]}>حذف</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 4 }}>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>کد</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelCode} onChangeText={(v) => updRow(i, 'modelCode', v)} editable={!r._deleted} /></View>
-              <View style={{ flex: 2 }}><Text style={[s.lblS, { color: C.textMut }]}>نام</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelName} onChangeText={(v) => updRow(i, 'modelName', v)} editable={!r._deleted} /></View>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 4 }}>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>تعداد</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.quantity || '')} onChangeText={(v) => updRow(i, 'quantity', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>قیمت</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
-              <View style={{ flex: 1 }}><Text style={[s.lblS, { color: C.textMut }]}>پرداخت</Text><TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.payment || '')} onChangeText={(v) => updRow(i, 'payment', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
-            </View>
-            <Text style={[s.lblS, { color: C.textMut }]}>تاریخ واریز</Text>
-            <DateField value={r.depositDate} onChange={(v: string) => updRow(i, 'depositDate', v)} compact />
-            <Autocomplete label="بانک" value={r.bankName} onChange={(v) => updRow(i, 'bankName', v)} options={BANKS} placeholder="کلیک..." />
-            <Text style={[s.lblS, { color: C.textMut }]}>شرح</Text>
-            <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.description} onChangeText={(v) => updRow(i, 'description', v)} editable={!r._deleted} />
+            {editRows.map((r, i) => {
+              const lt = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
+              const lb = lt - (Number(r.payment) || 0);
+              return (
+                <View key={i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: C.cardAlt }, r._deleted && { opacity: 0.4 }]}>
+                  <Text style={[s.tdCell, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
+                  <View style={{ width: 90, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelCode} onChangeText={(v) => updRow(i, 'modelCode', v)} editable={!r._deleted} /></View>
+                  <View style={{ width: 160, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelName} onChangeText={(v) => updRow(i, 'modelName', v)} editable={!r._deleted} /></View>
+                  <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.quantity || '')} onChangeText={(v) => updRow(i, 'quantity', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+                  <View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+                  <Text style={[s.tdCell, { width: 100, color: '#00ff88', fontWeight: 'bold' }]}>{lt ? fmt(lt) : '—'}</Text>
+                  <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.payment || '')} onChangeText={(v) => updRow(i, 'payment', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+                  <Text style={[s.tdCell, { width: 100, color: lb > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{lt ? fmt(lb) : '—'}</Text>
+                  <View style={{ width: 190, paddingHorizontal: 3 }}><DateField value={r.depositDate} onChange={(v: string) => updRow(i, 'depositDate', v)} compact /></View>
+                  <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.bankName} onChangeText={(v) => updRow(i, 'bankName', v)} editable={!r._deleted} /></View>
+                  <View style={{ width: 130, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.accountHolder} onChangeText={(v) => updRow(i, 'accountHolder', v)} editable={!r._deleted} /></View>
+                  <View style={{ width: 140, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.description} onChangeText={(v) => updRow(i, 'description', v)} editable={!r._deleted} /></View>
+                  <TouchableOpacity onPress={() => delRow(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>{r._deleted ? '↺' : '🗑'}</Text></TouchableOpacity>
+                </View>
+              );
+            })}
           </View>
-        ))}
+        </ScrollView>
+
         <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>➕ افزودن ردیف</Text></TouchableOpacity>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
           <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => { setEditing(null); setEditRows([]); }}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
@@ -1221,16 +1294,8 @@ function SearchSection({ showToast }: any) {
   );
 
   const typeLabel = (t: string) => t === 'purchases' ? '🛍️ خرید' : '🛒 فروش';
-  const statusLabel = (total: number, paid: number) => {
-    if (paid >= total && total > 0) return '✅ پرداخت‌شده';
-    if (paid > 0) return '⏳ جزئی';
-    return '❌ پرداخت‌نشده';
-  };
-  const statusColor = (total: number, paid: number) => {
-    if (paid >= total && total > 0) return '#059669';
-    if (paid > 0) return '#f39c12';
-    return '#dc2626';
-  };
+  const statusLabel = (total: number, paid: number) => paid >= total && total > 0 ? '✅ پرداخت‌شده' : paid > 0 ? '⏳ جزئی' : '❌ پرداخت‌نشده';
+  const statusColor = (total: number, paid: number) => paid >= total && total > 0 ? '#059669' : paid > 0 ? '#f39c12' : '#dc2626';
 
   return (
     <View>
@@ -1259,9 +1324,9 @@ function SearchSection({ showToast }: any) {
             <View style={s.searchInfoCell}><Text style={s.searchInfoLbl}>📋 ردیف</Text><Text style={[s.searchInfoVal, { color: C.text }]} numberOfLines={1}>{toFaNum(r.rowCount || r.items?.length || 0)}</Text></View>
           </View>
           <View style={[s.searchMoneyBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}>
-            <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.searchMoneyLbl}>💰 جمع</Text><Text style={s.searchMoneyVal}>{toFaNum(fmt(r.total))}</Text></View>
-            <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.searchMoneyLbl}>💳 پرداخت</Text><Text style={[s.searchMoneyVal, { color: '#059669' }]}>{toFaNum(fmt(r.paid))}</Text></View>
-            <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.searchMoneyLbl}>📌 مانده</Text><Text style={[s.searchMoneyVal, { color: r.total - r.paid > 0 ? '#dc2626' : '#059669' }]}>{toFaNum(fmt(r.total - r.paid))}</Text></View>
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.searchMoneyLbl}>💰 جمع</Text><Text style={s.searchMoneyVal}>{fmt(r.total)}</Text></View>
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.searchMoneyLbl}>💳 پرداخت</Text><Text style={[s.searchMoneyVal, { color: '#059669' }]}>{fmt(r.paid)}</Text></View>
+            <View style={{ flex: 1, alignItems: 'center' }}><Text style={s.searchMoneyLbl}>📌 مانده</Text><Text style={[s.searchMoneyVal, { color: r.total - r.paid > 0 ? '#dc2626' : '#059669' }]}>{fmt(r.total - r.paid)}</Text></View>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border }}>
             <View style={[s.searchStatusBadge, { backgroundColor: statusColor(r.total, r.paid) + '20' }]}><Text style={[s.searchStatusTxt, { color: statusColor(r.total, r.paid) }]}>{statusLabel(r.total, r.paid)}</Text></View>
@@ -1278,7 +1343,7 @@ function SearchSection({ showToast }: any) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  REPORTS SECTION (بدهکاران، طلبکاران، ۲۴ ساعت، انبار)
+//  REPORTS SECTION
 // ══════════════════════════════════════════════════════════
 function ReportsSection({ showToast }: any) {
   const [type, setType] = useState('debtors');
@@ -1288,10 +1353,9 @@ function ReportsSection({ showToast }: any) {
   const load = async () => {
     setLoading(true);
     try {
-      const [{ data: sales }, { data: purchases }, { data: products }] = await Promise.all([
+      const [{ data: sales }, { data: purchases }] = await Promise.all([
         supabase.from('sales').select('*'),
         supabase.from('purchases').select('*'),
-        supabase.from('products').select('*'),
       ]);
 
       if (type === 'debtors') {
@@ -1319,20 +1383,12 @@ function ReportsSection({ showToast }: any) {
         rows.sort((a: any, b: any) => b.balance - a.balance);
         setData({ rows, total: rows.reduce((a: number, r: any) => a + r.balance, 0), title: 'طلبکاران' });
       } else if (type === 'sales24h') {
-        const now = Date.now();
-        const cutoff = now - 24 * 3600 * 1000;
-        const rows = (sales || []).filter((r: any) => {
-          const d = parseDateAny(r.date_reg || r.date_factor);
-          return d && d.getTime() >= cutoff;
-        });
+        const cutoff = Date.now() - 24 * 3600 * 1000;
+        const rows = (sales || []).filter((r: any) => { const d = parseDateAny(r.date_reg || r.date_factor); return d && d.getTime() >= cutoff; });
         setData({ rows, total: rows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0), title: 'فروش ۲۴ ساعت' });
       } else if (type === 'purchases24h') {
-        const now = Date.now();
-        const cutoff = now - 24 * 3600 * 1000;
-        const rows = (purchases || []).filter((r: any) => {
-          const d = parseDateAny(r.date_reg || r.date_factor);
-          return d && d.getTime() >= cutoff;
-        });
+        const cutoff = Date.now() - 24 * 3600 * 1000;
+        const rows = (purchases || []).filter((r: any) => { const d = parseDateAny(r.date_reg || r.date_factor); return d && d.getTime() >= cutoff; });
         setData({ rows, total: rows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0), title: 'خرید ۲۴ ساعت' });
       } else if (type === 'inventory') {
         const d = await getInventory();
@@ -1380,7 +1436,7 @@ function ReportsSection({ showToast }: any) {
         <View style={{ marginTop: 16 }}>
           <View style={s.statsCard}>
             <Text style={s.statsLbl}>{data.title}</Text>
-            <Text style={s.statsVal}>{toFaNum(fmt(data.total))}</Text>
+            <Text style={s.statsVal}>{fmt(data.total)}</Text>
             <Text style={s.statsUnit}>{data.rows.length} مورد</Text>
           </View>
 
@@ -1391,9 +1447,9 @@ function ReportsSection({ showToast }: any) {
                 <Text style={[s.invStat, { fontWeight: 'bold' }]}>{r.name || r.model_name || ''}</Text>
               </View>
               <Text style={s.invStat}>📞 {r.phone || '—'}</Text>
-              {r.balance !== undefined && <Text style={[s.invStat, { color: '#dc2626', fontWeight: 'bold' }]}>📌 بدهی: {toFaNum(fmt(r.balance))}</Text>}
-              {r.currentQty !== undefined && <Text style={s.invStat}>📦 موجودی: {toFaNum(r.currentQty)}</Text>}
-              {r.total !== undefined && r.balance === undefined && r.currentQty === undefined && <Text style={s.invStat}>💰 {toFaNum(fmt(r.total))} | 💳 {toFaNum(fmt(r.paid))}</Text>}
+              {r.balance !== undefined && <Text style={[s.invStat, { color: '#dc2626', fontWeight: 'bold' }]}>📌 بدهی: {fmt(r.balance)}</Text>}
+              {r.currentQty !== undefined && <Text style={s.invStat}>📦 موجودی: {fmt(r.currentQty)}</Text>}
+              {r.total !== undefined && r.balance === undefined && r.currentQty === undefined && <Text style={s.invStat}>💰 {fmt(r.total)} | 💳 {fmt(r.paid)}</Text>}
             </View>
           ))}
 
@@ -1408,7 +1464,7 @@ function ReportsSection({ showToast }: any) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  SETTINGS SECTION (کامل با ایمیل، حذف خودکار، گزارش‌های زمان‌بندی)
+//  SETTINGS SECTION
 // ══════════════════════════════════════════════════════════
 function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const [saving, setSaving] = useState(false);
@@ -1571,10 +1627,6 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={[s.warnTxt, { marginTop: 12, color: '#f59e0b', fontSize: 11, lineHeight: 18 }]}>
-        ⚠️ توجه: گزارش‌های زمان‌بندی نیاز به Cron Job سمت سرور دارن. اگه فعال باشه، فقط توی تنظیمات ذخیره می‌شه. برای اجرای خودکار، باید یه سرویس جدا (Vercel Cron / GitHub Actions) راه‌اندازی کنیم.
-      </Text>
-
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={save} disabled={saving}>
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>💾 ذخیره همه تنظیمات</Text>}
       </TouchableOpacity>
@@ -1583,7 +1635,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  SOURCES SECTION (کالاها)
+//  SOURCES SECTION (کالاها - جدولی مثل وب)
 // ══════════════════════════════════════════════════════════
 function SourcesSection({ showToast }: any) {
   const [list, setList] = useState<Product[]>([]);
@@ -1621,21 +1673,39 @@ function SourcesSection({ showToast }: any) {
       </TouchableOpacity>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در کالاها..." placeholderTextColor={C.textMut} />
       <Text style={s.secT}>📦 کالاها ({toFaNum(filtered.length)})</Text>
-      {loading ? <ActivityIndicator color="#d4af37" /> : filtered.map((p) => (
-        <View key={p.id} style={[s.invCard, { backgroundColor: C.card }]}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.invNum}>{p.code} — {p.name}</Text>
-              <Text style={s.invStat}>💰 {toFaNum(fmt(p.price || 0))} | 📍 {p.shelf || '—'}</Text>
-              {p.supplier_name ? <Text style={s.invCust}>🏭 {p.supplier_name}</Text> : null}
-            </View>
-            <View style={{ gap: 6 }}>
-              <TouchableOpacity onPress={() => setEditing({ ...p })} style={[s.iconBtn, { backgroundColor: '#dbeafe' }]}><Text>✏️</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => p.id && remove(p.id)} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
-            </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator>
+        <View>
+          <View style={s.tblHeader}>
+            <Text style={[s.thCell, { width: 36 }]}>#</Text>
+            <Text style={[s.thCell, { width: 90 }]}>کد</Text>
+            <Text style={[s.thCell, { width: 180 }]}>نام</Text>
+            <Text style={[s.thCell, { width: 120 }]}>قیمت</Text>
+            <Text style={[s.thCell, { width: 100 }]}>قفسه</Text>
+            <Text style={[s.thCell, { width: 140 }]}>تأمین‌کننده</Text>
+            <Text style={[s.thCell, { width: 110 }]}>تلفن</Text>
+            <Text style={[s.thCell, { width: 120 }]}>باربری</Text>
+            <Text style={[s.thCell, { width: 130 }]}>عملیات</Text>
           </View>
+          {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((p, i) => (
+            <View key={p.id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+              <Text style={[s.tdCell, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
+              <Text style={[s.tdCell, { width: 90, color: '#7c3aed', fontWeight: 'bold' }]}>{p.code}</Text>
+              <Text style={[s.tdCell, { width: 180, textAlign: 'right', color: C.text, fontWeight: 'bold' }]}>{p.name}</Text>
+              <Text style={[s.tdCell, { width: 120, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(p.price || 0)}</Text>
+              <Text style={[s.tdCell, { width: 100, color: C.text }]}>{p.shelf || '—'}</Text>
+              <Text style={[s.tdCell, { width: 140, textAlign: 'right', color: C.text }]}>{p.supplier_name || '—'}</Text>
+              <Text style={[s.tdCell, { width: 110, color: C.text }]}>{p.supplier_phone || '—'}</Text>
+              <Text style={[s.tdCell, { width: 120, color: C.text }]}>{p.shipping_name || '—'}</Text>
+              <View style={[s.tdCell, { width: 130, flexDirection: 'row', gap: 6, justifyContent: 'center' }]}>
+                <TouchableOpacity onPress={() => setEditing({ ...p })} style={[s.iconBtn, { backgroundColor: '#dbeafe', padding: 6 }]}><Text>✏️</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => p.id && remove(p.id)} style={[s.iconBtn, { padding: 6 }]}><Text>🗑</Text></TouchableOpacity>
+              </View>
+            </View>
+          ))}
         </View>
-      ))}
+      </ScrollView>
+
       <Modal visible={!!editing} transparent animationType="slide" onRequestClose={() => setEditing(null)}>
         <View style={s.modalBg}>
           <ScrollView style={[s.modalBox, { backgroundColor: C.card }]} keyboardShouldPersistTaps="handled">
@@ -1661,6 +1731,8 @@ function SourcesSection({ showToast }: any) {
     </View>
   );
 }
+
+// ⏭️ **بخش ۳ (آخر) رو در پیام بعدی می‌فرستم.**
 // ══════════════════════════════════════════════════════════
 //  INVOICE A5 VIEW
 // ══════════════════════════════════════════════════════════
@@ -1689,6 +1761,7 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
         </View>
         <Text style={s.invTitle}>پیش فروش کفش تاج</Text>
         <Text style={s.invDateTxt}>📅 {invoice.timeString}</Text>
+
         <View style={s.invSection}>
           <Text style={s.invSectionTitle}>👤 اطلاعات مشتری</Text>
           <View style={s.invCGrid}>
@@ -1700,6 +1773,7 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
             {c.shipping ? <View style={s.invCell}><Text style={s.invCellL}>🚚 باربری</Text><Text style={s.invCellV}>{c.shipping}</Text></View> : null}
           </View>
         </View>
+
         <View style={s.invSection}>
           <Text style={s.invSectionTitle}>📦 اقلام</Text>
           <View style={s.invTableHead}>
@@ -1713,23 +1787,26 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
             <View key={i} style={[s.invRow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
               <Text style={[s.invTd, { flex: 0.4 }]}>{i + 1}</Text>
               <Text style={[s.invTd, { flex: 2.5, textAlign: 'right', fontWeight: 'bold' }]}>{it.modelName}</Text>
-              <Text style={[s.invTd, { flex: 0.8 }]}>{toFaNum(it.quantity)}</Text>
-              <Text style={[s.invTd, { flex: 1 }]}>{toFaNum(fmt(it.priceUnit))}</Text>
-              <Text style={[s.invTd, { flex: 1.2, fontWeight: 'bold' }]}>{toFaNum(fmt(it.total))}</Text>
+              <Text style={[s.invTd, { flex: 0.8 }]}>{it.quantity}</Text>
+              <Text style={[s.invTd, { flex: 1 }]}>{fmt(it.priceUnit)}</Text>
+              <Text style={[s.invTd, { flex: 1.2, fontWeight: 'bold' }]}>{fmt(it.total)}</Text>
             </View>
           ))}
         </View>
+
         <View style={s.invSection}>
           <Text style={s.invSectionTitle}>💰 خلاصه مالی</Text>
           <SumRow l="🛍️ مبلغ این سفارش" v={fmt(cur.sales) + ' تومان'} />
           <SumRow l="💳 پرداخت این سفارش" v={fmt(cur.payments) + ' تومان'} green />
           <SumRow l={tot.balance > 0 ? '⚖️ مانده قابل پرداخت' : tot.balance < 0 ? '💰 بستانکاری' : '✅ تسویه کامل'} v={tot.balance !== 0 ? fmt(Math.abs(tot.balance)) + ' تومان' : 'بدون بدهی'} highlight />
         </View>
+
         <View style={s.invFooter}>
           <Text style={s.invFooterTxt}>📞 کفش تاج: ________________</Text>
           <Text style={s.invFooterThanks}>با تشکر از اعتماد شما 🙏</Text>
         </View>
       </View>
+
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#1e3a5f' }]} onPress={() => captureAndShare('print')}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#0ea5e9' }]} onPress={() => captureAndShare('share')}><Text style={s.btnTxt}>📤 اشتراک</Text></TouchableOpacity>
@@ -1805,96 +1882,124 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#0f2438' },
   content: { flex: 1, backgroundColor: '#0f2438' },
   loading: { flex: 1, backgroundColor: '#0f2438', alignItems: 'center', justifyContent: 'center' },
-  header: { backgroundColor: '#0f2438', padding: 14, paddingTop: 8, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
-  hTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', textAlign: 'right' },
-  hSub: { color: '#d1d5db', fontSize: 12, marginTop: 4, textAlign: 'right' },
+
+  // Header
+  header: { padding: 14, paddingTop: 8, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
+  hTitle: { fontSize: 24, fontWeight: 'bold', textAlign: 'right' },
+  hSub: { fontSize: 12, marginTop: 4, textAlign: 'right' },
   themeBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  tabsBar: { backgroundColor: '#1a2332', maxHeight: 100 },
+
+  // Tabs
+  tabsBar: { maxHeight: 100 },
   tabsCont: { paddingHorizontal: 8, paddingVertical: 8 },
   tab: { paddingHorizontal: 18, paddingVertical: 12, marginHorizontal: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center', minWidth: 95, borderWidth: 2, borderColor: 'transparent' },
   tabIcon: { fontSize: 26, marginBottom: 2 },
-  tabLbl: { color: '#94a3b8', fontSize: 13, fontWeight: 'bold' },
+  tabLbl: { fontSize: 13, fontWeight: 'bold' },
   tabLblActive: { color: '#fff' },
   lock: { position: 'absolute', top: 4, left: 6, fontSize: 10 },
+
+  // Toast
   toast: { position: 'absolute', bottom: 40, left: 20, right: 20, backgroundColor: '#059669', padding: 12, borderRadius: 10, alignItems: 'center', zIndex: 9999 },
   toastTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  dash: { margin: 10, padding: 14, borderRadius: 16, backgroundColor: '#080b13', borderWidth: 2, borderColor: '#1f3a5f',
-    shadowColor: '#00ff88', shadowOpacity: 0.04, shadowRadius: 30, shadowOffset: { width: 0, height: 0 } },
-  clockRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 10, marginVertical: 12,
-    backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' },
-  time: { color: '#00ff88', fontSize: 32, fontFamily: 'Orbitron_900Black', letterSpacing: 6,
-    textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
-  dateTxt: { color: '#4ade80', fontSize: 16, fontFamily: 'ShareTechMono_400Regular', letterSpacing: 2,
-    textShadowColor: 'rgba(74,222,128,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
-  profitBox: { alignItems: 'center', paddingVertical: 16, marginBottom: 12,
-    borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(0,255,136,0.2)' },
+
+  // Dashboard
+  dash: { margin: 10, padding: 14, borderRadius: 16, backgroundColor: '#080b13', borderWidth: 2, borderColor: '#1f3a5f' },
+  rangeBadge: { backgroundColor: '#1e3a8a', paddingHorizontal: 16, paddingVertical: 5, borderRadius: 14, alignSelf: 'center' },
+  rangeBadgeTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  clockRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, marginVertical: 12, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' },
+  time: { color: '#00ff88', fontSize: 32, fontFamily: 'Orbitron_900Black', letterSpacing: 6, textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
+  dateTxt: { color: '#4ade80', fontSize: 16, fontFamily: 'ShareTechMono_400Regular', letterSpacing: 2, textShadowColor: 'rgba(74,222,128,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
+  profitBox: { alignItems: 'center', paddingVertical: 16, marginBottom: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(0,255,136,0.2)' },
   profitLbl: { color: '#94a3b8', fontSize: 13, marginBottom: 10, fontWeight: 'bold', letterSpacing: 1 },
-  profitVal: { fontSize: 48, fontFamily: 'Orbitron_900Black', letterSpacing: 4, lineHeight: 56,
-    textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20 },
+  profitVal: { fontSize: 48, fontFamily: 'Orbitron_900Black', letterSpacing: 4, lineHeight: 56, textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20 },
   profitUnit: { color: '#64748b', fontSize: 12, marginTop: 8, letterSpacing: 3 },
-  dItem: { width: '48%', padding: 11, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8,
-    borderWidth: 1, borderColor: 'rgba(0,255,136,0.18)', alignItems: 'center' },
-  dLbl: { color: '#94a3b8', fontSize: 10, marginBottom: 5, direction: 'rtl' },
-  dVal: { fontSize: 17, fontFamily: 'Orbitron_700Bold', letterSpacing: 1.5,
-    textShadowColor: 'rgba(0,255,136,0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  dItem: { width: '48%', padding: 11, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,255,136,0.18)', alignItems: 'center' },
+  dLbl: { color: '#94a3b8', fontSize: 10, marginBottom: 5 },
+  dVal: { fontSize: 17, fontFamily: 'Orbitron_700Bold', letterSpacing: 1.5, textShadowColor: 'rgba(0,255,136,0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
+
+  // Forms
   formTitle: { color: '#d4af37', fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 16 },
   secT: { color: '#d4af37', fontSize: 14, fontWeight: 'bold', marginBottom: 8, marginTop: 12, textAlign: 'right' },
-  lbl: { color: '#94a3b8', fontSize: 11, marginBottom: 4, marginTop: 8, textAlign: 'right' },
-  lblS: { color: '#94a3b8', fontSize: 10, marginBottom: 3, marginTop: 6, textAlign: 'right' },
-  inp: { backgroundColor: '#1a2332', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 10, fontSize: 13, color: '#fff', textAlign: 'right' },
+  lbl: { fontSize: 11, marginBottom: 4, marginTop: 8, textAlign: 'right' },
+  lblS: { fontSize: 10, marginBottom: 3, marginTop: 6, textAlign: 'right' },
+  inp: { borderWidth: 1, borderRadius: 8, padding: 10, fontSize: 13, textAlign: 'right' },
   addBtn: { padding: 14, borderRadius: 10, alignItems: 'center', marginVertical: 4 },
   addBtn2: { backgroundColor: '#334155', padding: 10, borderRadius: 8, alignItems: 'center', marginTop: 8 },
   btn: { padding: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   btnTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  itemCard: { backgroundColor: '#1a2332', borderRadius: 10, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
+
+  // Item cards (for card view fallback)
+  itemCard: { borderRadius: 10, padding: 10, marginBottom: 10, borderWidth: 1 },
   itemN: { color: '#d4af37', fontSize: 12, fontWeight: 'bold' },
   delBtnRound: { backgroundColor: '#dc2626', width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  readonlyBox: { backgroundColor: '#0a1628', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 10, alignItems: 'center' },
+  readonlyBox: { borderWidth: 1, borderRadius: 8, padding: 10, alignItems: 'center' },
   readonlyTxt: { color: '#94a3b8', fontSize: 12, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
-  autoCalcBox: { backgroundColor: '#0a1628', borderWidth: 2, borderColor: '#334155', borderRadius: 8, padding: 10, alignItems: 'center' },
+  autoCalcBox: { borderWidth: 2, borderRadius: 8, padding: 10, alignItems: 'center' },
   autoCalcTxt: { color: '#00ff88', fontSize: 15, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
   grandSummary: { backgroundColor: '#0f2438', borderRadius: 12, padding: 14, marginTop: 12, flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: '#d4af37' },
   gsLbl: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold', marginBottom: 4 },
   gsVal: { color: '#00ff88', fontSize: 22, fontWeight: 'bold', fontFamily: 'Orbitron_900Black' },
   gsQty: { color: '#60a5fa', fontSize: 22, fontWeight: 'bold', fontFamily: 'Orbitron_900Black' },
-  acBox: { backgroundColor: '#1e293b', borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginTop: 4, overflow: 'hidden' },
+
+  // Table (like web version)
+  tblHeader: { flexDirection: 'row', backgroundColor: '#0f2438', paddingVertical: 8, borderRadius: 8, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
+  tblRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#334155', paddingVertical: 4, alignItems: 'center' },
+  thCell: { color: '#d4af37', fontSize: 11, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 4 },
+  tdCell: { fontSize: 12, textAlign: 'center', paddingHorizontal: 4 },
+  tdInput: { borderWidth: 1, borderRadius: 6, padding: 6, fontSize: 12, textAlign: 'center', minHeight: 36 },
+
+  // Autocomplete
+  acBox: { borderRadius: 8, borderWidth: 1, marginTop: 4, overflow: 'hidden' },
   acHdr: { padding: 8, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'right', backgroundColor: '#0f2438', borderBottomWidth: 1, borderBottomColor: '#d4af37' },
-  acItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#334155' },
-  acItemTxt: { color: '#fff', fontSize: 13, textAlign: 'right' },
-  dateBox: { flexDirection: 'row', alignItems: 'center', padding: 6, backgroundColor: '#1a2332', borderWidth: 2, borderColor: '#334155', borderRadius: 8, gap: 1, flexWrap: 'nowrap' },
-  dateInp: { padding: 4, color: '#fff', textAlign: 'center', fontSize: 13, fontFamily: 'ShareTechMono_400Regular', backgroundColor: 'transparent' },
-  dateSep: { color: '#94a3b8', fontSize: 13, fontWeight: 'bold' },
-  typeBtn: { marginLeft: 'auto', padding: 4, backgroundColor: '#334155', borderRadius: 6 },
-  typeBtnTxt: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  invCard: { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, borderRightWidth: 4, borderRightColor: '#1e3a8a' },
+  acItem: { padding: 10, borderBottomWidth: 1 },
+  acItemTxt: { fontSize: 13, textAlign: 'right' },
+
+  // Date
+  dateBox: { flexDirection: 'row', alignItems: 'center', padding: 6, borderWidth: 2, borderRadius: 8, gap: 1, flexWrap: 'nowrap' },
+  dateInp: { padding: 4, textAlign: 'center', fontSize: 13, fontFamily: 'ShareTechMono_400Regular', backgroundColor: 'transparent' },
+  dateSep: { fontSize: 13, fontWeight: 'bold' },
+  typeBtn: { marginLeft: 'auto', padding: 4, borderRadius: 6 },
+  typeBtnTxt: { fontSize: 10, fontWeight: 'bold' },
+
+  // Invoice card
+  invCard: { borderRadius: 10, padding: 12, marginBottom: 8, borderRightWidth: 4, borderRightColor: '#1e3a8a' },
   invNum: { color: '#1e3a5f', fontSize: 13, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
   invCust: { color: '#64748b', fontSize: 11, marginBottom: 6, textAlign: 'right' },
   invStat: { color: '#1a2332', fontSize: 11, fontFamily: 'ShareTechMono_400Regular' },
   invCode: { color: '#7c3aed', fontSize: 11, fontFamily: 'ShareTechMono_400Regular', fontWeight: 'bold' },
-  invName: { color: '#0f2438', fontSize: 13, fontWeight: 'bold', marginTop: 2 },
+  invName: { fontSize: 13, fontWeight: 'bold', marginTop: 2 },
   invQty: { fontSize: 22, fontWeight: 'bold', fontFamily: 'Orbitron_900Black' },
-  invItem: { backgroundColor: '#fff', borderRadius: 10, padding: 10, marginBottom: 8, borderRightWidth: 4, borderRightColor: '#10b981' },
+  invItem: { borderRadius: 10, padding: 10, marginBottom: 8, borderRightWidth: 4, borderRightColor: '#10b981' },
   statusTag: { fontSize: 11, fontWeight: 'bold' },
   badge: { marginTop: 6, fontSize: 10, color: '#6d28d9', backgroundColor: '#ede9fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, textAlign: 'right', alignSelf: 'flex-end' },
   iconBtn: { padding: 8, backgroundColor: '#fee2e2', borderRadius: 6, alignItems: 'center' },
+
+  // Stats
   statsCard: { backgroundColor: '#080b13', borderRadius: 14, padding: 16, marginBottom: 12, alignItems: 'center', borderWidth: 2, borderColor: '#1f3a5f' },
   statsLbl: { color: '#94a3b8', fontSize: 11, marginBottom: 6 },
   statsVal: { fontSize: 26, fontFamily: 'Orbitron_900Black' },
   statsUnit: { color: '#64748b', fontSize: 10, marginTop: 3 },
   rptBadge: { color: '#1a2332', fontSize: 11, fontFamily: 'ShareTechMono_400Regular', backgroundColor: '#dbeafe', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginRight: 4 },
   itemRow: { color: '#475569', fontSize: 11, marginBottom: 2, textAlign: 'right' },
+
+  // Profit
   pCard: { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, borderRightWidth: 4, borderRightColor: '#059669' },
   pName: { color: '#0f2438', fontSize: 14, fontWeight: 'bold', textAlign: 'right', marginBottom: 8 },
   pStat: { color: '#475569', fontSize: 11, fontFamily: 'ShareTechMono_400Regular', textAlign: 'right' },
   warnBox: { backgroundColor: '#fef3c7', borderWidth: 2, borderColor: '#fcd34d', borderRadius: 10, padding: 12, marginVertical: 8 },
   warnTxt: { color: '#78350f', fontSize: 12, fontWeight: 'bold', textAlign: 'right' },
   empty: { textAlign: 'center', color: '#94a3b8', padding: 40, fontSize: 13 },
+
+  // Inventory
   sBox: { width: '31%', marginHorizontal: '1.16%', marginBottom: 8, backgroundColor: '#fff', borderRadius: 10, padding: 10, alignItems: 'center', borderRightWidth: 3, borderRightColor: '#10b981' },
   sBoxL: { color: '#64748b', fontSize: 9, fontWeight: 'bold', marginBottom: 4 },
   sBoxV: { fontSize: 16, fontFamily: 'Orbitron_700Bold' },
-  thresholdBox: { backgroundColor: '#1a2332', padding: 10, borderRadius: 10, marginTop: 8 },
+  thresholdBox: { padding: 10, borderRadius: 10, marginTop: 8 },
   shelfBtn: { backgroundColor: '#f0f9ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#bae6fd' },
   shelfTxt: { color: '#075985', fontSize: 11, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+
+  // Chips
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#334155', backgroundColor: '#1a2332' },
   chipActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
   chipTxt: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold' },
@@ -1903,19 +2008,30 @@ const s = StyleSheet.create({
   subTabActive: { backgroundColor: '#c0392b', borderColor: '#c0392b' },
   subTabTxt: { color: '#94a3b8', fontSize: 12, fontWeight: 'bold' },
   subTabTxtActive: { color: '#fff' },
+
+  // Modal
   modalBg: { flex: 1, backgroundColor: 'rgba(15,36,56,0.85)', justifyContent: 'center', padding: 16 },
   modalBox: { borderRadius: 14, maxHeight: '90%', overflow: 'hidden' },
   modalHead: { padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   modalHeadTxt: { color: '#fff', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' },
-  modalLbl: { color: '#64748b', fontSize: 12, marginBottom: 4, textAlign: 'right' },
+  modalLbl: { fontSize: 12, marginBottom: 4, textAlign: 'right' },
   modalVal: { color: '#0f2438', fontWeight: 'bold' },
-  modalInp: { borderWidth: 2, borderColor: '#a78bfa', borderRadius: 8, padding: 12, fontSize: 14, textAlign: 'center', color: '#0f2438' },
+  modalInp: { borderWidth: 2, borderColor: '#a78bfa', borderRadius: 8, padding: 12, fontSize: 14, textAlign: 'center' },
   pinInp: { borderWidth: 3, borderColor: '#d4af37', borderRadius: 12, padding: 16, fontSize: 24, textAlign: 'center', backgroundColor: '#fdfbf4', color: '#0f2438', letterSpacing: 10 },
+
+  // Info
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 8, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   infoK: { color: '#64748b', fontSize: 12 },
   infoV: { color: '#1e3a5f', fontSize: 13, fontWeight: 'bold' },
+
+  // Manager
   mgrHead: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 10, marginBottom: 12 },
   mgrHeadTxt: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8 },
+  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8, marginBottom: 6 },
+  emailTxt: { flex: 1, fontSize: 12 },
+
+  // Invoice A5
   invoiceContainer: { backgroundColor: '#fff', borderRadius: 12, padding: 12 },
   invHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
   invBrand: { fontSize: 16, fontWeight: 'bold', color: '#0f2438' },
@@ -1939,14 +2055,18 @@ const s = StyleSheet.create({
   sumRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   sumLbl: { fontSize: 11, color: '#64748b' },
   sumValTxt: { fontSize: 11, color: '#1e3a5f', fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
-  loginWrap: { flex: 1, backgroundColor: '#0f2438', alignItems: 'center', justifyContent: 'center', padding: 20 },
+
+  // Login
+  loginWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
   loginCard: { width: '100%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 18, padding: 24 },
   loginLogo: { fontSize: 54, textAlign: 'center', marginBottom: 8 },
   loginTitle: { fontSize: 26, fontWeight: 'bold', textAlign: 'center', color: '#0f2438', marginBottom: 4 },
   loginSub: { fontSize: 13, textAlign: 'center', color: '#64748b', marginBottom: 24 },
   loginInp: { backgroundColor: '#f5f7fa', borderWidth: 2, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 10, color: '#1a2332', textAlign: 'right' },
   loginNote: { textAlign: 'center', color: '#64748b', fontSize: 11, marginTop: 12 },
-  searchCard: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 10, borderRightWidth: 4, borderRightColor: '#1e3a8a', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+
+  // Search
+  searchCard: { borderRadius: 12, padding: 12, marginBottom: 10, borderRightWidth: 4, borderRightColor: '#1e3a8a' },
   searchRowNum: { color: '#d4af37', fontSize: 12, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
   searchInvoice: { color: '#1e3a5f', fontSize: 15, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
   searchTypeBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
@@ -1955,7 +2075,7 @@ const s = StyleSheet.create({
   searchInfoCell: { width: '50%', paddingVertical: 4 },
   searchInfoLbl: { color: '#94a3b8', fontSize: 10, fontWeight: 'bold', marginBottom: 2 },
   searchInfoVal: { color: '#1a2332', fontSize: 12, fontWeight: 'bold' },
-  searchMoneyBox: { flexDirection: 'row', backgroundColor: '#f8fafc', borderRadius: 8, padding: 10, marginTop: 4, borderWidth: 1, borderColor: '#e2e8f0' },
+  searchMoneyBox: { flexDirection: 'row', borderRadius: 8, padding: 10, marginTop: 4, borderWidth: 1 },
   searchMoneyLbl: { color: '#64748b', fontSize: 10, fontWeight: 'bold', marginBottom: 4 },
   searchMoneyVal: { color: '#1e3a5f', fontSize: 14, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
   searchStatusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
@@ -1965,7 +2085,4 @@ const s = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 40, backgroundColor: '#fff', borderRadius: 12, marginTop: 12 },
   emptyStateTxt: { color: '#1a2332', fontSize: 15, fontWeight: 'bold', marginTop: 12 },
   emptyStateSub: { color: '#94a3b8', fontSize: 12, marginTop: 4 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 8 },
-  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1a2332', padding: 10, borderRadius: 8, marginBottom: 6 },
-  emailTxt: { flex: 1, color: '#fff', fontSize: 12 },
 });

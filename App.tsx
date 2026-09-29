@@ -1128,31 +1128,110 @@ function SearchSection({ showToast }: any) {
     </KeyboardAvoidingView>
   );
 
+  const typeLabel = (t: string) => t === 'purchases' ? '🛍️ خرید' : '🛒 فروش';
+  const statusLabel = (total: number, paid: number) => {
+    if (paid >= total && total > 0) return '✅ پرداخت‌شده';
+    if (paid > 0) return '⏳ پرداخت جزئی';
+    return '❌ پرداخت‌نشده';
+  };
+  const statusColor = (total: number, paid: number) => {
+    if (paid >= total && total > 0) return '#059669';
+    if (paid > 0) return '#f39c12';
+    return '#dc2626';
+  };
+
   return (
     <View>
       <TextInput style={s.inp} value={q} onChangeText={setQ} placeholder="🔍 فاکتور، نام، تلفن..." placeholderTextColor="#64748b" />
+
       <View style={{ flexDirection: 'row', gap: 6, marginVertical: 8 }}>
         {[{ k: 'all', l: '📋 همه' }, { k: 'sales', l: '🛒 فروش' }, { k: 'purchases', l: '🛍️ خرید' }].map((f) => (
-          <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
+          <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}>
+            <Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text>
+          </TouchableOpacity>
         ))}
       </View>
+
       <Text style={s.secT}>📄 نتایج ({toFaNum(filtered.length)})</Text>
+
       {loading ? <ActivityIndicator color="#d4af37" /> : filtered.slice(0, 100).map((r: any, i: number) => (
-        <View key={i} style={[s.invCard, r.type === 'purchases' && { borderRightColor: '#166534' }]}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.invNum}>{r.invoice}</Text>
-              <Text style={s.invCust}>{r.type === 'purchases' ? '🏭' : '👤'} {r.name} {r.phone ? `— ${r.phone}` : ''}</Text>
-              <Text style={s.invStat}>💰 {toFaNum(fmt(r.total))} | 💳 {toFaNum(fmt(r.paid))}</Text>
-              <Text style={s.badge}>{r.type === 'purchases' ? '🛍️ خرید' : '🛒 فروش'}</Text>
+        <View key={i} style={[s.searchCard, r.type === 'purchases' && { borderRightColor: '#166534' }]}>
+
+          {/* ─── هدر: شماره فاکتور + شماره ردیف ─── */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingBottom: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={s.searchRowNum}>#{toFaNum(i + 1)}</Text>
+              <Text style={s.searchInvoice}>{r.invoice}</Text>
             </View>
-            <View style={{ gap: 6 }}>
-              <TouchableOpacity onPress={() => openEdit(r.invoice, r.type)} style={[s.iconBtn, { backgroundColor: '#dbeafe' }]}><Text>✏️</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => remove(r.invoice, r.type)} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+            <View style={[s.searchTypeBadge, { backgroundColor: r.type === 'purchases' ? '#d1fae5' : '#dbeafe' }]}>
+              <Text style={[s.searchTypeTxt, { color: r.type === 'purchases' ? '#065f46' : '#1e40af' }]}>{typeLabel(r.type)}</Text>
+            </View>
+          </View>
+
+          {/* ─── اطلاعات مشتری/تأمین‌کننده ─── */}
+          <View style={s.searchInfoGrid}>
+            <View style={s.searchInfoCell}>
+              <Text style={s.searchInfoLbl}>👤 نام</Text>
+              <Text style={s.searchInfoVal} numberOfLines={1}>{r.name || '—'}</Text>
+            </View>
+            <View style={s.searchInfoCell}>
+              <Text style={s.searchInfoLbl}>📞 تلفن</Text>
+              <Text style={s.searchInfoVal} numberOfLines={1}>{r.phone || '—'}</Text>
+            </View>
+            <View style={s.searchInfoCell}>
+              <Text style={s.searchInfoLbl}>📅 تاریخ</Text>
+              <Text style={s.searchInfoVal} numberOfLines={1}>{displayDateOnly(r.date)}</Text>
+            </View>
+            <View style={s.searchInfoCell}>
+              <Text style={s.searchInfoLbl}>📋 تعداد ردیف</Text>
+              <Text style={s.searchInfoVal} numberOfLines={1}>{toFaNum(r.rowCount || r.items?.length || 0)}</Text>
+            </View>
+          </View>
+
+          {/* ─── مبلغ‌ها ─── */}
+          <View style={s.searchMoneyBox}>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={s.searchMoneyLbl}>💰 جمع کل</Text>
+              <Text style={s.searchMoneyVal}>{toFaNum(fmt(r.total))}</Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={s.searchMoneyLbl}>💳 پرداخت</Text>
+              <Text style={[s.searchMoneyVal, { color: '#059669' }]}>{toFaNum(fmt(r.paid))}</Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={s.searchMoneyLbl}>📌 مانده</Text>
+              <Text style={[s.searchMoneyVal, { color: r.total - r.paid > 0 ? '#dc2626' : '#059669' }]}>
+                {toFaNum(fmt(r.total - r.paid))}
+              </Text>
+            </View>
+          </View>
+
+          {/* ─── وضعیت + دکمه‌ها ─── */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#e2e8f0' }}>
+            <View style={[s.searchStatusBadge, { backgroundColor: statusColor(r.total, r.paid) + '20' }]}>
+              <Text style={[s.searchStatusTxt, { color: statusColor(r.total, r.paid) }]}>
+                {statusLabel(r.total, r.paid)}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => openEdit(r.invoice, r.type)} style={s.searchActionBtn}>
+                <Text style={s.searchActionTxt}>✏️ ویرایش</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => remove(r.invoice, r.type)} style={[s.searchActionBtn, { backgroundColor: '#fee2e2' }]}>
+                <Text style={[s.searchActionTxt, { color: '#991b1b' }]}>🗑</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
       ))}
+
+      {!loading && !filtered.length && (
+        <View style={s.emptyState}>
+          <Text style={{ fontSize: 48, opacity: 0.5 }}>🔍</Text>
+          <Text style={s.emptyStateTxt}>نتیجه‌ای یافت نشد</Text>
+          <Text style={s.emptyStateSub}>جستجو یا فیلتر را تغییر بده</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -1438,16 +1517,14 @@ const s = StyleSheet.create({
   rangeBadge: { backgroundColor: '#1e3a8a', paddingHorizontal: 16, paddingVertical: 5, borderRadius: 14, alignSelf: 'center' },
   rangeBadgeTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
   clockRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, marginVertical: 12, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10 },
-  time: { color: '#00ff88', fontSize: 30, fontFamily: 'Orbitron_900Black', letterSpacing: 3 },
-  dateTxt: { color: '#4ade80', fontSize: 16, fontFamily: 'ShareTechMono_400Regular', letterSpacing: 1 },
-  profitBox: { alignItems: 'center', paddingVertical: 14, marginBottom: 14 },
-  profitLbl: { color: '#94a3b8', fontSize: 14, marginBottom: 10, fontWeight: 'bold' },
-  profitVal: { fontSize: 44, fontFamily: 'Orbitron_900Black', letterSpacing: 2 },
+  time: { color: '#00ff88', fontSize: 36, fontFamily: 'Orbitron_900Black', letterSpacing: 5 },
+  dateTxt: { color: '#4ade80', fontSize: 18, fontFamily: 'ShareTechMono_400Regular', letterSpacing: 2 },
+  profitVal: { fontSize: 52, fontFamily: 'Orbitron_900Black', letterSpacing: 4 },
   profitUnit: { color: '#64748b', fontSize: 13, marginTop: 6, letterSpacing: 2 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   dItem: { width: '48%', padding: 12, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.18)', alignItems: 'center' },
   dLbl: { color: '#94a3b8', fontSize: 11, marginBottom: 6, fontWeight: 'bold' },
-  dVal: { fontSize: 17, fontFamily: 'Orbitron_700Bold', letterSpacing: 1 },
+  dVal: { fontSize: 19, fontFamily: 'Orbitron_700Bold', letterSpacing: 2 },
   formTitle: { color: '#d4af37', fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 16 },
   secT: { color: '#d4af37', fontSize: 14, fontWeight: 'bold', marginBottom: 8, marginTop: 12, textAlign: 'right' },
   lbl: { color: '#94a3b8', fontSize: 11, marginBottom: 4, marginTop: 8, textAlign: 'right' },
@@ -1488,6 +1565,26 @@ const s = StyleSheet.create({
   statusTag: { fontSize: 11, fontWeight: 'bold' },
   badge: { marginTop: 6, fontSize: 10, color: '#6d28d9', backgroundColor: '#ede9fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, textAlign: 'right', alignSelf: 'flex-end' },
   iconBtn: { padding: 8, backgroundColor: '#fee2e2', borderRadius: 6, alignItems: 'center' },
+    // جستجو و ویرایش
+  searchCard: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 10, borderRightWidth: 4, borderRightColor: '#1e3a8a', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  searchRowNum: { color: '#d4af37', fontSize: 12, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+  searchInvoice: { color: '#1e3a5f', fontSize: 15, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+  searchTypeBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+  searchTypeTxt: { fontSize: 11, fontWeight: 'bold' },
+  searchInfoGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+  searchInfoCell: { width: '50%', paddingVertical: 4 },
+  searchInfoLbl: { color: '#94a3b8', fontSize: 10, fontWeight: 'bold', marginBottom: 2 },
+  searchInfoVal: { color: '#1a2332', fontSize: 12, fontWeight: 'bold' },
+  searchMoneyBox: { flexDirection: 'row', backgroundColor: '#f8fafc', borderRadius: 8, padding: 10, marginTop: 4, borderWidth: 1, borderColor: '#e2e8f0' },
+  searchMoneyLbl: { color: '#64748b', fontSize: 10, fontWeight: 'bold', marginBottom: 4 },
+  searchMoneyVal: { color: '#1e3a5f', fontSize: 14, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+  searchStatusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  searchStatusTxt: { fontSize: 11, fontWeight: 'bold' },
+  searchActionBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 8 },
+  searchActionTxt: { color: '#1e40af', fontSize: 12, fontWeight: 'bold' },
+  emptyState: { alignItems: 'center', paddingVertical: 40, backgroundColor: '#fff', borderRadius: 12, marginTop: 12 },
+  emptyStateTxt: { color: '#1a2332', fontSize: 15, fontWeight: 'bold', marginTop: 12 },
+  emptyStateSub: { color: '#94a3b8', fontSize: 12, marginTop: 4 },
   statsCard: { backgroundColor: '#080b13', borderRadius: 14, padding: 16, marginBottom: 12, alignItems: 'center', borderWidth: 2, borderColor: '#1f3a5f' },
   statsLbl: { color: '#94a3b8', fontSize: 11, marginBottom: 6 },
   statsVal: { fontSize: 26, fontFamily: 'Orbitron_900Black' },

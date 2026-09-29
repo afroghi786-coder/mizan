@@ -528,7 +528,10 @@ function SalesScreen({ showToast }: any) {
         <Autocomplete label="🚚 باربری *" value={shipping} onChange={setShipping} options={[...new Set([...SHIPPINGS, ...prods.map(p => p.shipping_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
 
         <Text style={s.secT}>📦 اقلام ({toFaNum(items.length)})</Text>
-        {items.map((it, i) => (
+              {items.map((it, i) => {
+          const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+          const lineBalance = lineTotal - (Number(it.payment) || 0);
+          return (
           <View key={i} style={s.itemCard}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
               <Text style={s.itemN}>#{toFaNum(i + 1)}</Text>
@@ -545,6 +548,23 @@ function SalesScreen({ showToast }: any) {
               <View style={{ flex: 1 }}><Text style={s.lblS}>پرداخت</Text>
                 <TextInput style={s.inp} value={String(it.payment || '')} onChangeText={(v) => updItem(i, 'payment', parseNum(v))} keyboardType="numeric" /></View>
             </View>
+            {/* ⭐ دو تا فیلد مبلغ کل و مانده - خودکار محاسبه می‌شن */}
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.lblS}>💰 مبلغ کل</Text>
+                <View style={s.autoCalcBox}>
+                  <Text style={s.autoCalcTxt}>{lineTotal ? toFaNum(fmt(lineTotal)) : '—'}</Text>
+                </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.lblS}>⚖️ مانده</Text>
+                <View style={[s.autoCalcBox, { borderColor: lineBalance > 0 ? '#dc2626' : '#059669' }]}>
+                  <Text style={[s.autoCalcTxt, { color: lineBalance > 0 ? '#dc2626' : '#059669' }]}>
+                    {lineTotal ? toFaNum(fmt(lineBalance)) : '—'}
+                  </Text>
+                </View>
+              </View>
+            </View>
             <Text style={s.lblS}>تاریخ واریز</Text>
             <DateField value={it.depositDate} onChange={(v: string) => updItem(i, 'depositDate', v)} compact />
             <Autocomplete label="بانک" value={it.bankName} onChange={(v) => updItem(i, 'bankName', v)} options={BANKS} placeholder="کلیک..." />
@@ -552,7 +572,8 @@ function SalesScreen({ showToast }: any) {
             <Text style={s.lblS}>شرح</Text>
             <TextInput style={s.inp} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="اختیاری" placeholderTextColor="#64748b" />
           </View>
-        ))}
+          );
+        })}
         <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>➕ افزودن مدل</Text></TouchableOpacity>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
           <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setView('list')}>

@@ -308,7 +308,12 @@ function DigitalDashboard({ refreshKey, settings }: any) {
       <View style={s.clockRow}><Text style={s.time}>{time}</Text><Text style={s.dateTxt}>{date}</Text></View>
       <View style={s.profitBox}>
         <Text style={s.profitLbl}>💰 سود خالص</Text>
-        <Text style={[s.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>{fmt(profit)}</Text>
+               <Text style={[s.profitVal, {
+          color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88',
+          textShadowColor: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88',
+        }]}>
+          {fmt(profit)}
+        </Text>
         <Text style={s.profitUnit}>تومان</Text>
       </View>
       {loading ? <ActivityIndicator color="#00ff88" /> : (
@@ -325,7 +330,12 @@ function DigitalDashboard({ refreshKey, settings }: any) {
   );
 }
 function DCard({ i, l, v, c }: any) {
-  return (<View style={s.dItem}><Text style={s.dLbl}>{i} {l}</Text><Text style={[s.dVal, { color: c }]} numberOfLines={1}>{v}</Text></View>);
+  return (
+    <View style={s.dItem}>
+      <Text style={s.dLbl}>{i} {l}</Text>
+      <Text style={[s.dVal, { color: c, textShadowColor: c }]} numberOfLines={1}>{v}</Text>
+    </View>
+  );
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1808,20 +1818,25 @@ const s = StyleSheet.create({
   lock: { position: 'absolute', top: 4, left: 6, fontSize: 10 },
   toast: { position: 'absolute', bottom: 40, left: 20, right: 20, backgroundColor: '#059669', padding: 12, borderRadius: 10, alignItems: 'center', zIndex: 9999 },
   toastTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  dash: { margin: 10, padding: 12, borderRadius: 14, backgroundColor: '#080b13', borderWidth: 2, borderColor: '#1f3a5f' },
-  rangeBadge: { backgroundColor: '#1e3a8a', paddingHorizontal: 16, paddingVertical: 5, borderRadius: 14, alignSelf: 'center' },
-  rangeBadgeTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  clockRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, marginVertical: 12, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10 },
-  time: { color: '#00ff88', fontSize: 36, fontFamily: 'Orbitron_900Black', letterSpacing: 5 },
-  dateTxt: { color: '#4ade80', fontSize: 18, fontFamily: 'ShareTechMono_400Regular', letterSpacing: 2 },
-  profitBox: { alignItems: 'center', paddingVertical: 14, marginBottom: 14 },
-  profitLbl: { color: '#94a3b8', fontSize: 14, marginBottom: 10, fontWeight: 'bold' },
-  profitVal: { fontSize: 52, fontFamily: 'Orbitron_900Black', letterSpacing: 4 },
-  profitUnit: { color: '#64748b', fontSize: 13, marginTop: 6, letterSpacing: 2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  dItem: { width: '48%', padding: 12, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.18)', alignItems: 'center' },
-  dLbl: { color: '#94a3b8', fontSize: 11, marginBottom: 6, fontWeight: 'bold' },
-  dVal: { fontSize: 19, fontFamily: 'Orbitron_700Bold', letterSpacing: 2 },
+  dash: { margin: 10, padding: 14, borderRadius: 16, backgroundColor: '#080b13', borderWidth: 2, borderColor: '#1f3a5f',
+    shadowColor: '#00ff88', shadowOpacity: 0.04, shadowRadius: 30, shadowOffset: { width: 0, height: 0 } },
+  clockRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 10, marginVertical: 12,
+    backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' },
+  time: { color: '#00ff88', fontSize: 32, fontFamily: 'Orbitron_900Black', letterSpacing: 6,
+    textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
+  dateTxt: { color: '#4ade80', fontSize: 16, fontFamily: 'ShareTechMono_400Regular', letterSpacing: 2,
+    textShadowColor: 'rgba(74,222,128,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
+  profitBox: { alignItems: 'center', paddingVertical: 16, marginBottom: 12,
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(0,255,136,0.2)' },
+  profitLbl: { color: '#94a3b8', fontSize: 13, marginBottom: 10, fontWeight: 'bold', letterSpacing: 1 },
+  profitVal: { fontSize: 48, fontFamily: 'Orbitron_900Black', letterSpacing: 4, lineHeight: 56,
+    textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20 },
+  profitUnit: { color: '#64748b', fontSize: 12, marginTop: 8, letterSpacing: 3 },
+  dItem: { width: '48%', padding: 11, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8,
+    borderWidth: 1, borderColor: 'rgba(0,255,136,0.18)', alignItems: 'center' },
+  dLbl: { color: '#94a3b8', fontSize: 10, marginBottom: 5, direction: 'rtl' },
+  dVal: { fontSize: 17, fontFamily: 'Orbitron_700Bold', letterSpacing: 1.5,
+    textShadowColor: 'rgba(0,255,136,0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
   formTitle: { color: '#d4af37', fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 16 },
   secT: { color: '#d4af37', fontSize: 14, fontWeight: 'bold', marginBottom: 8, marginTop: 12, textAlign: 'right' },
   lbl: { color: '#94a3b8', fontSize: 11, marginBottom: 4, marginTop: 8, textAlign: 'right' },

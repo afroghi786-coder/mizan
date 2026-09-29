@@ -50,7 +50,10 @@ const C = {
 // ══════════════════════════════════════════════════════════
 export default function App() {
   const [fontsLoaded] = useFonts({ Orbitron_900Black, Orbitron_700Bold, ShareTechMono_400Regular });
-  const fontsReady = Platform.OS === 'web' ? true : fontsLoaded;
+   // ⭐ هم روی وب، هم موبایل، منتظر فونت بمون (با timeout 3 ثانیه)
+  const [fontTimeout, setFontTimeout] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setFontTimeout(true), 3000); return () => clearTimeout(t); }, []);
+  const fontsReady = fontsLoaded || fontTimeout;
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -305,7 +308,7 @@ function DigitalDashboard({ refreshKey, settings }: any) {
       <View style={s.clockRow}><Text style={s.time}>{time}</Text><Text style={s.dateTxt}>{date}</Text></View>
       <View style={s.profitBox}>
         <Text style={s.profitLbl}>💰 سود خالص</Text>
-        <Text style={[s.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>{toFaNum(fmt(profit))}</Text>
+        <Text style={[s.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>{fmt(profit)}</Text>
         <Text style={s.profitUnit}>تومان</Text>
       </View>
       {loading ? <ActivityIndicator color="#00ff88" /> : (
@@ -322,7 +325,7 @@ function DigitalDashboard({ refreshKey, settings }: any) {
   );
 }
 function DCard({ i, l, v, c }: any) {
-  return (<View style={s.dItem}><Text style={s.dLbl}>{i} {l}</Text><Text style={[s.dVal, { color: c }]} numberOfLines={1}>{toFaNum(v)}</Text></View>);
+  return (<View style={s.dItem}><Text style={s.dLbl}>{i} {l}</Text><Text style={[s.dVal, { color: c }]} numberOfLines={1}>{v}</Text></View>);
 }
 
 // ══════════════════════════════════════════════════════════

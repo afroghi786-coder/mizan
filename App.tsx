@@ -329,36 +329,67 @@ function SalesScreen({ showToast }: any) {
   const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
   const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
 
-  const submit = () => {
-    if (!/^09\d{9}$/.test(phone)) return showToast('شماره معتبر نیست', true);
-    if (!name || name.length < 2) return showToast('نام الزامی', true);
-    if (!shipping) return showToast('باربری الزامی', true);
+   const submit = async () => {
+    if (!/^09\d{9}$/.test(phone)) {
+      if (Platform.OS === 'web') window.alert('⚠️ شماره معتبر نیست');
+      else Alert.alert('خطا', 'شماره معتبر نیست');
+      return;
+    }
+    if (!name || name.length < 2) {
+      if (Platform.OS === 'web') window.alert('⚠️ نام الزامی است');
+      else Alert.alert('خطا', 'نام الزامی است');
+      return;
+    }
+    if (!shipping) {
+      if (Platform.OS === 'web') window.alert('⚠️ باربری الزامی است');
+      else Alert.alert('خطا', 'باربری الزامی است');
+      return;
+    }
     const valid = items.filter((it) => it.modelName && it.quantity > 0);
-    if (!valid.length) return showToast('حداقل یک مدل', true);
-    for (const v of valid) if (!v.priceUnit) return showToast(`قیمت «${v.modelName}» را وارد کن`, true);
+    if (!valid.length) {
+      if (Platform.OS === 'web') window.alert('⚠️ حداقل یک مدل وارد کن');
+      else Alert.alert('خطا', 'حداقل یک مدل وارد کن');
+      return;
+    }
+    for (const v of valid) {
+      if (!v.priceUnit) {
+        const msg = `قیمت «${v.modelName}» را وارد کن`;
+        if (Platform.OS === 'web') window.alert('⚠️ ' + msg);
+        else Alert.alert('خطا', msg);
+        return;
+      }
+    }
 
-    setConfirm({
-      title: 'تأیید فروش', color: '#1e3a8a',
-      info: (<View>
-        <Row k="👤 نام" v={name} /><Row k="📞 تلفن" v={phone} />
-        <Row k="📦 تعداد اقلام" v={String(valid.length)} />
-        <Row k="🔢 جمع تعداد" v={toFaNum(grandQty)} />
-        <Row k="💰 مبلغ کل" v={fmt(grandTotal) + ' تومان'} gold />
-      </View>),
-      onConfirm: async () => {
-        setSaving(true);
-        try {
-          let customerCode = '';
-          const found = await lookupCustomerByPhone(phone);
-          if (found?.customer_code && /^M_\d+$/.test(found.customer_code)) customerCode = found.customer_code;
-          else customerCode = await generateCustomerCode();
-          const inv = await generateInvoiceNumber();
-          await createSale({ invoiceNumber: inv, customerCode, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid });
-          showToast('✅ ثبت شد: ' + inv);
-          setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
-        } catch (e: any) { showToast(e.message, true); } finally { setSaving(false); }
-      },
-    });
+    const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+    const confirmMsg = `👤 ${name}\n📞 ${phone}\n📦 ${valid.length} مدل\n💰 ${fmt(total)} تومان\n\nثبت شود؟`;
+
+    const doSave = async () => {
+      setSaving(true);
+      try {
+        let customerCode = '';
+        const found = await lookupCustomerByPhone(phone);
+        if (found?.customer_code && /^M_\d+$/.test(found.customer_code)) customerCode = found.customer_code;
+        else customerCode = await generateCustomerCode();
+        const inv = await generateInvoiceNumber();
+        await createSale({ invoiceNumber: inv, customerCode, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid });
+        if (Platform.OS === 'web') window.alert('✅ فاکتور فروش ثبت شد:\n' + inv);
+        else Alert.alert('✅ موفق', 'فاکتور فروش ثبت شد:\n' + inv);
+        setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+      } catch (e: any) {
+        const err = e?.message || JSON.stringify(e) || 'خطای نامشخص';
+        if (Platform.OS === 'web') window.alert('❌ خطا:\n' + err);
+        else Alert.alert('❌ خطا', err);
+      } finally { setSaving(false); }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMsg)) doSave();
+    } else {
+      Alert.alert('📋 تأیید فروش', confirmMsg, [
+        { text: 'انصراف', style: 'cancel' },
+        { text: '✅ ثبت', onPress: doSave },
+      ]);
+    }
   };
 
   const remove = (inv: string) => {
@@ -537,68 +568,66 @@ function PurchaseScreen({ showToast }: any) {
   const paidAmt = parseNum(payAmt);
   const remaining = grandTotal - paidAmt;
 
-  const submit = () => {
-    // چک نام تأمین‌کننده
+   const submit = async () => {
     if (!sName || sName.length < 2) {
-      Alert.alert('⚠️ خطا', 'نام تأمین‌کننده الزامی است');
+      if (Platform.OS === 'web') window.alert('⚠️ نام تأمین‌کننده الزامی است');
+      else Alert.alert('خطا', 'نام تأمین‌کننده الزامی است');
       return;
     }
-    // چک شماره فاکتور
     if (!manualInv) {
-      Alert.alert('⚠️ خطا', 'شماره فاکتور دستی الزامی است');
+      if (Platform.OS === 'web') window.alert('⚠️ شماره فاکتور دستی الزامی است');
+      else Alert.alert('خطا', 'شماره فاکتور دستی الزامی است');
       return;
     }
-    // چک اقلام
     const valid = items.filter((it) => it.modelName && it.quantity > 0);
     const amt = parseNum(payAmt);
     if (!valid.length && amt <= 0) {
-      Alert.alert('⚠️ خطا', 'حداقل یک مدل یا یک مبلغ پرداخت وارد کن');
+      if (Platform.OS === 'web') window.alert('⚠️ حداقل یک مدل یا مبلغ پرداخت وارد کن');
+      else Alert.alert('خطا', 'حداقل یک مدل یا مبلغ پرداخت وارد کن');
       return;
     }
-    // محاسبه جمع کل
     const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+    const confirmMsg = `🏭 ${sName}\n🧾 ${manualInv}\n📦 ${valid.length} مدل\n💰 ${fmt(total)} تومان\n💵 پرداخت: ${fmt(amt)}\n\nثبت شود؟`;
 
-    // نمایش تأیید با Alert
-    Alert.alert(
-      '📋 تأیید خرید',
-      `🏭 تأمین‌کننده: ${sName}\n🧾 شماره فاکتور: ${manualInv}\n📦 اقلام: ${valid.length}\n💰 مبلغ کل: ${fmt(total)}\n💵 پرداخت: ${fmt(amt)}`,
-      [
-        { text: '✏️ انصراف', style: 'cancel' },
-        {
-          text: '✅ تأیید و ثبت',
-          onPress: async () => {
-            setSaving(true);
-            try {
-              const inv = await generateInvoiceNumber();
-              await createPurchase({
-                invoiceNumber: inv,
-                manualInvoice: manualInv,
-                supplierName: sName,
-                supplierCode: sCode,
-                supplierPhone: sPhone,
-                items: valid,
-                paymentAmount: amt,
-                paymentDate: payDate,
-                bankAccount: bankAcc,
-                payerName,
-                receiverAccount: receiverAcc,
-                note,
-              });
-              Alert.alert('✅ موفق', 'فاکتور خرید ثبت شد:\n' + inv);
-              setSName(''); setSCode(''); setSPhone(''); setManualInv('');
-              setItems([]); setPayAmt(''); setBankAcc('');
-              setPayerName(''); setReceiverAcc(''); setNote('');
-              setView('list');
-              load();
-            } catch (e: any) {
-              Alert.alert('❌ خطا در ثبت', e?.message || String(e) || 'خطای نامشخص');
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
-      ]
-    );
+    const doSave = async () => {
+      setSaving(true);
+      try {
+        const inv = await generateInvoiceNumber();
+        await createPurchase({
+          invoiceNumber: inv,
+          manualInvoice: manualInv,
+          supplierName: sName,
+          supplierCode: sCode,
+          supplierPhone: sPhone,
+          items: valid,
+          paymentAmount: amt,
+          paymentDate: payDate,
+          bankAccount: bankAcc,
+          payerName,
+          receiverAccount: receiverAcc,
+          note,
+        });
+        if (Platform.OS === 'web') window.alert('✅ فاکتور خرید ثبت شد:\n' + inv);
+        else Alert.alert('✅ موفق', 'فاکتور خرید ثبت شد:\n' + inv);
+        setSName(''); setSCode(''); setSPhone(''); setManualInv('');
+        setItems([]); setPayAmt(''); setBankAcc('');
+        setPayerName(''); setReceiverAcc(''); setNote('');
+        setView('list'); load();
+      } catch (e: any) {
+        const err = e?.message || JSON.stringify(e) || 'خطای نامشخص';
+        if (Platform.OS === 'web') window.alert('❌ خطا:\n' + err);
+        else Alert.alert('❌ خطا', err);
+      } finally { setSaving(false); }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMsg)) doSave();
+    } else {
+      Alert.alert('📋 تأیید خرید', confirmMsg, [
+        { text: 'انصراف', style: 'cancel' },
+        { text: '✅ ثبت', onPress: doSave },
+      ]);
+    }
   };
   if (view === 'form') return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

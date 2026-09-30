@@ -58,7 +58,7 @@ const confirmMsg = (title: string, msg: string): Promise<boolean> => {
   });
 };
 // ══════════════════════════════════════════════════════════
-//  Dashboard Styles
+//  Dashboard Styles (دقیقاً مثل تصویر)
 // ══════════════════════════════════════════════════════════
 const dash = {
   page: {
@@ -68,9 +68,128 @@ const dash = {
     margin: 10,
     borderWidth: 2,
     borderColor: '#1f3a5f',
-    // ... بقیه
+    shadowColor: '#00ff88',
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
   } as any,
-  // ... بقیه استایل‌ها
+
+  rangeBadge: {
+    backgroundColor: '#1e3a8a',
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  } as any,
+
+  rangeBadgeTxt: { color: '#ffffff', fontSize: 12, fontWeight: 'bold' } as any,
+
+  clockRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 14,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,136,0.15)',
+  } as any,
+
+  time: {
+    color: '#00ff88',
+    fontSize: 34,
+    fontFamily: 'Orbitron_900Black',
+    letterSpacing: 4,
+    textShadowColor: '#00ff88',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 14,
+  } as any,
+
+  dateSmall: {
+    color: '#4ade80',
+    fontSize: 14,
+    fontFamily: 'ShareTechMono_400Regular',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(74,222,128,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
+  } as any,
+
+  dateElapsed: {
+    color: '#4ade80',
+    fontSize: 11,
+    fontFamily: 'ShareTechMono_400Regular',
+    textShadowColor: 'rgba(74,222,128,0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  } as any,
+
+  profitBox: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginBottom: 14,
+    backgroundColor: 'radial-gradient(ellipse, rgba(0,255,136,0.06), transparent)',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(0,255,136,0.15)',
+  } as any,
+
+  profitLbl: {
+    color: '#94a3b8',
+    fontSize: 13,
+    marginBottom: 10,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  } as any,
+
+  profitVal: {
+    fontSize: 52,
+    fontFamily: 'Orbitron_900Black',
+    letterSpacing: 3,
+    lineHeight: 60,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 24,
+  } as any,
+
+  profitUnit: { color: '#64748b', fontSize: 12, marginTop: 8, letterSpacing: 3 } as any,
+
+  grid: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  } as any,
+
+  dItem: {
+    width: '32%',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    marginBottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,255,136,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 62,
+  } as any,
+
+  dLbl: {
+    color: '#94a3b8',
+    fontSize: 9,
+    marginBottom: 6,
+    textAlign: 'center',
+  } as any,
+
+  dVal: {
+    fontSize: 13,
+    fontFamily: 'Orbitron_700Bold',
+    letterSpacing: 1,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  } as any,
 };
 // ══════════════════════════════════════════════════════════
 //  ROOT
@@ -2560,11 +2679,23 @@ const s = StyleSheet.create({
   themeBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 
   // Tabs
-  tabsBar: { maxHeight: 100 },
-  tabsCont: { paddingHorizontal: 8, paddingVertical: 8 },
-  tab: { paddingHorizontal: 18, paddingVertical: 12, marginHorizontal: 4, borderRadius: 12, alignItems: 'center', justifyContent: 'center', minWidth: 95, borderWidth: 2, borderColor: 'transparent' },
-  tabIcon: { fontSize: 26, marginBottom: 2 },
-  tabLbl: { fontSize: 13, fontWeight: 'bold' },
+  tabsBar: { maxHeight: 110, marginHorizontal: 8, marginTop: 8, borderRadius: 14 },
+  tabsCont: { paddingHorizontal: 6, paddingVertical: 6 },
+  tab: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 3,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+    maxWidth: 90,
+    height: 78,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  tabIcon: { fontSize: 22, marginBottom: 4 },
+  tabLbl: { fontSize: 11, fontWeight: 'bold' },
   tabLblActive: { color: '#fff' },
   lock: { position: 'absolute', top: 4, left: 6, fontSize: 10 },
 

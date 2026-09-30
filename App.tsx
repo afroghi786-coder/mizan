@@ -35,13 +35,13 @@ let IS_DARK = true;
 export const setDark = (d: boolean) => { IS_DARK = d; };
 
 const C = {
-  get bg()      { return IS_DARK ? '#0f2438' : '#f5f7fa'; },
-  get card()    { return IS_DARK ? '#1a2332' : '#ffffff'; },
-  get cardAlt() { return IS_DARK ? '#0a1628' : '#f8fafc'; },
-  get text()    { return IS_DARK ? '#ffffff' : '#1a2332'; },
-  get textMut() { return IS_DARK ? '#94a3b8' : '#64748b'; },
-  get border()  { return IS_DARK ? '#334155' : '#e2e8f0'; },
-  get input()   { return IS_DARK ? '#1a2332' : '#ffffff'; },
+  get bg()      { return IS_DARK ? '#f5f7fa' : '#f5f7fa'; },
+  get card()    { return IS_DARK ? '#ffffff' : '#ffffff'; },
+  get cardAlt() { return IS_DARK ? '#f8fafc' : '#f8fafc'; },
+  get text()    { return IS_DARK ? '#1a2332' : '#1a2332'; },
+  get textMut() { return IS_DARK ? '#64748b' : '#64748b'; },
+  get border()  { return IS_DARK ? '#e2e8f0' : '#e2e8f0'; },
+  get input()   { return IS_DARK ? '#fafbfc' : '#ffffff'; },
 };
 
 const alertMsg = (title: string, msg: string) => {
@@ -383,7 +383,6 @@ function SalesScreen({ showToast }: any) {
       else customerCode = await generateCustomerCode();
       const inv = await generateInvoiceNumber();
       await createSale({ invoiceNumber: inv, customerCode, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid });
-
       const rows = await getInvoiceDetail(inv);
       if (rows.length > 0) {
         const r = rows[0];
@@ -435,147 +434,487 @@ function SalesScreen({ showToast }: any) {
 
   if (view === 'invoice' && invoice) return <InvoiceView invoice={invoice} onBack={() => { setView('list'); setInvoice(null); load(); }} showToast={showToast} onNew={() => { setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setInvoice(null); setView('form'); }} />;
 
+  // ═══════════════ حالت پرینت مجدد ═══════════════
   if (view === 'reprint') return (
-    <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12 }}>
-      <Text style={s.formTitle}>🖨️ پرینت مجدد فاکتور</Text>
-      <Text style={[s.lbl, { color: C.textMut }]}>شماره فاکتور</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={reprintInv} onChangeText={setReprintInv} placeholder="مثلاً 241007-1001" placeholderTextColor={C.textMut} />
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setView('list')}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
-        <TouchableOpacity style={[s.btn, { flex: 2, backgroundColor: '#6c3483' }]} onPress={doReprint}><Text style={s.btnTxt}>🔍 نمایش فاکتور</Text></TouchableOpacity>
+    <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 40 }}>
+      {/* کارت پرینت مجدد */}
+      <View style={S.card}>
+        <View style={S.cardHeader}>
+          <Text style={S.cardHeaderIcon}>🖨️</Text>
+          <Text style={[S.cardHeaderTitle, { color: S.order }]}>پرینت مجدد فاکتور</Text>
+        </View>
+        <View style={{ padding: 16 }}>
+          <Text style={S.label}>شماره فاکتور قدیمی</Text>
+          <TextInput
+            style={S.input}
+            value={reprintInv}
+            onChangeText={setReprintInv}
+            placeholder="مثلاً 14050612-1001"
+            placeholderTextColor="#94a3b8"
+          />
+          <TouchableOpacity style={[S.btnPrimary, { marginTop: 10 }]} onPress={doReprint}>
+            <Text style={S.btnPrimaryTxt}>🔍 نمایش فاکتور</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* دکمه برگشت */}
+      <TouchableOpacity style={[S.btnSecondary, { marginTop: 12 }]} onPress={() => setView('list')}>
+        <Text style={S.btnSecondaryTxt}>↩️ برگشت به لیست</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 
+  // ═══════════════ حالت فرم ═══════════════
   if (view === 'form') return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
-        <Text style={s.formTitle}>🛒 فاکتور فروش جدید</Text>
+      <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
 
-        {/* اطلاعات مشتری */}
-        <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border }]}>
-          <Text style={[s.customerCardTitle, { color: C.text }]}>📞 اطلاعات مشتری</Text>
-          <Text style={[s.lbl, { color: C.textMut }]}>📞 تلفن * {customerStatus}</Text>
-          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={phone} onChangeText={onPhone} keyboardType="phone-pad" maxLength={11} placeholder="09121234567" placeholderTextColor={C.textMut} />
-          <Text style={[s.lbl, { color: C.textMut }]}>👤 نام *</Text>
-          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText={setName} placeholder="نام مشتری" placeholderTextColor={C.textMut} />
-          <Text style={[s.lbl, { color: C.textMut }]}>📍 آدرس</Text>
-          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={address} onChangeText={setAddress} placeholder="اختیاری" placeholderTextColor={C.textMut} />
-          <Autocomplete label="🚚 باربری *" value={shipping} onChange={setShipping} options={[...new Set([...SHIPPINGS, ...prods.map(p => p.shipping_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
+        {/* ─── کارت اطلاعات مشتری ─── */}
+        <View style={S.card}>
+          <View style={S.cardHeader}>
+            <Text style={S.cardHeaderIcon}>📞</Text>
+            <Text style={[S.cardHeaderTitle, { color: S.order }]}>اطلاعات مشتری</Text>
+          </View>
+          <View style={{ padding: 16 }}>
+            <Text style={S.label}>
+              تلفن همراه <Text style={S.required}>*</Text>
+              {customerStatus ? <Text style={S.statusBadge}> {customerStatus}</Text> : null}
+            </Text>
+            <TextInput
+              style={S.input}
+              value={phone}
+              onChangeText={onPhone}
+              keyboardType="phone-pad"
+              maxLength={11}
+              placeholder="09121234567"
+              placeholderTextColor="#94a3b8"
+            />
+
+            <Text style={S.label}>نام و نام خانوادگی <Text style={S.required}>*</Text></Text>
+            <TextInput
+              style={S.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="نام مشتری"
+              placeholderTextColor="#94a3b8"
+            />
+
+            <Text style={S.label}>آدرس</Text>
+            <TextInput
+              style={S.input}
+              value={address}
+              onChangeText={setAddress}
+              placeholder="اختیاری"
+              placeholderTextColor="#94a3b8"
+            />
+
+            <Text style={S.label}>باربری <Text style={S.required}>*</Text></Text>
+            <Autocomplete
+              value={shipping}
+              onChange={setShipping}
+              options={[...new Set([...SHIPPINGS, ...prods.map(p => p.shipping_name || '').filter(Boolean)])]}
+              placeholder="تایپ یا انتخاب..."
+            />
+          </View>
         </View>
 
-        {/* اقلام — کارت‌های عمودی */}
-        <Text style={s.secT}>📦 اقلام فروش ({toFaNum(items.length)})</Text>
+        {/* ─── کارت اقلام ─── */}
+        <View style={S.card}>
+          <View style={S.cardHeader}>
+            <Text style={S.cardHeaderIcon}>📦</Text>
+            <Text style={[S.cardHeaderTitle, { color: S.order }]}>اقلام فروش</Text>
+          </View>
+          <View style={{ padding: 16 }}>
+            {items.map((it, i) => {
+              const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+              return (
+                <View key={i} style={S.itemRow}>
+                  {/* هدر کارت کوچیک */}
+                  <View style={S.itemRowHeader}>
+                    <View style={S.itemRowNumBadge}>
+                      <Text style={S.itemRowNumTxt}>#{toFaNum(i + 1)}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => delItem(i)} style={S.itemRemoveBtn}>
+                      <Text style={S.itemRemoveTxt}>🗑</Text>
+                    </TouchableOpacity>
+                  </View>
 
-        {items.map((it, i) => {
-          const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
-          return (
-            <View key={i} style={[s.itemCard, { backgroundColor: C.card, borderColor: C.border }]}>
-              {/* هدر کارت */}
-              <View style={[s.itemHeader, { backgroundColor: C.cardAlt }]}>
-                <Text style={s.itemN}>#{toFaNum(i + 1)}</Text>
-                <TouchableOpacity onPress={() => delItem(i)} style={s.delBtnRound}>
-                  <Text style={{ fontSize: 13, color: '#fff', fontWeight: 'bold' }}>🗑</Text>
-                </TouchableOpacity>
-              </View>
+                  {/* نام مدل */}
+                  <Autocomplete
+                    value={it.modelName}
+                    onChange={(v) => updItem(i, 'modelName', v)}
+                    onSelect={(v) => setModel(i, v)}
+                    options={prods.map(p => p.name)}
+                    placeholder="نام مدل..."
+                  />
 
-              {/* فیلد نام مدل */}
-              <View style={{ padding: 10 }}>
-                <Autocomplete
-                  value={it.modelName}
-                  onChange={(v) => updItem(i, 'modelName', v)}
-                  onSelect={(v) => setModel(i, v)}
-                  options={prods.map(p => p.name)}
-                  placeholder="نام مدل..."
-                />
-
-                {/* ردیف ۳ ستونه: کد / تعداد / قیمت */}
-                <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>کد مدل</Text>
-                    <View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}>
-                      <Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text>
+                  {/* ردیف ۳ ستونه */}
+                  <View style={S.threeColRow}>
+                    <View style={S.threeColCell}>
+                      <Text style={S.miniLabel}>کد مدل</Text>
+                      <View style={S.miniValue}>
+                        <Text style={S.miniValueTxt}>{it.modelCode || '—'}</Text>
+                      </View>
+                    </View>
+                    <View style={S.threeColCell}>
+                      <Text style={S.miniLabel}>تعداد <Text style={S.required}>*</Text></Text>
+                      <TextInput
+                        style={S.miniInput}
+                        value={String(it.quantity || '')}
+                        onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#94a3b8"
+                      />
+                    </View>
+                    <View style={S.threeColCell}>
+                      <Text style={S.miniLabel}>قیمت <Text style={S.required}>*</Text></Text>
+                      <TextInput
+                        style={S.miniInput}
+                        value={String(it.priceUnit || '')}
+                        onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#94a3b8"
+                      />
                     </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>تعداد *</Text>
-                    <TextInput
-                      style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]}
-                      value={String(it.quantity || '')}
-                      onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor={C.textMut}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>قیمت *</Text>
-                    <TextInput
-                      style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]}
-                      value={String(it.priceUnit || '')}
-                      onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor={C.textMut}
-                    />
-                  </View>
-                </View>
 
-                {/* ردیف ۲ ستونه: مبلغ کل */}
-                <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>مبلغ کل</Text>
-                    <View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lineTotal ? '#00ff88' : C.border }]}>
-                      <Text style={[s.miniValueTxt, { color: lineTotal ? '#00ff88' : C.textMut }]}>
-                        {lineTotal ? fmt(lineTotal) : '—'}
-                      </Text>
+                  {/* مبلغ کل */}
+                  <View style={S.threeColRow}>
+                    <View style={S.threeColCell}>
+                      <Text style={S.miniLabel}>مبلغ کل</Text>
+                      <View style={S.miniValue}>
+                        <Text style={[S.miniValueTxt, { color: lineTotal ? S.order : '#94a3b8' }]}>
+                          {lineTotal ? fmt(lineTotal) : '—'}
+                        </Text>
+                      </View>
                     </View>
+                    <View style={S.threeColCell} />
+                    <View style={S.threeColCell} />
                   </View>
                 </View>
-              </View>
-            </View>
-          );
-        })}
+              );
+            })}
 
-        <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>➕ افزودن مدل</Text></TouchableOpacity>
-
-        <View style={s.grandSummary}>
-          <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع مبلغ کل</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
-          <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>📦 تعداد اقلام</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
+            <TouchableOpacity style={S.addModelBtn} onPress={addItem}>
+              <Text style={S.addModelBtnTxt}>➕ افزودن مدل</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setView('list')}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
-          <TouchableOpacity style={[s.btn, { flex: 2, backgroundColor: '#059669' }]} onPress={submit} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>✅ ثبت نهایی فروش</Text>}
+        {/* ─── خلاصه کل ─── */}
+        <View style={S.summaryCard}>
+          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+            <Text style={S.summaryLbl}>💰 جمع مبلغ کل</Text>
+            <Text style={S.summaryVal}>{toFaNum(fmt(grandTotal))}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-start' }}>
+            <Text style={S.summaryLbl}>📦 تعداد اقلام</Text>
+            <Text style={S.summaryCnt}>{toFaNum(grandQty)} مدل</Text>
+          </View>
+        </View>
+
+        {/* ─── دکمه‌های ثبت/برگشت ─── */}
+        <View style={S.btnRowBottom}>
+          <TouchableOpacity style={[S.btnSecondary, { flex: 1 }]} onPress={() => setView('list')}>
+            <Text style={S.btnSecondaryTxt}>↩️ برگشت</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[S.btnSubmit, { flex: 2 }]} onPress={submit} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={S.btnSubmitTxt}>✅ ثبت نهایی فروش</Text>}
           </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 
+  // ═══════════════ حالت لیست ═══════════════
   return (
-    <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+    <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
       <DigitalDashboard refreshKey={0} settings={settings} />
-      <View style={{ flexDirection: 'row', gap: 8, marginVertical: 8 }}>
-        <TouchableOpacity style={[s.addBtn, { flex: 1, backgroundColor: '#1e3a8a' }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}><Text style={s.btnTxt}>➕ فاکتور جدید</Text></TouchableOpacity>
-        <TouchableOpacity style={[s.addBtn, { flex: 1, backgroundColor: '#6c3483' }]} onPress={() => setView('reprint')}><Text style={s.btnTxt}>🖨️ پرینت مجدد</Text></TouchableOpacity>
+
+      <View style={{ flexDirection: 'row-reverse', gap: 8, marginVertical: 8 }}>
+        <TouchableOpacity style={[S.btnPrimary, { flex: 1 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
+          <Text style={S.btnPrimaryTxt}>➕ فاکتور جدید</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[S.btnSecondary, { flex: 1 }]} onPress={() => setView('reprint')}>
+          <Text style={S.btnSecondaryTxt}>🖨️ پرینت مجدد</Text>
+        </TouchableOpacity>
       </View>
-      <Text style={s.secT}>📄 فاکتورها ({toFaNum(list.length)})</Text>
-      {loading ? <ActivityIndicator color="#d4af37" /> : list.map((inv: any) => (
-        <View key={inv.invoice} style={[s.invCard, { backgroundColor: C.card }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={s.invNum}>{inv.invoice}</Text>
-            <TouchableOpacity onPress={() => remove(inv.invoice)}><Text style={{ fontSize: 18 }}>🗑</Text></TouchableOpacity>
+
+      <Text style={S.sectionTitle}>📄 فاکتورها ({toFaNum(list.length)})</Text>
+
+      {loading ? <ActivityIndicator color={S.order} /> : list.map((inv: any) => (
+        <View key={inv.invoice} style={S.listCard}>
+          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={S.listCardInvoice}>{inv.invoice}</Text>
+            <TouchableOpacity onPress={() => remove(inv.invoice)}>
+              <Text style={{ fontSize: 18 }}>🗑</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={s.invCust}>👤 {inv.name} — {inv.phone}</Text>
-          <Text style={s.invStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
+          <Text style={S.listCardCust}>👤 {inv.name} — {inv.phone}</Text>
+          <Text style={S.listCardStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
         </View>
       ))}
     </ScrollView>
   );
 }
 
+// ══════════════════════════════════════════════════════════
+//  استایل‌های صفحه فروش (LIGHT THEME — مثل وب خودت)
+// ══════════════════════════════════════════════════════════
+const S = {
+  // رنگ‌های اصلی
+  bg: '#f5f7fa',
+  card: '#ffffff',
+  text: '#1a2332',
+  muted: '#64748b',
+  border: '#e2e8f0',
+  inputBg: '#fafbfc',
+  inputBorder: '#e2e8f0',
+  primary: '#1e3a5f',
+  order: '#1d4ed8',
+  orderDark: '#1e3a8a',
+  orderLight: '#3b82f6',
+  gold: '#d4af37',
+  goldLight: '#f4d47a',
+  itemBg: '#fafbfc',
+  badgeBg: '#e8eef5',
+  badgeText: '#1e3a5f',
+  removeBg: '#fef2f2',
+  removeText: '#b91c1c',
+  valueBg: '#f0f4f8',
+  valueText: '#1e3a5f',
+
+  // استایل‌ها
+  page: { flex: 1, backgroundColor: '#f5f7fa' } as any,
+
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f2438',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    overflow: 'hidden',
+  } as any,
+
+  cardHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+  } as any,
+
+  cardHeaderIcon: { fontSize: 18 } as any,
+  cardHeaderTitle: { fontSize: 15, fontWeight: 'bold', textAlign: 'right' } as any,
+
+  label: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#1a2332',
+    marginBottom: 5,
+    marginTop: 10,
+    textAlign: 'right',
+  } as any,
+
+  required: { color: '#d4af37', fontWeight: 'bold' } as any,
+
+  input: {
+    backgroundColor: '#fafbfc',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#1a2332',
+    textAlign: 'right',
+    fontFamily: Platform.OS === 'web' ? 'Tahoma, sans-serif' : undefined,
+  } as any,
+
+  statusBadge: { fontSize: 11, color: '#059669', fontWeight: 'bold' } as any,
+
+  // کارت اقلام (Item Row)
+  itemRow: {
+    backgroundColor: '#fafbfc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  } as any,
+
+  itemRowHeader: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  } as any,
+
+  itemRowNumBadge: {
+    backgroundColor: '#e8eef5',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+  } as any,
+
+  itemRowNumTxt: { color: '#1e3a5f', fontSize: 11, fontWeight: 'bold' } as any,
+
+  itemRemoveBtn: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  } as any,
+
+  itemRemoveTxt: { color: '#b91c1c', fontSize: 12, fontWeight: 'bold' } as any,
+
+  threeColRow: { flexDirection: 'row-reverse', gap: 6, marginTop: 6 } as any,
+  threeColCell: { flex: 1 } as any,
+
+  miniLabel: {
+    fontSize: 10,
+    color: '#64748b',
+    marginBottom: 3,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  } as any,
+
+  miniInput: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    fontSize: 12,
+    color: '#1a2332',
+    textAlign: 'center',
+  } as any,
+
+  miniValue: {
+    backgroundColor: '#f0f4f8',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 34,
+  } as any,
+
+  miniValueTxt: { color: '#1e3a5f', fontSize: 12, fontWeight: 'bold' } as any,
+
+  addModelBtn: {
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#cbd2d8',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  } as any,
+
+  addModelBtnTxt: { color: '#1e3a5f', fontSize: 13, fontWeight: 'bold' } as any,
+
+  // خلاصه کل
+  summaryCard: {
+    backgroundColor: '#1e3a8a',
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 12,
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRightWidth: 4,
+    borderRightColor: '#d4af37',
+  } as any,
+
+  summaryLbl: { color: '#cbd5e1', fontSize: 12, marginBottom: 4, textAlign: 'right' } as any,
+  summaryVal: { color: '#f4d47a', fontSize: 22, fontWeight: 'bold' } as any,
+  summaryCnt: { color: '#ffffff', fontSize: 15, fontWeight: 'bold' } as any,
+
+  // دکمه‌ها
+  btnRowBottom: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 } as any,
+
+  btnSubmit: {
+    backgroundColor: '#1e3a8a',
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as any,
+
+  btnSubmitTxt: { color: '#fff', fontSize: 15, fontWeight: 'bold' } as any,
+
+  btnPrimary: {
+    backgroundColor: '#1e3a8a',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as any,
+
+  btnPrimaryTxt: { color: '#fff', fontSize: 14, fontWeight: 'bold' } as any,
+
+  btnSecondary: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as any,
+
+  btnSecondaryTxt: { color: '#1a2332', fontSize: 14, fontWeight: 'bold' } as any,
+
+  // لیست فاکتورها
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1e3a5f',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'right',
+  } as any,
+
+  listCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderRightWidth: 4,
+    borderRightColor: '#1e3a8a',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderTopColor: '#e2e8f0',
+    borderBottomColor: '#e2e8f0',
+    borderLeftColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  } as any,
+
+  listCardInvoice: { fontSize: 13, fontWeight: 'bold', color: '#1e3a5f' } as any,
+  listCardCust: { fontSize: 11, color: '#64748b', marginBottom: 6, textAlign: 'right' } as any,
+  listCardStat: { fontSize: 11, color: '#1a2332' } as any,
+};
 // ══════════════════════════════════════════════════════════
 //  PURCHASE SCREEN — کارت‌های عمودی
 // ══════════════════════════════════════════════════════════

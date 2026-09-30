@@ -57,6 +57,29 @@ const confirmMsg = (title: string, msg: string): Promise<boolean> => {
     ]);
   });
 };
+// ⭐ محاسبه موجودی قبلی مشتری
+async function getCustomerPreviousBalance(customerCode: string, currentInvoiceNumber: string) {
+  try {
+    const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
+    if (!data || !data.length) return { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
+    const grouped: Record<string, { sales: number; payments: number }> = {};
+    data.forEach((r: any) => {
+      if (r.invoice_number === currentInvoiceNumber) return;  // فاکتور جدید رو رد کن
+      if (!grouped[r.invoice_number]) grouped[r.invoice_number] = { sales: 0, payments: 0 };
+      grouped[r.invoice_number].sales += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+      grouped[r.invoice_number].payments += Number(r.payment) || 0;
+    });
+    let sales = 0, payments = 0, invoiceCount = 0;
+    Object.values(grouped).forEach((g: any) => {
+      sales += g.sales;
+      payments += g.payments;
+      invoiceCount++;
+    });
+    return { sales, payments, balance: sales - payments, invoiceCount };
+  } catch {
+    return { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
+  }
+}
 // ══════════════════════════════════════════════════════════
 //  Dashboard Styles (دقیقاً مثل تصویر)
 // ══════════════════════════════════════════════════════════
@@ -513,6 +536,7 @@ function SalesScreen({ showToast }: any) {
   const [settings, setSettings] = useState<Settings>({});
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hiddenSales, setHiddenSales] = useState<string[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
   const [reprintInv, setReprintInv] = useState('');
   const [invoice, setInvoice] = useState<any>(null);
@@ -568,17 +592,19 @@ function SalesScreen({ showToast }: any) {
       else customerCode = await generateCustomerCode();
       const inv = await generateInvoiceNumber();
       await createSale({ invoiceNumber: inv, customerCode, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid });
-      const rows = await getInvoiceDetail(inv);
+        const rows = await getInvoiceDetail(inv);
       if (rows.length > 0) {
         const r = rows[0];
         const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
         const tot = its.reduce((a: number, it: any) => a + it.total, 0);
         const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+        // ⭐ fetch فاکتورهای قبلی
+        const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
         setInvoice({
           customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
           current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
-          previous: { sales: 0, payments: 0, balance: 0, invoiceCount: 0 },
-          totals: { sales: tot, payments: paid, balance: tot - paid },
+          previous: prev,
+          totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
           timeString: displayDate(r.date_reg),
         });
         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
@@ -592,9 +618,10 @@ function SalesScreen({ showToast }: any) {
   };
 
   const remove = async (inv: string) => {
-    const ok = await confirmMsg('حذف', `فاکتور ${inv} حذف شود؟`);
+    const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
     if (!ok) return;
-    try { await deleteSale(inv); load(); showToast('✅ حذف شد'); } catch (e: any) { showToast(e.message, true); }
+    setHiddenSales([...hiddenSales, inv]);
+    showToast('✅ از لیست پنهان شد');
   };
 
   const doReprint = async () => {
@@ -830,7 +857,7 @@ function SalesScreen({ showToast }: any) {
 
       <Text style={S.sectionTitle}>📄 فاکتورها ({toFaNum(list.length)})</Text>
 
-      {loading ? <ActivityIndicator color={S.order} /> : list.map((inv: any) => (
+           {loading ? <ActivityIndicator color={S.order} /> : list.filter((inv: any) => !hiddenSales.includes(inv.invoice)).map((inv: any) => ( => (
         <View key={inv.invoice} style={S.listCard}>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
             <Text style={S.listCardInvoice}>{inv.invoice}</Text>
@@ -2521,7 +2548,7 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
             <Text style={{ fontSize: 20 }}>⚖️</Text>
             <View>
               <Text style={s.invBrand}>میزان</Text>
-              <Text style={s.invSlogan}>حساب‌ها دقیق، معاملات امن</Text>
+                       <Text style={s.invSlogan}>حساب‌ها دقیق، معاملات امن، ذهن آسوده.</Text>
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
@@ -2565,11 +2592,33 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
           ))}
         </View>
 
-        <View style={s.invSection}>
+              <View style={s.invSection}>
           <Text style={s.invSectionTitle}>💰 خلاصه مالی</Text>
+
+          {/* این سفارش */}
           <SumRow l="🛍️ مبلغ این سفارش" v={fmt(cur.sales) + ' تومان'} />
           <SumRow l="💳 پرداخت این سفارش" v={fmt(cur.payments) + ' تومان'} green />
-          <SumRow l={tot.balance > 0 ? '⚖️ مانده قابل پرداخت' : tot.balance < 0 ? '💰 بستانکاری' : '✅ تسویه کامل'} v={tot.balance !== 0 ? fmt(Math.abs(tot.balance)) + ' تومان' : 'بدون بدهی'} highlight />
+
+          {/* فاکتورهای قبلی */}
+          {invoice.previous && invoice.previous.invoiceCount > 0 && (
+            <>
+              <SumRow l="📁 تعداد فاکتورهای قبلی" v={toFaNum(invoice.previous.invoiceCount) + ' فاکتور'} />
+              <SumRow l="💰 جمع خریدهای قبلی" v={fmt(invoice.previous.sales) + ' تومان'} />
+              <SumRow l="💳 جمع پرداخت‌های قبلی" v={fmt(invoice.previous.payments) + ' تومان'} green />
+              <SumRow
+                l={invoice.previous.balance > 0 ? '⚖️ بدهی از قبل' : invoice.previous.balance < 0 ? '💰 بستانکاری از قبل' : '✅ تسویه شده از قبل'}
+                v={invoice.previous.balance !== 0 ? fmt(Math.abs(invoice.previous.balance)) + ' تومان' : 'بدون بدهی'}
+                prev
+              />
+            </>
+          )}
+
+          {/* مانده نهایی */}
+          <SumRow
+            l={tot.balance > 0 ? '⚖️ مانده نهایی قابل پرداخت' : tot.balance < 0 ? '💰 بستانکاری نهایی' : '✅ تسویه کامل'}
+            v={tot.balance !== 0 ? fmt(Math.abs(tot.balance)) + ' تومان' : 'بدون بدهی'}
+            highlight
+          />
         </View>
 
         <View style={s.invFooter}>
@@ -2598,10 +2647,10 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
   );
 }
 
-const SumRow = ({ l, v, green, highlight }: any) => (
-  <View style={[s.sumRow, highlight && { backgroundColor: '#fef3c7', borderTopWidth: 1, borderTopColor: '#d4af37' }]}>
-    <Text style={[s.sumLbl, highlight && { fontWeight: 'bold', color: '#422006' }]}>{l}</Text>
-    <Text style={[s.sumValTxt, green && { color: '#059669' }, highlight && { fontSize: 14, fontWeight: 'bold' }]}>{v}</Text>
+const SumRow = ({ l, v, green, highlight, prev }: any) => (
+  <View style={[s.sumRow, highlight && { backgroundColor: '#fef3c7', borderTopWidth: 1, borderTopColor: '#d4af37' }, prev && { backgroundColor: '#fff7ed', borderRightWidth: 3, borderRightColor: '#f97316' }]}>
+    <Text style={[s.sumLbl, highlight && { fontWeight: 'bold', color: '#422006' }, prev && { color: '#9a3412', fontWeight: 'bold' }]}>{l}</Text>
+    <Text style={[s.sumValTxt, green && { color: '#059669' }, highlight && { fontSize: 14, fontWeight: 'bold' }, prev && { color: '#9a3412' }]}>{v}</Text>
   </View>
 );
 

@@ -1,12 +1,12 @@
-// lib.ts — تقویم، تاریخ، دیتابیس Supabase، ابزارها (همه در یک فایل)
+// lib.ts — تقویم، تاریخ، دیتابیس Supabase، ابزارها
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ═══════════════════════════════════════════════════
 // 🔌 Supabase
 // ═══════════════════════════════════════════════════
-const SUPABASE_URL = 'https://paslxvwlbojdzflbmyoh.supabase.co';       // ← عوض کن
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhc2x4dndsYm9qZHpmbGJteW9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjA5MTAsImV4cCI6MjEwNTQ5NjkxMH0.gOkwEyVlRi0C11277KxswLFiMFGf4c-ctMgsGLZQuk4';                 // ← عوض کن
+const SUPABASE_URL = 'https://paslxvwlbojdzflbmyoh.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhc2x4dndsYm9qZHpmbGJteW9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjA5MTAsImV4cCI6MjEwNTQ5NjkxMH0.gOkwEyVlRi0C11277KxswLFiMFGf4c-ctMgsGLZQuk4';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
@@ -24,8 +24,14 @@ export const pad2 = (n: number) => String(n).padStart(2, '0');
 export const fmt = (n: any) => (Number(n) || 0).toLocaleString('en-US');
 export const parseNum = (v: any): number => {
   if (typeof v === 'number') return isNaN(v) ? 0 : v;
-  const s = String(v ?? '').replace(/[^\d.-]/g, '');
-  const n = parseFloat(s);
+  let s = String(v ?? '');
+  s = s.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+  s = s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+  s = s.replace(/[,\s\u200c\u00a0]/g, '');
+  s = s.replace(/[^\d-]/g, '');
+  const m = s.match(/-?\d+/);
+  if (!m) return 0;
+  const n = parseFloat(m[0]);
   return isNaN(n) ? 0 : n;
 };
 export const toFaNum = (v: string | number): string =>
@@ -102,7 +108,7 @@ export function h2g(hy: number, hm: number, hd: number) {
 }
 
 // ═══════════════════════════════════════════════════
-// 📅 نوع تقویم (global state)
+// 📅 نوع تقویم
 // ═══════════════════════════════════════════════════
 export type CalType = 'jalali' | 'gregorian' | 'hijri';
 let _calType: CalType = 'jalali';
@@ -233,6 +239,7 @@ export interface Settings {
   auto_delete_hours?: number;
   sched_daily?: any;
   sched_weekly?: any;
+  theme?: string;
 }
 
 // ═══════════════════════════════════════════════════
@@ -289,16 +296,18 @@ export async function generateCustomerCode(): Promise<string> {
   });
   return 'M_' + (maxN + 1);
 }
+
+// ⭐ شماره فاکتور فروش: 8 کاراکتر تصادفی — بدون تداخل برای هزاران کاربر
 export async function generateInvoiceNumber(): Promise<string> {
   const now = new Date();
   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
-  // ⭐ ۸ کاراکتر تصادفی — غیرقابل حدس، غیرقابل تداخل
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let rand = '';
   for (let i = 0; i < 8; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
   return `${ds}-${rand}`;
 }
-// ⭐ شماره فاکتور خرید: F-XXXXX-شماره-دستی
+
+// ⭐ شماره فاکتور خرید: F-YYMMDD-XXXXX-شماره-دستی
 export async function generatePurchaseInvoiceNumber(manualInvoice: string): Promise<string> {
   const manual = String(manualInvoice || '').trim().replace(/[^\w\d\u0600-\u06FF-]/g, '') || 'NO-NUM';
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -308,6 +317,7 @@ export async function generatePurchaseInvoiceNumber(manualInvoice: string): Prom
   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
   return `F-${ds}-${rand}-${manual}`;
 }
+
 export async function createSale(payload: {
   invoiceNumber: string; customerCode: string; customerName: string;
   customerPhone: string; customerAddress: string; shipping: string; items: SaleItem[];
@@ -399,21 +409,26 @@ export async function lookupSupplierByName(name: string) {
     .order('created_at', { ascending: false }).limit(1);
   return data && data[0] ? data[0] : null;
 }
+
 export async function createPurchase(payload: any) {
   const now = new Date();
   const items: PurchaseItem[] = payload.items || [];
   const totalAll = items.reduce((a, it) => a + it.quantity * it.priceUnit, 0);
   const remaining = totalAll - (payload.paymentAmount || 0);
+
+  // ⭐ مهم: شماره داخلی همیشه با F- ساخته می‌شه (تداخل با فروش نداره)
+  const finalInvoiceNumber = await generatePurchaseInvoiceNumber(payload.manualInvoice || '');
+
   if (items.length === 0) {
     const { error } = await supabase.from('purchases').insert({
-      invoice_number: payload.invoiceNumber,
+      invoice_number: finalInvoiceNumber,
       manual_invoice: payload.manualInvoice,
       supplier_code: payload.supplierCode || '',
       supplier_name: payload.supplierName,
       supplier_phone: payload.supplierPhone || '',
       model_code: '', model_name: '', quantity: 0, price_unit: 0, amount: 0,
       total_amount: 0, payment: payload.paymentAmount || 0,
-      balance: -payload.paymentAmount || 0,
+      balance: -(payload.paymentAmount || 0),
       description: payload.note || '',
       deposit_date: payload.paymentDate || toStorageDateFull(now),
       bank_name: payload.bankAccount || '',
@@ -423,10 +438,11 @@ export async function createPurchase(payload: any) {
       date_reg: toStorageDateFull(now),
     });
     if (error) throw new Error(error.message);
-    return payload.invoiceNumber;
+    return finalInvoiceNumber;
   }
+
   const rows = items.map((it, idx) => ({
-    invoice_number: payload.invoiceNumber,
+    invoice_number: finalInvoiceNumber,
     manual_invoice: payload.manualInvoice,
     supplier_code: payload.supplierCode || '',
     supplier_name: payload.supplierName,
@@ -449,8 +465,9 @@ export async function createPurchase(payload: any) {
   }));
   const { error } = await supabase.from('purchases').insert(rows);
   if (error) throw new Error(error.message);
-  return payload.invoiceNumber;
+  return finalInvoiceNumber;
 }
+
 export async function getPurchasesGrouped() {
   const { data, error } = await supabase
     .from('purchases').select('*')
@@ -460,7 +477,9 @@ export async function getPurchasesGrouped() {
   (data || []).forEach((r: any) => {
     if (!groups[r.invoice_number]) {
       groups[r.invoice_number] = {
-        invoice: r.invoice_number, name: r.supplier_name,
+        invoice: r.invoice_number,
+        manual: r.manual_invoice,
+        name: r.supplier_name,
         phone: r.supplier_phone, total: 0, paid: 0, items: [],
         date: r.date_reg || r.created_at,
       };
@@ -478,7 +497,7 @@ export async function deletePurchase(invoiceNumber: string) {
 }
 
 // ═══════════════════════════════════════════════════
-// 🗄️ DB — داشبورد و سود (منطق منبع قیمت مثل وب)
+// 🗄️ DB — داشبورد و سود
 // ═══════════════════════════════════════════════════
 export async function getDashboardStats(range: string = 'month', filter: string = 'both') {
   const settings = await getSettings();
@@ -502,7 +521,6 @@ export async function getDashboardStats(range: string = 'month', filter: string 
     supabase.from('sales').select('*'),
   ]);
 
-  // خریدها → نقشه قیمت به تفکیک کد مدل
   const purchaseByCode: Record<string, { date: number; price: number }[]> = {};
   const purchaseNames: Record<string, string> = {};
   let totalPurchases = 0, supplierPaid = 0, supplierDebt = 0;
@@ -647,7 +665,6 @@ export async function getInventory() {
     models[c].sold += Number(r.quantity) || 0;
     if (r.model_name && !models[c].name) models[c].name = r.model_name;
   });
-  // کالاهای بدون تراکنش
   products.forEach((p) => {
     if (!models[p.code]) {
       models[p.code] = { code: p.code, name: p.name, bought: 0, sold: 0, lastPrice: p.price || 0 };
@@ -683,7 +700,7 @@ export async function getInventory() {
 }
 
 // ═══════════════════════════════════════════════════
-// 🗄️ DB — تنظیمات
+// 🗄️ DB — تنظیمات (per-user)
 // ═══════════════════════════════════════════════════
 export async function getSettings(): Promise<Settings> {
   const { data } = await supabase.from('settings').select('*').limit(1);

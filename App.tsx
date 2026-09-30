@@ -857,7 +857,7 @@ function SalesScreen({ showToast }: any) {
 
       <Text style={S.sectionTitle}>📄 فاکتورها ({toFaNum(list.length)})</Text>
 
-           {loading ? <ActivityIndicator color={S.order} /> : list.filter((inv: any) => !hiddenSales.includes(inv.invoice)).map((inv: any) => ( => (
+                   {loading ? <ActivityIndicator color={S.order} /> : list.filter((inv: any) => !hiddenSales.includes(inv.invoice)).map((inv: any) => (
         <View key={inv.invoice} style={S.listCard}>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
             <Text style={S.listCardInvoice}>{inv.invoice}</Text>
@@ -1148,6 +1148,7 @@ function PurchaseScreen({ showToast }: any) {
   const [receiverAcc, setReceiverAcc] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [hiddenPurchases, setHiddenPurchases] = useState<string[]>([]);
 
   useEffect(() => { getSettings().then(setSettings).catch(() => {}); }, []);
   const load = async () => { setLoading(true); try { setList(await getPurchasesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
@@ -1305,7 +1306,7 @@ function PurchaseScreen({ showToast }: any) {
         <Text style={s.btnTxt}>➕ فاکتور خرید جدید</Text>
       </TouchableOpacity>
       <Text style={s.secT}>📄 خریدها ({toFaNum(list.length)})</Text>
-      {loading ? <ActivityIndicator color="#34d399" /> : list.map((inv: any) => (
+            {loading ? <ActivityIndicator color="#34d399" /> : list.filter((inv: any) => !hiddenPurchases.includes(inv.invoice)).map((inv: any) => (
               <View key={inv.invoice} style={[s.invCard, { backgroundColor: C.card, borderRightColor: '#166534' }]}>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
             <Text style={s.invNum}>{inv.invoice}</Text>
@@ -2941,3 +2942,9 @@ const s = StyleSheet.create({
   emptyStateTxt: { color: '#1a2332', fontSize: 15, fontWeight: 'bold', marginTop: 12 },
   emptyStateSub: { color: '#94a3b8', fontSize: 12, marginTop: 4 },
 });
+  const remove = async (inv: string) => {
+    const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
+    if (!ok) return;
+    setHiddenPurchases([...hiddenPurchases, inv]);
+    showToast('✅ از لیست پنهان شد');
+  };

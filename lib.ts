@@ -297,25 +297,38 @@ export async function generateCustomerCode(): Promise<string> {
   return 'M_' + (maxN + 1);
 }
 
-// ⭐ شماره فاکتور فروش: 8 کاراکتر تصادفی — بدون تداخل برای هزاران کاربر
+// ⭐ شماره فاکتور فروش: YYMMDD-NNNN (ترتیبی برای هر کاربر)
 export async function generateInvoiceNumber(): Promise<string> {
   const now = new Date();
   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let rand = '';
-  for (let i = 0; i < 8; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
-  return `${ds}-${rand}`;
+  // RLS فقط فاکتورهای کاربر فعلی رو برمی‌گردونه
+  const { data } = await supabase
+    .from('sales')
+    .select('invoice_number')
+    .like('invoice_number', `${ds}-%`);
+  let maxN = 1000;
+  (data || []).forEach((r: any) => {
+    const m = String(r.invoice_number || '').match(/-(\d+)$/);
+    if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+  });
+  return `${ds}-${maxN + 1}`;
 }
 
-// ⭐ شماره فاکتور خرید: F-YYMMDD-XXXXX-شماره-دستی
+// ⭐ شماره فاکتور خرید: P-YYMMDD-NNNN (ترتیبی برای هر کاربر)
 export async function generatePurchaseInvoiceNumber(manualInvoice: string): Promise<string> {
-  const manual = String(manualInvoice || '').trim().replace(/[^\w\d\u0600-\u06FF-]/g, '') || 'NO-NUM';
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let rand = '';
-  for (let i = 0; i < 5; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
   const now = new Date();
   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
-  return `F-${ds}-${rand}-${manual}`;
+  // RLS فقط فاکتورهای خرید کاربر فعلی رو برمی‌گردونه
+  const { data } = await supabase
+    .from('purchases')
+    .select('invoice_number')
+    .like('invoice_number', `P-${ds}-%`);
+  let maxN = 1000;
+  (data || []).forEach((r: any) => {
+    const m = String(r.invoice_number || '').match(/-(\d+)$/);
+    if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+  });
+  return `P-${ds}-${maxN + 1}`;
 }
 
 export async function createSale(payload: {
@@ -416,7 +429,7 @@ export async function createPurchase(payload: any) {
   const totalAll = items.reduce((a, it) => a + it.quantity * it.priceUnit, 0);
   const remaining = totalAll - (payload.paymentAmount || 0);
 
-  // ⭐ مهم: شماره داخلی همیشه با F- ساخته می‌شه (تداخل با فروش نداره)
+  // ⭐ شماره داخلی با P- (مستقل از فروش)
   const finalInvoiceNumber = await generatePurchaseInvoiceNumber(payload.manualInvoice || '');
 
   if (items.length === 0) {
@@ -700,7 +713,7 @@ export async function getInventory() {
 }
 
 // ═══════════════════════════════════════════════════
-// 🗄️ DB — تنظیمات (per-user)
+// 🗄️ DB — تنظیمات
 // ═══════════════════════════════════════════════════
 export async function getSettings(): Promise<Settings> {
   const { data } = await supabase.from('settings').select('*').limit(1);

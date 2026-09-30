@@ -298,6 +298,16 @@ export async function generateInvoiceNumber(): Promise<string> {
   for (let i = 0; i < 8; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
   return `${ds}-${rand}`;
 }
+// ⭐ شماره فاکتور خرید: F-XXXXX-شماره-دستی
+export async function generatePurchaseInvoiceNumber(manualInvoice: string): Promise<string> {
+  const manual = String(manualInvoice || '').trim().replace(/[^\w\d\u0600-\u06FF-]/g, '') || 'NO-NUM';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let rand = '';
+  for (let i = 0; i < 5; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  const now = new Date();
+  const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
+  return `F-${ds}-${rand}-${manual}`;
+}
 export async function createSale(payload: {
   invoiceNumber: string; customerCode: string; customerName: string;
   customerPhone: string; customerAddress: string; shipping: string; items: SaleItem[];

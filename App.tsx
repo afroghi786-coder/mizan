@@ -1306,8 +1306,13 @@ function PurchaseScreen({ showToast }: any) {
       </TouchableOpacity>
       <Text style={s.secT}>📄 خریدها ({toFaNum(list.length)})</Text>
       {loading ? <ActivityIndicator color="#34d399" /> : list.map((inv: any) => (
-        <View key={inv.invoice} style={[s.invCard, { backgroundColor: C.card, borderRightColor: '#166534' }]}>
-          <Text style={s.invNum}>{inv.invoice}</Text>
+              <View key={inv.invoice} style={[s.invCard, { backgroundColor: C.card, borderRightColor: '#166534' }]}>
+          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={s.invNum}>{inv.invoice}</Text>
+            <TouchableOpacity onPress={() => remove(inv.invoice)}>
+              <Text style={{ fontSize: 18 }}>👁️</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={s.invCust}>🏭 {inv.name}</Text>
           <Text style={s.invStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
         </View>

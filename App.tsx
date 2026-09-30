@@ -136,15 +136,34 @@ function MainApp({ showToast, theme, setTheme }: any) {
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]} edges={['top', 'left', 'right']}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-      <View style={[s.header, { backgroundColor: C.bg }]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.hTitle, { color: C.text }]}>⚖️ میزان</Text>
-            <Text style={[s.hSub, { color: C.textMut }]}>حساب‌ها دقیق، معاملات امن، ذهن آسوده</Text>
-          </View>
+         {/* ⭐ هدر داینامیک — رنگ عوض می‌شه بر اساس تب */}
+      <View style={[s.header, {
+        backgroundColor:
+          tab === 'purchase' ? '#0f5132' :
+          tab === 'print' ? '#4a235a' :
+          tab === 'mgr' ? '#7b241c' :
+          tab === 'profit' ? '#4a235a' :
+          tab === 'inventory' ? '#0f5132' :
+          '#0f2438',
+      }]}>
+        {/* نوار طلایی بالای هدر */}
+        <View style={{
+          height: 4,
+          backgroundColor: '#d4af37',
+          marginLeft: -14, marginRight: -14, marginTop: -14, marginBottom: 12,
+        }} />
+
+        <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
           <TouchableOpacity onPress={toggleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
             <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
           </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 12 }}>
+            <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 24, color: '#f4d47a' }}>⚖️</Text>
+              <Text style={s.hTitle}>میزان</Text>
+            </View>
+            <Text style={s.hSub}>حساب‌ها دقیق، معاملات امن، ذهن آسوده</Text>
+          </View>
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
@@ -2477,9 +2496,20 @@ const s = StyleSheet.create({
   loading: { flex: 1, backgroundColor: '#0f2438', alignItems: 'center', justifyContent: 'center' },
 
   // Header
-  header: { padding: 14, paddingTop: 8, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
-  hTitle: { fontSize: 24, fontWeight: 'bold', textAlign: 'right' },
-  hSub: { fontSize: 12, marginTop: 4, textAlign: 'right' },
+  header: {
+    padding: 16,
+    margin: 8,
+    marginBottom: 0,
+    borderRadius: 16,
+    shadowColor: '#0f2438',
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  hTitle: { fontSize: 20, fontWeight: 'bold', color: '#ffffff', textAlign: 'right' },
+  hSub: { fontSize: 11, color: '#d1d5db', marginTop: 6, textAlign: 'right', opacity: 0.9 },
   themeBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
 
   // Tabs

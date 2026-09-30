@@ -298,34 +298,38 @@ export async function generateCustomerCode(): Promise<string> {
 }
 
 // ⭐ شماره فاکتور فروش: YYMMDD-NNNN (ترتیبی برای هر کاربر)
+// ⭐ شماره فاکتور فروش: YYMMDD-NNNN (افزایشی، هرگز تکرار نمی‌شه)
 export async function generateInvoiceNumber(): Promise<string> {
   const now = new Date();
   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
-  // RLS فقط فاکتورهای کاربر فعلی رو برمی‌گردونه
+  // ⭐ همه فاکتورهای کاربر (بدون فیلتر تاریخ)
   const { data } = await supabase
     .from('sales')
-    .select('invoice_number')
-    .like('invoice_number', `${ds}-%`);
+    .select('invoice_number');
   let maxN = 1000;
   (data || []).forEach((r: any) => {
-    const m = String(r.invoice_number || '').match(/-(\d+)$/);
+    const inv = String(r.invoice_number || '');
+    // فقط فاکتورهای فروش (بدون P-)
+    const m = inv.match(/^\d{6}-(\d+)$/);
     if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
   });
   return `${ds}-${maxN + 1}`;
 }
 
 // ⭐ شماره فاکتور خرید: P-YYMMDD-NNNN (ترتیبی برای هر کاربر)
+// ⭐ شماره فاکتور خرید: P-YYMMDD-NNNN (افزایشی، هرگز تکرار نمی‌شه)
 export async function generatePurchaseInvoiceNumber(manualInvoice: string): Promise<string> {
   const now = new Date();
   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
-  // RLS فقط فاکتورهای خرید کاربر فعلی رو برمی‌گردونه
+  // ⭐ همه فاکتورهای خرید کاربر (بدون فیلتر تاریخ)
   const { data } = await supabase
     .from('purchases')
-    .select('invoice_number')
-    .like('invoice_number', `P-${ds}-%`);
+    .select('invoice_number');
   let maxN = 1000;
   (data || []).forEach((r: any) => {
-    const m = String(r.invoice_number || '').match(/-(\d+)$/);
+    const inv = String(r.invoice_number || '');
+    // فقط فاکتورهای خرید (با P-)
+    const m = inv.match(/^P-\d{6}-(\d+)$/);
     if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
   });
   return `P-${ds}-${maxN + 1}`;

@@ -339,6 +339,9 @@ function SalesScreen({ showToast }: any) {
   const [items, setItems] = useState<SaleItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [customerStatus, setCustomerStatus] = useState('');
+  // ⭐ Picker برای انتخاب مدل/بانک/صاحب حساب
+  const [picker, setPicker] = useState<{ type: 'model' | 'bank' | 'holder'; rowIndex: number } | null>(null);
+  const [pickerQuery, setPickerQuery] = useState('');
 
   useEffect(() => { getSettings().then(setSettings).catch(() => {}); }, []);
   const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
@@ -358,10 +361,47 @@ function SalesScreen({ showToast }: any) {
     }
   };
 
-  const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', description: '' }]);
+  // ⭐ addItem با تاریخ خودکار
+  const addItem = () => setItems([...items, {
+    modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0,
+    depositDate: toStorageDateFull(new Date()),
+    bankName: '', accountHolder: '', description: ''
+  }]);
   const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
   const delItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
-  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
+  const setModel = (i: number, v: string) => {
+    const n = [...items]; n[i].modelName = v;
+    const p = prods.find((x) => x.name === v);
+    if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; if (p.shipping_name && !shipping) setShipping(p.shipping_name); }
+    setItems(n);
+  };
+
+  const pickFromModal = (value: string) => {
+    if (!picker) return;
+    const i = picker.rowIndex;
+    if (picker.type === 'model') setModel(i, value);
+    else if (picker.type === 'bank') updItem(i, 'bankName', value);
+    else if (picker.type === 'holder') updItem(i, 'accountHolder', value);
+    setPicker(null); setPickerQuery('');
+  };
+
+  const pickerOptions: string[] = useMemo(() => {
+    if (!picker) return [];
+    if (picker.type === 'model') return prods.map(p => p.name).filter(Boolean);
+    if (picker.type === 'bank') return BANKS;
+    if (picker.type === 'holder') {
+      const s = new Set<string>();
+      prods.forEach(p => { if (p.supplier_name) s.add(p.supplier_name); });
+      return Array.from(s);
+    }
+    return [];
+  }, [picker, prods]);
+
+  const pickerFiltered = useMemo(() => {
+    if (!pickerQuery) return pickerOptions;
+    const q = pickerQuery.toLowerCase();
+    return pickerOptions.filter(x => String(x).toLowerCase().includes(q));
+  }, [pickerOptions, pickerQuery]);
 
   const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
   const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
@@ -384,8 +424,27 @@ function SalesScreen({ showToast }: any) {
       else customerCode = await generateCustomerCode();
       const inv = await generateInvoiceNumber();
       await createSale({ invoiceNumber: inv, customerCode, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid });
-      alertMsg('✅ موفق', 'فاکتور فروش ثبت شد:\n' + inv);
-      setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+
+      // ⭐ بعد از ثبت، فاکتور رو بگیر و نشون بده
+      const rows = await getInvoiceDetail(inv);
+      if (rows.length > 0) {
+        const r = rows[0];
+        const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
+        const tot = its.reduce((a: number, it: any) => a + it.total, 0);
+        const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+        setInvoice({
+          customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+          current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+          previous: { sales: 0, payments: 0, balance: 0, invoiceCount: 0 },
+          totals: { sales: tot, payments: paid, balance: tot - paid },
+          timeString: displayDate(r.date_reg),
+        });
+        setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
+        setView('invoice');
+      } else {
+        alertMsg('✅ موفق', 'فاکتور فروش ثبت شد:\n' + inv);
+        setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+      }
     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
     finally { setSaving(false); }
   };
@@ -404,12 +463,19 @@ function SalesScreen({ showToast }: any) {
       const r = rows[0];
       const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
       const total = its.reduce((a: number, it: any) => a + it.total, 0);
-      setInvoice({ customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping }, current: { invoiceNumber: r.invoice_number, items: its, sales: total, payments: 0, balance: total }, previous: { sales: 0, payments: 0, balance: 0, invoiceCount: 0 }, totals: { sales: total, payments: 0, balance: total }, timeString: displayDate(r.date_reg) });
+      const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+      setInvoice({
+        customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+        current: { invoiceNumber: r.invoice_number, items: its, sales: total, payments: paid, balance: total - paid },
+        previous: { sales: 0, payments: 0, balance: 0, invoiceCount: 0 },
+        totals: { sales: total, payments: paid, balance: total - paid },
+        timeString: displayDate(r.date_reg),
+      });
       setView('invoice');
     } catch (e: any) { showToast(e.message, true); }
   };
 
-  if (view === 'invoice' && invoice) return <InvoiceView invoice={invoice} onBack={() => { setView('list'); setInvoice(null); }} showToast={showToast} onNew={() => { setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('form'); }} />;
+  if (view === 'invoice' && invoice) return <InvoiceView invoice={invoice} onBack={() => { setView('list'); setInvoice(null); load(); }} showToast={showToast} onNew={() => { setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setInvoice(null); setView('form'); }} />;
 
   if (view === 'reprint') return (
     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12 }}>
@@ -439,7 +505,8 @@ function SalesScreen({ showToast }: any) {
 
         <ScrollView horizontal showsHorizontalScrollIndicator>
           <View>
-            <View style={s.tblHeader}>
+            {/* هدر جدول — RTL */}
+            <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
               <Text style={[s.thCell, { width: 36 }]}>#</Text>
               <Text style={[s.thCell, { width: 160 }]}>نام مدل</Text>
               <Text style={[s.thCell, { width: 70 }]}>کد</Text>
@@ -450,44 +517,82 @@ function SalesScreen({ showToast }: any) {
               <Text style={[s.thCell, { width: 110 }]}>مانده</Text>
               <Text style={[s.thCell, { width: 190 }]}>تاریخ واریز</Text>
               <Text style={[s.thCell, { width: 100 }]}>بانک</Text>
-              <Text style={[s.thCell, { width: 120 }]}>صاحب حساب</Text>
+              <Text style={[s.thCell, { width: 130 }]}>صاحب حساب</Text>
               <Text style={[s.thCell, { width: 140 }]}>شرح</Text>
               <Text style={[s.thCell, { width: 56 }]}>حذف</Text>
             </View>
+
             {items.map((it, i) => {
               const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
               const lineBalance = lineTotal - (Number(it.payment) || 0);
               return (
-                <View key={i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
                   <Text style={[s.tdCell, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
-                  <View style={{ width: 160, paddingHorizontal: 3 }}>
-                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.modelName} onChangeText={(v) => { updItem(i, 'modelName', v); }} onBlur={() => setModel(i, it.modelName)} placeholder="نام مدل" placeholderTextColor={C.textMut} />
-                  </View>
+
+                  {/* نام مدل — Autocomplete */}
+                  <TouchableOpacity
+                    style={{ width: 160, paddingHorizontal: 3 }}
+                    onPress={() => { setPicker({ type: 'model', rowIndex: i }); setPickerQuery(''); }}
+                  >
+                    <View style={[s.tdInput, { backgroundColor: C.input, borderColor: C.border, justifyContent: 'center' }]}>
+                      <Text style={{ color: it.modelName ? C.text : C.textMut, fontSize: 12, textAlign: 'right' }} numberOfLines={1}>
+                        {it.modelName || 'انتخاب مدل...'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
                   <Text style={[s.tdCell, { width: 70, color: '#7c3aed', fontWeight: 'bold' }]}>{it.modelCode || '—'}</Text>
+
                   <View style={{ width: 70, paddingHorizontal: 3 }}>
                     <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" />
                   </View>
                   <View style={{ width: 110, paddingHorizontal: 3 }}>
                     <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" />
                   </View>
+
                   <Text style={[s.tdCell, { width: 120, color: '#00ff88', fontWeight: 'bold' }]}>{lineTotal ? fmt(lineTotal) : '—'}</Text>
+
                   <View style={{ width: 100, paddingHorizontal: 3 }}>
                     <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => updItem(i, 'payment', parseNum(v))} keyboardType="numeric" />
                   </View>
+
                   <Text style={[s.tdCell, { width: 110, color: lineBalance > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{lineTotal ? fmt(lineBalance) : '—'}</Text>
+
                   <View style={{ width: 190, paddingHorizontal: 3 }}>
                     <DateField value={it.depositDate} onChange={(v: string) => updItem(i, 'depositDate', v)} compact />
                   </View>
-                  <View style={{ width: 100, paddingHorizontal: 3 }}>
-                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.bankName} onChangeText={(v) => updItem(i, 'bankName', v)} placeholder="بانک" placeholderTextColor={C.textMut} />
-                  </View>
-                  <View style={{ width: 120, paddingHorizontal: 3 }}>
-                    <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.accountHolder} onChangeText={(v) => updItem(i, 'accountHolder', v)} placeholder="صاحب حساب" placeholderTextColor={C.textMut} />
-                  </View>
+
+                  {/* بانک — Autocomplete */}
+                  <TouchableOpacity
+                    style={{ width: 100, paddingHorizontal: 3 }}
+                    onPress={() => { setPicker({ type: 'bank', rowIndex: i }); setPickerQuery(''); }}
+                  >
+                    <View style={[s.tdInput, { backgroundColor: C.input, borderColor: C.border, justifyContent: 'center' }]}>
+                      <Text style={{ color: it.bankName ? C.text : C.textMut, fontSize: 12, textAlign: 'center' }} numberOfLines={1}>
+                        {it.bankName || 'بانک'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* صاحب حساب — Autocomplete */}
+                  <TouchableOpacity
+                    style={{ width: 130, paddingHorizontal: 3 }}
+                    onPress={() => { setPicker({ type: 'holder', rowIndex: i }); setPickerQuery(''); }}
+                  >
+                    <View style={[s.tdInput, { backgroundColor: C.input, borderColor: C.border, justifyContent: 'center' }]}>
+                      <Text style={{ color: it.accountHolder ? C.text : C.textMut, fontSize: 12, textAlign: 'center' }} numberOfLines={1}>
+                        {it.accountHolder || 'صاحب حساب'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
                   <View style={{ width: 140, paddingHorizontal: 3 }}>
                     <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="شرح" placeholderTextColor={C.textMut} />
                   </View>
-                  <TouchableOpacity onPress={() => delItem(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>🗑</Text></TouchableOpacity>
+
+                  <TouchableOpacity onPress={() => delItem(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}>
+                    <Text style={{ fontSize: 18 }}>🗑</Text>
+                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -495,10 +600,12 @@ function SalesScreen({ showToast }: any) {
         </ScrollView>
 
         <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>➕ افزودن مدل</Text></TouchableOpacity>
+
         <View style={s.grandSummary}>
           <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع مبلغ کل</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
           <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>📦 تعداد اقلام</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
         </View>
+
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
           <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setView('list')}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
           <TouchableOpacity style={[s.btn, { flex: 2, backgroundColor: '#059669' }]} onPress={submit} disabled={saving}>
@@ -506,6 +613,46 @@ function SalesScreen({ showToast }: any) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* ⭐ Modal Picker برای مدل/بانک/صاحب حساب */}
+      <Modal visible={!!picker} transparent animationType="slide" onRequestClose={() => { setPicker(null); setPickerQuery(''); }}>
+        <View style={s.modalBg}>
+          <View style={[s.modalBox, { backgroundColor: C.card, maxHeight: '85%' }]}>
+            <View style={[s.modalHead, { backgroundColor: picker?.type === 'model' ? '#7c3aed' : picker?.type === 'bank' ? '#1e3a8a' : '#059669' }]}>
+              <Text style={s.modalHeadTxt}>
+                {picker?.type === 'model' ? '📦 انتخاب مدل' : picker?.type === 'bank' ? '🏦 انتخاب بانک' : '👤 انتخاب صاحب حساب'}
+              </Text>
+              <TouchableOpacity onPress={() => { setPicker(null); setPickerQuery(''); }}>
+                <Text style={{ color: '#fff', fontSize: 26 }}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ padding: 10 }}>
+              <TextInput
+                style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]}
+                value={pickerQuery}
+                onChangeText={setPickerQuery}
+                placeholder="🔍 جستجو..."
+                placeholderTextColor={C.textMut}
+                autoFocus
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 400 }} keyboardShouldPersistTaps="handled">
+              {pickerFiltered.length === 0 && (
+                <Text style={{ textAlign: 'center', color: C.textMut, padding: 20 }}>موردی یافت نشد</Text>
+              )}
+              {pickerFiltered.map((opt, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: C.border }}
+                  onPress={() => pickFromModal(opt)}
+                >
+                  <Text style={{ color: C.text, fontSize: 14, textAlign: 'right' }}>{opt}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 

@@ -57,7 +57,21 @@ const confirmMsg = (title: string, msg: string): Promise<boolean> => {
     ]);
   });
 };
-
+// ══════════════════════════════════════════════════════════
+//  Dashboard Styles
+// ══════════════════════════════════════════════════════════
+const dash = {
+  page: {
+    backgroundColor: '#080b13',
+    borderRadius: 18,
+    padding: 14,
+    margin: 10,
+    borderWidth: 2,
+    borderColor: '#1f3a5f',
+    // ... بقیه
+  } as any,
+  // ... بقیه استایل‌ها
+};
 // ══════════════════════════════════════════════════════════
 //  ROOT
 // ══════════════════════════════════════════════════════════
@@ -312,24 +326,57 @@ function DigitalDashboard({ refreshKey, settings }: any) {
   const date = jalaliDisplay(now);
   const profit = stats?.profit || 0;
   const filter = settings?.dashboard_filter || 'both';
+  const rangeLabel = stats?.rangeLabel || 'ماه جاری';
+
+  // متن elapsed
+  const j = g2j(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  const elapsed = `امروز: ${j[0]}/${pad2(j[1])}/${pad2(j[2])}`;
+
+  const cards = [
+    { i: '🛒', l: 'کل فروش', v: stats?.totalSales || 0, c: '#60a5fa', show: filter !== 'purchase' },
+    { i: '📦', l: 'کل خرید', v: stats?.totalPurchases || 0, c: '#fb923c', show: filter !== 'sales' },
+    { i: '💳', l: 'پرداخت مشتری', v: stats?.customerPaid || 0, c: '#34d399', show: filter !== 'purchase' },
+    { i: '📌', l: 'بدهی مشتری', v: stats?.customerDebt || 0, c: '#fb923c', show: filter !== 'purchase' },
+    { i: '💵', l: 'پرداخت به تأمین‌کننده', v: stats?.supplierPaid || 0, c: '#34d399', show: filter !== 'sales' },
+    { i: '📌', l: 'بدهی به تأمین‌کننده', v: stats?.supplierDebt || 0, c: '#f87171', show: filter !== 'sales' },
+  ].filter(c => c.show);
 
   return (
-    <View style={s.dash}>
-      <View style={{ alignItems: 'center', marginBottom: 8 }}><View style={s.rangeBadge}><Text style={s.rangeBadgeTxt}>{stats?.rangeLabel || 'ماه جاری'}</Text></View></View>
-      <View style={s.clockRow}><Text style={s.time}>{time}</Text><Text style={s.dateTxt}>{date}</Text></View>
-      <View style={s.profitBox}>
-        <Text style={s.profitLbl}>💰 سود خالص</Text>
-        <Text style={[s.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>{fmt(profit)}</Text>
-        <Text style={s.profitUnit}>تومان</Text>
+    <View style={dash.page}>
+      {/* Badge بازه */}
+      <View style={{ alignItems: 'center', marginBottom: 10 }}>
+        <View style={dash.rangeBadge}>
+          <Text style={dash.rangeBadgeTxt}>{rangeLabel}</Text>
+        </View>
       </View>
+
+      {/* ساعت + تاریخ */}
+      <View style={dash.clockRow}>
+        <Text style={dash.time}>{time}</Text>
+        <View style={{ alignItems: 'center', gap: 2 }}>
+          <Text style={dash.dateSmall}>{date}</Text>
+          <Text style={dash.dateElapsed}>{elapsed}</Text>
+        </View>
+      </View>
+
+      {/* سود خالص */}
+      <View style={dash.profitBox}>
+        <Text style={dash.profitLbl}>💰 سود خالص {rangeLabel}</Text>
+        <Text style={[dash.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88', textShadowColor: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>
+          {fmt(profit)}
+        </Text>
+        <Text style={dash.profitUnit}>تومان</Text>
+      </View>
+
+      {/* کارت‌ها */}
       {loading ? <ActivityIndicator color="#00ff88" /> : (
-        <View style={s.grid}>
-          {filter !== 'purchase' && <DCard i="🛒" l="کل فروش" v={fmt(stats?.totalSales || 0)} c="#60a5fa" />}
-          {filter !== 'sales' && <DCard i="📦" l="کل خرید" v={fmt(stats?.totalPurchases || 0)} c="#fb923c" />}
-          {filter !== 'purchase' && <DCard i="💳" l="پرداخت مشتری" v={fmt(stats?.customerPaid || 0)} c="#34d399" />}
-          {filter !== 'purchase' && <DCard i="📌" l="بدهی مشتری" v={fmt(stats?.customerDebt || 0)} c="#fb923c" />}
-          {filter !== 'sales' && <DCard i="💵" l="پرداخت به تأمین‌کننده" v={fmt(stats?.supplierPaid || 0)} c="#34d399" />}
-          {filter !== 'sales' && <DCard i="📌" l="بدهی به تأمین‌کننده" v={fmt(stats?.supplierDebt || 0)} c="#f87171" />}
+        <View style={dash.grid}>
+          {cards.map((c, i) => (
+            <View key={i} style={dash.dItem}>
+              <Text style={dash.dLbl}>{c.i} {c.l}</Text>
+              <Text style={[dash.dVal, { color: c.c, textShadowColor: c.c }]} numberOfLines={1}>{fmt(c.v)}</Text>
+            </View>
+          ))}
         </View>
       )}
     </View>

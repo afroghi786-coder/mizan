@@ -1630,6 +1630,19 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={save} disabled={saving}>
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>💾 ذخیره همه تنظیمات</Text>}
       </TouchableOpacity>
+
+      {/* ⭐ دکمه خروج */}
+      <Text style={s.secT}>🚪 خروج از حساب</Text>
+      <TouchableOpacity
+        style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}
+        onPress={async () => {
+          const ok = await confirmMsg('خروج', 'از حساب خارج می‌شوی؟');
+          if (!ok) return;
+          await supabase.auth.signOut();
+        }}
+      >
+        <Text style={s.btnTxt}>🚪 خروج از حساب</Text>
+      </TouchableOpacity>
     </View>
   );
 }

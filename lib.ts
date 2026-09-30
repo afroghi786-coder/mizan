@@ -292,23 +292,11 @@ export async function generateCustomerCode(): Promise<string> {
 export async function generateInvoiceNumber(): Promise<string> {
   const now = new Date();
   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
-  const { data } = await supabase
-    .from('sales')
-    .select('invoice_number')
-    .order('created_at', { ascending: false })
-    .limit(200);
-  let maxS = 1000;
-  const existing = new Set<string>();
-  (data || []).forEach((r: any) => {
-    const inv = String(r.invoice_number || '');
-    if (!inv) return;
-    existing.add(inv);
-    const m = inv.match(/-?(\d+)$/);
-    if (m) { const n = +m[1]; if (n > maxS && n < 1000000) maxS = n; }
-  });
-  let next = maxS + 1, cand = `${ds}-${next}`;
-  while (existing.has(cand)) { next++; cand = `${ds}-${next}`; }
-  return cand;
+  // ⭐ ۸ کاراکتر تصادفی — غیرقابل حدس، غیرقابل تداخل
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let rand = '';
+  for (let i = 0; i < 8; i++) rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  return `${ds}-${rand}`;
 }
 export async function createSale(payload: {
   invoiceNumber: string; customerCode: string; customerName: string;

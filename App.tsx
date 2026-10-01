@@ -399,7 +399,85 @@ function Autocomplete({ value, onChange, onSelect, options, placeholder, label }
     </View>
   );
 }
+// ══════════════════════════════════════════════════════════
+//  CellAutocomplete — برای استفاده توی جدول‌ها (compact)
+// ══════════════════════════════════════════════════════════
+function CellAutocomplete({ value, onChange, onSelect, options, placeholder }: any) {
+  const [show, setShow] = useState(false);
+  const [query, setQuery] = useState('');
 
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    const list = q ? options.filter((x: string) => String(x).toLowerCase().includes(q)) : options;
+    const seen = new Set<string>();
+    return list.filter((x: string) => { if (seen.has(x)) return false; seen.add(x); return true; }).slice(0, 100);
+  }, [query, options]);
+
+  const open = () => { setQuery(''); setShow(true); };
+  const pick = (v: string) => { onChange(v); if (onSelect) onSelect(v); setShow(false); };
+
+  return (
+    <>
+      <TouchableOpacity
+        style={{
+          backgroundColor: C.input,
+          borderWidth: 1,
+          borderColor: C.border,
+          borderRadius: 6,
+          paddingHorizontal: 6,
+          paddingVertical: 8,
+          minHeight: 34,
+          justifyContent: 'center',
+        }}
+        onPress={open}
+      >
+        <Text
+          style={{ color: value ? C.text : C.textMut, fontSize: 11, textAlign: 'right' }}
+          numberOfLines={1}
+        >
+          {value || placeholder || 'انتخاب...'}
+        </Text>
+      </TouchableOpacity>
+
+      <Modal visible={show} transparent animationType="fade" onRequestClose={() => setShow(false)}>
+        <View style={s.modalBg}>
+          <View style={[s.modalBox, { backgroundColor: C.card, maxWidth: 500 }]}>
+            <View style={[s.modalHead, { backgroundColor: '#1e3a8a' }]}>
+              <Text style={s.modalHeadTxt}>{placeholder || 'انتخاب'}</Text>
+              <TouchableOpacity onPress={() => setShow(false)}>
+                <Text style={{ color: '#fff', fontSize: 26 }}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ padding: 12 }}>
+              <TextInput
+                style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, marginBottom: 8 }]}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="🔍 جستجو..."
+                placeholderTextColor={C.textMut}
+                autoFocus
+              />
+              <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+                {filtered.length === 0 && (
+                  <Text style={{ textAlign: 'center', color: C.textMut, padding: 20 }}>موردی یافت نشد</Text>
+                )}
+                {filtered.map((opt: string) => (
+                  <TouchableOpacity
+                    key={opt}
+                    onPress={() => pick(opt)}
+                    style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
+                  >
+                    <Text style={{ color: C.text, textAlign: 'right', fontSize: 14 }}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
 // ══════════════════════════════════════════════════════════
 //  DATE FIELD
 // ══════════════════════════════════════════════════════════
@@ -1872,6 +1950,7 @@ function NewOrderSection({ showToast }: any) {
 // ══════════════════════════════════════════════════════════
 function SearchSection({ showToast }: any) {
   const [list, setList] = useState<any[]>([]);
+  const [prods, setProds] = useState<Product[]>([]);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -1881,7 +1960,8 @@ function SearchSection({ showToast }: any) {
   const [dirty, setDirty] = useState(false);
 
   const load = async () => { setLoading(true); try { setList(await searchAllInvoices('')); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
-  useEffect(() => { load(); }, []);
+  const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+  useEffect(() => { load(); loadProds(); }, []);
 
   const filtered = list.filter((r) => {
     if (filter !== 'all' && r.type !== filter) return false;
@@ -1965,7 +2045,7 @@ function SearchSection({ showToast }: any) {
               <Text style={[s.thCell, { width: 100 }]}>مبلغ</Text>
               <Text style={[s.thCell, { width: 100 }]}>پرداخت</Text>
               <Text style={[s.thCell, { width: 100 }]}>مانده</Text>
-              <Text style={[s.thCell, { width: 200 }]}>تاریخ واریز</Text>
+             <Text style={[s.thCell, { width: 340 }]}>تاریخ واریز</Text>
               <Text style={[s.thCell, { width: 100 }]}>بانک</Text>
               <Text style={[s.thCell, { width: 130 }]}>صاحب حساب</Text>
               <Text style={[s.thCell, { width: 140 }]}>شرح</Text>
@@ -1978,15 +2058,43 @@ function SearchSection({ showToast }: any) {
                 <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, r._deleted && { opacity: 0.4 }, r._new && { backgroundColor: IS_DARK ? '#2e1065' : '#f5f3ff' }]}>
                   <Text style={[s.tdCell, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
                   <View style={{ width: 90, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelCode} onChangeText={(v) => updRow(i, 'modelCode', v)} editable={!r._deleted} /></View>
-                  <View style={{ width: 180, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelName} onChangeText={(v) => updRow(i, 'modelName', v)} editable={!r._deleted} /></View>
+                                  <View style={{ width: 180, paddingHorizontal: 3 }}>
+                    <CellAutocomplete
+                      value={r.modelName}
+                      onChange={(v: string) => updRow(i, 'modelName', v)}
+                      onSelect={(v: string) => {
+                        const p = prods.find((x: any) => x.name === v);
+                        if (p) {
+                          updRow(i, 'modelCode', p.code || '');
+                          updRow(i, 'priceUnit', p.price || 0);
+                        }
+                      }}
+                      options={prods.map(p => p.name).filter(Boolean)}
+                      placeholder="نام مدل..."
+                    />
+                  </View>
                   <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.quantity || '')} onChangeText={(v) => updRow(i, 'quantity', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
                   <View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
                   <Text style={[s.tdCell, { width: 100, color: '#00ff88', fontWeight: 'bold' }]}>{lt ? fmt(lt) : '—'}</Text>
                   <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.payment || '')} onChangeText={(v) => updRow(i, 'payment', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
                   <Text style={[s.tdCell, { width: 100, color: lb > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{lt ? fmt(lb) : '—'}</Text>
-                  <View style={{ width: 200, paddingHorizontal: 3 }}><DateField value={r.depositDate} onChange={(v: string) => updRow(i, 'depositDate', v)} compact /></View>
-                  <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.bankName} onChangeText={(v) => updRow(i, 'bankName', v)} editable={!r._deleted} /></View>
-                  <View style={{ width: 130, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.accountHolder} onChangeText={(v) => updRow(i, 'accountHolder', v)} editable={!r._deleted} /></View>
+                                  <View style={{ width: 340, paddingHorizontal: 3 }}><DateField value={r.depositDate} onChange={(v: string) => updRow(i, 'depositDate', v)} compact /></View>
+                                   <View style={{ width: 110, paddingHorizontal: 3 }}>
+                    <CellAutocomplete
+                      value={r.bankName}
+                      onChange={(v: string) => updRow(i, 'bankName', v)}
+                      options={BANKS}
+                      placeholder="بانک..."
+                    />
+                  </View>
+                                  <View style={{ width: 140, paddingHorizontal: 3 }}>
+                    <CellAutocomplete
+                      value={r.accountHolder}
+                      onChange={(v: string) => updRow(i, 'accountHolder', v)}
+                      options={Array.from(new Set(prods.map((p: any) => p.supplier_name || '').filter(Boolean)))}
+                      placeholder="صاحب حساب..."
+                    />
+                  </View>
                   <View style={{ width: 140, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.description} onChangeText={(v) => updRow(i, 'description', v)} editable={!r._deleted} /></View>
                   <TouchableOpacity onPress={() => delRow(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>{r._deleted ? '↺' : '🗑'}</Text></TouchableOpacity>
                 </View>

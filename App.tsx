@@ -922,8 +922,6 @@ function SalesScreen({ showToast }: any) {
   // ═══════════════ حالت لیست ═══════════════
   return (
     <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
-      <DigitalDashboard refreshKey={0} settings={settings} />
-
       <View style={{ flexDirection: 'row-reverse', gap: 8, marginVertical: 8 }}>
         <TouchableOpacity style={[S.btnPrimary, { flex: 1 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
           <Text style={S.btnPrimaryTxt}>➕ فاکتور جدید</Text>
@@ -1377,9 +1375,8 @@ function PurchaseScreen({ showToast }: any) {
     </KeyboardAvoidingView>
   );
 
-  return (
+   return (
     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
-      <DigitalDashboard refreshKey={0} settings={settings} />
       <TouchableOpacity style={[s.addBtn, { backgroundColor: '#166534', marginTop: 8 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
         <Text style={s.btnTxt}>➕ فاکتور خرید جدید</Text>
       </TouchableOpacity>
@@ -1640,9 +1637,8 @@ function InventoryScreen({ showToast }: any) {
   const statusLabel = (st: string) => st === 'negative' ? '⚫ منفی' : st === 'out' ? '🔴 ناموجود' : st === 'low' ? '⚠️ کمبود' : '✅ سالم';
   const statusColor = (st: string) => st === 'negative' ? '#94a3b8' : st === 'out' ? '#dc2626' : st === 'low' ? '#d97706' : '#059669';
 
-  return (
-    <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-      <DigitalDashboard refreshKey={0} settings={{}} />
+     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+      {/* آمار */}
 
       {/* آمار */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>

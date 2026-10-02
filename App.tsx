@@ -1570,7 +1570,7 @@ function ProfitScreen({ showToast, settings }: any) {
             const avgSale = m.totalQty ? (m.totalSales / m.totalQty) : 0;
             const unitProfit = m.purchasePrice > 0 ? (avgSale - m.purchasePrice) : 0;
             return (
-              <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, m.estimated && { backgroundColor: IS_DARK ? '#1e1b4b' : '#f5f3ff' }]}>
+              <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, m.estimated && { backgroundColor: C.isDark ? '#1e1b4b' : '#f5f3ff' }]}>
                 <Text style={[s.tdCell, { width: 40, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
                 <Text style={[s.tdCell, { width: 90, color: '#7c3aed', fontWeight: 'bold' }]}>{m.code}</Text>
                 <Text style={[s.tdCell, { width: 180, color: C.text, textAlign: 'right', fontWeight: 'bold' }]} numberOfLines={1}>{m.name}</Text>
@@ -1682,7 +1682,7 @@ function InventoryScreen({ showToast }: any) {
             <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((m: any, i: number) => {
-            const rowBg = m.status === 'negative' ? (IS_DARK ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (IS_DARK ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (IS_DARK ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
+            const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
             return (
               <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: rowBg, borderRightWidth: 3, borderRightColor: statusColor(m.status) }]}>
                 <Text style={[s.tdCell, { width: 40, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
@@ -2052,7 +2052,7 @@ function SearchSection({ showToast }: any) {
               const lt = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
               const lb = lt - (Number(r.payment) || 0);
               return (
-                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, r._deleted && { opacity: 0.4 }, r._new && { backgroundColor: IS_DARK ? '#2e1065' : '#f5f3ff' }]}>
+                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, r._deleted && { opacity: 0.4 }, r._new && { backgroundColor: C.isDark ? '#2e1065' : '#f5f3ff' }]}>
                   <Text style={[s.tdCell, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
                   <View style={{ width: 90, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelCode} onChangeText={(v) => updRow(i, 'modelCode', v)} editable={!r._deleted} /></View>
                                   <View style={{ width: 180, paddingHorizontal: 3 }}>
@@ -2575,7 +2575,7 @@ function SourcesSection({ showToast }: any) {
             <Text style={[s.thCell, { width: 120 }]}>عملیات</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((p, i) => (
-            <View key={p.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, p.id && dirtyRows.has(p.id) && { backgroundColor: IS_DARK ? '#2e1065' : '#f5f3ff' }]}>
+            <View key={p.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, p.id && dirtyRows.has(p.id) && { backgroundColor: C.isDark ? '#2e1065' : '#f5f3ff' }]}>
               <Text style={[s.tdCell, { width: 40, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
               {inlineMode ? (
                 <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={p.code} onChangeText={(v) => updCell(p.id, 'code', v, list.indexOf(p))} /></View>

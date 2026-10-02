@@ -521,7 +521,7 @@ function DateField({ value, onChange, compact, defaultToToday }: any) {
     else if (type === 'hijri') { const r = h2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
     else { gg = new Date(y, m - 1, d, h, n, sec); }
     setG(gg); onChange(toStorageDateFull(gg));
-  };                                              // ← این خط رو اضافه کن
+  };                                             
 
   const F = ({ v, k, w, ph }: any) => (
     <TextInput style={[s.dateInp, { width: w || 44, color: C.text }, compact && { fontSize: 11 }]} value={v} onChangeText={(t) => apply({ ...fields, [k]: t.replace(/\D/g, '').slice(0, k === 'y' ? 4 : 2) })} keyboardType="numeric" placeholder={ph} placeholderTextColor={C.textMut} />

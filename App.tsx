@@ -17,7 +17,7 @@ import {
   supabase, fmt, parseNum, toFaNum, pad2,
   getCalType, setCalType, loadCalType, saveCalType, CalType,
   parseDateAny, toStorageDate, toStorageDateFull, displayDate, displayDateOnly,
-  jalaliDisplay, g2j, j2g,
+    jalaliDisplay, g2j, j2g, g2h, h2g,
   BANKS, SHIPPINGS, DASH_RANGE_LABELS,
   getProducts, createProduct, updateProduct, deleteProduct,
   lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale,
@@ -506,6 +506,7 @@ function DateField({ value, onChange, compact, defaultToToday }: any) {
     if (!g) { setFields({ y: '', m: '', d: '', h: '00', n: '00', s: '00' }); return; }
     let y = 0, mo = 0, d = 0;
     if (type === 'jalali') { [y, mo, d] = g2j(g.getFullYear(), g.getMonth() + 1, g.getDate()); }
+    else if (type === 'hijri') { const h = g2h(g); y = h.y; mo = h.m; d = h.d; }
     else { y = g.getFullYear(); mo = g.getMonth() + 1; d = g.getDate(); }
     setFields({ y: String(y), m: pad2(mo), d: pad2(d), h: pad2(g.getHours()), n: pad2(g.getMinutes()), s: pad2(g.getSeconds()) });
   }, [g, type]);
@@ -517,9 +518,9 @@ function DateField({ value, onChange, compact, defaultToToday }: any) {
     const h = parseInt(f.h, 10) || 0, n = parseInt(f.n, 10) || 0, sec = parseInt(f.s, 10) || 0;
     let gg: Date;
     if (type === 'jalali') { const r = j2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
+    else if (type === 'hijri') { const r = h2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
     else { gg = new Date(y, m - 1, d, h, n, sec); }
     setG(gg); onChange(toStorageDateFull(gg));
-  };
 
   const F = ({ v, k, w, ph }: any) => (
     <TextInput style={[s.dateInp, { width: w || 44, color: C.text }, compact && { fontSize: 11 }]} value={v} onChangeText={(t) => apply({ ...fields, [k]: t.replace(/\D/g, '').slice(0, k === 'y' ? 4 : 2) })} keyboardType="numeric" placeholder={ph} placeholderTextColor={C.textMut} />

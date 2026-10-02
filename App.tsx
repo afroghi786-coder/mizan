@@ -311,7 +311,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
           C.isSimple ? '#64748b' :
           tab === 'purchase' ? '#0f5132' :
           tab === 'print' ? '#4a235a' :
-          tab === 'mgr' ? '#7b241c' :
+          tab === 'mgr' ? '#334155' :
           tab === 'profit' ? '#4a235a' :
           tab === 'inventory' ? '#0f5132' :
           '#0f2438',
@@ -2965,9 +2965,9 @@ const s = StyleSheet.create({
   chipActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
   chipTxt: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold' },
   chipTxtActive: { color: '#fff' },
-  subTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#334155', backgroundColor: '#1a2332' },
-  subTabActive: { backgroundColor: '#c0392b', borderColor: '#c0392b' },
-  subTabTxt: { color: '#94a3b8', fontSize: 12, fontWeight: 'bold' },
+   subTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#f8fafc' },
+  subTabActive: { backgroundColor: '#475569', borderColor: '#475569' },
+  subTabTxt: { color: '#475569', fontSize: 12, fontWeight: 'bold' },
   subTabTxtActive: { color: '#fff' },
 
   // Modal

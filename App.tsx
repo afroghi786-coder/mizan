@@ -2522,7 +2522,6 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
       ))}
 
       <Text style={s.secT}>🚪 خروج از حساب</Text>
-      <Text style={s.secT}>🚪 خروج از حساب</Text>
       <TouchableOpacity
         style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}
         onPress={async () => {

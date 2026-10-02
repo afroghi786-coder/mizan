@@ -1445,130 +1445,366 @@ function PurchaseScreen({ showToast }: any) {
 function PrintScreen({ showToast }: any) {
   const [code, setCode] = useState('');
   const [report, setReport] = useState<any>(null);
-  const [mode, setMode] = useState<'none' | 'summary' | 'full'>('none');
   const [loading, setLoading] = useState(false);
+  const ref = useRef<View>(null);
 
-  const loadReport = async (m: 'summary' | 'full') => {
+  const loadReport = async () => {
     if (!code.trim()) return showToast('کد را وارد کن', true);
     setLoading(true);
     try {
-      const { data: saleRows } = await supabase.from('sales').select('*').eq('customer_code', code.trim());
-      if (!saleRows?.length) {
-        const { data: pData } = await supabase.from('purchases').select('*').eq('supplier_code', code.trim());
-        if (!pData?.length) { showToast('داده‌ای یافت نشد', true); return; }
-        const grouped: any = {};
-        pData.forEach((r: any) => {
-          if (!grouped[r.invoice_number]) grouped[r.invoice_number] = { invoice: r.invoice_number, date: r.date_factor, name: r.supplier_name, total: 0, paid: 0, items: [] };
-          grouped[r.invoice_number].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
-          grouped[r.invoice_number].paid += Number(r.payment) || 0;
-          grouped[r.invoice_number].items.push({ modelName: r.model_name, quantity: r.quantity, priceUnit: r.price_unit, total: r.quantity * r.price_unit });
-        });
-        const rows = Object.values(grouped);
-        const totals = rows.reduce((a: any, r: any) => ({ sales: a.sales + r.total, payments: a.payments + r.paid }), { sales: 0, payments: 0 });
-        setReport({ type: 'تأمین‌کننده', name: pData[0].supplier_name, code: code.trim(), rows, totals });
-        setMode(m); return;
-      }
-      const grouped: any = {};
-      saleRows.forEach((r: any) => {
-        if (!grouped[r.invoice_number]) grouped[r.invoice_number] = { invoice: r.invoice_number, date: r.date_factor, name: r.customer_name, total: 0, paid: 0, items: [] };
-        grouped[r.invoice_number].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
-        grouped[r.invoice_number].paid += Number(r.payment) || 0;
-        grouped[r.invoice_number].items.push({ modelName: r.model_name, quantity: r.quantity, priceUnit: r.price_unit, total: r.quantity * r.price_unit });
+      const c2 = code.trim();
+      const [
+        { data: salesAsCustomer },
+        { data: purchasesAsSupplier },
+        { data: triangRecv },
+      ] = await Promise.all([
+        supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+        supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at'),
+        supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+      ]);
+
+      const hasAny = (salesAsCustomer?.length || 0) + (purchasesAsSupplier?.length || 0) + (triangRecv?.length || 0);
+      if (!hasAny) { showToast('داده‌ای برای این کد یافت نشد', true); setReport(null); return; }
+
+      const name = salesAsCustomer?.[0]?.customer_name
+        || purchasesAsSupplier?.[0]?.supplier_name
+        || triangRecv?.[0]?.account_holder || '—';
+      const phone = salesAsCustomer?.[0]?.customer_phone
+        || purchasesAsSupplier?.[0]?.supplier_phone || '—';
+
+      const salesRows = (salesAsCustomer || []).map((r: any) => ({
+        date: r.date_reg || r.date_factor, invoice: r.invoice_number,
+        modelCode: r.model_code, modelName: r.model_name,
+        qty: Number(r.quantity) || 0, priceUnit: Number(r.price_unit) || 0,
+        total: (Number(r.quantity) || 0) * (Number(r.price_unit) || 0),
+        payment: Number(r.payment) || 0,
+        bank: r.bank_name || '', holder: r.account_holder || '',
+        holderCode: r.account_holder_code || '',
+        depositDate: r.deposit_date || '', shipping: r.shipping || '',
+        desc: r.description || '',
+      }));
+
+      const purchaseRows = (purchasesAsSupplier || []).map((r: any) => ({
+        date: r.date_reg || r.date_factor, invoice: r.invoice_number,
+        manualInv: r.manual_invoice || '',
+        modelCode: r.model_code, modelName: r.model_name,
+        qty: Number(r.quantity) || 0, priceUnit: Number(r.price_unit) || 0,
+        total: (Number(r.quantity) || 0) * (Number(r.price_unit) || 0),
+        payment: Number(r.payment) || 0,
+        bank: r.bank_name || '', holder: r.account_holder || '',
+        payerCode: r.payer_code || '',
+        depositDate: r.deposit_date || '',
+        desc: r.description || '',
+      }));
+
+      const triangRows = (triangRecv || []).map((r: any) => ({
+        date: r.date_reg || r.date_factor, invoice: r.invoice_number,
+        fromName: r.customer_name, fromCode: r.customer_code, fromPhone: r.customer_phone,
+        amount: Number(r.payment) || 0,
+        bank: r.bank_name || '', holder: r.account_holder || '',
+        depositDate: r.deposit_date || '',
+      }));
+
+      const totalSales = salesRows.reduce((a: number, r: any) => a + r.total, 0);
+      const paidByCustomer = salesRows.reduce((a: number, r: any) => a + r.payment, 0);
+      const totalPurchases = purchaseRows.reduce((a: number, r: any) => a + r.total, 0);
+      const paidToSupplier = purchaseRows.reduce((a: number, r: any) => a + r.payment, 0);
+      const totalTriang = triangRows.reduce((a: number, r: any) => a + r.amount, 0);
+
+      const customerOwes = totalSales - paidByCustomer;
+      const weOwe = totalPurchases - paidToSupplier - totalTriang;
+      const net = customerOwes - weOwe;
+
+      setReport({
+        code: c2, name, phone,
+        salesRows, purchaseRows, triangRows,
+        totals: { totalSales, paidByCustomer, customerOwes, totalPurchases, paidToSupplier, weOwe, totalTriang, net },
+        timeString: formatDateForType(new Date()),
       });
-      const rows = Object.values(grouped);
-      const totals = rows.reduce((a: any, r: any) => ({ sales: a.sales + r.total, payments: a.payments + r.paid }), { sales: 0, payments: 0 });
-      setReport({ type: 'مشتری', name: saleRows[0].customer_name, code: code.trim(), rows, totals });
-      setMode(m);
-    } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); }
+    } catch (e: any) { showToast(e.message, true); }
+    finally { setLoading(false); }
+  };
+
+  const capture = async (mode: 'share' | 'print') => {
+    try {
+      const uri = await captureRef(ref, { format: 'jpg', quality: 0.95 });
+      if (mode === 'print') await Print.printAsync({ uri });
+      else if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+    } catch (e: any) { showToast(e.message, true); }
   };
 
   const exportExcel = async () => {
     if (!report) return;
     try {
-      const ws = XLSX.utils.json_to_sheet(report.rows.map((r: any, i: number) => ({ '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'نام': r.name, 'جمع': r.total, 'پرداخت': r.paid, 'مانده': r.total - r.paid })));
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'گزارش');
+      const t = report.totals;
+
+      if (report.salesRows.length) {
+        const data = report.salesRows.map((r: any, i: number) => ({
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice,
+          'کد مدل': r.modelCode, 'نام مدل': r.modelName,
+          'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+          'پرداخت': r.payment, 'مانده': r.total - r.payment,
+          'بانک': r.bank, 'صاحب حساب': r.holder, 'کد صاحب حساب': r.holderCode,
+          'تاریخ واریز': displayDateOnly(r.depositDate), 'باربری': r.shipping, 'شرح': r.desc,
+        }));
+        data.push({ 'نام مدل': 'جمع فروش', 'جمع': t.totalSales, 'پرداخت': t.paidByCustomer, 'مانده': t.customerOwes } as any);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'فروش');
+      }
+
+      if (report.purchaseRows.length) {
+        const data = report.purchaseRows.map((r: any, i: number) => ({
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'فاکتور دستی': r.manualInv,
+          'کد مدل': r.modelCode, 'نام مدل': r.modelName,
+          'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+          'پرداخت': r.payment, 'مانده': r.total - r.payment,
+          'بانک': r.bank, 'صاحب حساب': r.holder, 'کد پرداخت‌کننده': r.payerCode,
+          'تاریخ واریز': displayDateOnly(r.depositDate), 'شرح': r.desc,
+        }));
+        data.push({ 'نام مدل': 'جمع خرید', 'جمع': t.totalPurchases, 'پرداخت': t.paidToSupplier, 'مانده': t.weOwe + t.totalTriang } as any);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'خرید');
+      }
+
+      if (report.triangRows.length) {
+        const data = report.triangRows.map((r: any, i: number) => ({
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور فروش': r.invoice,
+          'فرستنده': r.fromName, 'کد فرستنده': r.fromCode, 'تلفن فرستنده': r.fromPhone,
+          'مبلغ': r.amount, 'بانک': r.bank, 'گیرنده': r.holder,
+          'تاریخ واریز': displayDateOnly(r.depositDate),
+        }));
+        data.push({ 'فرستنده': 'جمع مثلثی', 'مبلغ': t.totalTriang } as any);
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'مثلثی');
+      }
+
+      const summary = [
+        { 'شرح': 'نام', 'مقدار': report.name },
+        { 'شرح': 'کد', 'مقدار': report.code },
+        { 'شرح': 'تلفن', 'مقدار': report.phone },
+        { 'شرح': 'جمع فروش ما به ایشان', 'مقدار': t.totalSales },
+        { 'شرح': 'دریافت از ایشان', 'مقدار': t.paidByCustomer },
+        { 'شرح': 'بدهی ایشان به ما', 'مقدار': t.customerOwes },
+        { 'شرح': 'جمع خرید ما از ایشان', 'مقدار': t.totalPurchases },
+        { 'شرح': 'پرداخت ما به ایشان', 'مقدار': t.paidToSupplier },
+        { 'شرح': 'دریافت مثلثی به نیابت', 'مقدار': t.totalTriang },
+        { 'شرح': 'بدهی ما به ایشان', 'مقدار': t.weOwe },
+        { 'شرح': t.net > 0 ? 'بدهی نهایی ایشان' : t.net < 0 ? 'بدهی نهایی ما' : 'تسویه', 'مقدار': Math.abs(t.net) },
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'خلاصه');
+
       const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-      const path = (FileSystem as any).cacheDirectory + `report-${code}-${Date.now()}.xlsx`;
+      const path = (FileSystem as any).cacheDirectory + 'report-' + report.code + '-' + Date.now() + '.xlsx';
       await FileSystem.writeAsStringAsync(path, wbout, { encoding: 'base64' });
       if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(path);
-      showToast('✅ فایل اکسل آماده شد');
+      showToast('✅ اکسل آماده شد');
     } catch (e: any) { showToast(e.message, true); }
   };
 
-  const exportPDF = async () => {
-    if (!report) return;
-    try {
-      const html = `<html dir="rtl"><head><style>@page { size: A4 landscape; margin: 8mm; } body { font-family:Tahoma; }</style></head><body><h1>گزارش ${report.type}</h1><h3>${report.name} — ${report.code}</h3><table border="1" cellpadding="6" style="width:100%;border-collapse:collapse"><tr style="background:#333;color:#fff"><th>#</th><th>تاریخ</th><th>فاکتور</th><th>جمع</th><th>پرداخت</th><th>مانده</th></tr>${report.rows.map((r: any, i: number) => `<tr><td>${i + 1}</td><td>${displayDateOnly(r.date)}</td><td>${r.invoice}</td><td>${fmt(r.total)}</td><td>${fmt(r.paid)}</td><td>${fmt(r.total - r.paid)}</td></tr>`).join('')}</table></body></html>`;
-      const { uri } = await Print.printToFileAsync({ html });
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
-      showToast('✅ PDF آماده شد');
-    } catch (e: any) { showToast(e.message, true); }
-  };
+  const t = report?.totals;
 
   return (
-    <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-      <Text style={s.formTitle}>🖨️ پرینت حساب</Text>
+    <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
+      <Text style={s.formTitle}>🖨️ گزارش جامع حساب</Text>
       <Text style={[s.lbl, { color: C.textMut }]}>کد طرف حساب</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={code} onChangeText={setCode} placeholder="M_1001" placeholderTextColor={C.textMut} />
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#6c3483' }]} onPress={() => loadReport('summary')} disabled={loading}><Text style={s.btnTxt}>🟣 خلاصه مالی</Text></TouchableOpacity>
-        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#059669' }]} onPress={() => loadReport('full')} disabled={loading}><Text style={s.btnTxt}>🟢 جامع</Text></TouchableOpacity>
-      </View>
-      {loading && <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} />}
-      {report && mode !== 'none' && (
-        <View style={{ marginTop: 16 }}>
-          <View style={s.statsCard}>
-            <Text style={s.statsLbl}>👤 {report.name} — {report.type}</Text>
-            <Text style={s.statsLbl}>🆔 {report.code}</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Text style={s.rptBadge}>جمع: {fmt(report.totals.sales)}</Text>
-              <Text style={s.rptBadge}>پرداخت: {fmt(report.totals.payments)}</Text>
-              <Text style={[s.rptBadge, { backgroundColor: report.totals.sales - report.totals.payments > 0 ? '#fee2e2' : '#d1fae5', color: report.totals.sales - report.totals.payments > 0 ? '#991b1b' : '#065f46' }]}>مانده: {fmt(report.totals.sales - report.totals.payments)}</Text>
-            </View>
-          </View>
+      <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={loadReport} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>🔍 نمایش گزارش کامل</Text>}
+      </TouchableOpacity>
 
-          {/* ⭐ جدول ردیفی مثل وب */}
-          <ScrollView horizontal showsHorizontalScrollIndicator>
-            <View>
-              <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
-                <Text style={[s.thCell, { width: 40 }]}>#</Text>
-                <Text style={[s.thCell, { width: 130 }]}>تاریخ</Text>
-                <Text style={[s.thCell, { width: 150 }]}>فاکتور</Text>
-                <Text style={[s.thCell, { width: 140 }]}>نام</Text>
-                {mode === 'full' && <Text style={[s.thCell, { width: 180 }]}>اقلام</Text>}
-                <Text style={[s.thCell, { width: 130 }]}>جمع</Text>
-                <Text style={[s.thCell, { width: 130 }]}>پرداخت</Text>
-                <Text style={[s.thCell, { width: 130 }]}>مانده</Text>
-              </View>
-              {report.rows.map((r: any, i: number) => (
-                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
-                  <Text style={[s.tdCell, { width: 40, color: '#d4af37', fontWeight: 'bold' }]}>{toFaNum(i + 1)}</Text>
-                  <Text style={[s.tdCell, { width: 130, color: C.text }]}>{displayDateOnly(r.date)}</Text>
-                  <Text style={[s.tdCell, { width: 150, color: '#7c3aed', fontWeight: 'bold' }]}>{r.invoice}</Text>
-                  <Text style={[s.tdCell, { width: 140, color: C.text, textAlign: 'right' }]}>{r.name}</Text>
-                  {mode === 'full' && <Text style={[s.tdCell, { width: 180, color: C.textMut, textAlign: 'right' }]}>{r.items?.map((it: any) => it.modelName).join(' + ')}</Text>}
-                  <Text style={[s.tdCell, { width: 130, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(r.total)}</Text>
-                  <Text style={[s.tdCell, { width: 130, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.paid)}</Text>
-                  <Text style={[s.tdCell, { width: 130, color: r.total - r.paid > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{fmt(r.total - r.paid)}</Text>
+      {report && t && (
+        <>
+          <View ref={ref} collapsable={false} style={{ backgroundColor: '#ffffff', borderRadius: 12, padding: 12, marginTop: 16 }}>
+            <View style={{ borderBottomWidth: 2, borderBottomColor: '#d4af37', paddingBottom: 6, marginBottom: 10 }}>
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' }}>⚖️ گزارش جامع — میزان</Text>
+              <Text style={{ fontSize: 9, color: '#64748b', textAlign: 'right', marginTop: 3 }}>📅 {report.timeString}</Text>
+            </View>
+
+            <View style={{ backgroundColor: '#f8fafc', borderRadius: 6, padding: 8, marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' }}>
+              <Text style={{ fontSize: 11, color: '#1e3a5f', fontWeight: 'bold', textAlign: 'right' }}>👤 {report.name}</Text>
+              <Text style={{ fontSize: 10, color: '#475569', textAlign: 'right', marginTop: 2 }}>🆔 {report.code}   📞 {report.phone}</Text>
+            </View>
+
+            {report.salesRows.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 12, color: '#1e40af', fontWeight: 'bold', textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 6, marginBottom: 4 }}>
+                  🛒 فروش — {toFaNum(report.salesRows.length)} ردیف
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator>
+                  <View>
+                    <View style={{ flexDirection: 'row-reverse', backgroundColor: '#1e3a8a', paddingVertical: 4 }}>
+                      <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد مدل</Text>
+                      <Text style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>نام مدل</Text>
+                      <Text style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>پرداخت</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>صاحب حساب</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد صاحب</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>باربری</Text>
+                      <Text style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>شرح</Text>
+                    </View>
+                    {report.salesRows.map((r: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+                        <Text style={{ width: 28, color: '#d4af37', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{toFaNum(i + 1)}</Text>
+                        <Text style={{ width: 75, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{displayDateOnly(r.date)}</Text>
+                        <Text style={{ width: 95, color: '#7c3aed', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{r.invoice}</Text>
+                        <Text style={{ width: 75, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{r.modelCode || '—'}</Text>
+                        <Text style={{ width: 140, color: '#1e3a5f', fontSize: 9, textAlign: 'right' }} numberOfLines={2}>{r.modelName || '—'}</Text>
+                        <Text style={{ width: 40, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{toFaNum(r.qty)}</Text>
+                        <Text style={{ width: 80, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{fmt(r.priceUnit)}</Text>
+                        <Text style={{ width: 90, color: '#1e40af', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{fmt(r.total)}</Text>
+                        <Text style={{ width: 80, color: '#059669', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{r.payment ? fmt(r.payment) : '—'}</Text>
+                        <Text style={{ width: 90, color: r.total - r.payment > 0 ? '#dc2626' : '#059669', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{fmt(r.total - r.payment)}</Text>
+                        <Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.bank || '—'}</Text>
+                        <Text style={{ width: 90, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.holder || '—'}</Text>
+                        <Text style={{ width: 80, color: '#7c3aed', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{r.holderCode || '—'}</Text>
+                        <Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.depositDate ? displayDateOnly(r.depositDate) : '—'}</Text>
+                        <Text style={{ width: 90, color: '#6d28d9', fontSize: 9, textAlign: 'center' }}>{r.shipping || '—'}</Text>
+                        <Text style={{ width: 110, color: '#475569', fontSize: 9, textAlign: 'right' }} numberOfLines={2}>{r.desc || '—'}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTopWidth: 2, borderTopColor: '#3b82f6', paddingHorizontal: 6 }}>
+                  <Text style={{ fontSize: 10, color: '#1e3a5f', fontWeight: 'bold' }}>جمع: {fmt(t.totalSales)}</Text>
+                  <Text style={{ fontSize: 10, color: '#059669', fontWeight: 'bold' }}>دریافت: {fmt(t.paidByCustomer)}</Text>
+                  <Text style={{ fontSize: 10, color: '#dc2626', fontWeight: 'bold' }}>بدهی ایشان: {fmt(t.customerOwes)}</Text>
                 </View>
-              ))}
-            </View>
-          </ScrollView>
+              </View>
+            )}
 
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#c0392b' }]} onPress={exportExcel}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
-            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#8e44ad' }]} onPress={exportPDF}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+            {report.purchaseRows.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 12, color: '#9a3412', fontWeight: 'bold', textAlign: 'right', backgroundColor: '#fff7ed', padding: 6, borderRadius: 6, marginBottom: 4 }}>
+                  🛍️ خرید — {toFaNum(report.purchaseRows.length)} ردیف
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator>
+                  <View>
+                    <View style={{ flexDirection: 'row-reverse', backgroundColor: '#9a3412', paddingVertical: 4 }}>
+                      <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد مدل</Text>
+                      <Text style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>نام مدل</Text>
+                      <Text style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>پرداخت</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>صاحب حساب</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد پرداخت</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
+                      <Text style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>شرح</Text>
+                    </View>
+                    {report.purchaseRows.map((r: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#fff7ed' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#fed7aa' }}>
+                        <Text style={{ width: 28, color: '#d4af37', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{toFaNum(i + 1)}</Text>
+                        <Text style={{ width: 75, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{displayDateOnly(r.date)}</Text>
+                        <Text style={{ width: 95, color: '#7c3aed', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{r.invoice}</Text>
+                        <Text style={{ width: 75, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{r.modelCode || '—'}</Text>
+                        <Text style={{ width: 140, color: '#1e3a5f', fontSize: 9, textAlign: 'right' }} numberOfLines={2}>{r.modelName || '—'}</Text>
+                        <Text style={{ width: 40, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{toFaNum(r.qty)}</Text>
+                        <Text style={{ width: 80, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{fmt(r.priceUnit)}</Text>
+                        <Text style={{ width: 90, color: '#9a3412', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{fmt(r.total)}</Text>
+                        <Text style={{ width: 80, color: '#059669', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{r.payment ? fmt(r.payment) : '—'}</Text>
+                        <Text style={{ width: 90, color: r.total - r.payment > 0 ? '#dc2626' : '#059669', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{fmt(r.total - r.payment)}</Text>
+                        <Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.bank || '—'}</Text>
+                        <Text style={{ width: 90, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.holder || '—'}</Text>
+                        <Text style={{ width: 80, color: '#7c3aed', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{r.payerCode || '—'}</Text>
+                        <Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.depositDate ? displayDateOnly(r.depositDate) : '—'}</Text>
+                        <Text style={{ width: 110, color: '#475569', fontSize: 9, textAlign: 'right' }} numberOfLines={2}>{r.desc || '—'}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTopWidth: 2, borderTopColor: '#f97316', paddingHorizontal: 6 }}>
+                  <Text style={{ fontSize: 10, color: '#1e3a5f', fontWeight: 'bold' }}>جمع: {fmt(t.totalPurchases)}</Text>
+                  <Text style={{ fontSize: 10, color: '#059669', fontWeight: 'bold' }}>پرداخت: {fmt(t.paidToSupplier)}</Text>
+                  <Text style={{ fontSize: 10, color: '#dc2626', fontWeight: 'bold' }}>بدهی ما: {fmt(t.weOwe + t.totalTriang)}</Text>
+                </View>
+              </View>
+            )}
+
+            {report.triangRows.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 12, color: '#065f46', fontWeight: 'bold', textAlign: 'right', backgroundColor: '#f0fdf4', padding: 6, borderRadius: 6, marginBottom: 4 }}>
+                  🔺 پرداخت مشتریان ما — {toFaNum(report.triangRows.length)} ردیف
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator>
+                  <View>
+                    <View style={{ flexDirection: 'row-reverse', backgroundColor: '#065f46', paddingVertical: 4 }}>
+                      <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+                      <Text style={{ width: 130, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>فرستنده</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد فرستنده</Text>
+                      <Text style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تلفن</Text>
+                      <Text style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>مبلغ</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>گیرنده</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
+                    </View>
+                    {report.triangRows.map((r: any, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f0fdf4' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#d1fae5' }}>
+                        <Text style={{ width: 28, color: '#d4af37', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{toFaNum(i + 1)}</Text>
+                        <Text style={{ width: 75, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{displayDateOnly(r.date)}</Text>
+                        <Text style={{ width: 95, color: '#7c3aed', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{r.invoice}</Text>
+                        <Text style={{ width: 130, color: '#1e3a5f', fontSize: 9, textAlign: 'right' }}>{r.fromName}</Text>
+                        <Text style={{ width: 80, color: '#7c3aed', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{r.fromCode}</Text>
+                        <Text style={{ width: 100, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.fromPhone || '—'}</Text>
+                        <Text style={{ width: 100, color: '#065f46', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{fmt(r.amount)}</Text>
+                        <Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.bank || '—'}</Text>
+                        <Text style={{ width: 90, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.holder || '—'}</Text>
+                        <Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.depositDate ? displayDateOnly(r.depositDate) : '—'}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+                <Text style={{ fontSize: 10, color: '#065f46', fontWeight: 'bold', textAlign: 'right', marginTop: 6, paddingTop: 6, borderTopWidth: 2, borderTopColor: '#10b981' }}>
+                  جمع دریافتی مثلثی: {fmt(t.totalTriang)} تومان
+                </Text>
+              </View>
+            )}
+
+            <View style={{ backgroundColor: t.net > 0 ? '#fef2f2' : t.net < 0 ? '#f0fdf4' : '#f3f4f6', borderRadius: 8, padding: 10, marginTop: 8, borderWidth: 2, borderColor: t.net > 0 ? '#dc2626' : t.net < 0 ? '#059669' : '#94a3b8' }}>
+              <Text style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6, color: t.net > 0 ? '#991b1b' : t.net < 0 ? '#065f46' : '#475569' }}>
+                {t.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : t.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
+              </Text>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
+                <Text style={{ fontSize: 10, color: '#64748b' }}>بدهی ایشان به ما:</Text>
+                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(t.customerOwes)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
+                <Text style={{ fontSize: 10, color: '#64748b' }}>بدهی ما به ایشان:</Text>
+                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(t.weOwe + t.totalTriang)}</Text>
+              </View>
+              <View style={{ borderTopWidth: 1, borderTopColor: '#cbd5e1', marginTop: 4, paddingTop: 4 }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', color: t.net > 0 ? '#dc2626' : t.net < 0 ? '#059669' : '#475569' }}>
+                  {fmt(Math.abs(t.net))} تومان
+                </Text>
+              </View>
+            </View>
+
+            <Text style={{ fontSize: 8, color: '#94a3b8', textAlign: 'center', marginTop: 8 }}>میزان — حساب‌ها دقیق، معاملات امن، ذهن آسوده</Text>
           </View>
-        </View>
+
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#c0392b' }]} onPress={exportExcel}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#0ea5e9' }]} onPress={() => capture('share')}><Text style={s.btnTxt}>📤 اشتراک</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#8e44ad' }]} onPress={() => capture('print')}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+          </View>
+        </>
       )}
     </ScrollView>
   );
 }
 
-// ══════════════════════════════════════════════════════════
-//  PROFIT SCREEN — جدول ردیفی مثل وب
-// ══════════════════════════════════════════════════════════
 function ProfitScreen({ showToast, settings }: any) {
   const [models, setModels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

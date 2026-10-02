@@ -2105,6 +2105,7 @@ function SearchSection({ showToast }: any) {
               <Text style={[s.thCell, { width: 130 }]}>صاحب حساب</Text>
               <Text style={[s.thCell, { width: 110 }]}>کد صاحب حساب</Text>
               <Text style={[s.thCell, { width: 140 }]}>شرح</Text>
+              {editing.type === 'sales' && <Text style={[s.thCell, { width: 130 }]}>باربری</Text>}
               <Text style={[s.thCell, { width: 56 }]}>حذف</Text>
             </View>
             {editRows.map((r, i) => {
@@ -2164,6 +2165,16 @@ function SearchSection({ showToast }: any) {
                     />
                   </View>
                   <View style={{ width: 140, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.description} onChangeText={(v) => updRow(i, 'description', v)} editable={!r._deleted} /></View>
+                  {editing.type === 'sales' && (
+                    <View style={{ width: 130, paddingHorizontal: 3 }}>
+                      <CellAutocomplete
+                        value={r.shipping}
+                        onChange={(v: string) => updRow(i, 'shipping', v)}
+                        options={SHIPPINGS}
+                        placeholder="باربری..."
+                      />
+                    </View>
+                  )}
                   <TouchableOpacity onPress={() => delRow(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>{r._deleted ? '↺' : '🗑'}</Text></TouchableOpacity>
                 </View>
               );

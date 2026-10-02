@@ -1198,6 +1198,7 @@ function getS() {
     listCardCust: { fontSize: 11, color: textMutClr, marginBottom: 6, textAlign: 'right' } as any,
     listCardStat: { fontSize: 11, color: textClr } as any,
   };
+}
 // ══════════════════════════════════════════════════════════
 //  PURCHASE SCREEN — کارت‌های عمودی
 // ══════════════════════════════════════════════════════════

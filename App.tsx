@@ -2086,6 +2086,7 @@ function SearchSection({ showToast }: any) {
              <Text style={[s.thCell, { width: 340 }]}>تاریخ واریز</Text>
               <Text style={[s.thCell, { width: 100 }]}>بانک</Text>
               <Text style={[s.thCell, { width: 130 }]}>صاحب حساب</Text>
+              <Text style={[s.thCell, { width: 110 }]}>کد صاحب حساب</Text>
               <Text style={[s.thCell, { width: 140 }]}>شرح</Text>
               <Text style={[s.thCell, { width: 56 }]}>حذف</Text>
             </View>
@@ -2125,12 +2126,24 @@ function SearchSection({ showToast }: any) {
                       placeholder="بانک..."
                     />
                   </View>
-                                  <View style={{ width: 140, paddingHorizontal: 3 }}>
+                                  <View style={{ width: 130, paddingHorizontal: 3 }}>
                     <CellAutocomplete
                       value={r.accountHolder}
-                      onChange={(v: string) => updRow(i, 'accountHolder', v)}
+                      onChange={(v: string) => { updRow(i, 'accountHolder', v); updRow(i, 'accountHolderCode', ''); }}
+                      onSelect={async (v: string) => {
+                        const code = await lookupCodeByName(v);
+                        updRow(i, 'accountHolderCode', code);
+                      }}
                       options={Array.from(new Set(prods.map((p: any) => p.supplier_name || '').filter(Boolean)))}
                       placeholder="صاحب حساب..."
+                    />
+                  </View>
+                  <View style={{ width: 110, paddingHorizontal: 3 }}>
+                    <TextInput
+                      style={[s.tdInput, { backgroundColor: C.cardAlt, color: '#059669', borderColor: C.border, fontWeight: 'bold' }]}
+                      value={r.accountHolderCode || ''}
+                      editable={false}
+                      placeholder="خودکار"
                     />
                   </View>
                   <View style={{ width: 140, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.description} onChangeText={(v) => updRow(i, 'description', v)} editable={!r._deleted} /></View>

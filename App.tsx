@@ -1249,6 +1249,12 @@ function PurchaseScreen({ showToast }: any) {
     setSName(v);
     try { const f = await lookupSupplierByName(v); if (f) { if (f.supplier_code && !sCode) setSCode(f.supplier_code); if (f.supplier_phone && !sPhone) setSPhone(f.supplier_phone); } } catch {}
   };
+    const remove = async (inv: string) => {
+    const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
+    if (!ok) return;
+    setHiddenPurchases([...hiddenPurchases, inv]);
+    showToast('✅ از لیست پنهان شد');
+  };
 
   const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
   const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
@@ -1637,9 +1643,8 @@ function InventoryScreen({ showToast }: any) {
   const statusLabel = (st: string) => st === 'negative' ? '⚫ منفی' : st === 'out' ? '🔴 ناموجود' : st === 'low' ? '⚠️ کمبود' : '✅ سالم';
   const statusColor = (st: string) => st === 'negative' ? '#94a3b8' : st === 'out' ? '#dc2626' : st === 'low' ? '#d97706' : '#059669';
 
-     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-      {/* آمار */}
-
+  return (
+    <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
       {/* آمار */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
         {[{ l: '📊 مدل‌ها', v: stats.totalModels || 0, c: '#60a5fa' }, { l: '📦 جمع', v: stats.totalQty || 0, c: '#34d399' }, { l: '⚠️ کمبود', v: stats.lowStock || 0, c: '#fb923c' }, { l: '🔴 ناموجود', v: stats.outOfStock || 0, c: '#f87171' }, { l: '⚫ منفی', v: stats.negative || 0, c: '#94a3b8' }].map((b, i) => (
@@ -3046,9 +3051,3 @@ const s = StyleSheet.create({
   emptyStateTxt: { color: '#1a2332', fontSize: 15, fontWeight: 'bold', marginTop: 12 },
   emptyStateSub: { color: '#94a3b8', fontSize: 12, marginTop: 4 },
 });
-  const remove = async (inv: string) => {
-    const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
-    if (!ok) return;
-    setHiddenPurchases([...hiddenPurchases, inv]);
-    showToast('✅ از لیست پنهان شد');
-  };

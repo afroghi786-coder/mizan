@@ -2414,7 +2414,6 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   };
   const removeEmail = (i: number) => setSettings({ ...settings, emails: emails.filter((_, idx) => idx !== i) });
   const toggleDay = (d: string) => setSchedDailyDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
-  const pins = settings.tab_pins || {};
   return (
     <View>
       <Text style={s.secT}>📅 نوع تقویم</Text>

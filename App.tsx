@@ -2361,6 +2361,7 @@ function ReportsSection({ showToast }: any) {
 // ══════════════════════════════════════════════════════════
 function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const [saving, setSaving] = useState(false);
+  const pins = settings.tab_pins || {};
   const [emailInput, setEmailInput] = useState('');
   const [autoDelEnabled, setAutoDelEnabled] = useState(false);
   const [autoDelHours, setAutoDelHours] = useState('1');

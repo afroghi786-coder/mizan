@@ -240,6 +240,7 @@ export interface Settings {
   sched_daily?: any;
   sched_weekly?: any;
   theme?: string;
+    tab_pins?: Record<string, string>;
 }
 
 // ═══════════════════════════════════════════════════

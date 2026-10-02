@@ -281,7 +281,7 @@ export default function App() {
 //  MAIN
 // ══════════════════════════════════════════════════════════
 const DEFAULT_TAB_PINS: Record<string, string> = {
-  purchase: '4242', print: '4242', mgr: '4242', profit: '4242', inventory: '4242',
+  purchase: '4242', print: '4242', mgr: '4242', profit: '4242', inventory: '4242', settings: '4242',
 };
 function getTabPins(settings: any): Record<string, string> {
   const p = settings?.tab_pins;
@@ -363,7 +363,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
       {tab === 'order' && <SalesScreen showToast={showToast} />}
       {tab === 'purchase' && <PurchaseScreen showToast={showToast} />}
       {tab === 'print' && <PrintScreen showToast={showToast} />}
-      {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />}
+      {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />}
       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       <PinModal
@@ -1773,8 +1773,14 @@ function InventoryScreen({ showToast }: any) {
 // ══════════════════════════════════════════════════════════
 //  MANAGEMENT SCREEN — ۶ زیرتب
 // ══════════════════════════════════════════════════════════
-function ManagementScreen({ showToast, settings, setSettings, reload }: any) {
+function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }: any) {
   const [sub, setSub] = useState('unpaid');
+  const [settingsUnlocked, setSettingsUnlocked] = useState(false);
+  const [pendingSettingsUnlock, setPendingSettingsUnlock] = useState(false);
+  const openSub = (k: string) => {
+    if (k === 'settings' && tabPins?.settings && !settingsUnlocked) { setPendingSettingsUnlock(true); return; }
+    setSub(k);
+  };
   const subs = [
     { k: 'unpaid', l: '🗑️ پرداخت‌نشده' },
     { k: 'newOrder', l: '➕ سفارش جدید' },
@@ -1787,8 +1793,8 @@ function ManagementScreen({ showToast, settings, setSettings, reload }: any) {
     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
         {subs.map((t) => (
-          <TouchableOpacity key={t.k} onPress={() => setSub(t.k)} style={[s.subTab, sub === t.k && s.subTabActive]}>
-            <Text style={[s.subTabTxt, sub === t.k && s.subTabTxtActive]}>{t.l}</Text>
+          <TouchableOpacity key={t.k} onPress={() => openSub(t.k)} style={[s.subTab, sub === t.k && s.subTabActive]}>
+            <Text style={[s.subTabTxt, sub === t.k && s.subTabTxtActive]}>{t.l}{t.k === 'settings' && tabPins?.settings && !settingsUnlocked ? ' 🔒' : ''}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -1798,6 +1804,17 @@ function ManagementScreen({ showToast, settings, setSettings, reload }: any) {
       {sub === 'reports' && <ReportsSection showToast={showToast} />}
       {sub === 'settings' && <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reload} />}
       {sub === 'sources' && <SourcesSection showToast={showToast} />}
+      <PinModal
+        visible={pendingSettingsUnlock}
+        correctPin={tabPins?.settings || ''}
+        onClose={() => setPendingSettingsUnlock(false)}
+        onSuccess={() => {
+          setSettingsUnlocked(true);
+          setSub('settings');
+          setPendingSettingsUnlock(false);
+        }}
+        showToast={showToast}
+      />
     </ScrollView>
   );
 }
@@ -2533,6 +2550,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         { k: 'mgr', l: '📋 مدیریت' },
         { k: 'profit', l: '💹 سود' },
         { k: 'inventory', l: '📦 انبار' },
+        { k: 'settings', l: '⚙️ تنظیمات' },
       ].map((t) => (
         <View key={t.k} style={{ marginBottom: 8 }}>
           <Text style={[s.lblS, { color: C.textMut }]}>{t.l}</Text>
@@ -2549,6 +2567,19 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
           />
         </View>
       ))}
+
+      <TouchableOpacity
+        style={[s.btn, { backgroundColor: '#7c3aed', marginTop: 8 }]}
+        onPress={async () => {
+          try {
+            await updateSettings({ ...settings, tab_pins: pins });
+            showToast('✅ رمزها ذخیره شد');
+            reload && reload();
+          } catch (e: any) { showToast(e?.message || 'خطا', true); }
+        }}
+      >
+        <Text style={s.btnTxt}>💾 ذخیره رمزهای تب‌ها</Text>
+      </TouchableOpacity>
 
       <Text style={s.secT}>🚪 خروج از حساب</Text>
       <TouchableOpacity

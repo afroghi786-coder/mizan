@@ -29,19 +29,24 @@ import {
 } from './lib';
 
 // ══════════════════════════════════════════════════════════
-//  Theme
+//  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
 // ══════════════════════════════════════════════════════════
-let IS_DARK = true;
-export const setDark = (d: boolean) => { IS_DARK = d; };
+export type ThemeMode = 'dark' | 'light' | 'simple';
+let THEME_MODE: ThemeMode = 'light';
+export const setThemeMode = (m: ThemeMode) => { THEME_MODE = m; };
+export const getThemeMode = () => THEME_MODE;
 
 const C = {
-  get bg()      { return IS_DARK ? '#f5f7fa' : '#f5f7fa'; },
-  get card()    { return IS_DARK ? '#ffffff' : '#ffffff'; },
-  get cardAlt() { return IS_DARK ? '#f8fafc' : '#f8fafc'; },
-  get text()    { return IS_DARK ? '#1a2332' : '#1a2332'; },
-  get textMut() { return IS_DARK ? '#64748b' : '#64748b'; },
-  get border()  { return IS_DARK ? '#e2e8f0' : '#e2e8f0'; },
-  get input()   { return IS_DARK ? '#fafbfc' : '#ffffff'; },
+  get mode() { return THEME_MODE; },
+  get isDark() { return THEME_MODE === 'dark'; },
+  get isSimple() { return THEME_MODE === 'simple'; },
+  get bg()      { return THEME_MODE === 'dark' ? '#0f2438' : '#f5f7fa'; },
+  get card()    { return THEME_MODE === 'dark' ? '#1a2332' : '#ffffff'; },
+  get cardAlt() { return THEME_MODE === 'dark' ? '#0a1628' : '#f8fafc'; },
+  get text()    { return THEME_MODE === 'dark' ? '#ffffff' : '#1a2332'; },
+  get textMut() { return THEME_MODE === 'dark' ? '#94a3b8' : '#64748b'; },
+  get border()  { return THEME_MODE === 'dark' ? '#334155' : '#e2e8f0'; },
+  get input()   { return THEME_MODE === 'dark' ? '#1a2332' : '#ffffff'; },
 };
 
 const alertMsg = (title: string, msg: string) => {
@@ -225,7 +230,7 @@ export default function App() {
 
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [themeTick, setThemeTick] = useState(0);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
 
   const showToast = useCallback((msg: string, error = false) => {
@@ -233,12 +238,14 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  useEffect(() => { setDark(theme === 'dark'); }, [theme]);
-
   useEffect(() => {
     const failsafe = setTimeout(() => setLoading(false), 5000);
     loadCalType().then(() => getSettings()).then((s: any) => {
-      if (s?.theme === 'light' || s?.theme === 'dark') setTheme(s.theme);
+      const saved = s?.theme_mode || s?.theme;
+      if (saved === 'dark' || saved === 'light' || saved === 'simple') {
+        setThemeMode(saved);
+        setThemeTick(v => v + 1);
+      }
     }).catch(() => {});
     supabase.auth.getSession()
       .then(({ data: { session } }) => { setSession(session); setLoading(false); clearTimeout(failsafe); })
@@ -246,12 +253,25 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => { subscription.unsubscribe(); clearTimeout(failsafe); };
   }, []);
-
-  if (!fontsReady || loading) return <View style={s.loading}><ActivityIndicator size="large" color="#d4af37" /></View>;
+  const cycleTheme = useCallback(() => {
+    const next: ThemeMode =
+      THEME_MODE === 'dark' ? 'light' :
+      THEME_MODE === 'light' ? 'simple' : 'dark';
+    setThemeMode(next);
+    setThemeTick(v => v + 1);
+    getSettings().then((st: any) => {
+      updateSettings({ ...st, theme_mode: next }).catch(() => {});
+    }).catch(() => {});
+  }, []);
+   if (!fontsReady || loading) return <View style={[s.loading, { backgroundColor: C.bg }]}><ActivityIndicator size="large" color="#d4af37" /></View>;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {!session ? <LoginScreen showToast={showToast} /> : <MainApp showToast={showToast} theme={theme} setTheme={setTheme} />}
+      <View key={themeTick} style={{ flex: 1 }}>
+        {!session
+          ? <LoginScreen showToast={showToast} />
+          : <MainApp showToast={showToast} onCycleTheme={cycleTheme} />}
+      </View>
       {toast && <View style={[s.toast, toast.error && { backgroundColor: '#b91c1c' }]}><Text style={s.toastTxt}>{toast.msg}</Text></View>}
     </View>
   );
@@ -260,7 +280,7 @@ export default function App() {
 // ══════════════════════════════════════════════════════════
 //  MAIN
 // ══════════════════════════════════════════════════════════
-function MainApp({ showToast, theme, setTheme }: any) {
+function MainApp({ showToast, onCycleTheme }: any) {
   const [tab, setTab] = useState('order');
   const [pinOk, setPinOk] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
@@ -271,12 +291,6 @@ function MainApp({ showToast, theme, setTheme }: any) {
   }, []);
 
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
-
-  const toggleTheme = () => {
-    const nt = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nt); setDark(nt === 'dark');
-    if (settings) updateSettings({ ...settings, theme: nt }).catch(() => {});
-  };
 
   const tabs = [
     { key: 'order', icon: '🛒', label: 'فروش', color: '#1e3a8a' },
@@ -291,10 +305,10 @@ function MainApp({ showToast, theme, setTheme }: any) {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]} edges={['top', 'left', 'right']}>
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-         {/* ⭐ هدر داینامیک — رنگ عوض می‌شه بر اساس تب */}
+        <StatusBar style={C.isDark ? 'light' : 'dark'} />
       <View style={[s.header, {
         backgroundColor:
+          C.isSimple ? '#64748b' :
           tab === 'purchase' ? '#0f5132' :
           tab === 'print' ? '#4a235a' :
           tab === 'mgr' ? '#7b241c' :
@@ -310,8 +324,10 @@ function MainApp({ showToast, theme, setTheme }: any) {
         }} />
 
         <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-          <TouchableOpacity onPress={toggleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
-            <Text style={{ fontSize: 20 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
+                 <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
+            <Text style={{ fontSize: 20 }}>
+              {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
+            </Text>
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 12 }}>
             <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
@@ -324,7 +340,7 @@ function MainApp({ showToast, theme, setTheme }: any) {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
         {tabs.map((t) => (
-          <TouchableOpacity key={t.key} onPress={() => requestTab(t.key)} activeOpacity={0.7} style={[s.tab, tab === t.key && { backgroundColor: t.color, borderColor: '#d4af37' }]}>
+                   <TouchableOpacity key={t.key} onPress={() => requestTab(t.key)} activeOpacity={0.7} style={[s.tab, tab === t.key && { backgroundColor: C.isSimple ? '#64748b' : t.color, borderColor: '#d4af37' }]}>
             <Text style={s.tabIcon}>{t.icon}</Text>
             <Text style={[s.tabLbl, { color: C.textMut }, tab === t.key && s.tabLblActive]}>{t.label}</Text>
             {!pinOk && t.key !== 'order' && <Text style={s.lock}>🔒</Text>}
@@ -610,6 +626,7 @@ function DCard({ i, l, v, c }: any) {
 //  SALES SCREEN — فرم با کارت‌های عمودی مثل وب
 // ══════════════════════════════════════════════════════════
 function SalesScreen({ showToast }: any) {
+  const S = getS();
   const [view, setView] = useState<'list' | 'form' | 'invoice' | 'reprint'>('list');
   const [settings, setSettings] = useState<Settings>({});
   const [list, setList] = useState<any[]>([]);
@@ -949,260 +966,238 @@ function SalesScreen({ showToast }: any) {
   );
 }
 
+
 // ══════════════════════════════════════════════════════════
-//  استایل‌های صفحه فروش (LIGHT THEME — مثل وب خودت)
+//  استایل‌های صفحه فروش (داینامیک بر اساس تم)
 // ══════════════════════════════════════════════════════════
-const S = {
-  // رنگ‌های اصلی
-  bg: '#f5f7fa',
-  card: '#ffffff',
-  text: '#1a2332',
-  muted: '#64748b',
-  border: '#e2e8f0',
-  inputBg: '#fafbfc',
-  inputBorder: '#e2e8f0',
-  primary: '#1e3a5f',
-  order: '#1d4ed8',
-  orderDark: '#1e3a8a',
-  orderLight: '#3b82f6',
-  gold: '#d4af37',
-  goldLight: '#f4d47a',
-  itemBg: '#fafbfc',
-  badgeBg: '#e8eef5',
-  badgeText: '#1e3a5f',
-  removeBg: '#fef2f2',
-  removeText: '#b91c1c',
-  valueBg: '#f0f4f8',
-  valueText: '#1e3a5f',
+function getS() {
+  const dark = THEME_MODE === 'dark';
+  const pageBg = dark ? '#0f2438' : '#f5f7fa';
+  const cardBg = dark ? '#1a2332' : '#ffffff';
+  const cardAltBg = dark ? '#0a1628' : '#fafbfc';
+  const textClr = dark ? '#ffffff' : '#1a2332';
+  const textMutClr = dark ? '#94a3b8' : '#64748b';
+  const borderClr = dark ? '#334155' : '#e2e8f0';
+  const inputBg = dark ? '#1a2332' : '#fafbfc';
+  const badgeBg = dark ? '#334155' : '#e8eef5';
+  const badgeTxt = dark ? '#e2e8f0' : '#1e3a5f';
+  const valueBg = dark ? '#0a1628' : '#f0f4f8';
+  const valueTxt = dark ? '#93c5fd' : '#1e3a5f';
+  const removeBg = dark ? '#3b1219' : '#fef2f2';
+  const removeBrd = dark ? '#7f1d1d' : '#fecaca';
+  const removeTxt = dark ? '#fca5a5' : '#b91c1c';
+  const btnSecBg = dark ? '#334155' : '#f1f5f9';
+  const btnSecBrd = dark ? '#475569' : '#cbd5e1';
+  const addModelBrd = dark ? '#475569' : '#cbd2d8';
 
-  // استایل‌ها
-  page: { flex: 1, backgroundColor: '#f5f7fa' } as any,
+  return {
+    bg: pageBg,
+    card: cardBg,
+    text: textClr,
+    muted: textMutClr,
+    border: borderClr,
+    inputBg,
+    inputBorder: borderClr,
+    primary: '#1e3a5f',
+    order: '#1d4ed8',
+    orderDark: '#1e3a8a',
+    orderLight: '#3b82f6',
+    gold: '#d4af37',
+    goldLight: '#f4d47a',
+    itemBg: cardAltBg,
+    badgeBg,
+    badgeText: badgeTxt,
+    removeBg,
+    removeText: removeTxt,
+    valueBg,
+    valueText: valueTxt,
 
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#0f2438',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-    overflow: 'hidden',
-  } as any,
-
-  cardHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-  } as any,
-
-  cardHeaderIcon: { fontSize: 18 } as any,
-  cardHeaderTitle: { fontSize: 15, fontWeight: 'bold', textAlign: 'right' } as any,
-
-  label: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1a2332',
-    marginBottom: 5,
-    marginTop: 10,
-    textAlign: 'right',
-  } as any,
-
-  required: { color: '#d4af37', fontWeight: 'bold' } as any,
-
-  input: {
-    backgroundColor: '#fafbfc',
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: '#1a2332',
-    textAlign: 'right',
-    fontFamily: Platform.OS === 'web' ? 'Tahoma, sans-serif' : undefined,
-  } as any,
-
-  statusBadge: { fontSize: 11, color: '#059669', fontWeight: 'bold' } as any,
-
-  // کارت اقلام (Item Row)
-  itemRow: {
-    backgroundColor: '#fafbfc',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-  } as any,
-
-  itemRowHeader: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  } as any,
-
-  itemRowNumBadge: {
-    backgroundColor: '#e8eef5',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 6,
-  } as any,
-
-  itemRowNumTxt: { color: '#1e3a5f', fontSize: 11, fontWeight: 'bold' } as any,
-
-  itemRemoveBtn: {
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fecaca',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  } as any,
-
-  itemRemoveTxt: { color: '#b91c1c', fontSize: 12, fontWeight: 'bold' } as any,
-
-  threeColRow: { flexDirection: 'row-reverse', gap: 6, marginTop: 6 } as any,
-  threeColCell: { flex: 1 } as any,
-
-  miniLabel: {
-    fontSize: 10,
-    color: '#64748b',
-    marginBottom: 3,
-    fontWeight: 'bold',
-    textAlign: 'right',
-  } as any,
-
-  miniInput: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    fontSize: 12,
-    color: '#1a2332',
-    textAlign: 'center',
-  } as any,
-
-  miniValue: {
-    backgroundColor: '#f0f4f8',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 34,
-  } as any,
-
-  miniValueTxt: { color: '#1e3a5f', fontSize: 12, fontWeight: 'bold' } as any,
-
-  addModelBtn: {
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#cbd2d8',
-    borderStyle: 'dashed',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 8,
-  } as any,
-
-  addModelBtnTxt: { color: '#1e3a5f', fontSize: 13, fontWeight: 'bold' } as any,
-
-  // خلاصه کل
-  summaryCard: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 12,
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderRightWidth: 4,
-    borderRightColor: '#d4af37',
-  } as any,
-
-  summaryLbl: { color: '#cbd5e1', fontSize: 12, marginBottom: 4, textAlign: 'right' } as any,
-  summaryVal: { color: '#f4d47a', fontSize: 22, fontWeight: 'bold' } as any,
-  summaryCnt: { color: '#ffffff', fontSize: 15, fontWeight: 'bold' } as any,
-
-  // دکمه‌ها
-  btnRowBottom: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 } as any,
-
-  btnSubmit: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as any,
-
-  btnSubmitTxt: { color: '#fff', fontSize: 15, fontWeight: 'bold' } as any,
-
-  btnPrimary: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as any,
-
-  btnPrimaryTxt: { color: '#fff', fontSize: 14, fontWeight: 'bold' } as any,
-
-  btnSecondary: {
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as any,
-
-  btnSecondaryTxt: { color: '#1a2332', fontSize: 14, fontWeight: 'bold' } as any,
-
-  // لیست فاکتورها
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1e3a5f',
-    marginTop: 12,
-    marginBottom: 8,
-    textAlign: 'right',
-  } as any,
-
-  listCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    borderRightWidth: 4,
-    borderRightColor: '#1e3a8a',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    borderTopColor: '#e2e8f0',
-    borderBottomColor: '#e2e8f0',
-    borderLeftColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  } as any,
-
-  listCardInvoice: { fontSize: 13, fontWeight: 'bold', color: '#1e3a5f' } as any,
-  listCardCust: { fontSize: 11, color: '#64748b', marginBottom: 6, textAlign: 'right' } as any,
-  listCardStat: { fontSize: 11, color: '#1a2332' } as any,
-};
+    page: { flex: 1, backgroundColor: pageBg } as any,
+    card: {
+      backgroundColor: cardBg,
+      borderRadius: 14,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: borderClr,
+      shadowColor: '#0f2438',
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+      overflow: 'hidden',
+    } as any,
+    cardHeader: {
+      flexDirection: 'row-reverse',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 2,
+      borderBottomColor: borderClr,
+      backgroundColor: cardBg,
+    } as any,
+    cardHeaderIcon: { fontSize: 18 } as any,
+    cardHeaderTitle: { fontSize: 15, fontWeight: 'bold', textAlign: 'right' } as any,
+    label: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: textClr,
+      marginBottom: 5,
+      marginTop: 10,
+      textAlign: 'right',
+    } as any,
+    required: { color: '#d4af37', fontWeight: 'bold' } as any,
+    input: {
+      backgroundColor: inputBg,
+      borderWidth: 2,
+      borderColor: borderClr,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 13,
+      color: textClr,
+      textAlign: 'right',
+    } as any,
+    statusBadge: { fontSize: 11, color: '#059669', fontWeight: 'bold' } as any,
+    itemRow: {
+      backgroundColor: cardAltBg,
+      borderWidth: 1.5,
+      borderColor: borderClr,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 10,
+    } as any,
+    itemRowHeader: {
+      flexDirection: 'row-reverse',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    } as any,
+    itemRowNumBadge: {
+      backgroundColor: badgeBg,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: 6,
+    } as any,
+    itemRowNumTxt: { color: badgeTxt, fontSize: 11, fontWeight: 'bold' } as any,
+    itemRemoveBtn: {
+      backgroundColor: removeBg,
+      borderWidth: 1,
+      borderColor: removeBrd,
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    } as any,
+    itemRemoveTxt: { color: removeTxt, fontSize: 12, fontWeight: 'bold' } as any,
+    threeColRow: { flexDirection: 'row-reverse', gap: 6, marginTop: 6 } as any,
+    threeColCell: { flex: 1 } as any,
+    miniLabel: {
+      fontSize: 10,
+      color: textMutClr,
+      marginBottom: 3,
+      fontWeight: 'bold',
+      textAlign: 'right',
+    } as any,
+    miniInput: {
+      backgroundColor: cardBg,
+      borderWidth: 1.5,
+      borderColor: borderClr,
+      borderRadius: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 8,
+      fontSize: 12,
+      color: textClr,
+      textAlign: 'center',
+    } as any,
+    miniValue: {
+      backgroundColor: valueBg,
+      borderRadius: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 34,
+    } as any,
+    miniValueTxt: { color: valueTxt, fontSize: 12, fontWeight: 'bold' } as any,
+    addModelBtn: {
+      backgroundColor: cardBg,
+      borderWidth: 2,
+      borderColor: addModelBrd,
+      borderStyle: 'dashed',
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginTop: 8,
+    } as any,
+    addModelBtnTxt: { color: textClr, fontSize: 13, fontWeight: 'bold' } as any,
+    summaryCard: {
+      backgroundColor: '#1e3a8a',
+      borderRadius: 14,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      marginBottom: 12,
+      flexDirection: 'row-reverse',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderRightWidth: 4,
+      borderRightColor: '#d4af37',
+    } as any,
+    summaryLbl: { color: '#cbd5e1', fontSize: 12, marginBottom: 4, textAlign: 'right' } as any,
+    summaryVal: { color: '#f4d47a', fontSize: 22, fontWeight: 'bold' } as any,
+    summaryCnt: { color: '#ffffff', fontSize: 15, fontWeight: 'bold' } as any,
+    btnRowBottom: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 } as any,
+    btnSubmit: {
+      backgroundColor: '#1e3a8a',
+      borderRadius: 12,
+      paddingVertical: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    } as any,
+    btnSubmitTxt: { color: '#fff', fontSize: 15, fontWeight: 'bold' } as any,
+    btnPrimary: {
+      backgroundColor: '#1e3a8a',
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    } as any,
+    btnPrimaryTxt: { color: '#fff', fontSize: 14, fontWeight: 'bold' } as any,
+    btnSecondary: {
+      backgroundColor: btnSecBg,
+      borderWidth: 1,
+      borderColor: btnSecBrd,
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    } as any,
+    btnSecondaryTxt: { color: textClr, fontSize: 14, fontWeight: 'bold' } as any,
+    sectionTitle: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      color: textClr,
+      marginTop: 12,
+      marginBottom: 8,
+      textAlign: 'right',
+    } as any,
+    listCard: {
+      backgroundColor: cardBg,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 8,
+      borderRightWidth: 4,
+      borderRightColor: '#1e3a8a',
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderLeftWidth: 1,
+      borderTopColor: borderClr,
+      borderBottomColor: borderClr,
+      borderLeftColor: borderClr,
+    } as any,
+    listCardInvoice: { fontSize: 13, fontWeight: 'bold', color: textClr } as any,
+    listCardCust: { fontSize: 11, color: textMutClr, marginBottom: 6, textAlign: 'right' } as any,
+    listCardStat: { fontSize: 11, color: textClr } as any,
+  };
 // ══════════════════════════════════════════════════════════
 //  PURCHASE SCREEN — کارت‌های عمودی
 // ══════════════════════════════════════════════════════════

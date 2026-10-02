@@ -219,6 +219,7 @@ export interface SaleItem {
   depositDate: string;
   bankName: string;
   accountHolder: string;
+  accountHolderCode: string;
   description: string;
 }
 export interface PurchaseItem {
@@ -356,6 +357,7 @@ export async function createSale(payload: {
     deposit_date: it.depositDate || '',
     bank_name: it.bankName || '',
     account_holder: it.accountHolder || '',
+    account_holder_code: it.accountHolderCode || '',
     description: it.description || '',
     date_factor: toStorageDate(now),
     date_reg: toStorageDateFull(now),
@@ -451,6 +453,7 @@ export async function createPurchase(payload: any) {
       deposit_date: payload.paymentDate || toStorageDateFull(now),
       bank_name: payload.bankAccount || '',
       account_holder: payload.payerName || '',
+      payer_code: payload.payerCode || '',
       receiver: payload.receiverAccount || '',
       date_factor: toStorageDate(now),
       date_reg: toStorageDateFull(now),
@@ -477,6 +480,7 @@ export async function createPurchase(payload: any) {
     deposit_date: idx === 0 ? (payload.paymentDate || toStorageDateFull(now)) : '',
     bank_name: idx === 0 ? (payload.bankAccount || '') : '',
     account_holder: idx === 0 ? (payload.payerName || '') : '',
+    payer_code: idx === 0 ? (payload.payerCode || '') : '',
     receiver: idx === 0 ? (payload.receiverAccount || '') : '',
     date_factor: toStorageDate(now),
     date_reg: toStorageDateFull(now),
@@ -735,4 +739,16 @@ export async function updateSettings(s: Settings) {
     const { error } = await supabase.from('settings').insert(s);
     if (error) throw new Error(error.message);
   }
+}
+
+
+export async function lookupCodeByName(name: string): Promise<string> {
+  if (!name || name.length < 2) return '';
+  const { data: p1 } = await supabase.from('products').select('supplier_code').eq('supplier_name', name).limit(1);
+  if (p1 && p1[0]?.supplier_code) return p1[0].supplier_code;
+  const { data: p2 } = await supabase.from('purchases').select('supplier_code').eq('supplier_name', name).limit(1);
+  if (p2 && p2[0]?.supplier_code) return p2[0].supplier_code;
+  const { data: p3 } = await supabase.from('sales').select('customer_code').eq('customer_name', name).limit(1);
+  if (p3 && p3[0]?.customer_code) return p3[0].customer_code;
+  return '';
 }

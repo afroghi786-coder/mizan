@@ -22,7 +22,7 @@ import {
   getProducts, createProduct, updateProduct, deleteProduct,
   lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale,
   getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail,
-  lookupSupplierByName, createPurchase, getPurchasesGrouped, deletePurchase,
+  lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase,
   getDashboardStats, getInventory,
   getSettings, updateSettings,
   Product, SaleItem, PurchaseItem, Settings,
@@ -686,7 +686,7 @@ function SalesScreen({ showToast }: any) {
     }
   };
 
-  const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', description: '' }]);
+  const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' }]);
   const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
   const delItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
@@ -1242,6 +1242,7 @@ function PurchaseScreen({ showToast }: any) {
   const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
   const [bankAcc, setBankAcc] = useState('');
   const [payerName, setPayerName] = useState('');
+  const [payerCode, setPayerCode] = useState('');
   const [receiverAcc, setReceiverAcc] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1294,10 +1295,10 @@ function PurchaseScreen({ showToast }: any) {
     setSaving(true);
     try {
       const inv = await generateInvoiceNumber();
-      await createPurchase({ invoiceNumber: inv, manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: valid, paymentAmount: amt, paymentDate: payDate, bankAccount: bankAcc, payerName, receiverAccount: receiverAcc, note });
+      await createPurchase({ invoiceNumber: inv, manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: valid, paymentAmount: amt, paymentDate: payDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
       alertMsg('✅ موفق', 'فاکتور خرید ثبت شد');
       setSName(''); setSCode(''); setSPhone(''); setManualInv(''); setItems([]);
-      setPayAmt(''); setBankAcc(''); setPayerName(''); setReceiverAcc(''); setNote('');
+      setPayAmt(''); setBankAcc(''); setPayerName(''); setPayerCode(''); setReceiverAcc(''); setNote('');
       setView('list'); load();
     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
     finally { setSaving(false); }
@@ -1384,9 +1385,24 @@ function PurchaseScreen({ showToast }: any) {
 
         <Text style={[s.lbl, { color: C.textMut }]}>📅 تاریخ پرداخت</Text>
         <DateField value={payDate} onChange={setPayDate} compact defaultToToday />
-        <Text style={[s.lbl, { color: C.textMut }]}>🏦 حساب پرداخت‌کننده</Text>
-        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={bankAcc} onChangeText={setBankAcc} placeholder="اختیاری" placeholderTextColor={C.textMut} />
-        <Autocomplete label="👤 نام پرداخت‌کننده" value={payerName} onChange={setPayerName} options={prods.map(p => p.payer_name || '').filter(Boolean)} placeholder="کلیک..." />
+        <Autocomplete
+          label="👤 نام پرداخت‌کننده"
+          value={payerName}
+          onChange={setPayerName}
+          onSelect={async (v: string) => {
+            const c = await lookupCodeByName(v);
+            setPayerCode(c);
+          }}
+          options={Array.from(new Set([
+            ...prods.map((p: any) => p.payer_name || '').filter(Boolean),
+            ...prods.map((p: any) => p.supplier_name || '').filter(Boolean),
+          ]))}
+          placeholder="کلیک..."
+        />
+        <Text style={[s.lbl, { color: C.textMut }]}>🆔 کد پرداخت‌کننده</Text>
+        <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={payerCode} editable={false} placeholder="خودکار" placeholderTextColor={C.textMut} />
+        <Text style={[s.lbl, { color: C.textMut }]}>🏦 حساب پرداخت‌کننده (بانک)</Text>
+        <Autocomplete value={bankAcc} onChange={setBankAcc} options={BANKS} placeholder="انتخاب بانک..." />
         <Text style={[s.lbl, { color: C.textMut }]}>🏦 حساب دریافت‌کننده</Text>
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAcc} onChangeText={setReceiverAcc} placeholder="اختیاری" placeholderTextColor={C.textMut} />
         <Text style={[s.lbl, { color: C.textMut }]}>📝 شرح</Text>
@@ -1483,7 +1499,7 @@ function PrintScreen({ showToast }: any) {
   const exportPDF = async () => {
     if (!report) return;
     try {
-      const html = `<html dir="rtl"><body style="font-family:Tahoma"><h1>گزارش ${report.type}</h1><h3>${report.name} — ${report.code}</h3><table border="1" cellpadding="6" style="width:100%;border-collapse:collapse"><tr style="background:#333;color:#fff"><th>#</th><th>تاریخ</th><th>فاکتور</th><th>جمع</th><th>پرداخت</th><th>مانده</th></tr>${report.rows.map((r: any, i: number) => `<tr><td>${i + 1}</td><td>${displayDateOnly(r.date)}</td><td>${r.invoice}</td><td>${fmt(r.total)}</td><td>${fmt(r.paid)}</td><td>${fmt(r.total - r.paid)}</td></tr>`).join('')}</table></body></html>`;
+      const html = `<html dir="rtl"><head><style>@page { size: A4 landscape; margin: 8mm; } body { font-family:Tahoma; }</style></head><body><h1>گزارش ${report.type}</h1><h3>${report.name} — ${report.code}</h3><table border="1" cellpadding="6" style="width:100%;border-collapse:collapse"><tr style="background:#333;color:#fff"><th>#</th><th>تاریخ</th><th>فاکتور</th><th>جمع</th><th>پرداخت</th><th>مانده</th></tr>${report.rows.map((r: any, i: number) => `<tr><td>${i + 1}</td><td>${displayDateOnly(r.date)}</td><td>${r.invoice}</td><td>${fmt(r.total)}</td><td>${fmt(r.paid)}</td><td>${fmt(r.total - r.paid)}</td></tr>`).join('')}</table></body></html>`;
       const { uri } = await Print.printToFileAsync({ html });
       if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
       showToast('✅ PDF آماده شد');
@@ -1872,7 +1888,7 @@ function NewOrderSection({ showToast }: any) {
   useEffect(() => {
     getProducts().then(setProds);
     generateInvoiceNumber().then(setInvoice);
-    setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '' }]);
+    setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '' }]);
   }, []);
 
   const onPhone = async (v: string) => {
@@ -1883,7 +1899,7 @@ function NewOrderSection({ showToast }: any) {
       try { const f = await lookupCustomerByPhone(d); if (f) { setStatus('✅'); if (f.customer_name && !name) setName(f.customer_name); if (f.customer_address && !address) setAddress(f.customer_address); } else setStatus('🆕'); } catch {}
     }
   };
-  const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '' }]);
+  const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '' }]);
   const upd = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
   const del = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; } setItems(n); };
@@ -1909,7 +1925,7 @@ function NewOrderSection({ showToast }: any) {
       await createSale({ invoiceNumber: inv, customerCode: code, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid });
       alertMsg('✅ موفق', 'ثبت شد: ' + inv);
       setPhone(''); setName(''); setAddress(''); setShipping('');
-      setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '' }]);
+      setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '' }]);
       setInvoice(await generateInvoiceNumber());
     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); } finally { setSaving(false); }
   };
@@ -2001,12 +2017,12 @@ function SearchSection({ showToast }: any) {
       if (type === 'sales') {
         const rows = await getInvoiceDetail(inv);
         if (!rows.length) { showToast('فاکتور پیدا نشد', true); return; }
-        setEditRows(rows.map((r: any) => ({ rowId: r.id, modelCode: r.model_code, modelName: r.model_name, quantity: r.quantity, priceUnit: r.price_unit, payment: r.payment, description: r.description, depositDate: r.deposit_date, bankName: r.bank_name, accountHolder: r.account_holder, shipping: r.shipping, _deleted: false })));
+        setEditRows(rows.map((r: any) => ({ rowId: r.id, modelCode: r.model_code, modelName: r.model_name, quantity: r.quantity, priceUnit: r.price_unit, payment: r.payment, description: r.description, depositDate: r.deposit_date, bankName: r.bank_name, accountHolder: r.account_holder, accountHolderCode: r.account_holder_code || '', shipping: r.shipping || '', _deleted: false })));
         setEditing({ invoice: inv, type, name: rows[0].customer_name, code: rows[0].customer_code });
       } else {
         const { data } = await supabase.from('purchases').select('*').eq('invoice_number', inv);
         if (!data?.length) { showToast('پیدا نشد', true); return; }
-        setEditRows(data.map((r: any) => ({ rowId: r.id, modelCode: r.model_code, modelName: r.model_name, quantity: r.quantity, priceUnit: r.price_unit, payment: r.payment, description: r.description, depositDate: r.deposit_date, bankName: r.bank_name, accountHolder: r.account_holder, _deleted: false })));
+        setEditRows(data.map((r: any) => ({ rowId: r.id, modelCode: r.model_code, modelName: r.model_name, quantity: r.quantity, priceUnit: r.price_unit, payment: r.payment, description: r.description, depositDate: r.deposit_date, bankName: r.bank_name, accountHolder: r.account_holder, accountHolderCode: r.payer_code || '', shipping: '', _deleted: false })));
         setEditing({ invoice: inv, type, name: data[0].supplier_name, code: data[0].supplier_code });
       }
       setDirty(false);
@@ -2014,7 +2030,7 @@ function SearchSection({ showToast }: any) {
   };
 
   const delRow = (i: number) => { const n = [...editRows]; n[i]._deleted = !n[i]._deleted; setEditRows(n); setDirty(true); };
-  const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', _deleted: false, _new: true }]); setDirty(true); };
+  const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', shipping: '', _deleted: false, _new: true }]); setDirty(true); };
   const updRow = (i: number, f: string, v: any) => { const n = [...editRows]; (n[i] as any)[f] = v; setEditRows(n); setDirty(true); };
 
   const save = async () => {
@@ -2026,7 +2042,7 @@ function SearchSection({ showToast }: any) {
         if (r._deleted && r.rowId) { await supabase.from(tbl).delete().eq('id', r.rowId); continue; }
         if (r._deleted) continue;
         const data: any = { model_code: r.modelCode, model_name: r.modelName, quantity: r.quantity, price_unit: r.priceUnit, payment: r.payment, description: r.description, deposit_date: r.depositDate, bank_name: r.bankName, account_holder: r.accountHolder };
-        if (editing.type === 'sales') data.shipping = r.shipping || '';
+        if (editing.type === 'sales') { data.shipping = r.shipping || ''; data.account_holder_code = r.accountHolderCode || ''; } else { data.payer_code = r.accountHolderCode || ''; }
         if (r.rowId) await supabase.from(tbl).update(data).eq('id', r.rowId);
         else await supabase.from(tbl).insert({ ...data, invoice_number: editing.invoice, customer_name: editing.name, customer_code: editing.code, supplier_name: editing.name, supplier_code: editing.code, date_factor: toStorageDate(new Date()), date_reg: toStorageDateFull(new Date()) });
       }

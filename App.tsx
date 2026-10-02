@@ -280,9 +280,18 @@ export default function App() {
 // ══════════════════════════════════════════════════════════
 //  MAIN
 // ══════════════════════════════════════════════════════════
+const DEFAULT_TAB_PINS: Record<string, string> = {
+  purchase: '4242', print: '4242', mgr: '4242', profit: '4242', inventory: '4242',
+};
+function getTabPins(settings: any): Record<string, string> {
+  const p = settings?.tab_pins;
+  if (!p || typeof p !== 'object') return DEFAULT_TAB_PINS;
+  return { ...DEFAULT_TAB_PINS, ...p };
+}
+
 function MainApp({ showToast, onCycleTheme }: any) {
   const [tab, setTab] = useState('order');
-  const [pinOk, setPinOk] = useState(false);
+  const [unlockedTabs, setUnlockedTabs] = useState<Set<string>>(new Set());
   const [pendingTab, setPendingTab] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>({});
 
@@ -301,7 +310,12 @@ function MainApp({ showToast, onCycleTheme }: any) {
     { key: 'inventory', icon: '📦', label: 'انبار', color: '#0f5132' },
   ];
 
-  const requestTab = (t: string) => { if (t === 'order' || pinOk) { setTab(t); return; } setPendingTab(t); };
+  const tabPins = getTabPins(settings);
+  const isLocked = (t: string) => !!tabPins[t] && !unlockedTabs.has(t);
+  const requestTab = (t: string) => {
+    if (t === 'order' || !isLocked(t)) { setTab(t); return; }
+    setPendingTab(t);
+  };
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]} edges={['top', 'left', 'right']}>
@@ -316,7 +330,6 @@ function MainApp({ showToast, onCycleTheme }: any) {
           tab === 'inventory' ? '#0f5132' :
           '#0f2438',
       }]}>
-        {/* نوار طلایی بالای هدر */}
         <View style={{
           height: 4,
           backgroundColor: '#d4af37',
@@ -343,7 +356,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
                    <TouchableOpacity key={t.key} onPress={() => requestTab(t.key)} activeOpacity={0.7} style={[s.tab, tab === t.key && { backgroundColor: C.isSimple ? '#64748b' : t.color, borderColor: '#d4af37' }]}>
             <Text style={s.tabIcon}>{t.icon}</Text>
             <Text style={[s.tabLbl, { color: C.textMut }, tab === t.key && s.tabLblActive]}>{t.label}</Text>
-            {!pinOk && t.key !== 'order' && <Text style={s.lock}>🔒</Text>}
+            {isLocked(t.key) && <Text style={s.lock}>🔒</Text>}
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -353,19 +366,30 @@ function MainApp({ showToast, onCycleTheme }: any) {
       {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />}
       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
-      <PinModal visible={!!pendingTab} onClose={() => setPendingTab(null)} onSuccess={() => { setPinOk(true); if (pendingTab) setTab(pendingTab); setPendingTab(null); }} showToast={showToast} />
+      <PinModal
+        visible={!!pendingTab}
+        correctPin={pendingTab ? (tabPins[pendingTab] || '') : ''}
+        onClose={() => setPendingTab(null)}
+        onSuccess={() => {
+          if (pendingTab) {
+            setUnlockedTabs(prev => new Set(prev).add(pendingTab));
+            setTab(pendingTab);
+          }
+          setPendingTab(null);
+        }}
+        showToast={showToast}
+      />
     </SafeAreaView>
   );
 }
-
 // ══════════════════════════════════════════════════════════
 //  PIN MODAL
 // ══════════════════════════════════════════════════════════
-function PinModal({ visible, onClose, onSuccess, showToast }: any) {
+function PinModal({ visible, correctPin, onClose, onSuccess, showToast }: any) {
   const [pin, setPin] = useState('');
   useEffect(() => { if (visible) setPin(''); }, [visible]);
   const verify = () => {
-    if (pin === '4242') { onSuccess(); showToast('✅ تأیید شد'); }
+    if (pin === correctPin) { onSuccess(); showToast('✅ تأیید شد'); }
     else { showToast('❌ رمز اشتباه', true); setPin(''); }
   };
   return (
@@ -384,7 +408,6 @@ function PinModal({ visible, onClose, onSuccess, showToast }: any) {
     </Modal>
   );
 }
-
 // ══════════════════════════════════════════════════════════
 //  AUTOCOMPLETE (inline - بدون Modal)
 // ══════════════════════════════════════════════════════════
@@ -2390,7 +2413,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   };
   const removeEmail = (i: number) => setSettings({ ...settings, emails: emails.filter((_, idx) => idx !== i) });
   const toggleDay = (d: string) => setSchedDailyDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
-
+  const pins = settings.tab_pins || {};
   return (
     <View>
       <Text style={s.secT}>📅 نوع تقویم</Text>
@@ -2473,7 +2496,32 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={save} disabled={saving}>
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>💾 ذخیره همه تنظیمات</Text>}
       </TouchableOpacity>
+      <Text style={s.secT}>🔐 رمز عبور تب‌ها</Text>
+      <Text style={[s.lblS, { color: C.textMut, marginBottom: 8 }]}>خالی بگذاری = بدون رمز. مقدار پیش‌فرض: 4242</Text>
+      {[
+        { k: 'purchase', l: '🛍️ خرید' },
+        { k: 'print', l: '🖨️ پرینت' },
+        { k: 'mgr', l: '📋 مدیریت' },
+        { k: 'profit', l: '💹 سود' },
+        { k: 'inventory', l: '📦 انبار' },
+      ].map((t) => (
+        <View key={t.k} style={{ marginBottom: 8 }}>
+          <Text style={[s.lblS, { color: C.textMut }]}>{t.l}</Text>
+          <TextInput
+            style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]}
+            value={String(pins[t.k] ?? '4242')}
+            onChangeText={(v) =>
+              setSettings({ ...settings, tab_pins: { ...pins, [t.k]: v.replace(/\D/g, '').slice(0, 10) } })
+            }
+            keyboardType="phone-pad"
+            secureTextEntry
+            placeholder="4242"
+            placeholderTextColor={C.textMut}
+          />
+        </View>
+      ))}
 
+      <Text style={s.secT}>🚪 خروج از حساب</Text>
       <Text style={s.secT}>🚪 خروج از حساب</Text>
       <TouchableOpacity
         style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}

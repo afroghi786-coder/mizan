@@ -1519,7 +1519,7 @@ function PrintScreen({ showToast }: any) {
         code: c2, name, phone,
         salesRows, purchaseRows, triangRows,
         totals: { totalSales, paidByCustomer, customerOwes, totalPurchases, paidToSupplier, weOwe, totalTriang, net },
-        timeString: formatDateForType(new Date()),
+        timeString: displayDate(new Date()),
       });
     } catch (e: any) { showToast(e.message, true); }
     finally { setLoading(false); }

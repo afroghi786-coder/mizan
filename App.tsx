@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
+import LicenseGate from './LicenseGate';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView,
@@ -240,6 +241,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // چک خودکار لایسنس هر ۱۲ ساعت
+    const licTimer = setInterval(() => {
+      import('./license').then(m => m.checkLicense()).catch(() => {});
+    }, 12 * 3600 * 1000);
     const failsafe = setTimeout(() => setLoading(false), 5000);
     loadMode().then(() => loadCalType()).then(() => getSettings()).then((s: any) => {
       const saved = s?.theme_mode || s?.theme;
@@ -252,7 +257,7 @@ export default function App() {
       .then(({ data: { session } }) => { setSession(session); setLoading(false); clearTimeout(failsafe); })
       .catch(() => { setLoading(false); clearTimeout(failsafe); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => { subscription.unsubscribe(); clearTimeout(failsafe); };
+    return () => { subscription.unsubscribe(); clearTimeout(failsafe); clearInterval(licTimer); };
   }, []);
   const cycleTheme = useCallback(() => {
     const next: ThemeMode =
@@ -268,11 +273,12 @@ export default function App() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <SyncControl showToast={showToast} />
       <View key={themeTick} style={{ flex: 1 }}>
         {!session
           ? <LoginScreen showToast={showToast} />
-          : <MainApp showToast={showToast} onCycleTheme={cycleTheme} />}
+          : <LicenseGate showToast={showToast}>
+              <MainApp showToast={showToast} onCycleTheme={cycleTheme} />
+            </LicenseGate>}
       </View>
       {toast && <View style={[s.toast, toast.error && { backgroundColor: '#b91c1c' }]}><Text style={s.toastTxt}>{toast.msg}</Text></View>}
     </View>
@@ -339,11 +345,14 @@ function MainApp({ showToast, onCycleTheme }: any) {
         }} />
 
         <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-                 <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
-            <Text style={{ fontSize: 20 }}>
-              {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
-            </Text>
-          </TouchableOpacity>
+                 <View style={{ flexDirection: 'row-reverse', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
+              <Text style={{ fontSize: 20 }}>
+                {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
+              </Text>
+            </TouchableOpacity>
+            <SyncControl showToast={showToast} compact />
+          </View>
           <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 12 }}>
             <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontSize: 24, color: '#f4d47a' }}>⚖️</Text>

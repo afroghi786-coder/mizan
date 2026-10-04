@@ -130,9 +130,6 @@ export async function deleteProduct(id: string) {
   }
 }
 
-export async function getSalesGrouped() {
-  return cachedRead('sales_grouped', () => lib.getSalesGrouped());
-}
 export async function createSale(payload: any) {
   if (MODE === 'online') {
     try { return await lib.createSale(payload); }
@@ -149,9 +146,6 @@ export async function deleteSale(inv: string) {
   }
 }
 
-export async function getPurchasesGrouped() {
-  return cachedRead('purchases_grouped', () => lib.getPurchasesGrouped());
-}
 export async function createPurchase(payload: any) {
   if (MODE === 'online') {
     try { return await lib.createPurchase(payload); }
@@ -199,9 +193,6 @@ export async function searchAllInvoices(q: string) {
   return cachedRead('search_all_' + q, () => lib.searchAllInvoices(q));
 }
 
-export async function getInvoiceDetail(invoiceNumber: string) {
-  return cachedRead('invoice_detail_' + invoiceNumber, () => lib.getInvoiceDetail(invoiceNumber));
-}
 
 
 
@@ -359,4 +350,136 @@ export async function prepareOffline(): Promise<boolean> {
     console.log('prepareOffline error:', e);
     return false;
   }
+}
+
+// ═══════════════════════════════════════════
+//  شماره فاکتور و کد مشتری آفلاین
+// ═══════════════════════════════════════════
+export async function generateInvoiceNumber(): Promise<string> {
+  if (MODE === 'online') {
+    try { return await lib.generateInvoiceNumber(); } catch {}
+  }
+  const today = new Date();
+  const ds = String(today.getFullYear()).slice(-2)
+    + String(today.getMonth() + 1).padStart(2, '0')
+    + String(today.getDate()).padStart(2, '0');
+  const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+  const queue = await getQueue();
+  let maxN = 1000;
+  const all: string[] = [
+    ...salesGrouped.map((g: any) => g.invoice || ''),
+    ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.invoiceNumber || ''),
+  ];
+  for (const inv of all) {
+    const m = String(inv).match(/^\d{6}-(\d+)$/);
+    if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+  }
+  return ds + '-' + (maxN + 1);
+}
+
+export async function generateCustomerCode(): Promise<string> {
+  if (MODE === 'online') {
+    try { return await lib.generateCustomerCode(); } catch {}
+  }
+  const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+  const queue = await getQueue();
+  let maxN = 1000;
+  const all: string[] = [
+    ...salesGrouped.map((g: any) => g.customerCode || ''),
+    ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.customerCode || ''),
+  ];
+  for (const ccode of all) {
+    const m = String(ccode).match(/^M_(\d+)$/);
+    if (m) { const n = +m[1]; if (n > maxN) maxN = n; }
+  }
+  return 'M_' + (maxN + 1);
+}
+
+export async function getInvoiceDetail(invoiceNumber: string) {
+  if (MODE === 'online') {
+    try { return await lib.getInvoiceDetail(invoiceNumber); } catch { return []; }
+  }
+  const cached = await getLocal<any[]>('invoice_detail_' + invoiceNumber);
+  return cached || [];
+}
+
+// ═══════════════════════════════════════════
+//  getSalesGrouped — با ادغام صف
+// ═══════════════════════════════════════════
+export async function getSalesGrouped() {
+  let serverList: any[] = [];
+  if (MODE === 'online') {
+    try {
+      serverList = await lib.getSalesGrouped();
+      await setLocal('sales_grouped', serverList);
+    } catch {
+      serverList = (await getLocal<any[]>('sales_grouped')) || [];
+    }
+  } else {
+    serverList = (await getLocal<any[]>('sales_grouped')) || [];
+  }
+
+  // ادغام با صف
+  const queue = await getQueue();
+  const pendingByInv: Record<string, any> = {};
+  for (const item of queue) {
+    if (item.op === 'createSale') {
+      const p = item.payload;
+      const inv = p.invoiceNumber;
+      if (!pendingByInv[inv]) {
+        pendingByInv[inv] = {
+          invoice: inv, name: p.customerName, phone: p.customerPhone,
+          total: 0, paid: 0, items: [],
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      for (const it of p.items || []) {
+        pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+        pendingByInv[inv].paid += Number(it.payment) || 0;
+        pendingByInv[inv].items.push(it);
+      }
+    }
+  }
+  return [...Object.values(pendingByInv), ...serverList];
+}
+
+// ═══════════════════════════════════════════
+//  getPurchasesGrouped — با ادغام صف
+// ═══════════════════════════════════════════
+export async function getPurchasesGrouped() {
+  let serverList: any[] = [];
+  if (MODE === 'online') {
+    try {
+      serverList = await lib.getPurchasesGrouped();
+      await setLocal('purchases_grouped', serverList);
+    } catch {
+      serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+    }
+  } else {
+    serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+  }
+
+  const queue = await getQueue();
+  const pendingByInv: Record<string, any> = {};
+  for (const item of queue) {
+    if (item.op === 'createPurchase') {
+      const p = item.payload;
+      const inv = p.invoiceNumber || 'P-PENDING';
+      if (!pendingByInv[inv]) {
+        pendingByInv[inv] = {
+          invoice: inv, name: p.supplierName, phone: p.supplierPhone,
+          total: 0, paid: 0, items: [],
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      for (const it of p.items || []) {
+        pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+        pendingByInv[inv].items.push(it);
+      }
+      pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
+    }
+  }
+  return [...Object.values(pendingByInv), ...serverList];
 }

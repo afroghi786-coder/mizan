@@ -6,7 +6,7 @@ import {
   getQueueCount, syncToServer, pullFromServer, clearQueue, prepareOffline,
 } from './lib.offline';
 
-export default function SyncControl({ showToast }: any) {
+export default function SyncControl({ showToast, compact }: any) {
   const [mode, setModeLocal] = useState<'online' | 'offline'>('online');
   const [queue, setQueue] = useState(0);
   const [modal, setModal] = useState(false);
@@ -38,7 +38,7 @@ export default function SyncControl({ showToast }: any) {
       await pullFromServer();
       await clearQueue();
       setQueue(0);
-      showToast(`✅ ${r.ok} مورد ذخیره شد${r.fail ? ` — ${r.fail} ناموفق` : ''}`);
+      showToast('✅ ' + r.ok + ' مورد ذخیره شد' + (r.fail ? ' — ' + r.fail + ' ناموفق' : ''));
       setModal(false);
     } catch (e: any) {
       showToast(e?.message || 'خطا در sync', true);
@@ -51,6 +51,54 @@ export default function SyncControl({ showToast }: any) {
     showToast('🟢 آنلاین — بدون sync');
   };
 
+  const modalJSX = (
+    <Modal visible={modal} transparent animationType="fade">
+      <View style={s.bg}>
+        <View style={s.box}>
+          <Text style={s.title}>📤 آپلود به سرور؟</Text>
+          <Text style={s.desc}>
+            {queue > 0
+              ? queue + ' مورد در حالت آفلاین ذخیره شده.\nحالا آپلود شود به سرور مرکزی؟'
+              : 'موردی برای آپلود نیست.\nحالت به آنلاین تغییر کند؟'}
+          </Text>
+          {syncing ? (
+            <ActivityIndicator color="#059669" style={{ marginTop: 16 }} />
+          ) : (
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b' }]} onPress={skipSync}>
+                <Text style={s.btnTxt}>فقط آنلاین شو</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={confirmSync}>
+                <Text style={s.btnTxt}>✅ بله، آپلود کن</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // ─── حالت compact (دکمه کوچک) ───
+  if (compact) {
+    return (
+      <>
+        <TouchableOpacity onPress={toggle} style={[
+          s.compactBtn,
+          { borderColor: mode === 'online' ? '#059669' : '#64748b' },
+        ]}>
+          <Text style={{ fontSize: 18 }}>{mode === 'online' ? '🟢' : '🔴'}</Text>
+          {queue > 0 && (
+            <View style={s.badge}>
+              <Text style={s.badgeTxt}>{queue}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        {modalJSX}
+      </>
+    );
+  }
+
+  // ─── حالت نوار ───
   return (
     <>
       <TouchableOpacity onPress={toggle} style={[
@@ -59,34 +107,10 @@ export default function SyncControl({ showToast }: any) {
       ]}>
         <Text style={s.txt}>
           {mode === 'online' ? '🟢 آنلاین' : '🔴 آفلاین'}
-          {queue > 0 ? `  •  ${queue} مورد در انتظار` : ''}
+          {queue > 0 ? '  •  ' + queue + ' مورد در انتظار' : ''}
         </Text>
       </TouchableOpacity>
-
-      <Modal visible={modal} transparent animationType="fade">
-        <View style={s.bg}>
-          <View style={s.box}>
-            <Text style={s.title}>📤 آپلود به سرور؟</Text>
-            <Text style={s.desc}>
-              {queue > 0
-                ? `${queue} مورد در حالت آفلاین ذخیره شده.\nحالا آپلود شود به سرور مرکزی؟`
-                : 'موردی برای آپلود نیست.\nحالت به آنلاین تغییر کند؟'}
-            </Text>
-            {syncing ? (
-              <ActivityIndicator color="#059669" style={{ marginTop: 16 }} />
-            ) : (
-              <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b' }]} onPress={skipSync}>
-                  <Text style={s.btnTxt}>فقط آنلاین شو</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={confirmSync}>
-                  <Text style={s.btnTxt}>✅ بله، آپلود کن</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
+      {modalJSX}
     </>
   );
 }
@@ -94,6 +118,19 @@ export default function SyncControl({ showToast }: any) {
 const s = StyleSheet.create({
   bar: { paddingVertical: 6, alignItems: 'center' },
   txt: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  compactBtn: {
+    width: 44, height: 44, borderRadius: 22, borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: '#ffffff',
+  },
+  badge: {
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: '#dc2626', borderRadius: 10,
+    minWidth: 18, height: 18, paddingHorizontal: 4,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  badgeTxt: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
   bg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
   box: { backgroundColor: '#fff', borderRadius: 16, padding: 20 },
   title: { fontSize: 16, fontWeight: 'bold', color: '#0f2438', textAlign: 'right', marginBottom: 12 },

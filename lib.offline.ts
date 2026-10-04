@@ -207,20 +207,6 @@ export async function getUnpaidInvoices() {
 // ═══════════════════════════════════════════
 //  Lookup های آفلاین
 // ═══════════════════════════════════════════
-async function getCustomerList() {
-  let list = await getLocal<any[]>('all_sales_for_lookup');
-  if (!list || !list.length) {
-    // fallback: از sales_grouped
-    const grouped = await getLocal<any[]>('sales_grouped') || [];
-    list = [];
-    for (const g of grouped) {
-      if (g.phone) {
-        list.push({ customer_phone: g.phone, customer_name: g.name, customer_code: g.customerCode || g.code || '' });
-      }
-    }
-  }
-  return list || [];
-}
 
 async function getSupplierList() {
   let list = await getLocal<any[]>('all_purchases_for_lookup');
@@ -234,18 +220,6 @@ async function getSupplierList() {
   return list || [];
 }
 
-export async function findCustomerByPhoneOffline(phone: string) {
-  const list = await getCustomerList();
-  const p = String(phone).replace(/[^0-9]/g, '');
-  for (const s of list) {
-    const sp = String(s.customer_phone || '').replace(/[^0-9]/g, '');
-    if (sp === p) return {
-      customer_name: s.customer_name, customer_address: s.customer_address || '',
-      customer_code: s.customer_code, found_as: 'customer',
-    };
-  }
-  return null;
-}
 
 export async function findSupplierByNameOffline(name: string) {
   const list = await getSupplierList();
@@ -267,18 +241,6 @@ export async function findCodeByNameOffline(name: string) {
   return '';
 }
 
-export async function lookupCustomerByPhone(phone: string) {
-  if (MODE === 'online') {
-    try {
-      const fresh = await lib.lookupCustomerByPhone(phone);
-      if (fresh) await setLocal('cust_' + phone, fresh);
-      return fresh;
-    } catch (e) { return await findCustomerByPhoneOffline(phone); }
-  }
-  const cached = await getLocal<any>('cust_' + phone);
-  if (cached) return cached;
-  return await findCustomerByPhoneOffline(phone);
-}
 
 export async function lookupSupplierByName(name: string) {
   if (MODE === 'online') {
@@ -702,4 +664,115 @@ export async function deletePurchaseFromQueue(invoiceNumber: string) {
     return pInv !== invoiceNumber;
   });
   await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
+}
+
+// ═══════════════════════════════════════════
+//  جستجوی مشتری — چک cache + صف
+// ═══════════════════════════════════════════
+export async function findCustomerByPhoneOffline(phone: string) {
+  const p = String(phone).replace(/[^0-9]/g, '');
+  if (!p) return null;
+
+  // ۱. جستجو در cache (sales_grouped + all_sales_for_lookup)
+  const list = await getCustomerList();
+  for (const s of list) {
+    const sp = String(s.customer_phone || '').replace(/[^0-9]/g, '');
+    if (sp === p) {
+      return {
+        customer_name: s.customer_name,
+        customer_address: s.customer_address || '',
+        customer_code: s.customer_code,
+        found_as: 'customer',
+      };
+    }
+  }
+
+  // ۲. جستجو در صف (فاکتورهای آفلاین ثبت‌شده)
+  const queue = await getQueue();
+  for (const item of queue) {
+    if (item.op === 'createSale') {
+      const itemPhone = String(item.payload?.customerPhone || '').replace(/[^0-9]/g, '');
+      if (itemPhone === p) {
+        return {
+          customer_name: item.payload?.customerName || '',
+          customer_address: item.payload?.customerAddress || '',
+          customer_code: item.payload?.customerCode || '',
+          found_as: 'customer',
+        };
+      }
+    }
+    // فاکتورهای خرید — تأمین‌کننده‌ها رو هم چک کن
+    if (item.op === 'createPurchase') {
+      const sp = String(item.payload?.supplierPhone || '').replace(/[^0-9]/g, '');
+      if (sp === p) {
+        return {
+          customer_name: item.payload?.supplierName || '',
+          customer_address: '',
+          customer_code: item.payload?.supplierCode || '',
+          found_as: 'supplier',
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+// ═══════════════════════════════════════════
+//  lookupCustomerByPhone — با چک صف
+// ═══════════════════════════════════════════
+export async function lookupCustomerByPhone(phone: string) {
+  if (MODE === 'online') {
+    try {
+      const fresh = await lib.lookupCustomerByPhone(phone);
+      if (fresh) {
+        await setLocal('cust_' + phone, fresh);
+        return fresh;
+      }
+      // اگه سرور پیدا نکرد، صف رو چک کن (چون ممکنه آفلاین ثبت شده باشه)
+      const fromQueue = await findCustomerByPhoneOffline(phone);
+      return fromQueue;
+    } catch {
+      return await findCustomerByPhoneOffline(phone);
+    }
+  }
+  // آفلاین: اول cache، بعد صف
+  const cached = await getLocal<any>('cust_' + phone);
+  if (cached) return cached;
+  return await findCustomerByPhoneOffline(phone);
+}
+
+// ═══════════════════════════════════════════
+//  getCustomerList — با ادغام صف
+// ═══════════════════════════════════════════
+async function getCustomerList(): Promise<any[]> {
+  const result: any[] = [];
+  const seen = new Set<string>();
+
+  // از all_sales_for_lookup
+  const all = (await getLocal<any[]>('all_sales_for_lookup')) || [];
+  for (const s of all) {
+    const key = String(s.customer_phone || '') + '_' + String(s.customer_code || '');
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(s);
+    }
+  }
+
+  // از sales_grouped
+  const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+  for (const g of grouped) {
+    const key = String(g.phone || '') + '_' + String(g.customerCode || g.code || '');
+    if (!seen.has(key) && g.phone) {
+      seen.add(key);
+      result.push({
+        customer_phone: g.phone,
+        customer_name: g.name,
+        customer_address: g.address || '',
+        customer_code: g.customerCode || g.code || '',
+      });
+    }
+  }
+
+  return result;
 }

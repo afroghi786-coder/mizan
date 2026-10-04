@@ -71,6 +71,13 @@ export default function AdminPanel({ showToast }: any) {
         p_from_now: !ext,
       });
       if (error) throw error;
+      // فعال کردن اعلان
+      await supabase.from('licenses').update({
+        notification_pending: true,
+        notification_message: 'اشتراک شما با موفقیت تمدید شد',
+        notification_plan: info.k,
+        notification_at: new Date().toISOString(),
+      }).eq('user_id', userId);
     } else {
       // صدور جدید
       const { error } = await supabase.from('licenses').insert({
@@ -79,6 +86,10 @@ export default function AdminPanel({ showToast }: any) {
         status: 'active',
         expires_at: new Date(Date.now() + info.days * 24 * 3600 * 1000).toISOString(),
         last_payment_at: new Date().toISOString(),
+        notification_pending: true,
+        notification_message: 'اشتراک شما فعال شد',
+        notification_plan: info.k,
+        notification_at: new Date().toISOString(),
       });
       if (error) throw error;
     }
@@ -107,6 +118,12 @@ export default function AdminPanel({ showToast }: any) {
   const approveRequest = async (req: any) => {
     try {
       await saveLicense(req.user_id, '1m', false);
+      await supabase.from('licenses').update({
+        notification_pending: true,
+        notification_message: 'درخواست شما تأیید شد — ۱ ماه اشتراک فعال گردید',
+        notification_plan: '1m',
+        notification_at: new Date().toISOString(),
+      }).eq('user_id', req.user_id);
       await supabase.from('license_requests')
         .update({ status: 'approved', handled_at: new Date().toISOString() })
         .eq('id', req.id);

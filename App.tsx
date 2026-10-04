@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
+import LicenseNotification from './LicenseNotification';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView,
@@ -299,6 +300,7 @@ export default function App() {
           : !session
           ? <LoginScreen showToast={showToast} />
           : <LicenseGate showToast={showToast}>
+              <LicenseNotification showToast={showToast} />
               <MainApp showToast={showToast} onCycleTheme={cycleTheme} />
             </LicenseGate>}
       </View>

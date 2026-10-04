@@ -748,7 +748,11 @@ function SalesScreen({ showToast }: any) {
       else customerCode = await generateCustomerCode();
       const inv = await generateInvoiceNumber();
       await createSale({ invoiceNumber: inv, customerCode, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid });
-        const rows = await getInvoiceDetail(inv);
+      
+      // کوچک صبر برای اطمینان
+      await new Promise(r => setTimeout(r, 100));
+      
+      const rows = await getInvoiceDetail(inv);
       if (rows.length > 0) {
         const r = rows[0];
         const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
@@ -2303,19 +2307,32 @@ function SearchSection({ showToast }: any) {
 
   const openEdit = async (inv: string, type: string) => {
     try {
-      if (type === 'sales') {
-        const rows = await getInvoiceDetail(inv);
-        if (!rows.length) { showToast('فاکتور پیدا نشد', true); return; }
-        setEditRows(rows.map((r: any) => ({ rowId: r.id, modelCode: r.model_code, modelName: r.model_name, quantity: r.quantity, priceUnit: r.price_unit, payment: r.payment, description: r.description, depositDate: r.deposit_date, bankName: r.bank_name, accountHolder: r.account_holder, accountHolderCode: r.account_holder_code || '', shipping: r.shipping || '', _deleted: false })));
-        setEditing({ invoice: inv, type, name: rows[0].customer_name, code: rows[0].customer_code });
-      } else {
-        const { data } = await supabase.from('purchases').select('*').eq('invoice_number', inv);
-        if (!data?.length) { showToast('پیدا نشد', true); return; }
-        setEditRows(data.map((r: any) => ({ rowId: r.id, modelCode: r.model_code, modelName: r.model_name, quantity: r.quantity, priceUnit: r.price_unit, payment: r.payment, description: r.description, depositDate: r.deposit_date, bankName: r.bank_name, accountHolder: r.account_holder, accountHolderCode: r.payer_code || '', shipping: '', _deleted: false })));
-        setEditing({ invoice: inv, type, name: data[0].supplier_name, code: data[0].supplier_code });
-      }
+      const rows = await getInvoiceDetail(inv);
+      if (!rows.length) { showToast('فاکتور پیدا نشد', true); return; }
+      const isSales = type === 'sales';
+      setEditRows(rows.map((r: any) => ({
+        rowId: r.id,
+        modelCode: r.model_code || '',
+        modelName: r.model_name || '',
+        quantity: r.quantity || 0,
+        priceUnit: r.price_unit || 0,
+        payment: r.payment || 0,
+        description: r.description || '',
+        depositDate: r.deposit_date || '',
+        bankName: r.bank_name || '',
+        accountHolder: r.account_holder || '',
+        accountHolderCode: isSales ? (r.account_holder_code || '') : (r.payer_code || ''),
+        shipping: isSales ? (r.shipping || '') : '',
+        _deleted: false,
+      })));
+      setEditing({
+        invoice: inv,
+        type,
+        name: isSales ? rows[0].customer_name : rows[0].supplier_name,
+        code: isSales ? rows[0].customer_code : rows[0].supplier_code,
+      });
       setDirty(false);
-    } catch (e: any) { showToast(e.message, true); }
+    } catch (e: any) { showToast(e.message || 'خطا در باز کردن فاکتور', true); }
   };
 
   const delRow = (i: number) => { const n = [...editRows]; n[i]._deleted = !n[i]._deleted; setEditRows(n); setDirty(true); };
@@ -2331,8 +2348,7 @@ function SearchSection({ showToast }: any) {
       const anyPending = editRows.some((r: any) => r.rowId && String(r.rowId).startsWith('queued_'));
       
       if (anyPending) {
-        // به‌روزرسانی توی صف
-        const ok = await updateInvoiceInQueue(editing.invoice, editing.type === 'sales' ? 'sales' : 'purchases', editRows);
+        const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows);
         if (!ok) throw new Error('فاکتور آفلاین پیدا نشد');
         alertMsg('✅ موفق', 'تغییرات روی فاکتور آفلاین ذخیره شد');
         setEditing(null); setEditRows([]); setDirty(false); load();

@@ -2,10 +2,12 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { checkLicense, LicenseInfo } from './license';
+import LicenseRequest from './LicenseRequest';
 
 export default function LicenseGate({ children, showToast }: any) {
   const [info, setInfo] = useState<LicenseInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRequest, setShowRequest] = useState(false);
 
   const check = async () => {
     setLoading(true);
@@ -52,15 +54,20 @@ export default function LicenseGate({ children, showToast }: any) {
             <Text style={s.btnTxt}>🔄 تلاش مجدد</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#1e3a8a', marginTop: 8 }]}>
-            <Text style={s.btnTxt}>💳 تمدید اشتراک</Text>
+          <TouchableOpacity style={[s.btn, { backgroundColor: '#1e3a8a', marginTop: 8 }]} onPress={() => setShowRequest(true)}>
+            <Text style={s.btnTxt}>📩 درخواست لایسنس</Text>
           </TouchableOpacity>
 
           <Text style={s.hint}>
             اگه قبلاً پرداخت کردی، یک بار اینترنت رو وصل کن و دوباره تلاش کن
           </Text>
         </View>
-      </ScrollView>
+      <LicenseRequest
+        visible={showRequest}
+        onClose={() => setShowRequest(false)}
+        showToast={showToast}
+      />
+    </ScrollView>
     );
   }
 

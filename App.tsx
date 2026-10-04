@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import SyncControl from './SyncControl';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView,
@@ -24,9 +25,9 @@ import {
   getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail,
   lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase,
   getDashboardStats, getInventory,
-  getSettings, updateSettings,
+  getSettings, updateSettings, loadMode,
   Product, SaleItem, PurchaseItem, Settings,
-} from './lib';
+} from './lib.offline';
 
 // ══════════════════════════════════════════════════════════
 //  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
@@ -240,7 +241,7 @@ export default function App() {
 
   useEffect(() => {
     const failsafe = setTimeout(() => setLoading(false), 5000);
-    loadCalType().then(() => getSettings()).then((s: any) => {
+    loadMode().then(() => loadCalType()).then(() => getSettings()).then((s: any) => {
       const saved = s?.theme_mode || s?.theme;
       if (saved === 'dark' || saved === 'light' || saved === 'simple') {
         setThemeMode(saved);
@@ -267,6 +268,7 @@ export default function App() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <SyncControl showToast={showToast} />
       <View key={themeTick} style={{ flex: 1 }}>
         {!session
           ? <LoginScreen showToast={showToast} />

@@ -29,6 +29,7 @@ import {
   lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase,
   getDashboardStats, getInventory,
   getSettings, updateSettings, loadMode,
+  deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue,
   Product, SaleItem, PurchaseItem, Settings,
 } from './lib.offline';
 
@@ -2325,6 +2326,19 @@ function SearchSection({ showToast }: any) {
     if (!dirty) return showToast('تغییری نیست', true);
     try {
       const tbl = editing.type === 'sales' ? 'sales' : 'purchases';
+      
+      // چک کن اگه فاکتور توی صف آفلاین هست
+      const anyPending = editRows.some((r: any) => r.rowId && String(r.rowId).startsWith('queued_'));
+      
+      if (anyPending) {
+        // به‌روزرسانی توی صف
+        const ok = await updateInvoiceInQueue(editing.invoice, editing.type === 'sales' ? 'sales' : 'purchases', editRows);
+        if (!ok) throw new Error('فاکتور آفلاین پیدا نشد');
+        alertMsg('✅ موفق', 'تغییرات روی فاکتور آفلاین ذخیره شد');
+        setEditing(null); setEditRows([]); setDirty(false); load();
+        return;
+      }
+      
       for (let i = 0; i < editRows.length; i++) {
         const r = editRows[i];
         if (r._deleted && r.rowId) { await supabase.from(tbl).delete().eq('id', r.rowId); continue; }
@@ -2342,7 +2356,17 @@ function SearchSection({ showToast }: any) {
   const remove = async (inv: string, type: string) => {
     const ok = await confirmMsg('حذف', `فاکتور ${inv} حذف شود؟`);
     if (!ok) return;
-    try { type === 'purchases' ? await deletePurchase(inv) : await deleteSale(inv); load(); showToast('✅ حذف شد'); }
+    try {
+      // اول از صف حذف کن (اگه آفلاین هست)
+      await deleteSaleFromQueue(inv);
+      await deletePurchaseFromQueue(inv);
+      // بعد از سرور
+      try {
+        if (type === 'purchases') await deletePurchase(inv);
+        else await deleteSale(inv);
+      } catch {}
+      load(); showToast('✅ حذف شد');
+    }
     catch (e: any) { showToast(e.message, true); }
   };
 

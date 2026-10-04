@@ -20,9 +20,7 @@
       "package": "com.mizan.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png",
-      "output": "single",
-      "baseUrl": "/mizan"
+      "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
@@ -32,6 +30,7 @@
     "owner": "mezan786",
     "plugins": [
       "expo-sharing"
-    ]
+    ],
+    "newArchEnabled": false
   }
 }

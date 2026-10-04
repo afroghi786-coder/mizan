@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ActivityIndicator } from 'react-native';
 import {
   getMode, setMode, subscribeMode, loadMode,
-  getQueueCount, syncToServer, pullFromServer, clearQueue,
+  getQueueCount, syncToServer, pullFromServer, clearQueue, prepareOffline,
 } from './lib.offline';
 
 export default function SyncControl({ showToast }: any) {
@@ -23,8 +23,10 @@ export default function SyncControl({ showToast }: any) {
     if (mode === 'offline') {
       setModal(true);
     } else {
+      showToast('⏳ در حال آماده‌سازی آفلاین...');
+      await prepareOffline();
       await setMode('offline');
-      showToast('🔴 حالت آفلاین');
+      showToast('🔴 آفلاین — همه‌چیز آماده است');
     }
   };
 

@@ -186,3 +186,48 @@ export async function getInventory() {
 export async function getDashboardStats(r: string, f: string) {
   return cachedRead(`stats_${r}_${f}`, () => lib.getDashboardStats(r, f));
 }
+
+// ═══════════════════════════════════════════
+//  wrappers اضافی — اینا رو هم کش کن
+// ═══════════════════════════════════════════
+
+export async function getUnpaidInvoices() {
+  return cachedRead('unpaid_invoices', () => lib.getUnpaidInvoices());
+}
+
+export async function searchAllInvoices(q: string) {
+  return cachedRead('search_all_' + q, () => lib.searchAllInvoices(q));
+}
+
+export async function getInvoiceDetail(invoiceNumber: string) {
+  return cachedRead('invoice_detail_' + invoiceNumber, () => lib.getInvoiceDetail(invoiceNumber));
+}
+
+export async function lookupCustomerByPhone(phone: string) {
+  return cachedRead('cust_' + phone, () => lib.lookupCustomerByPhone(phone));
+}
+
+export async function lookupSupplierByName(name: string) {
+  return cachedRead('sup_' + name, () => lib.lookupSupplierByName(name));
+}
+
+export async function lookupCodeByName(name: string) {
+  return cachedRead('code_' + name, () => lib.lookupCodeByName(name));
+}
+
+// تابع کمکی: قبل از رفتن به آفلاین، همه‌چیز رو کش کن
+export async function prepareOffline() {
+  try {
+    await Promise.all([
+      lib.getProducts().then((d: any) => setLocal('products', d)),
+      lib.getSalesGrouped().then((d: any) => setLocal('sales_grouped', d)),
+      lib.getPurchasesGrouped().then((d: any) => setLocal('purchases_grouped', d)),
+      lib.getUnpaidInvoices().then((d: any) => setLocal('unpaid_invoices', d)),
+      lib.getSettings().then((d: any) => setLocal('settings', d)),
+    ]);
+    return true;
+  } catch (e) {
+    console.log('prepareOffline failed:', e);
+    return false;
+  }
+}

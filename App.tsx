@@ -296,7 +296,6 @@ export default function App() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <SyncControl showToast={showToast} />
       <View key={themeTick} style={{ flex: 1 }}>
         {isAdmin
           ? <AdminScreen showToast={showToast} />
@@ -372,11 +371,14 @@ function MainApp({ showToast, onCycleTheme }: any) {
         }} />
 
         <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-                 <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
-            <Text style={{ fontSize: 20 }}>
-              {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
-            </Text>
-          </TouchableOpacity>
+                 <View style={{ flexDirection: 'row-reverse', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
+              <Text style={{ fontSize: 20 }}>
+                {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
+              </Text>
+            </TouchableOpacity>
+            <SyncControl showToast={showToast} compact />
+          </View>
           <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 12 }}>
             <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontSize: 24, color: '#f4d47a' }}>⚖️</Text>

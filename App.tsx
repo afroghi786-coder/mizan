@@ -1330,9 +1330,9 @@ function PurchaseScreen({ showToast }: any) {
     if (!ok) return;
     setSaving(true);
     try {
-      const inv = await generateInvoiceNumber();
-      await createPurchase({ invoiceNumber: inv, manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: valid, paymentAmount: amt, paymentDate: payDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
-      alertMsg('✅ موفق', 'فاکتور خرید ثبت شد');
+      const inv = await createPurchase({ invoiceNumber: '', manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: valid, paymentAmount: amt, paymentDate: payDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
+      const isPending = typeof inv === 'string' && inv.startsWith('P-') && !/^\d{6}-/.test(inv);
+      alertMsg('✅ موفق', 'فاکتور خرید ثبت شد' + (isPending ? '\n(در انتظار آپلود)' : ''));
       setSName(''); setSCode(''); setSPhone(''); setManualInv(''); setItems([]);
       setPayAmt(''); setBankAcc(''); setPayerName(''); setPayerCode(''); setReceiverAcc(''); setNote('');
       setView('list'); load();

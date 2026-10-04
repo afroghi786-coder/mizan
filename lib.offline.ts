@@ -146,14 +146,6 @@ export async function deleteSale(inv: string) {
   }
 }
 
-export async function createPurchase(payload: any) {
-  if (MODE === 'online') {
-    try { return await lib.createPurchase(payload); }
-    catch { await enqueue('createPurchase', payload); return 'queued'; }
-  }
-  await enqueue('createPurchase', payload);
-  return 'queued';
-}
 export async function deletePurchase(inv: string) {
   if (MODE === 'online') {
     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
@@ -437,42 +429,6 @@ export async function getSalesGrouped() {
 // ═══════════════════════════════════════════
 //  getPurchasesGrouped — با ادغام صف
 // ═══════════════════════════════════════════
-export async function getPurchasesGrouped() {
-  let serverList: any[] = [];
-  if (MODE === 'online') {
-    try {
-      serverList = await lib.getPurchasesGrouped();
-      await setLocal('purchases_grouped', serverList);
-    } catch {
-      serverList = (await getLocal<any[]>('purchases_grouped')) || [];
-    }
-  } else {
-    serverList = (await getLocal<any[]>('purchases_grouped')) || [];
-  }
-
-  const queue = await getQueue();
-  const pendingByInv: Record<string, any> = {};
-  for (const item of queue) {
-    if (item.op === 'createPurchase') {
-      const p = item.payload;
-      const inv = p.invoiceNumber || 'P-PENDING';
-      if (!pendingByInv[inv]) {
-        pendingByInv[inv] = {
-          invoice: inv, name: p.supplierName, phone: p.supplierPhone,
-          total: 0, paid: 0, items: [],
-          date: new Date(item.ts).toISOString(),
-          _pending: true,
-        };
-      }
-      for (const it of p.items || []) {
-        pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
-        pendingByInv[inv].items.push(it);
-      }
-      pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
-    }
-  }
-  return [...Object.values(pendingByInv), ...serverList];
-}
 
 // ═══════════════════════════════════════════
 //  searchAllInvoices — با ادغام صف آفلاین
@@ -493,15 +449,114 @@ export async function searchAllInvoices(q: string) {
 // ═══════════════════════════════════════════
 //  getInvoiceDetail — از صف یا سرور
 // ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+//  deleteSale — اگه توی صف بود، از صف حذف کن
+// ═══════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════
+//  updateInvoiceInQueue — ویرایش فاکتور آفلاین
+// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+//  شماره فاکتور خرید آفلاین با P-
+// ═══════════════════════════════════════════
+async function genPurchaseInvoiceNumber() {
+  const today = new Date();
+  const ds = String(today.getFullYear()).slice(-2)
+    + String(today.getMonth() + 1).padStart(2, '0')
+    + String(today.getDate()).padStart(2, '0');
+  const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+  const queue = await getQueue();
+  let maxN = 1000;
+  for (const g of grouped) {
+    const m = String(g.invoice || '').match(/^P-\d{6}-(\d+)$/);
+    if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+  }
+  for (const q of queue) {
+    if (q.op === 'createPurchase') {
+      const inv = q.payload?._pendingInvNumber || q.payload?.invoiceNumber || '';
+      const m = String(inv).match(/^P-\d{6}-(\d+)$/);
+      if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+    }
+  }
+  return 'P-' + ds + '-' + (maxN + 1);
+}
+
+// ═══════════════════════════════════════════
+//  createPurchase — با شماره P-
+// ═══════════════════════════════════════════
+export async function createPurchase(payload: any) {
+  if (MODE === 'online') {
+    try { return await lib.createPurchase(payload); }
+    catch {
+      const pInv = await genPurchaseInvoiceNumber();
+      const newPayload = { ...payload, _pendingInvNumber: pInv };
+      await enqueue('createPurchase', newPayload);
+      return pInv;
+    }
+  }
+  const pInv = await genPurchaseInvoiceNumber();
+  const newPayload = { ...payload, _pendingInvNumber: pInv };
+  await enqueue('createPurchase', newPayload);
+  return pInv;
+}
+
+// ═══════════════════════════════════════════
+//  getPurchasesGrouped — با شماره P-
+// ═══════════════════════════════════════════
+export async function getPurchasesGrouped() {
+  let serverList: any[] = [];
+  if (MODE === 'online') {
+    try {
+      serverList = await lib.getPurchasesGrouped();
+      await setLocal('purchases_grouped', serverList);
+    } catch {
+      serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+    }
+  } else {
+    serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+  }
+
+  const queue = await getQueue();
+  const pendingByInv: Record<string, any> = {};
+  for (const item of queue) {
+    if (item.op === 'createPurchase') {
+      const p = item.payload;
+      const inv = p._pendingInvNumber || p.invoiceNumber || 'P-PENDING';
+      if (!pendingByInv[inv]) {
+        pendingByInv[inv] = {
+          invoice: inv,
+          manual: p.manualInvoice || '',
+          name: p.supplierName,
+          phone: p.supplierPhone,
+          total: 0, paid: 0, items: [],
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      const items = (p.items && p.items.length) ? p.items : [{ modelName: '—', quantity: 0, priceUnit: 0 }];
+      for (const it of items) {
+        pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+        pendingByInv[inv].items.push(it);
+      }
+      pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
+    }
+  }
+  return [...Object.values(pendingByInv), ...serverList];
+}
+
+// ═══════════════════════════════════════════
+//  getInvoiceDetail — از صف یا سرور
+// ═══════════════════════════════════════════
 export async function getInvoiceDetail(invoiceNumber: string) {
-  // ۱. اول توی صف بگرد (فاکتور آفلاین ذخیره‌شده)
   const queue = await getQueue();
 
-  // بررسی فاکتور فروش در صف
+  // فاکتور فروش
   for (const item of queue) {
     if (item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber) {
       const p = item.payload;
-      // تبدیل payload به ردیف‌های sales
       return (p.items || []).map((it: any, idx: number) => ({
         id: 'queued_' + idx,
         invoice_number: p.invoiceNumber,
@@ -526,35 +581,38 @@ export async function getInvoiceDetail(invoiceNumber: string) {
       }));
     }
 
-    // بررسی فاکتور خرید در صف
-    if (item.op === 'createPurchase' && item.payload?.invoiceNumber === invoiceNumber) {
-      const p = item.payload;
-      const items = p.items && p.items.length ? p.items : [{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }];
-      return items.map((it: any, idx: number) => ({
-        id: 'queued_' + idx,
-        invoice_number: p.invoiceNumber,
-        manual_invoice: p.manualInvoice,
-        supplier_code: p.supplierCode,
-        supplier_name: p.supplierName,
-        supplier_phone: p.supplierPhone,
-        model_code: it.modelCode,
-        model_name: it.modelName,
-        quantity: it.quantity,
-        price_unit: it.priceUnit,
-        payment: idx === 0 ? (p.paymentAmount || 0) : 0,
-        deposit_date: idx === 0 ? (p.paymentDate || '') : '',
-        bank_name: idx === 0 ? (p.bankAccount || '') : '',
-        account_holder: idx === 0 ? (p.payerName || '') : '',
-        payer_code: idx === 0 ? (p.payerCode || '') : '',
-        description: it.description || '',
-        date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),
-        date_reg: new Date(item.ts).toISOString().slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
-        _pending: true,
-      }));
+    // فاکتور خرید — چک هر دو شماره
+    if (item.op === 'createPurchase') {
+      const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+      if (pInv === invoiceNumber) {
+        const p = item.payload;
+        const items = (p.items && p.items.length) ? p.items : [{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }];
+        return items.map((it: any, idx: number) => ({
+          id: 'queued_' + idx,
+          invoice_number: pInv,
+          manual_invoice: p.manualInvoice || '',
+          supplier_code: p.supplierCode || '',
+          supplier_name: p.supplierName,
+          supplier_phone: p.supplierPhone || '',
+          model_code: it.modelCode || '',
+          model_name: it.modelName || '',
+          quantity: it.quantity || 0,
+          price_unit: it.priceUnit || 0,
+          payment: idx === 0 ? (p.paymentAmount || 0) : 0,
+          deposit_date: idx === 0 ? (p.paymentDate || '') : '',
+          bank_name: idx === 0 ? (p.bankAccount || '') : '',
+          account_holder: idx === 0 ? (p.payerName || '') : '',
+          payer_code: idx === 0 ? (p.payerCode || '') : '',
+          description: it.description || '',
+          date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),
+          date_reg: new Date(item.ts).toISOString().slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+          _pending: true,
+        }));
+      }
     }
   }
 
-  // ۲. اگه توی صف نبود، از سرور بگیر
+  // از سرور
   if (MODE === 'online') {
     try { return await lib.getInvoiceDetail(invoiceNumber); } catch { return []; }
   }
@@ -563,36 +621,30 @@ export async function getInvoiceDetail(invoiceNumber: string) {
 }
 
 // ═══════════════════════════════════════════
-//  deleteSale — اگه توی صف بود، از صف حذف کن
-// ═══════════════════════════════════════════
-export async function deleteSaleFromQueue(invoiceNumber: string) {
-  const queue = await getQueue();
-  const filtered = queue.filter((item: any) =>
-    !(item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber)
-  );
-  await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
-}
-
-export async function deletePurchaseFromQueue(invoiceNumber: string) {
-  const queue = await getQueue();
-  const filtered = queue.filter((item: any) =>
-    !(item.op === 'createPurchase' && item.payload?.invoiceNumber === invoiceNumber)
-  );
-  await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
-}
-
-// ═══════════════════════════════════════════
-//  updateInvoiceInQueue — ویرایش فاکتور آفلاین
+//  updateInvoiceInQueue — ویرایش آفلاین
 // ═══════════════════════════════════════════
 export async function updateInvoiceInQueue(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
   const queue = await getQueue();
   const op = type === 'sales' ? 'createSale' : 'createPurchase';
+  let found = false;
+
   for (const item of queue) {
-    if (item.op === op && item.payload?.invoiceNumber === invoiceNumber) {
-      // به‌روزرسانی ردیف‌ها در payload
-      item.payload.items = rows
-        .filter((r: any) => !r._deleted)
-        .map((r: any) => ({
+    if (item.op !== op) continue;
+
+    // چک هر دو شماره برای purchase
+    let match = false;
+    if (type === 'sales') {
+      match = item.payload?.invoiceNumber === invoiceNumber;
+    } else {
+      match = (item.payload?._pendingInvNumber === invoiceNumber)
+        || (item.payload?.invoiceNumber === invoiceNumber);
+    }
+
+    if (match) {
+      found = true;
+      const validRows = rows.filter((r: any) => !r._deleted);
+      if (type === 'sales') {
+        item.payload.items = validRows.map((r: any) => ({
           modelCode: r.modelCode,
           modelName: r.modelName,
           quantity: r.quantity,
@@ -604,9 +656,50 @@ export async function updateInvoiceInQueue(invoiceNumber: string, type: 'sales' 
           accountHolderCode: r.accountHolderCode,
           description: r.description,
         }));
-      await AsyncStorage.setItem('@mizan_queue', JSON.stringify(queue));
-      return true;
+      } else {
+        item.payload.items = validRows.map((r: any) => ({
+          modelCode: r.modelCode,
+          modelName: r.modelName,
+          quantity: r.quantity,
+          priceUnit: r.priceUnit,
+          description: r.description,
+        }));
+        // اطلاعات پرداخت از ردیف اول
+        if (validRows[0]) {
+          item.payload.paymentAmount = validRows[0].payment || 0;
+          item.payload.paymentDate = validRows[0].depositDate || '';
+          item.payload.bankAccount = validRows[0].bankName || '';
+          item.payload.payerName = validRows[0].accountHolder || '';
+          item.payload.payerCode = validRows[0].accountHolderCode || '';
+        }
+      }
+      break;
     }
   }
-  return false;
+
+  if (found) {
+    await AsyncStorage.setItem('@mizan_queue', JSON.stringify(queue));
+  }
+  return found;
+}
+
+// ═══════════════════════════════════════════
+//  حذف از صف
+// ═══════════════════════════════════════════
+export async function deleteSaleFromQueue(invoiceNumber: string) {
+  const queue = await getQueue();
+  const filtered = queue.filter((item: any) =>
+    !(item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber)
+  );
+  await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
+}
+
+export async function deletePurchaseFromQueue(invoiceNumber: string) {
+  const queue = await getQueue();
+  const filtered = queue.filter((item: any) => {
+    if (item.op !== 'createPurchase') return true;
+    const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+    return pInv !== invoiceNumber;
+  });
+  await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
 }

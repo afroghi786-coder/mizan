@@ -246,8 +246,9 @@ export default function App() {
 
   // چک URL مخفی ادمین
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
     const checkAdminUrl = () => {
-      if (typeof window !== 'undefined' && window.location) {
+      if (window && window.location) {
         const hash = window.location.hash || '';
         const path = window.location.pathname || '';
         if (hash === '#admin' || hash === '#admin-panel' || path.endsWith('/admin')) {
@@ -295,6 +296,7 @@ export default function App() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <SyncControl showToast={showToast} />
       <View key={themeTick} style={{ flex: 1 }}>
         {isAdmin
           ? <AdminScreen showToast={showToast} />
@@ -351,7 +353,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
   };
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
         <StatusBar style={C.isDark ? 'light' : 'dark'} />
       <View style={[s.header, {
         backgroundColor:
@@ -370,14 +372,11 @@ function MainApp({ showToast, onCycleTheme }: any) {
         }} />
 
         <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-                 <View style={{ flexDirection: 'row-reverse', gap: 8, alignItems: 'center' }}>
-            <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
-              <Text style={{ fontSize: 20 }}>
-                {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
-              </Text>
-            </TouchableOpacity>
-            <SyncControl showToast={showToast} compact />
-          </View>
+                 <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
+            <Text style={{ fontSize: 20 }}>
+              {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
+            </Text>
+          </TouchableOpacity>
           <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 12 }}>
             <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontSize: 24, color: '#f4d47a' }}>⚖️</Text>

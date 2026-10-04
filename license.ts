@@ -35,7 +35,7 @@ export async function checkLicense(): Promise<LicenseInfo> {
   const now = Date.now();
   const lastCheckStr = await AsyncStorage.getItem(LICENSE_TS);
   const lastCheck = lastCheckStr ? parseInt(lastCheckStr) : 0;
-  const daysSince = Math.floor((now - lastCheck) / (24 * 3600 * 1000));
+  const daysSince = lastCheck > 0 ? Math.floor((now - lastCheck) / (24 * 3600 * 1000)) : 0;
 
   // تلاش برای چک آنلاین
   const online = await fetchLicenseFromServer();
@@ -46,7 +46,7 @@ export async function checkLicense(): Promise<LicenseInfo> {
     await AsyncStorage.setItem(LICENSE_DATA, JSON.stringify(online));
 
     const expiresAt = online.expires_at ? new Date(online.expires_at).getTime() : 0;
-    const isExpired = expiresAt < now;
+    const isExpired = expiresAt > 0 && expiresAt < now;
     const isSuspended = online.status === 'suspended';
 
     return {
@@ -64,24 +64,25 @@ export async function checkLicense(): Promise<LicenseInfo> {
   const cachedStr = await AsyncStorage.getItem(LICENSE_DATA);
   const cached = cachedStr ? JSON.parse(cachedStr) : null;
 
-  // اگه ۷ روز گذشته و چک نشده → قفل
-  if (daysSince >= OFFLINE_MAX_DAYS) {
-    return {
-      status: cached?.status || 'unknown',
-      plan: cached?.plan,
-      expiresAt: cached?.expires_at,
-      lastCheck,
-      daysSinceCheck: daysSince,
-      isLocked: true,
-      reason: `${daysSince} روزه به سرور وصل نشدی — یک بار اینترنت وصل کن`,
-    };
-  }
-
-  // کمتر از ۷ روز → از کش استفاده کن
+  // اگه کش داریم → از کش استفاده کن
   if (cached) {
     const expiresAt = cached.expires_at ? new Date(cached.expires_at).getTime() : 0;
-    const isExpired = expiresAt < now;
+    const isExpired = expiresAt > 0 && expiresAt < now;
     const isSuspended = cached.status === 'suspended';
+
+    // اگه ۷ روز گذشته و چک نشده → قفل
+    if (daysSince >= OFFLINE_MAX_DAYS && !isExpired && !isSuspended) {
+      return {
+        status: cached.status || 'active',
+        plan: cached.plan,
+        expiresAt: cached.expires_at,
+        lastCheck,
+        daysSinceCheck: daysSince,
+        isLocked: true,
+        reason: daysSince + ' روزه به سرور وصل نشدی — یک بار اینترنت وصل کن',
+      };
+    }
+
     return {
       status: isSuspended ? 'suspended' : isExpired ? 'expired' : 'active',
       plan: cached.plan,
@@ -95,8 +96,11 @@ export async function checkLicense(): Promise<LicenseInfo> {
 
   // هیچ داده‌ای نیست — اولین بار
   return {
-    status: 'unknown', lastCheck: 0, daysSinceCheck: daysSince,
-    isLocked: true, reason: 'اولین بار — لطفاً به اینترنت وصل شو',
+    status: 'unknown',
+    lastCheck: 0,
+    daysSinceCheck: 0,
+    isLocked: true,
+    reason: 'اولین بار — لطفاً به اینترنت وصل شو',
   };
 }
 

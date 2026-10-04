@@ -27,6 +27,9 @@ export default function LicenseNotification({ showToast }: any) {
       finally { setLoading(false); }
     };
     check();
+    // هر ۱۰ ثانیه چک کن
+    const timer = setInterval(check, 10000);
+    return () => clearInterval(timer);
   }, []);
 
   const dismiss = async () => {

@@ -70,66 +70,67 @@ const confirmMsg = (title: string, msg: string): Promise<boolean> => {
 // ⭐ محاسبه موجودی قبلی مشتری
 async function getCustomerPreviousBalance(customerCode: string, currentInvoiceNumber: string) {
   try {
-    // ۱. اول از سرور (اگه آنلاین)
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+
+    // ═══ ۱. تلاش آنلاین ═══
     let allSales: any[] = [];
     try {
       const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
       if (data && data.length) allSales = data;
     } catch {}
 
-    // ۲. اگه سرور چیزی نداد یا آفلاینیم → از cache محلی بخون
+    // ═══ ۲. اگه آفلاین یا سرور خالی بود، از cache ═══
     if (!allSales.length) {
-      try {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const raw = await AsyncStorage.getItem('@mizan_local_all_sales_for_lookup');
-        if (raw) {
-          const local = JSON.parse(raw);
-          // فقط فاکتورهای همین مشتری
-          allSales = local.filter((s: any) => s.customer_code === customerCode);
-        }
-      } catch {}
+      const raw = await AsyncStorage.getItem('@mizan_local_all_sales_full');
+      if (raw) {
+        const local = JSON.parse(raw);
+        allSales = local.filter((s: any) => s.customer_code === customerCode);
+      }
     }
 
-    // ۳. اگه از cache هم نبود → از sales_grouped و صف بگیر
+    // ═══ ۳. اگه بازم خالی بود، از sales_grouped ═══
     if (!allSales.length) {
-      try {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const groupedRaw = await AsyncStorage.getItem('@mizan_local_sales_grouped');
-        const grouped = groupedRaw ? JSON.parse(groupedRaw) : [];
-        const queueRaw = await AsyncStorage.getItem('@mizan_queue');
-        const queue = queueRaw ? JSON.parse(queueRaw) : [];
-
-        const temp: Record<string, any> = {};
-        for (const g of grouped) {
-          if (g.customerCode === customerCode || g.code === customerCode) {
-            temp[g.invoice] = {
-              invoice_number: g.invoice,
-              total: g.total || 0,
-              paid: g.paid || 0,
-            };
-          }
+      const groupedRaw = await AsyncStorage.getItem('@mizan_local_sales_grouped');
+      if (groupedRaw) {
+        const grouped = JSON.parse(groupedRaw);
+        const matched = grouped.filter((g: any) =>
+          g.customerCode === customerCode || g.code === customerCode
+        );
+        for (const g of matched) {
+          allSales.push({
+            invoice_number: g.invoice,
+            customer_code: customerCode,
+            quantity: 1,
+            price_unit: g.total || 0,
+            payment: g.paid || 0,
+            _synthetic: true,
+          });
         }
-        for (const item of queue) {
-          if (item.op === 'createSale' && item.payload?.customerCode === customerCode) {
-            const p = item.payload;
-            const total = (p.items || []).reduce((a: number, it: any) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
-            const paid = (p.items || []).reduce((a: number, it: any) => a + (Number(it.payment) || 0), 0);
-            temp[p.invoiceNumber] = { invoice_number: p.invoiceNumber, total, paid };
-          }
-        }
-
-        let sales = 0, payments = 0, invoiceCount = 0;
-        Object.values(temp).forEach((g: any) => {
-          if (g.invoice_number === currentInvoiceNumber) return;
-          sales += g.total;
-          payments += g.paid;
-          invoiceCount++;
-        });
-        return { sales, payments, balance: sales - payments, invoiceCount };
-      } catch {}
+      }
     }
 
-    // ۴. محاسبه نهایی از allSales
+    // ═══ ۴. فاکتورهای آفلاین توی صف ═══
+    const queueRaw = await AsyncStorage.getItem('@mizan_queue');
+    if (queueRaw) {
+      const queue = JSON.parse(queueRaw);
+      for (const item of queue) {
+        if (item.op === 'createSale' && item.payload?.customerCode === customerCode) {
+          const p = item.payload;
+          for (const it of (p.items || [])) {
+            allSales.push({
+              invoice_number: p.invoiceNumber,
+              customer_code: customerCode,
+              quantity: Number(it.quantity) || 0,
+              price_unit: Number(it.priceUnit) || 0,
+              payment: Number(it.payment) || 0,
+              _fromQueue: true,
+            });
+          }
+        }
+      }
+    }
+
+    // ═══ ۵. محاسبه ═══
     if (!allSales.length) return { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
 
     const grouped: Record<string, { sales: number; payments: number }> = {};
@@ -141,14 +142,17 @@ async function getCustomerPreviousBalance(customerCode: string, currentInvoiceNu
       grouped[r.invoice_number].sales += qty * price;
       grouped[r.invoice_number].payments += Number(r.payment) || 0;
     });
+
     let sales = 0, payments = 0, invoiceCount = 0;
     Object.values(grouped).forEach((g: any) => {
       sales += g.sales;
       payments += g.payments;
       invoiceCount++;
     });
+
     return { sales, payments, balance: sales - payments, invoiceCount };
-  } catch {
+  } catch (e) {
+    console.log('getCustomerPreviousBalance error:', e);
     return { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
   }
 }

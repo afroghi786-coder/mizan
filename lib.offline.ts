@@ -279,7 +279,7 @@ export async function prepareOffline(): Promise<boolean> {
       lib.getPurchasesGrouped(),
       lib.getUnpaidInvoices(),
       lib.getSettings(),
-      lib.supabase.from('sales').select('customer_code, customer_name, customer_phone, customer_address'),
+      lib.supabase.from('sales').select('*'),
       lib.supabase.from('purchases').select('supplier_code, supplier_name, supplier_phone'),
     ]);
 
@@ -290,7 +290,18 @@ export async function prepareOffline(): Promise<boolean> {
     if (purchasesGrouped.status === 'fulfilled') await setLocal('purchases_grouped', purchasesGrouped.value);
     if (unpaid.status === 'fulfilled') await setLocal('unpaid_invoices', unpaid.value);
     if (settings.status === 'fulfilled') await setLocal('settings', settings.value);
-    if (allSales.status === 'fulfilled') await setLocal('all_sales_for_lookup', allSales.value.data || []);
+    if (allSales.status === 'fulfilled') {
+      const full = allSales.value.data || [];
+      // برای lookup
+      await setLocal('all_sales_for_lookup', full.map((r: any) => ({
+        customer_code: r.customer_code,
+        customer_name: r.customer_name,
+        customer_phone: r.customer_phone,
+        customer_address: r.customer_address,
+      })));
+      // ⭐ برای محاسبه مانده — همه فیلدها
+      await setLocal('all_sales_full', full);
+    }
     if (allPurchases.status === 'fulfilled') await setLocal('all_purchases_for_lookup', allPurchases.value.data || []);
 
     // چک نهایی

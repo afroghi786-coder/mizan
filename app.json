@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "میزان",
+    "name": "\u0645\u06cc\u0632\u0627\u0646",
     "slug": "mizan",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,7 +17,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.mezan786.mizan"
+      "package": "com.mizan.app"
     },
     "web": {
       "favicon": "./assets/favicon.png",

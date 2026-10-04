@@ -203,31 +203,160 @@ export async function getInvoiceDetail(invoiceNumber: string) {
   return cachedRead('invoice_detail_' + invoiceNumber, () => lib.getInvoiceDetail(invoiceNumber));
 }
 
+
+
+
+// تابع کمکی: قبل از رفتن به آفلاین، همه‌چیز رو کش کن
+
+// ═══════════════════════════════════════════
+//  جستجو در cache محلی (بدون سرور)
+// ═══════════════════════════════════════════
+
+
+
+// ═══════════════════════════════════════════
+//  بازنویسی lookup ها با cache
+// ═══════════════════════════════════════════
+
+
+
+// ═══════════════════════════════════════════
+//  prepareOffline — همه‌چیز رو دانلود کن
+// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+//  Lookup های آفلاین
+// ═══════════════════════════════════════════
+async function getCustomerList() {
+  let list = await getLocal<any[]>('all_sales_for_lookup');
+  if (!list || !list.length) {
+    // fallback: از sales_grouped
+    const grouped = await getLocal<any[]>('sales_grouped') || [];
+    list = [];
+    for (const g of grouped) {
+      if (g.phone) {
+        list.push({ customer_phone: g.phone, customer_name: g.name, customer_code: g.customerCode || g.code || '' });
+      }
+    }
+  }
+  return list || [];
+}
+
+async function getSupplierList() {
+  let list = await getLocal<any[]>('all_purchases_for_lookup');
+  if (!list || !list.length) {
+    const grouped = await getLocal<any[]>('purchases_grouped') || [];
+    list = [];
+    for (const g of grouped) {
+      if (g.phone) list.push({ supplier_phone: g.phone, supplier_name: g.name, supplier_code: g.supplierCode || '' });
+    }
+  }
+  return list || [];
+}
+
+export async function findCustomerByPhoneOffline(phone: string) {
+  const list = await getCustomerList();
+  const p = String(phone).replace(/[^0-9]/g, '');
+  for (const s of list) {
+    const sp = String(s.customer_phone || '').replace(/[^0-9]/g, '');
+    if (sp === p) return {
+      customer_name: s.customer_name, customer_address: s.customer_address || '',
+      customer_code: s.customer_code, found_as: 'customer',
+    };
+  }
+  return null;
+}
+
+export async function findSupplierByNameOffline(name: string) {
+  const list = await getSupplierList();
+  for (const p of list) {
+    if (p.supplier_name === name) return {
+      supplier_name: p.supplier_name, supplier_code: p.supplier_code,
+      supplier_phone: p.supplier_phone,
+    };
+  }
+  return null;
+}
+
+export async function findCodeByNameOffline(name: string) {
+  if (!name || name.length < 2) return '';
+  const sales = await getCustomerList();
+  const purchases = await getSupplierList();
+  for (const s of sales) if (s.customer_name === name && s.customer_code) return s.customer_code;
+  for (const p of purchases) if (p.supplier_name === name && p.supplier_code) return p.supplier_code;
+  return '';
+}
+
 export async function lookupCustomerByPhone(phone: string) {
-  return cachedRead('cust_' + phone, () => lib.lookupCustomerByPhone(phone));
+  if (MODE === 'online') {
+    try {
+      const fresh = await lib.lookupCustomerByPhone(phone);
+      if (fresh) await setLocal('cust_' + phone, fresh);
+      return fresh;
+    } catch (e) { return await findCustomerByPhoneOffline(phone); }
+  }
+  const cached = await getLocal<any>('cust_' + phone);
+  if (cached) return cached;
+  return await findCustomerByPhoneOffline(phone);
 }
 
 export async function lookupSupplierByName(name: string) {
-  return cachedRead('sup_' + name, () => lib.lookupSupplierByName(name));
+  if (MODE === 'online') {
+    try {
+      const fresh = await lib.lookupSupplierByName(name);
+      if (fresh) await setLocal('sup_' + name, fresh);
+      return fresh;
+    } catch (e) { return await findSupplierByNameOffline(name); }
+  }
+  const cached = await getLocal<any>('sup_' + name);
+  if (cached) return cached;
+  return await findSupplierByNameOffline(name);
 }
 
 export async function lookupCodeByName(name: string) {
-  return cachedRead('code_' + name, () => lib.lookupCodeByName(name));
+  if (MODE === 'online') {
+    try {
+      const fresh = await lib.lookupCodeByName(name);
+      if (fresh) await setLocal('code_' + name, fresh);
+      return fresh;
+    } catch (e) { return await findCodeByNameOffline(name); }
+  }
+  const cached = await getLocal<string>('code_' + name);
+  if (cached) return cached;
+  return await findCodeByNameOffline(name);
 }
 
-// تابع کمکی: قبل از رفتن به آفلاین، همه‌چیز رو کش کن
-export async function prepareOffline() {
+// ═══════════════════════════════════════════
+//  prepareOffline — کامل و مطمئن
+// ═══════════════════════════════════════════
+export async function prepareOffline(): Promise<boolean> {
   try {
-    await Promise.all([
-      lib.getProducts().then((d: any) => setLocal('products', d)),
-      lib.getSalesGrouped().then((d: any) => setLocal('sales_grouped', d)),
-      lib.getPurchasesGrouped().then((d: any) => setLocal('purchases_grouped', d)),
-      lib.getUnpaidInvoices().then((d: any) => setLocal('unpaid_invoices', d)),
-      lib.getSettings().then((d: any) => setLocal('settings', d)),
+    const results = await Promise.allSettled([
+      lib.getProducts(),
+      lib.getSalesGrouped(),
+      lib.getPurchasesGrouped(),
+      lib.getUnpaidInvoices(),
+      lib.getSettings(),
+      lib.supabase.from('sales').select('customer_code, customer_name, customer_phone, customer_address'),
+      lib.supabase.from('purchases').select('supplier_code, supplier_name, supplier_phone'),
     ]);
+
+    const [products, salesGrouped, purchasesGrouped, unpaid, settings, allSales, allPurchases] = results;
+
+    if (products.status === 'fulfilled') await setLocal('products', products.value);
+    if (salesGrouped.status === 'fulfilled') await setLocal('sales_grouped', salesGrouped.value);
+    if (purchasesGrouped.status === 'fulfilled') await setLocal('purchases_grouped', purchasesGrouped.value);
+    if (unpaid.status === 'fulfilled') await setLocal('unpaid_invoices', unpaid.value);
+    if (settings.status === 'fulfilled') await setLocal('settings', settings.value);
+    if (allSales.status === 'fulfilled') await setLocal('all_sales_for_lookup', allSales.value.data || []);
+    if (allPurchases.status === 'fulfilled') await setLocal('all_purchases_for_lookup', allPurchases.value.data || []);
+
+    // چک نهایی
+    const customerCount = (await getLocal<any[]>('all_sales_for_lookup'))?.length || 0;
+    console.log('prepareOffline done. Customers cached:', customerCount);
     return true;
   } catch (e) {
-    console.log('prepareOffline failed:', e);
+    console.log('prepareOffline error:', e);
     return false;
   }
 }

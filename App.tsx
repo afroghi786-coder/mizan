@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
 import LicenseGate from './LicenseGate';
+import AdminScreen from './AdminScreen';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView,
@@ -234,10 +235,29 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [themeTick, setThemeTick] = useState(0);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const showToast = useCallback((msg: string, error = false) => {
     setToast({ msg, error });
     setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  // چک URL مخفی ادمین
+  useEffect(() => {
+    const checkAdminUrl = () => {
+      if (typeof window !== 'undefined' && window.location) {
+        const hash = window.location.hash || '';
+        const path = window.location.pathname || '';
+        if (hash === '#admin' || hash === '#admin-panel' || path.endsWith('/admin')) {
+          setIsAdmin(true);
+        }
+      }
+    };
+    checkAdminUrl();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('hashchange', checkAdminUrl);
+      return () => window.removeEventListener('hashchange', checkAdminUrl);
+    }
   }, []);
 
   useEffect(() => {
@@ -274,7 +294,9 @@ export default function App() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <View key={themeTick} style={{ flex: 1 }}>
-        {!session
+        {isAdmin
+          ? <AdminScreen showToast={showToast} />
+          : !session
           ? <LoginScreen showToast={showToast} />
           : <LicenseGate showToast={showToast}>
               <MainApp showToast={showToast} onCycleTheme={cycleTheme} />

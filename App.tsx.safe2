@@ -5,7 +5,7 @@ import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';
 import { t, loadLang, getLang, isFirstTime } from './i18n';
-import { loadPreset, getPreset, term, setPreset, PRESETS } from './presets';
+import { term, loadPreset } from './presets';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
@@ -309,16 +309,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [themeTick, setThemeTick] = useState(0);
   const [langTick, setLangTick] = useState(0);
-  const [presetTick, setPresetTick] = useState(0);
   const [showLangFirst, setShowLangFirst] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  (globalThis as any).__changePreset = async (k: string) => {
-    await setPreset(k as any);
-    setPresetTick((v: number) => v + 1);
-    setLangTick((v: number) => v + 1);
-  };
 
   const showToast = useCallback((msg: string, error = false) => {
     setToast({ msg, error });
@@ -384,7 +377,7 @@ export default function App() {
         onClose={() => setShowLangFirst(false)}
         onSelect={() => { setShowLangFirst(false); setLangTick(v => v + 1); }}
       />
-      <View key={themeTick + '-' + langTick + '-' + presetTick} style={{ flex: 1 }}>
+      <View key={themeTick + '-' + langTick} style={{ flex: 1 }}>
         {isAdmin
           ? <AdminScreen showToast={showToast} />
           : !session

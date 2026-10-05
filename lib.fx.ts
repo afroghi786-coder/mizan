@@ -1,88 +1,116 @@
-// lib.fx.ts — لایه داده صرافی
+// lib.fx.ts — ماژول کامل صرافی: حواله + صندوق + چک + کاردکس
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './lib';
+import * as lib from './lib';
 
-const K = (k: string) => '@mizan_local_' + k;
-const gid = () => 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-const pad = (n: number) => String(n).padStart(2, '0');
+const MODE = () => (lib as any).__getMode?.() || 'online';
+const getLocal = async (k: string) => {
+  const raw = await AsyncStorage.getItem('@mizan_local_' + k);
+  return raw ? JSON.parse(raw) : null;
+};
+const setLocal = async (k: string, v: any) => {
+  await AsyncStorage.setItem('@mizan_local_' + k, JSON.stringify(v));
+};
 
-async function readLocal(key: string): Promise<any[]> {
-  try { const r = await AsyncStorage.getItem(K(key)); if (!r) return []; const p = JSON.parse(r); return Array.isArray(p) ? p : []; } catch { return []; }
+// ═══════════════════════════════════════════
+//  حواله‌جات
+// ═══════════════════════════════════════════
+export async function getHawalas(): Promise<any[]> {
+  try { const r = await getLocal('fx_hawalas'); return r || []; } catch { return []; }
 }
-async function writeLocal(key: string, list: any[]) { await AsyncStorage.setItem(K(key), JSON.stringify(list)); }
-
-async function fetchAll(table: string, key: string): Promise<any[]> {
-  const local = await readLocal(key);
-  try {
-    const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
-    if (error || !data || !data.length) return local;
-    const m: Record<string, any> = {};
-    local.forEach(x => { m[x.local_id || x.id] = x; });
-    data.forEach(x => { m[x.local_id || x.id] = x; });
-    return Object.values(m);
-  } catch { return local; }
-}
-
-async function saveItem(table: string, key: string, item: any): Promise<any> {
-  const list = await readLocal(key);
-  const idx = list.findIndex(x => (x.local_id || x.id) === (item.local_id || item.id));
-  const newList = idx >= 0 ? list.map((x, i) => i === idx ? { ...x, ...item } : x) : [item, ...list];
-  await writeLocal(key, newList);
-  const clean: any = { ...item }; delete clean.user_id; delete clean.id;
-  setTimeout(async () => { try { await supabase.from(table).upsert(clean, { onConflict: 'local_id' }); } catch {} }, 0);
+export async function createHawala(p: any): Promise<any> {
+  const list = await getHawalas();
+  let maxN = 1000;
+  list.forEach((x: any) => { const m = String(x.code || '').match(/^HW-(\d+)$/); if (m) { const n = +m[1]; if (n > maxN) maxN = n; } });
+  const code = p.code || 'HW-' + (maxN + 1);
+  const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), created_at: new Date().toISOString() };
+  await setLocal('fx_hawalas', [item, ...list]);
+  try { await supabase.from('fx_hawalas').insert({ ...item, user_id: undefined, id: undefined }); } catch {}
   return item;
 }
-
-async function removeById(table: string, key: string, id: string) {
-  const list = await readLocal(key);
-  await writeLocal(key, list.filter(x => x.local_id !== id && x.id !== id));
-  try { await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+export async function updateHawala(id: string, p: any) {
+  const list = await getHawalas();
+  await setLocal('fx_hawalas', list.map((x: any) => (x.local_id === id || x.id === id) ? { ...x, ...p } : x));
+  try { await supabase.from('fx_hawalas').update(p).or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+}
+export async function deleteHawala(id: string) {
+  const list = await getHawalas();
+  await setLocal('fx_hawalas', list.filter((x: any) => x.local_id !== id && x.id !== id));
+  try { await supabase.from('fx_hawalas').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
 }
 
 // ═══════════════════════════════════════════
-//  مشتریان / خریداران
+//  صندوق‌ها
 // ═══════════════════════════════════════════
-export const getFxCustomers = () => fetchAll('fx_customers', 'fx_customers');
-
-export async function findFxCustomerByPhone(phone: string, type: string) {
-  const list = await readLocal('fx_customers');
-  const p = String(phone).replace(/[^\d]/g, '');
-  return list.find((x: any) => String(x.phone || '').replace(/[^\d]/g, '') === p && (x.type || 'customer') === type) || null;
+export async function getBoxes(): Promise<any[]> {
+  try { const r = await getLocal('fx_boxes'); return r || []; } catch { return []; }
+}
+export async function createBox(p: any): Promise<any> {
+  const list = await getBoxes();
+  let maxN = 100;
+  list.forEach((x: any) => { const m = String(x.code || '').match(/^BX-(\d+)$/); if (m) { const n = +m[1]; if (n > maxN) maxN = n; } });
+  const code = p.code || 'BX-' + (maxN + 1);
+  const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), created_at: new Date().toISOString() };
+  await setLocal('fx_boxes', [item, ...list]);
+  try { await supabase.from('fx_boxes').insert({ ...item, user_id: undefined, id: undefined }); } catch {}
+  return item;
+}
+export async function updateBox(id: string, p: any) {
+  const list = await getBoxes();
+  await setLocal('fx_boxes', list.map((x: any) => (x.local_id === id || x.id === id) ? { ...x, ...p } : x));
+  try { await supabase.from('fx_boxes').update(p).or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+}
+export async function deleteBox(id: string) {
+  const list = await getBoxes();
+  await setLocal('fx_boxes', list.filter((x: any) => x.local_id !== id && x.id !== id));
+  try { await supabase.from('fx_boxes').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
 }
 
-export async function createFxCustomer(p: any): Promise<any> {
-  const list = await readLocal('fx_customers');
-  const type = p.type || 'customer';
-  const prefix = type === 'buyer' ? 'B_' : 'X_';
+// ═══════════════════════════════════════════
+//  انتقالات
+// ═══════════════════════════════════════════
+export async function getTransfers(): Promise<any[]> {
+  try { const r = await getLocal('fx_transfers'); return r || []; } catch { return []; }
+}
+export async function createTransfer(p: any): Promise<any> {
+  const list = await getTransfers();
   let maxN = 1000;
-  list.filter((x: any) => (x.type || 'customer') === type).forEach((x: any) => {
-    const m = String(x.code || '').match(new RegExp('^' + prefix + '(\\d+)$'));
-    if (m) { const n = +m[1]; if (n > maxN) maxN = n; }
-  });
-  const code = p.code || (prefix + (maxN + 1));
-  const item = { ...p, code, type, local_id: gid(), created_at: new Date().toISOString() };
-  return saveItem('fx_customers', 'fx_customers', item);
+  list.forEach((x: any) => { const m = String(x.code || '').match(/^TR-(\d+)$/); if (m) { const n = +m[1]; if (n > maxN) maxN = n; } });
+  const code = p.code || 'TR-' + (maxN + 1);
+  const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), created_at: new Date().toISOString() };
+  await setLocal('fx_transfers', [item, ...list]);
+  try { await supabase.from('fx_transfers').insert({ ...item, user_id: undefined, id: undefined }); } catch {}
+  return item;
 }
-export const updateFxCustomer = (id: string, p: any) => saveItem('fx_customers', 'fx_customers', { ...p, local_id: id });
-export const deleteFxCustomer = (id: string) => removeById('fx_customers', 'fx_customers', id);
+export async function deleteTransfer(id: string) {
+  const list = await getTransfers();
+  await setLocal('fx_transfers', list.filter((x: any) => x.local_id !== id && x.id !== id));
+  try { await supabase.from('fx_transfers').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+}
 
 // ═══════════════════════════════════════════
-//  معاملات
+//  چک‌ها
 // ═══════════════════════════════════════════
-export const getFxTrades = () => fetchAll('fx_trades', 'fx_trades');
-
-export async function createFxTrade(p: any): Promise<any> {
-  const list = await readLocal('fx_trades');
-  const d = new Date();
-  const ds = String(d.getFullYear()).slice(-2) + pad(d.getMonth() + 1) + pad(d.getDate());
+export async function getChecks(): Promise<any[]> {
+  try { const r = await getLocal('fx_checks'); return r || []; } catch { return []; }
+}
+export async function createCheck(p: any): Promise<any> {
+  const list = await getChecks();
   let maxN = 1000;
-  list.forEach((x: any) => {
-    const m = String(x.invoice_number || '').match(/^FX-\d{6}-(\d+)$/);
-    if (m) { const n = +m[1]; if (n > maxN && n < 9999999) maxN = n; }
-  });
-  const inv = p.invoice_number || ('FX-' + ds + '-' + (maxN + 1));
-  const item = { ...p, invoice_number: inv, local_id: gid(), created_at: new Date().toISOString() };
-  return saveItem('fx_trades', 'fx_trades', item);
+  list.forEach((x: any) => { const m = String(x.code || '').match(/^CK-(\d+)$/); if (m) { const n = +m[1]; if (n > maxN) maxN = n; } });
+  const code = p.code || 'CK-' + (maxN + 1);
+  const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), created_at: new Date().toISOString() };
+  await setLocal('fx_checks', [item, ...list]);
+  try { await supabase.from('fx_checks').insert({ ...item, user_id: undefined, id: undefined }); } catch {}
+  return item;
 }
-export const updateFxTrade = (id: string, p: any) => saveItem('fx_trades', 'fx_trades', { ...p, local_id: id });
-export const deleteFxTrade = (id: string) => removeById('fx_trades', 'fx_trades', id);
+export async function updateCheck(id: string, p: any) {
+  const list = await getChecks();
+  await setLocal('fx_checks', list.map((x: any) => (x.local_id === id || x.id === id) ? { ...x, ...p } : x));
+  try { await supabase.from('fx_checks').update(p).or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+}
+export async function deleteCheck(id: string) {
+  const list = await getChecks();
+  await setLocal('fx_checks', list.filter((x: any) => x.local_id !== id && x.id !== id));
+  try { await supabase.from('fx_checks').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+}

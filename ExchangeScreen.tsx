@@ -1,12 +1,19 @@
-// ExchangeScreen.tsx — صرافی (استاندارد)
+// ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import {
   getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade,
   getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer,
-  findFxCustomerByPhone,
+  getFxPartners, createFxPartner, updateFxPartner, deleteFxPartner,
+} from './lib.offline';
+import {
+  getHawalas, createHawala, updateHawala, deleteHawala,
+  getBoxes, createBox, updateBox, deleteBox,
+  getTransfers, createTransfer, deleteTransfer,
+  getChecks, createCheck, updateCheck, deleteCheck,
 } from './lib.fx';
 
+// ═══ ارزها ═══
 const CUR: Record<string, { name: string; flag: string; dec: number }> = {
   AFN:{name:'افغانی',flag:'🇦🇫',dec:0}, USD:{name:'دالر',flag:'🇺🇸',dec:2},
   EUR:{name:'یورو',flag:'🇪🇺',dec:2}, GBP:{name:'پوند',flag:'🇬🇧',dec:2},
@@ -14,588 +21,1363 @@ const CUR: Record<string, { name: string; flag: string; dec: number }> = {
   TOM:{name:'تومان',flag:'🇮🇷',dec:0}, AED:{name:'درهم',flag:'🇦🇪',dec:2},
   SAR:{name:'ریال سعودی',flag:'🇸🇦',dec:2}, TRY:{name:'لیر',flag:'🇹🇷',dec:2},
 };
-const BANKS = ['ملی','ملت','صادرات','تجارت','سپه','کشاورزی','مسکن','پاسارگاد','پارسیان','سامان','رفاه','اقتصاد نوین','سینا','شهر','آینده','دی','قوامین','صنعت و معدن','کارآفرین','مهر ایران','بلوبانک','رسالت'];
-const fmt = (n: any, d = 2) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 });
+const MAIN_CURS = ['USD', 'EUR', 'AFN', 'PKR', 'AED'];
+
+const fmt = (n: number, d = 2) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 });
 const parse = (s: any) => Number(String(s || '').replace(/[^\d.-]/g, '')) || 0;
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
+// ═══ تولید شماره فاکتور FX-YYMMDD-NNNN ═══
+function genInvoiceNumber(trades: any[]): string {
+  const d = new Date();
+  const ds = String(d.getFullYear()).slice(-2) + pad2(d.getMonth() + 1) + pad2(d.getDate());
+  let maxN = 1000;
+  trades.forEach(t => {
+    const m = String(t.invoice_number || '').match(/^FX-\d{6}-(\d+)$/);
+    if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+  });
+  return 'FX-' + ds + '-' + (maxN + 1);
+}
+
 export default function ExchangeScreen({ showToast }: any) {
-  const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'buyers' | 'positions'>('list');
+  const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger' | 'statement'>('list');
   const [trades, setTrades] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
-  const [buyers, setBuyers] = useState<any[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
   const [load, setLoad] = useState(true);
+  const [hawalas, setHawalas] = useState<any[]>([]);
+  const [boxes, setBoxes] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [checks, setChecks] = useState<any[]>([]);
+  const [hawModal, setHawModal] = useState(false);
+  const [hawForm, setHawForm] = useState<any>({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: new Date().toLocaleDateString('fa-IR'), note: '' });
+  const [hawEditId, setHawEditId] = useState<string | null>(null);
+  const [boxModal, setBoxModal] = useState(false);
+  const [boxForm, setBoxForm] = useState<any>({ name: '', currency: 'USD', partner_code: '', opening: '0' });
+  const [boxEditId, setBoxEditId] = useState<string | null>(null);
+  const [trModal, setTrModal] = useState(false);
+  const [trForm, setTrForm] = useState<any>({ from_box: '', to_box: '', amount: '', rate: '1', date: new Date().toLocaleDateString('fa-IR'), note: '' });
+  const [ckModal, setCkModal] = useState(false);
+  const [ckForm, setCkForm] = useState<any>({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: '', status: 'pending', note: '' });
+  const [ckEditId, setCkEditId] = useState<string | null>(null);
+  const [stmtSearch, setStmtSearch] = useState('');
+  const [stmtCustomer, setStmtCustomer] = useState<any>(null);
+  const [stmtData, setStmtData] = useState<any>(null);
+  const [now, setNow] = useState(new Date());
+
+  // فرم معامله
+  const [editId, setEditId] = useState<string | null>(null);
+  const [fInvoice, setFInvoice] = useState('');
+  const [fType, setFType] = useState<'buy' | 'sell'>('buy');
+  const [fPartner, setFPartner] = useState('');
+  const [fPhone, setFPhone] = useState('');
+  const [fCustName, setFCustName] = useState('');
+  const [fCustCode, setFCustCode] = useState('');
+  const [fBank, setFBank] = useState('');
+  const [fHolder, setFHolder] = useState('');
+  const [fFrom, setFFrom] = useState('AFN');
+  const [fTo, setFTo] = useState('USD');
+  const [fFromQty, setFFromQty] = useState('');
+  const [fToQty, setFToQty] = useState('');
+  const [fRate, setFRate] = useState('');
+  const [fDesc, setFDesc] = useState('');
+  const [fDate, setFDate] = useState(new Date().toLocaleDateString('fa-IR'));
+
+  // Modals
+  const [showFromCur, setShowFromCur] = useState(false);
+  const [showToCur, setShowToCur] = useState(false);
+  const [showPartnerPick, setShowPartnerPick] = useState(false);
+  const [custModal, setCustModal] = useState(false);
+  const [partnerModal, setPartnerModal] = useState(false);
+  const [custForm, setCustForm] = useState<any>({ name: '', phone: '', bank: '', holder_name: '', holder_code: '', notes: '' });
+  const [partnerForm, setPartnerForm] = useState<any>({ name: '', phone: '', notes: '' });
+  const [custEditId, setCustEditId] = useState<string | null>(null);
+  const [partnerEditId, setPartnerEditId] = useState<string | null>(null);
+
+  // ═══ Clock ═══
+  useEffect(() => { const i = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(i); }, []);
 
   const reload = useCallback(async () => {
     try {
-      const all = await getFxCustomers();
-      setCustomers(all.filter((x: any) => (x.type || 'customer') === 'customer'));
-      setBuyers(all.filter((x: any) => x.type === 'buyer'));
-      setTrades(await getFxTrades());
-    } catch (e) { console.log(e); }
+      const [t, c, p, h, b, tr, ck] = await Promise.all([
+        getFxTrades(), getFxCustomers(), getFxPartners(),
+        getHawalas(), getBoxes(), getTransfers(), getChecks(),
+      ]);
+      setTrades(t); setCustomers(c); setPartners(p);
+      setHawalas(h); setBoxes(b); setTransfers(tr); setChecks(ck);
+    } catch {}
   }, []);
 
-  useEffect(() => {
-    let m = true;
-    (async () => { await reload(); if (m) setLoad(false); })();
-    const t = setTimeout(() => { if (m) setLoad(false); }, 5000);
-    return () => { m = false; clearTimeout(t); };
-  }, [reload]);
+  useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, [reload]);
 
-  if (load) return <View style={s.center}><ActivityIndicator size="large" color="#d4af37" /></View>;
+  // ═══ Dashboard stats ═══
+  const dash = (() => {
+    let totalBuy = 0, totalSell = 0, totalProfit = 0;
+    const pos: Record<string, number> = {};
+    Object.keys(CUR).forEach(k => pos[k] = 0);
+    trades.forEach((t: any) => {
+      const fq = Number(t.from_qty) || 0;
+      const tq = Number(t.to_qty) || 0;
+      const pf = Number(t.profit) || 0;
+      totalProfit += pf;
+      if (t.from_currency === 'AFN') totalBuy += fq;
+      if (t.to_currency === 'AFN') totalSell += tq;
+      pos[t.from_currency] = (pos[t.from_currency] || 0) - fq;
+      pos[t.to_currency] = (pos[t.to_currency] || 0) + tq;
+    });
+    return { totalBuy, totalSell, totalProfit, pos, count: trades.length };
+  })();
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#f5f7fa' }}>
-      {/* زیرتب‌ها */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.subsBar} contentContainerStyle={s.subsCont}>
-        {[
-          { k: 'list', l: '📋 معاملات' },
-          { k: 'form', l: '➕ معامله جدید' },
-          { k: 'customers', l: '👤 مشتریان' },
-          { k: 'buyers', l: '🏢 خریداران' },
-          { k: 'positions', l: '📊 پوزیشن' },
-        ].map((x: any) => (
-          <TouchableOpacity key={x.k} onPress={() => setSub(x.k)} style={[s.sub, sub === x.k && s.subActive]}>
-            <Text style={[s.subTxt, sub === x.k && s.subTxtActive]}>{x.l}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 10, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-        {sub === 'list' && <TradesList trades={trades} reload={reload} showToast={showToast} openForm={() => setSub('form')} />}
-        {sub === 'form' && <TradeForm customers={customers} buyers={buyers} reload={reload} showToast={showToast} onDone={() => setSub('list')} />}
-        {sub === 'customers' && <PartyList type="customer" list={customers} reload={reload} showToast={showToast} />}
-        {sub === 'buyers' && <PartyList type="buyer" list={buyers} reload={reload} showToast={showToast} />}
-        {sub === 'positions' && <Positions trades={trades} />}
-      </ScrollView>
-    </View>
-  );
-}
-
-// ══════════════════════════════════════════════════════
-//  LIST
-// ══════════════════════════════════════════════════════
-function TradesList({ trades, reload, showToast, openForm }: any) {
-  const remove = async (id: string) => {
-    if (typeof window !== 'undefined' && window.confirm && !window.confirm('حذف شود؟')) return;
-    await deleteFxTrade(id);
-    await reload();
-    showToast('🗑 حذف شد');
-  };
-  return (
-    <View>
-      <TouchableOpacity style={s.addBtn} onPress={openForm}>
-        <Text style={s.addBtnTxt}>➕ معامله جدید</Text>
-      </TouchableOpacity>
-      <Text style={s.secT}>📋 معاملات ({trades.length})</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
-        <View>
-          <View style={s.tH}>
-            <Text style={[s.th, { width: 36 }]}>#</Text>
-            <Text style={[s.th, { width: 130 }]}>فاکتور</Text>
-            <Text style={[s.th, { width: 130 }]}>تاریخ/ساعت</Text>
-            <Text style={[s.th, { width: 90 }]}>نوع</Text>
-            <Text style={[s.th, { width: 130 }]}>خریدار</Text>
-            <Text style={[s.th, { width: 130 }]}>مشتری</Text>
-            <Text style={[s.th, { width: 100 }]}>از ارز</Text>
-            <Text style={[s.th, { width: 100 }]}>به ارز</Text>
-            <Text style={[s.th, { width: 90 }]}>نرخ</Text>
-            <Text style={[s.th, { width: 100 }]}>سود</Text>
-            <Text style={[s.th, { width: 90 }]}>بانک</Text>
-            <Text style={[s.th, { width: 90 }]}>عملیات</Text>
-          </View>
-          {trades.length === 0 ? (
-            <View style={{ padding: 30 }}><Text style={s.empty}>هنوز معامله‌ای نیست</Text></View>
-          ) : trades.map((t: any, i: number) => (
-            <View key={t.local_id || t.id} style={[s.tR, i % 2 === 0 && { backgroundColor: '#fff' }]}>
-              <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-              <Text style={[s.td, { width: 130, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{t.invoice_number}</Text>
-              <Text style={[s.td, { width: 130, color: '#475569', fontSize: 10 }]}>{t.date} {t.payment_time || ''}</Text>
-              <Text style={[s.td, { width: 90, color: t.trade_type === 'buy' ? '#059669' : '#dc2626', fontSize: 11, fontWeight: 'bold' }]}>
-                {t.trade_type === 'buy' ? '📥 خرید' : '📤 فروش'}
-              </Text>
-              <Text style={[s.td, { width: 130, color: '#0f2438', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{t.buyer_name || '—'}</Text>
-              <Text style={[s.td, { width: 130, color: '#0f2438', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{t.customer_name || '—'}</Text>
-              <Text style={[s.td, { width: 100, color: '#fb923c', fontSize: 11 }]}>{CUR[t.from_currency]?.flag} {t.from_currency} {fmt(t.from_qty, CUR[t.from_currency]?.dec)}</Text>
-              <Text style={[s.td, { width: 100, color: '#34d399', fontSize: 11 }]}>{CUR[t.to_currency]?.flag} {t.to_currency} {fmt(t.to_qty, CUR[t.to_currency]?.dec)}</Text>
-              <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 11 }]}>{fmt(t.rate, 4)}</Text>
-              <Text style={[s.td, { width: 100, color: (Number(t.profit) || 0) > 0 ? '#00ff88' : '#dc2626', fontWeight: 'bold', fontSize: 11 }]}>{fmt(t.profit, 0)}</Text>
-              <Text style={[s.td, { width: 90, color: '#475569', fontSize: 10 }]}>{t.bank || '—'}</Text>
-              <View style={[s.td, { width: 90, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
-                <TouchableOpacity onPress={() => remove(t.local_id || t.id)} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-// ══════════════════════════════════════════════════════
-//  FORM
-// ══════════════════════════════════════════════════════
-function TradeForm({ customers, buyers, reload, showToast, onDone }: any) {
-  const [form, setForm] = useState<any>({
-    trade_type: 'buy',
-    buyer_code: '', buyer_name: '', buyer_phone: '',
-    customer_code: '', customer_name: '', customer_phone: '',
-    from_currency: 'AFN', to_currency: 'USD',
-    from_qty: '', to_qty: '', rate: '',
-    bank: '', holder_name: '', payment_method: 'cash',
-    date: new Date().toLocaleDateString('fa-IR'),
-    time_h: pad2(new Date().getHours()), time_m: pad2(new Date().getMinutes()),
-    description: '',
-  });
-  const [showBuyerList, setShowBuyerList] = useState(false);
-  const [showCustList, setShowCustList] = useState(false);
-
-  const pickBuyer = (b: any) => {
-    setForm({ ...form, buyer_code: b.code, buyer_name: b.name, buyer_phone: b.phone || '', bank: b.bank || form.bank });
-    setShowBuyerList(false);
-  };
-  const pickCustomer = (c: any) => {
-    setForm({ ...form, customer_code: c.code, customer_name: c.name, customer_phone: c.phone || '' });
-    setShowCustList(false);
-  };
-
-  const lookupBuyer = (v: string) => {
-    const p = v.replace(/[^\d]/g, '').slice(0, 11);
-    setForm((f: any) => ({ ...f, buyer_phone: p }));
-    if (p.length === 11) {
-      const found = buyers.find((b: any) => String(b.phone || '').replace(/[^\d]/g, '') === p);
-      if (found) { setForm((f: any) => ({ ...f, buyer_code: found.code, buyer_name: found.name })); }
-    }
-  };
-  const lookupCustomer = (v: string) => {
-    const p = v.replace(/[^\d]/g, '').slice(0, 11);
-    setForm((f: any) => ({ ...f, customer_phone: p }));
-    if (p.length === 11) {
-      const found = customers.find((c: any) => String(c.phone || '').replace(/[^\d]/g, '') === p);
-      if (found) { setForm((f: any) => ({ ...f, customer_code: found.code, customer_name: found.name })); }
+  // ═══ جستجوی مشتری ═══
+  const lookupCustomer = (phone: string) => {
+    const p = String(phone).replace(/[^\d]/g, '');
+    if (p.length < 5) return;
+    const found = customers.find(c => String(c.phone || '').replace(/[^\d]/g, '') === p);
+    if (found) {
+      setFCustName(found.name || '');
+      setFCustCode(found.code || '');
+      if (found.bank) setFBank(found.bank);
+      if (found.holder_name) setFHolder(found.holder_name);
+      showToast('✅ مشتری قبلی: ' + found.name);
+    } else if (p.length === 11) {
+      setFCustCode('');
+      showToast('🆕 مشتری جدید — هنگام ثبت، کد ساخته می‌شود');
     }
   };
 
-  const recalc = (field: 'from' | 'rate' | 'to', v: string) => {
-    const f = field === 'from' ? parse(v) : parse(form.from_qty);
-    const t = field === 'to' ? parse(v) : parse(form.to_qty);
-    const r = field === 'rate' ? parse(v) : parse(form.rate);
-    if (field === 'rate' && f > 0 && r > 0) setForm((p: any) => ({ ...p, to_qty: fmt(f * r, CUR[p.to_currency]?.dec || 2) }));
-    else if (field === 'to' && f > 0 && t > 0) setForm((p: any) => ({ ...p, rate: fmt(t / f, 6) }));
-    else if (field === 'from' && r > 0) setForm((p: any) => ({ ...p, to_qty: fmt(f * r, CUR[p.to_currency]?.dec || 2) }));
+  // ═══ محاسبه ═══
+  const recalc = (field: 'from' | 'rate' | 'to', val: string) => {
+    const fq = field === 'from' ? parse(val) : parse(fFromQty);
+    const tq = field === 'to' ? parse(val) : parse(fToQty);
+    const r = field === 'rate' ? parse(val) : parse(fRate);
+    if (field === 'rate' && fq > 0 && r > 0) setFToQty(fmt(fq * r, CUR[fTo]?.dec || 2));
+    else if (field === 'to' && fq > 0 && tq > 0) setFRate(fmt(tq / fq, 6));
+    else if (field === 'from' && r > 0) setFToQty(fmt(fq * r, CUR[fTo]?.dec || 2));
   };
 
+  // ═══ محاسبه سود ═══
+  const calcProfit = (): number => {
+    // سود = (مقدار فروش AFN - مقدار خرید AFN) برای این معامله
+    const fq = parse(fFromQty), tq = parse(fToQty);
+    if (fFrom === 'AFN' && fTo !== 'AFN') return 0; // خرید — سود فوری نداره
+    if (fTo === 'AFN' && fFrom !== 'AFN') {
+      // فروش — سود نسبت به میانگین خرید همون ارز
+      const avgBuyRate = (() => {
+        let sum = 0, qty = 0;
+        trades.forEach(t => {
+          if (t.from_currency === 'AFN' && t.to_currency === fFrom) {
+            sum += Number(t.from_qty) || 0;
+            qty += Number(t.to_qty) || 0;
+          }
+        });
+        return qty > 0 ? sum / qty : 0;
+      })();
+      if (avgBuyRate > 0) return tq - (fq * avgBuyRate);
+    }
+    return 0;
+  };
+
+  // ═══ ثبت معامله ═══
   const submit = async () => {
-    try {
-      if (!form.buyer_name && !form.buyer_phone) return showToast('اطلاعات خریدار الزامی', true);
-      if (!form.customer_name && !form.customer_phone) return showToast('اطلاعات مشتری الزامی', true);
-      const fq = parse(form.from_qty), tq = parse(form.to_qty);
-      if (fq <= 0 || tq <= 0) return showToast('مقدارها را وارد کن', true);
-      if (form.from_currency === form.to_currency) return showToast('ارزها یکسانند', true);
+    if (!fPartner) return showToast('شریک را انتخاب کن', true);
+    if (!fPhone || fPhone.length < 10) return showToast('شماره تماس الزامی', true);
+    if (!fCustName) return showToast('نام مشتری الزامی', true);
+    const fq = parse(fFromQty), tq = parse(fToQty), r = parse(fRate);
+    if (fq <= 0 || tq <= 0) return showToast('مقدارها را وارد کن', true);
+    if (fFrom === fTo) return showToast('ارزها یکسانند', true);
 
-      // ذخیره/به‌روزرسانی خریدار
-      let bCode = form.buyer_code;
-      if (form.buyer_phone && form.buyer_name) {
-        const ex = buyers.find((b: any) => String(b.phone || '').replace(/[^\d]/g, '') === String(form.buyer_phone).replace(/[^\d]/g, ''));
-        if (ex) { bCode = ex.code; await updateFxCustomer(ex.local_id || ex.id, { name: form.buyer_name, bank: form.bank }); }
-        else { const n = await createFxCustomer({ type: 'buyer', name: form.buyer_name, phone: form.buyer_phone, bank: form.bank }); bCode = n.code; }
+    const partner = partners.find(p => p.code === fPartner);
+    const partnerName = partner?.name || '';
+
+    // مشتری: اگه جدید بود بساز
+    let custCode = fCustCode;
+    if (!custCode) {
+      const newC = await createFxCustomer({ name: fCustName, phone: fPhone, bank: fBank, holder_name: fHolder });
+      custCode = newC.code;
+    } else {
+      const existing = customers.find(c => c.code === custCode);
+      if (existing) {
+        await updateFxCustomer(existing.local_id || existing.id, { bank: fBank, holder_name: fHolder });
       }
+    }
 
-      // ذخیره/به‌روزرسانی مشتری
-      let cCode = form.customer_code;
-      if (form.customer_phone && form.customer_name) {
-        const ex = customers.find((c: any) => String(c.phone || '').replace(/[^\d]/g, '') === String(form.customer_phone).replace(/[^\d]/g, ''));
-        if (ex) { cCode = ex.code; await updateFxCustomer(ex.local_id || ex.id, { name: form.customer_name }); }
-        else { const n = await createFxCustomer({ type: 'customer', name: form.customer_name, phone: form.customer_phone }); cCode = n.code; }
-      }
+    const profit = calcProfit();
 
-      const payload = {
-        ...form,
-        buyer_code: bCode,
-        customer_code: cCode,
-        from_qty: fq,
-        to_qty: tq,
-        rate: parse(form.rate) || (fq > 0 ? tq / fq : 0),
-        payment_time: (form.time_h || '00') + ':' + (form.time_m || '00'),
-        profit: 0,
-      };
-      await createFxTrade(payload);
-      await reload();
-      showToast('✅ معامله ثبت شد');
-      onDone();
-    } catch (e: any) { showToast('❌ ' + (e?.message || ''), true); }
+    const data: any = {
+      invoice_number: fInvoice,
+      trade_type: fType,
+      partner_code: fPartner, partner_name: partnerName,
+      customer_code: custCode, customer_name: fCustName, customer_phone: fPhone,
+      bank: fBank, holder_name: fHolder, holder_code: fHolder || '',
+      from_currency: fFrom, to_currency: fTo,
+      from_qty: fq, to_qty: tq,
+      rate: r || (fq > 0 ? tq / fq : 0),
+      profit: profit,
+      description: fDesc, date: fDate,
+    };
+
+    if (editId) {
+      await updateFxTrade(editId, data);
+      showToast('✅ ویرایش شد');
+    } else {
+      await createFxTrade(data);
+      showToast('✅ ثبت شد');
+    }
+    await reload();
+    resetForm();
+    setSub('list');
   };
 
-  return (
-    <ScrollView keyboardShouldPersistTaps="handled">
-      <Text style={s.formTitle}>➕ معامله جدید</Text>
-
-      {/* نوع */}
-      <View style={s.card}>
-        <Text style={s.lbl}>🔀 نوع معامله</Text>
-        <View style={s.chips}>
-          <TouchableOpacity onPress={() => setForm({ ...form, trade_type: 'buy', from_currency: 'AFN', to_currency: 'USD' })} style={[s.chip, form.trade_type === 'buy' && s.chipActive]}>
-            <Text style={[s.chipTxt, form.trade_type === 'buy' && s.chipTxtActive]}>📥 خرید ارز</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setForm({ ...form, trade_type: 'sell', from_currency: 'USD', to_currency: 'AFN' })} style={[s.chip, form.trade_type === 'sell' && s.chipActive]}>
-            <Text style={[s.chipTxt, form.trade_type === 'sell' && s.chipTxtActive]}>📤 فروش ارز</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* خریدار */}
-      <View style={s.card}>
-        <Text style={s.secT}>🏢 اطلاعات خریدار</Text>
-        <Text style={s.lbl}>📞 تلفن خریدار</Text>
-        <TextInput style={s.inp} value={form.buyer_phone} onChangeText={lookupBuyer} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor="#94a3b8" />
-        <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 4 }}>
-          <TouchableOpacity style={s.miniBtn} onPress={() => setShowBuyerList(true)}>
-            <Text style={s.miniBtnTxt}>📋 انتخاب از لیست</Text>
-          </TouchableOpacity>
-          {form.buyer_code ? <Text style={s.codeBadge}>{form.buyer_code}</Text> : null}
-        </View>
-        <Text style={s.lbl}>👤 نام خریدار</Text>
-        <TextInput style={s.inp} value={form.buyer_name} onChangeText={v => setForm({ ...form, buyer_name: v })} placeholder="نام خریدار" placeholderTextColor="#94a3b8" />
-      </View>
-
-      {/* مشتری */}
-      <View style={s.card}>
-        <Text style={s.secT}>👤 اطلاعات مشتری</Text>
-        <Text style={s.lbl}>📞 تلفن مشتری</Text>
-        <TextInput style={s.inp} value={form.customer_phone} onChangeText={lookupCustomer} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor="#94a3b8" />
-        <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 4 }}>
-          <TouchableOpacity style={s.miniBtn} onPress={() => setShowCustList(true)}>
-            <Text style={s.miniBtnTxt}>📋 انتخاب از لیست</Text>
-          </TouchableOpacity>
-          {form.customer_code ? <Text style={s.codeBadge}>{form.customer_code}</Text> : null}
-        </View>
-        <Text style={s.lbl}>👤 نام مشتری</Text>
-        <TextInput style={s.inp} value={form.customer_name} onChangeText={v => setForm({ ...form, customer_name: v })} placeholder="نام مشتری" placeholderTextColor="#94a3b8" />
-      </View>
-
-      {/* ارزها */}
-      <View style={s.card}>
-        <Text style={s.secT}>💱 مبالغ ارز</Text>
-        <Text style={s.lbl}>📤 ارز مبدأ</Text>
-        <View style={s.curRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 40 }}>
-            <View style={{ flexDirection: 'row-reverse', gap: 4 }}>
-              {Object.keys(CUR).map(c => (
-                <TouchableOpacity key={c} onPress={() => setForm({ ...form, from_currency: c })} style={[s.curChip, form.from_currency === c && s.curChipActive]}>
-                  <Text style={[s.curChipTxt, form.from_currency === c && s.curChipTxtActive]}>{CUR[c].flag} {c}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-          <TextInput style={[s.inp, { marginTop: 6 }]} value={form.from_qty} onChangeText={v => { setForm({ ...form, from_qty: v }); recalc('from', v); }} keyboardType="numeric" placeholder="مقدار" placeholderTextColor="#94a3b8" />
-        </View>
-
-        <Text style={s.lbl}>💹 نرخ تبدیل</Text>
-        <TextInput style={s.inp} value={form.rate} onChangeText={v => { setForm({ ...form, rate: v }); recalc('rate', v); }} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
-
-        <Text style={s.lbl}>📥 ارز مقصد</Text>
-        <View style={s.curRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 40 }}>
-            <View style={{ flexDirection: 'row-reverse', gap: 4 }}>
-              {Object.keys(CUR).map(c => (
-                <TouchableOpacity key={c} onPress={() => setForm({ ...form, to_currency: c })} style={[s.curChip, form.to_currency === c && s.curChipActive]}>
-                  <Text style={[s.curChipTxt, form.to_currency === c && s.curChipTxtActive]}>{CUR[c].flag} {c}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-          <TextInput style={[s.inp, { marginTop: 6 }]} value={form.to_qty} onChangeText={v => { setForm({ ...form, to_qty: v }); recalc('to', v); }} keyboardType="numeric" placeholder="مقدار" placeholderTextColor="#94a3b8" />
-        </View>
-      </View>
-
-      {/* پرداخت */}
-      <View style={s.card}>
-        <Text style={s.secT}>💳 اطلاعات پرداخت</Text>
-        <Text style={s.lbl}>روش پرداخت</Text>
-        <View style={s.chips}>
-          {[{ k: 'cash', l: '💵 نقدی' }, { k: 'bank', l: '🏦 بانکی' }].map((m: any) => (
-            <TouchableOpacity key={m.k} onPress={() => setForm({ ...form, payment_method: m.k })} style={[s.chip, form.payment_method === m.k && s.chipActive]}>
-              <Text style={[s.chipTxt, form.payment_method === m.k && s.chipTxtActive]}>{m.l}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {form.payment_method === 'bank' && (
-          <>
-            <Text style={s.lbl}>🏦 بانک</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 40 }}>
-              <View style={{ flexDirection: 'row-reverse', gap: 4 }}>
-                {BANKS.map(b => (
-                  <TouchableOpacity key={b} onPress={() => setForm({ ...form, bank: b })} style={[s.curChip, form.bank === b && s.curChipActive]}>
-                    <Text style={[s.curChipTxt, form.bank === b && s.curChipTxtActive]}>{b}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-            <Text style={s.lbl}>👤 صاحب حساب</Text>
-            <TextInput style={s.inp} value={form.holder_name} onChangeText={v => setForm({ ...form, holder_name: v })} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
-          </>
-        )}
-
-        <Text style={s.lbl}>📅 تاریخ پرداخت</Text>
-        <View style={s.dateBox}>
-          <TextInput style={[s.dateInp, { flex: 2.5 }]} value={form.date} onChangeText={v => setForm({ ...form, date: v })} placeholder="1405/08/15" placeholderTextColor="#94a3b8" />
-          <Text style={s.dateSep}>|</Text>
-          <TextInput style={[s.dateInp, { flex: 1 }]} value={form.time_h} onChangeText={v => setForm({ ...form, time_h: v.replace(/[^\d]/g, '').slice(0, 2) })} placeholder="HH" maxLength={2} placeholderTextColor="#94a3b8" />
-          <Text style={s.dateSep}>:</Text>
-          <TextInput style={[s.dateInp, { flex: 1 }]} value={form.time_m} onChangeText={v => setForm({ ...form, time_m: v.replace(/[^\d]/g, '').slice(0, 2) })} placeholder="MM" maxLength={2} placeholderTextColor="#94a3b8" />
-        </View>
-
-        <Text style={s.lbl}>📝 توضیحات</Text>
-        <TextInput style={[s.inp, { minHeight: 60 }]} value={form.description} onChangeText={v => setForm({ ...form, description: v })} multiline placeholder="اختیاری" placeholderTextColor="#94a3b8" />
-      </View>
-
-      <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={submit}>
-        <Text style={s.btnTxt}>✅ ثبت معامله</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', marginTop: 8 }]} onPress={onDone}>
-        <Text style={s.btnTxt}>↩️ برگشت</Text>
-      </TouchableOpacity>
-
-      {/* Modal انتخاب خریدار */}
-      <Modal visible={showBuyerList} transparent animationType="fade">
-        <View style={s.mBg}><View style={s.mBox}>
-          <View style={s.mHead}><Text style={s.mTitle}>🏢 انتخاب خریدار ({buyers.length})</Text><TouchableOpacity onPress={() => setShowBuyerList(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
-          <ScrollView style={{ maxHeight: 400, padding: 10 }}>
-            {buyers.length === 0 ? <Text style={s.empty}>هنوز خریداری نیست — یکی اضافه کن</Text> :
-              buyers.map((b: any) => (
-                <TouchableOpacity key={b.code} onPress={() => pickBuyer(b)} style={s.pickRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.pickName}>{b.name}</Text>
-                    <Text style={s.pickSub}>📞 {b.phone || '—'} | 🆔 {b.code}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-          </ScrollView>
-        </View></View>
-      </Modal>
-
-      {/* Modal انتخاب مشتری */}
-      <Modal visible={showCustList} transparent animationType="fade">
-        <View style={s.mBg}><View style={s.mBox}>
-          <View style={[s.mHead, { backgroundColor: '#1e3a8a' }]}><Text style={s.mTitle}>👤 انتخاب مشتری ({customers.length})</Text><TouchableOpacity onPress={() => setShowCustList(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
-          <ScrollView style={{ maxHeight: 400, padding: 10 }}>
-            {customers.length === 0 ? <Text style={s.empty}>هنوز مشتری‌ای نیست — یکی اضافه کن</Text> :
-              customers.map((c: any) => (
-                <TouchableOpacity key={c.code} onPress={() => pickCustomer(c)} style={s.pickRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.pickName}>{c.name}</Text>
-                    <Text style={s.pickSub}>📞 {c.phone || '—'} | 🆔 {c.code}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-          </ScrollView>
-        </View></View>
-      </Modal>
-    </ScrollView>
-  );
-}
-
-// ══════════════════════════════════════════════════════
-//  PARTY LIST (مشتریان / خریداران)
-// ══════════════════════════════════════════════════════
-function PartyList({ type, list, reload, showToast }: any) {
-  const [modal, setModal] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<any>({});
-
-  const title = type === 'buyer' ? '🏢 خریداران' : '👤 مشتریان';
+  const resetForm = () => {
+    setEditId(null); setFInvoice(''); setFType('buy');
+    setFPartner(''); setFPhone(''); setFCustName(''); setFCustCode('');
+    setFBank(''); setFHolder(''); setFFrom('AFN'); setFTo('USD');
+    setFFromQty(''); setFToQty(''); setFRate(''); setFDesc('');
+    setFDate(new Date().toLocaleDateString('fa-IR'));
+  };
 
   const openNew = () => {
-    setEditId(null);
-    setForm({ type, code: '', name: '', phone: '', bank: '', account_number: '', holder_name: '', address: '', note: '' });
-    setModal(true);
-  };
-  const openEdit = (x: any) => { setEditId(x.local_id || x.id); setForm({ ...x }); setModal(true); };
-
-  const submit = async () => {
-    try {
-      if (!form.name) return showToast('نام الزامی', true);
-      if (!form.phone) return showToast('تلفن الزامی', true);
-      if (editId) await updateFxCustomer(editId, { ...form });
-      else await createFxCustomer({ ...form, type });
-      await reload();
-      setModal(false);
-      showToast(editId ? '✅ ویرایش شد' : '✅ ثبت شد');
-    } catch (e: any) { showToast('❌ ' + (e?.message || ''), true); }
+    resetForm();
+    setFInvoice(genInvoiceNumber(trades));
+    setSub('form');
   };
 
-  const remove = async (id: string) => {
-    if (typeof window !== 'undefined' && window.confirm && !window.confirm('حذف شود؟')) return;
-    await deleteFxCustomer(id);
+  const openEdit = (t: any) => {
+    setEditId(t.local_id || t.id);
+    setFInvoice(t.invoice_number || '');
+    setFType(t.trade_type || 'buy');
+    setFPartner(t.partner_code || '');
+    setFPhone(t.customer_phone || '');
+    setFCustName(t.customer_name || '');
+    setFCustCode(t.customer_code || '');
+    setFBank(t.bank || '');
+    setFHolder(t.holder_name || '');
+    setFFrom(t.from_currency || 'AFN');
+    setFTo(t.to_currency || 'USD');
+    setFFromQty(String(t.from_qty || ''));
+    setFToQty(String(t.to_qty || ''));
+    setFRate(String(t.rate || ''));
+    setFDesc(t.description || '');
+    setFDate(t.date || '');
+    setSub('form');
+  };
+
+  const submitCustomer = async () => {
+    if (!custForm.name || !custForm.phone) return showToast('نام و تلفن الزامی', true);
+    if (custEditId) { await updateFxCustomer(custEditId, custForm); showToast('✅ ویرایش شد'); }
+    else { await createFxCustomer(custForm); showToast('✅ ثبت شد'); }
     await reload();
-    showToast('🗑 حذف شد');
+    setCustModal(false); setCustEditId(null);
+    setCustForm({ name: '', phone: '', bank: '', holder_name: '', holder_code: '', notes: '' });
   };
+
+  const submitPartner = async () => {
+    if (!partnerForm.name) return showToast('نام الزامی', true);
+    if (partnerEditId) { await updateFxPartner(partnerEditId, partnerForm); showToast('✅ ویرایش شد'); }
+    else { await createFxPartner(partnerForm); showToast('✅ ثبت شد'); }
+    await reload();
+    setPartnerModal(false); setPartnerEditId(null);
+    setPartnerForm({ name: '', phone: '', notes: '' });
+  };
+
+  const buildStatement = (q: string) => {
+    const s = String(q || '').trim().toLowerCase();
+    if (!s) return;
+    // جستجو در مشتری‌ها
+    const cust = customers.find((c: any) =>
+      String(c.code || '').toLowerCase() === s ||
+      String(c.phone || '').replace(/[^\d]/g, '') === s.replace(/[^\d]/g, '') ||
+      String(c.name || '').toLowerCase().includes(s)
+    );
+    if (!cust) {
+      showToast('❌ مشتری پیدا نشد', true);
+      setStmtCustomer(null);
+      setStmtData(null);
+      return;
+    }
+    setStmtCustomer(cust);
+
+    // ═══ معاملات این مشتری ═══
+    const myTrades = trades.filter((t: any) => t.customer_code === cust.code);
+    // ═══ حواله‌جات این مشتری (به‌عنوان ذی‌نفع یا فرستنده) ═══
+    const myHawalas = hawalas.filter((h: any) =>
+      String(h.beneficiary_name || '').includes(cust.name) ||
+      String(h.beneficiary_phone || '').replace(/[^\d]/g, '') === String(cust.phone || '').replace(/[^\d]/g, '')
+    );
+    // ═══ چک‌ها ═══
+    const myChecks = checks.filter((c2: any) => c2.partner_name === cust.name || c2.partner_code === cust.code);
+
+    // ═══ محاسبه پوزیشن ارزی ═══
+    const pos: Record<string, { bought: number; sold: number; net: number }> = {};
+    myTrades.forEach((t: any) => {
+      const f = t.from_currency, to = t.to_currency;
+      if (!pos[f]) pos[f] = { bought: 0, sold: 0, net: 0 };
+      if (!pos[to]) pos[to] = { bought: 0, sold: 0, net: 0 };
+      pos[f].sold += Number(t.from_qty) || 0;
+      pos[f].net -= Number(t.from_qty) || 0;
+      pos[to].bought += Number(t.to_qty) || 0;
+      pos[to].net += Number(t.to_qty) || 0;
+    });
+
+    // ═══ سود کل ═══
+    const totalProfit = myTrades.reduce((a: number, t: any) => a + (Number(t.profit) || 0), 0);
+    const totalHawalaFees = myHawalas.reduce((a: number, h: any) => a + (Number(h.commission) || 0), 0);
+    const totalChecks = myChecks.reduce((a: number, c2: any) => a + (Number(c2.amount) || 0), 0);
+
+    setStmtData({
+      trades: myTrades,
+      hawalas: myHawalas,
+      checks: myChecks,
+      positions: pos,
+      totalProfit,
+      totalHawalaFees,
+      totalChecks,
+      tradeCount: myTrades.length,
+      hawalaCount: myHawalas.length,
+      checkCount: myChecks.length,
+    });
+  };
+
+  if (load) return <View style={s.center}><ActivityIndicator color="#d4af37" /></View>;
+
+  const timeStr = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
 
   return (
-    <View>
-      <TouchableOpacity style={[s.addBtn, { backgroundColor: type === 'buyer' ? '#059669' : '#1e3a8a' }]} onPress={openNew}>
-        <Text style={s.addBtnTxt}>➕ افزودن {type === 'buyer' ? 'خریدار' : 'مشتری'} جدید</Text>
-      </TouchableOpacity>
-      <Text style={s.secT}>{title} ({list.length})</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
-        <View>
-          <View style={s.tH}>
-            <Text style={[s.th, { width: 36 }]}>#</Text>
-            <Text style={[s.th, { width: 90 }]}>کد</Text>
-            <Text style={[s.th, { width: 180 }]}>نام</Text>
-            <Text style={[s.th, { width: 120 }]}>تلفن</Text>
-            <Text style={[s.th, { width: 100 }]}>بانک</Text>
-            <Text style={[s.th, { width: 120 }]}>حساب</Text>
-            <Text style={[s.th, { width: 150 }]}>صاحب حساب</Text>
-            <Text style={[s.th, { width: 180 }]}>آدرس</Text>
-            <Text style={[s.th, { width: 100 }]}>عملیات</Text>
-          </View>
-          {list.length === 0 ? <View style={{ padding: 30 }}><Text style={s.empty}>خالی</Text></View> : list.map((x: any, i: number) => (
-            <View key={x.local_id || x.id} style={[s.tR, i % 2 === 0 && { backgroundColor: '#fff' }]}>
-              <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-              <Text style={[s.td, { width: 90, color: type === 'buyer' ? '#059669' : '#1e3a8a', fontWeight: 'bold', fontSize: 11 }]}>{x.code}</Text>
-              <Text style={[s.td, { width: 180, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{x.name}</Text>
-              <Text style={[s.td, { width: 120, color: '#475569', fontSize: 11 }]}>{x.phone || '—'}</Text>
-              <Text style={[s.td, { width: 100, color: '#475569', fontSize: 11 }]}>{x.bank || '—'}</Text>
-              <Text style={[s.td, { width: 120, color: '#475569', fontSize: 10 }]}>{x.account_number || '—'}</Text>
-              <Text style={[s.td, { width: 150, color: '#0f2438', fontSize: 10, textAlign: 'right' }]} numberOfLines={1}>{x.holder_name || '—'}</Text>
-              <Text style={[s.td, { width: 180, color: '#64748b', fontSize: 10, textAlign: 'right' }]} numberOfLines={1}>{x.address || '—'}</Text>
-              <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
-                <TouchableOpacity onPress={() => openEdit(x)} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => remove(x.local_id || x.id)} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+    <View style={{ flex: 1 }}>
+      <ScrollView style={s.page} contentContainerStyle={{ padding: 10, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
 
-      <Modal visible={modal} transparent animationType="slide">
-        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
-          <View style={[s.mHead, { backgroundColor: type === 'buyer' ? '#059669' : '#1e3a8a' }]}>
-            <Text style={s.mTitle}>{editId ? '✏️ ویرایش' : '➕ افزودن'} {type === 'buyer' ? 'خریدار' : 'مشتری'}</Text>
-            <TouchableOpacity onPress={() => setModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
+        {/* ═══════ DASHBOARD ═══════ */}
+        <View style={s.dash}>
+          {/* ساعت و تاریخ */}
+          <View style={s.clockRow}>
+            <Text style={s.time}>{timeStr}</Text>
+            <View style={{ alignItems: 'center', gap: 2 }}>
+              <Text style={s.dateSmall}>{fDate}</Text>
+              <Text style={s.dateSub}>📅 امروز</Text>
+            </View>
           </View>
-          <View style={{ padding: 16 }}>
-            <Text style={s.lbl}>نام *</Text>
-            <TextInput style={s.inp} value={form.name || ''} onChangeText={v => setForm({ ...form, name: v })} placeholder="نام کامل" />
-            <Text style={s.lbl}>تلفن *</Text>
-            <TextInput style={s.inp} value={form.phone || ''} onChangeText={v => setForm({ ...form, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} placeholder="09..." />
-            <Text style={s.lbl}>بانک</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 40 }}>
-              <View style={{ flexDirection: 'row-reverse', gap: 4 }}>
-                {BANKS.map(b => (
-                  <TouchableOpacity key={b} onPress={() => setForm({ ...form, bank: b })} style={[s.curChip, form.bank === b && s.curChipActive]}>
-                    <Text style={[s.curChipTxt, form.bank === b && s.curChipTxtActive]}>{b}</Text>
-                  </TouchableOpacity>
-                ))}
+
+          {/* سود */}
+          <View style={s.profitBox}>
+            <Text style={s.profitLbl}>💰 سود خالص صرافی</Text>
+            <Text style={[s.profitVal, {
+              color: dash.totalProfit < 0 ? '#ff3355' : dash.totalProfit === 0 ? '#fbbf24' : '#00ff88',
+              textShadowColor: dash.totalProfit < 0 ? '#ff3355' : dash.totalProfit === 0 ? '#fbbf24' : '#00ff88',
+            }]}>
+              {fmt(dash.totalProfit, 0)}
+            </Text>
+            <Text style={s.profitUnit}>AFN</Text>
+          </View>
+
+          {/* آمار */}
+          <View style={s.grid}>
+            <View style={s.dItem}>
+              <Text style={s.dLbl}>📥 کل خرید AFN</Text>
+              <Text style={[s.dVal, { color: '#fb923c', textShadowColor: '#fb923c' }]} numberOfLines={1}>{fmt(dash.totalBuy, 0)}</Text>
+            </View>
+            <View style={s.dItem}>
+              <Text style={s.dLbl}>📤 کل فروش AFN</Text>
+              <Text style={[s.dVal, { color: '#34d399', textShadowColor: '#34d399' }]} numberOfLines={1}>{fmt(dash.totalSell, 0)}</Text>
+            </View>
+            <View style={s.dItem}>
+              <Text style={s.dLbl}>📋 معاملات</Text>
+              <Text style={[s.dVal, { color: '#60a5fa', textShadowColor: '#60a5fa' }]}>{fmt(dash.count, 0)}</Text>
+            </View>
+          </View>
+
+          {/* پوزیشن‌های اصلی */}
+          <View style={s.posRow}>
+            {MAIN_CURS.map(c => {
+              const q = dash.pos[c] || 0;
+              const col = q > 0 ? '#00ff88' : q < 0 ? '#ff3355' : '#64748b';
+              return (
+                <View key={c} style={s.posBox}>
+                  <Text style={s.posFlag}>{CUR[c].flag}</Text>
+                  <Text style={s.posCode}>{c}</Text>
+                  <Text style={[s.posVal, { color: col, textShadowColor: col }]}>{q > 0 ? '+' : ''}{fmt(q, CUR[c].dec)}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ═══════ زیرتب‌ها ═══════ */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.subsBar} contentContainerStyle={s.subsCont}>
+          {[
+            { k: 'list', l: '📋 معاملات' },
+            { k: 'form', l: '➕ جدید' },
+            { k: 'hawalas', l: '💸 حواله‌جات' },
+            { k: 'boxes', l: '📦 صندوق‌ها' },
+            { k: 'checks', l: '📄 چک‌ها' },
+            { k: 'ledger', l: '📊 کاردکس' },
+            { k: 'statement', l: '🖨️ پرینت حساب' },
+            { k: 'customers', l: '👥 مشتریان' },
+            { k: 'partners', l: '💼 شرکا' },
+          ].map(x => (
+            <TouchableOpacity key={x.k} onPress={() => { if (x.k === 'form' && sub !== 'form') { openNew(); return; } setSub(x.k as any); }} style={[s.sub, sub === x.k && s.subActive]}>
+              <Text style={[s.subTxt, sub === x.k && s.subTxtActive]}>{x.l}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* ═══════ لیست (جدول ردیفی) ═══════ */}
+        {sub === 'list' && (
+          <View>
+            <Text style={s.secT}>📄 لیست معاملات ({trades.length})</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator>
+              <View>
+                {/* Header */}
+                <View style={s.tblHeader}>
+                  <Text style={[s.th, { width: 36 }]}>#</Text>
+                  <Text style={[s.th, { width: 100 }]}>فاکتور</Text>
+                  <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                  <Text style={[s.th, { width: 100 }]}>شریک</Text>
+                  <Text style={[s.th, { width: 130 }]}>مشتری</Text>
+                  <Text style={[s.th, { width: 100 }]}>تلفن</Text>
+                  <Text style={[s.th, { width: 90 }]}>از</Text>
+                  <Text style={[s.th, { width: 100 }]}>به</Text>
+                  <Text style={[s.th, { width: 90 }]}>نرخ</Text>
+                  <Text style={[s.th, { width: 100 }]}>سود</Text>
+                  <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+                </View>
+                {/* Rows */}
+                {trades.length === 0 ? (
+                  <View style={{ padding: 30, alignItems: 'center' }}><Text style={s.empty}>هنوز معامله‌ای ثبت نشده</Text></View>
+                ) : trades.map((t: any, i: number) => {
+                  const profitCol = (Number(t.profit) || 0) > 0 ? '#00ff88' : (Number(t.profit) || 0) < 0 ? '#ff3355' : '#64748b';
+                  return (
+                    <View key={t.local_id || t.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                      <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                      <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{t.invoice_number || '—'}</Text>
+                      <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{t.date || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#e2e8f0' }]}>{t.partner_name || '—'}</Text>
+                      <Text style={[s.td, { width: 130, color: '#ffffff', fontWeight: 'bold' }]}>{t.customer_name || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10 }]}>{t.customer_phone || '—'}</Text>
+                      <Text style={[s.td, { width: 90, color: '#fb923c' }]}>{CUR[t.from_currency]?.flag}{fmt(t.from_qty, CUR[t.from_currency]?.dec)}</Text>
+                      <Text style={[s.td, { width: 100, color: '#34d399' }]}>{CUR[t.to_currency]?.flag}{fmt(t.to_qty, CUR[t.to_currency]?.dec)}</Text>
+                      <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 10 }]}>{fmt(t.rate, 4)}</Text>
+                      <Text style={[s.td, { width: 100, color: profitCol, fontWeight: 'bold' }]}>{fmt(t.profit, 0)}</Text>
+                      <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                        <TouchableOpacity onPress={() => openEdit(t)} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={async () => { await deleteFxTrade(t.local_id || t.id); await reload(); showToast('🗑 حذف شد'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             </ScrollView>
-            <Text style={s.lbl}>شماره حساب</Text>
-            <TextInput style={s.inp} value={form.account_number || ''} onChangeText={v => setForm({ ...form, account_number: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
-            <Text style={s.lbl}>صاحب حساب</Text>
-            <TextInput style={s.inp} value={form.holder_name || ''} onChangeText={v => setForm({ ...form, holder_name: v })} placeholder="نام صاحب حساب" />
-            <Text style={s.lbl}>آدرس</Text>
-            <TextInput style={[s.inp, { minHeight: 50 }]} value={form.address || ''} onChangeText={v => setForm({ ...form, address: v })} multiline />
-            <Text style={s.lbl}>یادداشت</Text>
-            <TextInput style={[s.inp, { minHeight: 50 }]} value={form.note || ''} onChangeText={v => setForm({ ...form, note: v })} multiline />
+          </View>
+        )}
+
+        {/* ═══════ فرم ═══════ */}
+        {sub === 'form' && (
+          <View style={s.formCard}>
+            <Text style={s.formTitle}>{editId ? '✏️ ویرایش معامله' : '➕ معامله جدید'}</Text>
+
+            <Text style={s.lbl}>🧾 شماره فاکتور</Text>
+            <TextInput style={s.inp} value={fInvoice} onChangeText={setFInvoice} editable={!editId} />
+
+            <Text style={s.lbl}>📅 تاریخ</Text>
+            <TextInput style={s.inp} value={fDate} onChangeText={setFDate} />
+
+            <Text style={s.lbl}>💼 شریک معامله‌کننده *</Text>
+            <TouchableOpacity style={s.inp} onPress={() => setShowPartnerPick(true)}>
+              <Text style={{ color: fPartner ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
+                {fPartner ? (partners.find(p => p.code === fPartner)?.name + ' (' + fPartner + ')') : 'انتخاب شریک...'}
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={s.lbl}>📞 شماره تماس مشتری *</Text>
+            <TextInput style={s.inp} value={fPhone} onChangeText={v => { const d = v.replace(/[^\d]/g, '').slice(0, 11); setFPhone(d); if (d.length === 11) lookupCustomer(d); }} keyboardType="phone-pad" maxLength={11} placeholder="09..." />
+
+            <Text style={s.lbl}>👤 نام مشتری * {fCustCode ? <Text style={s.badge}>{fCustCode}</Text> : null}</Text>
+            <TextInput style={s.inp} value={fCustName} onChangeText={setFCustName} placeholder="نام و نام خانوادگی" />
+
+            <Text style={s.lbl}>🏦 بانک</Text>
+            <TextInput style={s.inp} value={fBank} onChangeText={setFBank} />
+
+            <Text style={s.lbl}>👤 صاحب حساب</Text>
+            <TextInput style={s.inp} value={fHolder} onChangeText={setFHolder} />
+
+            {/* نوع معامله */}
+            <Text style={s.lbl}>🔀 نوع معامله</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              <TouchableOpacity onPress={() => { setFType('buy'); setFFrom('AFN'); setFTo('USD'); }} style={[s.typeBtn, fType === 'buy' && s.typeBtnBuy]}>
+                <Text style={[s.typeBtnTxt, fType === 'buy' && { color: '#fff' }]}>📥 خرید ارز</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setFType('sell'); setFFrom('USD'); setFTo('AFN'); }} style={[s.typeBtn, fType === 'sell' && s.typeBtnSell]}>
+                <Text style={[s.typeBtnTxt, fType === 'sell' && { color: '#fff' }]}>📤 فروش ارز</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={s.lbl}>📤 از ارز (می‌دهم) *</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              <TouchableOpacity style={s.curPick} onPress={() => setShowFromCur(true)}>
+                <Text style={s.curPickTxt}>{CUR[fFrom]?.flag} {fFrom}</Text>
+              </TouchableOpacity>
+              <TextInput style={[s.inp, { flex: 1 }]} value={fFromQty} onChangeText={v => { setFFromQty(v); recalc('from', v); }} keyboardType="numeric" placeholder="مقدار" />
+            </View>
+
+            <Text style={s.lbl}>💹 نرخ تبدیل</Text>
+            <TextInput style={s.inp} value={fRate} onChangeText={v => { setFRate(v); recalc('rate', v); }} keyboardType="numeric" placeholder="مثلاً 70500" />
+
+            <Text style={s.lbl}>📥 به ارز (می‌گیرم) *</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              <TouchableOpacity style={s.curPick} onPress={() => setShowToCur(true)}>
+                <Text style={s.curPickTxt}>{CUR[fTo]?.flag} {fTo}</Text>
+              </TouchableOpacity>
+              <TextInput style={[s.inp, { flex: 1 }]} value={fToQty} onChangeText={v => { setFToQty(v); recalc('to', v); }} keyboardType="numeric" placeholder="مقدار" />
+            </View>
+
+            <Text style={s.lbl}>📝 توضیحات</Text>
+            <TextInput style={[s.inp, { minHeight: 60, textAlignVertical: 'top' }]} value={fDesc} onChangeText={setFDesc} multiline />
+
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: type === 'buyer' ? '#059669' : '#1e3a8a', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => { resetForm(); setSub('list'); }}>
+                <Text style={s.btnTxt}>↩️ برگشت</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submit}>
+                <Text style={s.btnTxt}>{editId ? '💾 ذخیره' : '✅ ثبت معامله'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* ═══════ مشتریان ═══════ */}
+        {sub === 'customers' && (
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>👥 مشتریان ({customers.length})</Text>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setCustEditId(null); setCustForm({ name: '', phone: '', bank: '', holder_name: '', holder_code: '', notes: '' }); setCustModal(true); }}>
+                <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+              </TouchableOpacity>
+            </View>
+            {customers.map((c: any) => (
+              <View key={c.local_id || c.id} style={s.card}>
+                <View style={s.cardHead}>
+                  <Text style={s.cardTitle}>{c.name}</Text>
+                  <Text style={s.badge}>{c.code}</Text>
+                </View>
+                <Text style={s.cardSub}>📞 {c.phone || '—'}  |  🏦 {c.bank || '—'}</Text>
+                {c.holder_name ? <Text style={s.cardSub}>👤 {c.holder_name}</Text> : null}
+                <View style={s.actions}>
+                  <TouchableOpacity style={s.smBtn} onPress={() => { setCustEditId(c.local_id || c.id); setCustForm({ name: c.name, phone: c.phone, bank: c.bank || '', holder_name: c.holder_name || '', holder_code: c.holder_code || '', notes: c.notes || '' }); setCustModal(true); }}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
+                  <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteFxCustomer(c.local_id || c.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ═══════ شرکا ═══════ */}
+        {sub === 'partners' && (
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>💼 شرکا ({partners.length})</Text>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setPartnerEditId(null); setPartnerForm({ name: '', phone: '', notes: '' }); setPartnerModal(true); }}>
+                <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+              </TouchableOpacity>
+            </View>
+            {partners.map((p: any) => (
+              <View key={p.local_id || p.id} style={s.card}>
+                <View style={s.cardHead}>
+                  <Text style={s.cardTitle}>{p.name}</Text>
+                  <Text style={s.badge}>{p.code}</Text>
+                </View>
+                <Text style={s.cardSub}>📞 {p.phone || '—'}</Text>
+                <View style={s.actions}>
+                  <TouchableOpacity style={s.smBtn} onPress={() => { setPartnerEditId(p.local_id || p.id); setPartnerForm({ name: p.name, phone: p.phone || '', notes: p.notes || '' }); setPartnerModal(true); }}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
+                  <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteFxPartner(p.local_id || p.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ═══════ حواله‌جات ═══════ */}
+        {sub === 'hawalas' && (
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>💸 حواله‌جات ({hawalas.length})</Text>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setHawEditId(null); setHawForm({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: new Date().toLocaleDateString('fa-IR'), note: '' }); setHawModal(true); }}>
+                <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator>
+              <View>
+                <View style={s.tblHeader}>
+                  <Text style={[s.th, { width: 36 }]}>#</Text>
+                  <Text style={[s.th, { width: 90 }]}>کد</Text>
+                  <Text style={[s.th, { width: 80 }]}>نوع</Text>
+                  <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                  <Text style={[s.th, { width: 130 }]}>ذی‌نفع</Text>
+                  <Text style={[s.th, { width: 100 }]}>شهر</Text>
+                  <Text style={[s.th, { width: 100 }]}>مبلغ</Text>
+                  <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                  <Text style={[s.th, { width: 90 }]}>کارمزد</Text>
+                  <Text style={[s.th, { width: 100 }]}>شریک</Text>
+                  <Text style={[s.th, { width: 90 }]}>وضعیت</Text>
+                  <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+                </View>
+                {hawalas.length === 0 ? (
+                  <View style={{ padding: 30, alignItems: 'center' }}><Text style={s.empty}>هنوز حواله‌ای نیست</Text></View>
+                ) : hawalas.map((h: any, i: number) => {
+                  const stCol = h.status === 'done' ? '#00ff88' : h.status === 'cancelled' ? '#ff3355' : '#fbbf24';
+                  return (
+                    <View key={h.local_id || h.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                      <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                      <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{h.code}</Text>
+                      <Text style={[s.td, { width: 80, color: h.direction === 'send' ? '#fb923c' : '#34d399' }]}>{h.direction === 'send' ? '📤 ارسال' : '📥 دریافت'}</Text>
+                      <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{h.date || '—'}</Text>
+                      <Text style={[s.td, { width: 130, color: '#fff', fontWeight: 'bold' }]}>{h.beneficiary_name || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10 }]}>{h.beneficiary_city || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(h.amount, 0)}</Text>
+                      <Text style={[s.td, { width: 80, color: '#60a5fa' }]}>{h.currency}</Text>
+                      <Text style={[s.td, { width: 90, color: '#00ff88' }]}>{fmt(h.commission, 0)}</Text>
+                      <Text style={[s.td, { width: 100, color: '#e2e8f0' }]}>{h.partner_name || '—'}</Text>
+                      <Text style={[s.td, { width: 90, color: stCol, fontWeight: 'bold', fontSize: 10 }]}>{h.status === 'done' ? '✅ انجام' : h.status === 'cancelled' ? '❌ لغو' : '⏳ در انتظار'}</Text>
+                      <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                        <TouchableOpacity onPress={() => { setHawEditId(h.local_id || h.id); setHawForm({ ...h }); setHawModal(true); }} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={async () => { await deleteHawala(h.local_id || h.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ═══════ صندوق‌ها ═══════ */}
+        {sub === 'boxes' && (
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>📦 صندوق‌ها ({boxes.length})</Text>
+              <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+                <TouchableOpacity style={[s.addSmBtn, { backgroundColor: '#059669' }]} onPress={() => setTrModal(true)}>
+                  <Text style={s.addSmBtnTxt}>🔄 انتقال</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.addSmBtn} onPress={() => { setBoxEditId(null); setBoxForm({ name: '', currency: 'USD', partner_code: '', opening: '0' }); setBoxModal(true); }}>
+                  <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            {/* محاسبه موجودی هر صندوق */}
+            {(() => {
+              const balances: Record<string, number> = {};
+              boxes.forEach(b => { balances[b.local_id || b.id] = Number(b.opening) || 0; });
+              transfers.forEach((t: any) => {
+                const fb = boxes.find((b: any) => b.code === t.from_box);
+                const tb = boxes.find((b: any) => b.code === t.to_box);
+                if (fb) balances[fb.local_id || fb.id] -= Number(t.amount) || 0;
+                if (tb) balances[tb.local_id || tb.id] += Number(t.amount) || 0;
+              });
+              return boxes.length === 0 ? (
+                <Text style={s.empty}>هنوز صندوقی نیست</Text>
+              ) : boxes.map((b: any) => {
+                const bal = balances[b.local_id || b.id] || 0;
+                const col = bal > 0 ? '#059669' : bal < 0 ? '#dc2626' : '#94a3b8';
+                const partner = partners.find((p: any) => p.code === b.partner_code);
+                return (
+                  <View key={b.local_id || b.id} style={s.card}>
+                    <View style={s.cardHead}>
+                      <Text style={s.cardTitle}>📦 {b.name}</Text>
+                      <Text style={s.badge}>{b.code}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 8 }}>
+                      <Text style={s.cardSub}>💱 {CUR[b.currency]?.flag} {b.currency}</Text>
+                      {partner ? <Text style={s.cardSub}>💼 {partner.name}</Text> : null}
+                    </View>
+                    <Text style={[s.cardTitle, { color: col, fontSize: 18, textAlign: 'left', marginTop: 8, fontFamily: 'monospace' }]}>
+                      {bal > 0 ? '+' : ''}{fmt(bal, CUR[b.currency]?.dec || 2)}
+                    </Text>
+                    <View style={s.actions}>
+                      <TouchableOpacity style={s.smBtn} onPress={() => { setBoxEditId(b.local_id || b.id); setBoxForm({ ...b }); setBoxModal(true); }}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteBox(b.local_id || b.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              });
+            })()}
+            {/* لیست انتقالات */}
+            {transfers.length > 0 && (
+              <>
+                <Text style={[s.secT, { marginTop: 16 }]}>🔄 انتقالات اخیر ({transfers.length})</Text>
+                {transfers.slice(0, 20).map((t: any) => (
+                  <View key={t.local_id || t.id} style={s.card}>
+                    <View style={s.cardHead}>
+                      <Text style={s.cardTitle}>{t.from_box} → {t.to_box}</Text>
+                      <Text style={s.badge}>{t.code}</Text>
+                    </View>
+                    <Text style={s.cardSub}>💰 {fmt(t.amount, 0)} | 📅 {t.date}</Text>
+                    <View style={s.actions}>
+                      <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteTransfer(t.local_id || t.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+        )}
+
+        {/* ═══════ چک‌ها ═══════ */}
+        {sub === 'checks' && (
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>📄 چک‌ها ({checks.length})</Text>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setCkEditId(null); setCkForm({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: '', status: 'pending', note: '' }); setCkModal(true); }}>
+                <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator>
+              <View>
+                <View style={s.tblHeader}>
+                  <Text style={[s.th, { width: 36 }]}>#</Text>
+                  <Text style={[s.th, { width: 90 }]}>کد</Text>
+                  <Text style={[s.th, { width: 80 }]}>نوع</Text>
+                  <Text style={[s.th, { width: 100 }]}>شماره چک</Text>
+                  <Text style={[s.th, { width: 100 }]}>بانک</Text>
+                  <Text style={[s.th, { width: 100 }]}>مبلغ</Text>
+                  <Text style={[s.th, { width: 85 }]}>سرسید</Text>
+                  <Text style={[s.th, { width: 120 }]}>طرف</Text>
+                  <Text style={[s.th, { width: 90 }]}>وضعیت</Text>
+                  <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+                </View>
+                {checks.length === 0 ? (
+                  <View style={{ padding: 30, alignItems: 'center' }}><Text style={s.empty}>هنوز چکی نیست</Text></View>
+                ) : checks.map((c: any, i: number) => {
+                  const stCol = c.status === 'cleared' ? '#00ff88' : c.status === 'bounced' ? '#ff3355' : '#fbbf24';
+                  const stTxt = c.status === 'cleared' ? '✅ پاس' : c.status === 'bounced' ? '❌ برگشتی' : '⏳ در جریان';
+                  return (
+                    <View key={c.local_id || c.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                      <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                      <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{c.code}</Text>
+                      <Text style={[s.td, { width: 80, color: c.direction === 'in' ? '#34d399' : '#fb923c' }]}>{c.direction === 'in' ? '📥 دریافتی' : '📤 پرداختی'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#fff', fontWeight: 'bold', fontSize: 11 }]}>{c.check_number || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#94a3b8' }]}>{c.bank || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(c.amount, 0)}</Text>
+                      <Text style={[s.td, { width: 85, color: '#60a5fa', fontSize: 10 }]}>{c.due_date || '—'}</Text>
+                      <Text style={[s.td, { width: 120, color: '#e2e8f0' }]}>{c.partner_name || '—'}</Text>
+                      <Text style={[s.td, { width: 90, color: stCol, fontWeight: 'bold', fontSize: 10 }]}>{stTxt}</Text>
+                      <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                        <TouchableOpacity onPress={() => { setCkEditId(c.local_id || c.id); setCkForm({ ...c }); setCkModal(true); }} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={async () => { await deleteCheck(c.local_id || c.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ═══════ کاردکس (دفتر کل) ═══════ */}
+        {sub === 'ledger' && (
+          <View>
+            <Text style={s.secT}>📊 کاردکس ارزی — همه معاملات به ترتیب</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator>
+              <View>
+                <View style={s.tblHeader}>
+                  <Text style={[s.th, { width: 36 }]}>#</Text>
+                  <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
+                  <Text style={[s.th, { width: 100 }]}>سند</Text>
+                  <Text style={[s.th, { width: 130 }]}>شرح</Text>
+                  <Text style={[s.th, { width: 90 }]}>ارز</Text>
+                  <Text style={[s.th, { width: 100 }]}>بدهکار</Text>
+                  <Text style={[s.th, { width: 100 }]}>بستانکار</Text>
+                  <Text style={[s.th, { width: 100 }]}>مانده</Text>
+                </View>
+                {(() => {
+                  // ساخت کاردکس از معاملات + حوالات + چک‌ها
+                  const entries: any[] = [];
+                  trades.forEach((t: any) => {
+                    entries.push({ date: t.date || '', ref: t.invoice_number || '', desc: 'معامله با ' + (t.customer_name || ''), cur: t.from_currency, debit: Number(t.from_qty) || 0, credit: 0 });
+                    entries.push({ date: t.date || '', ref: t.invoice_number || '', desc: 'معامله با ' + (t.customer_name || ''), cur: t.to_currency, debit: 0, credit: Number(t.to_qty) || 0 });
+                  });
+                  hawalas.forEach((h: any) => {
+                    if (h.direction === 'send') {
+                      entries.push({ date: h.date || '', ref: h.code, desc: 'حواله ارسالی به ' + (h.beneficiary_name || ''), cur: h.currency, debit: Number(h.amount) || 0, credit: 0 });
+                    } else {
+                      entries.push({ date: h.date || '', ref: h.code, desc: 'حواله دریافتی از ' + (h.beneficiary_name || ''), cur: h.currency, debit: 0, credit: Number(h.amount) || 0 });
+                    }
+                  });
+                  // مرتب‌سازی
+                  entries.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+                  // محاسبه مانده
+                  const bal: Record<string, number> = {};
+                  return entries.length === 0 ? (
+                    <View style={{ padding: 30, alignItems: 'center' }}><Text style={s.empty}>هیچ سندی ثبت نشده</Text></View>
+                  ) : entries.map((e: any, i: number) => {
+                    bal[e.cur] = (bal[e.cur] || 0) + e.debit - e.credit;
+                    const b = bal[e.cur] || 0;
+                    return (
+                      <View key={i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                        <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                        <Text style={[s.td, { width: 90, color: '#94a3b8', fontSize: 10 }]}>{e.date || '—'}</Text>
+                        <Text style={[s.td, { width: 100, color: '#7c3aed', fontSize: 10 }]}>{e.ref}</Text>
+                        <Text style={[s.td, { width: 130, color: '#e2e8f0', textAlign: 'right', fontSize: 10 }]} numberOfLines={1}>{e.desc}</Text>
+                        <Text style={[s.td, { width: 90, color: '#60a5fa' }]}>{e.cur}</Text>
+                        <Text style={[s.td, { width: 100, color: '#fb923c', fontWeight: 'bold' }]}>{e.debit ? fmt(e.debit, 0) : '—'}</Text>
+                        <Text style={[s.td, { width: 100, color: '#34d399', fontWeight: 'bold' }]}>{e.credit ? fmt(e.credit, 0) : '—'}</Text>
+                        <Text style={[s.td, { width: 100, color: b > 0 ? '#00ff88' : '#ff3355', fontWeight: 'bold' }]}>{fmt(b, 0)}</Text>
+                      </View>
+                    );
+                  });
+                })()}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+
+        {/* ═══════ پرینت حساب مشتری ═══════ */}
+        {sub === 'statement' && (
+          <View>
+            <Text style={s.secT}>🖨️ پرینت حساب مشتری صرافی</Text>
+
+            <View style={[s.formCard, { marginBottom: 12 }]}>
+              <Text style={s.lbl}>🔍 جستجو (کد، تلفن، یا نام مشتری)</Text>
+              <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+                <TextInput
+                  style={[s.inp, { flex: 1 }]}
+                  value={stmtSearch}
+                  onChangeText={setStmtSearch}
+                  placeholder="X_1001 یا 0912... یا احمد"
+                  placeholderTextColor="#94a3b8"
+                />
+                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', paddingHorizontal: 16 }]} onPress={() => buildStatement(stmtSearch)}>
+                  <Text style={s.btnTxt}>🔍 نمایش</Text>
+                </TouchableOpacity>
+              </View>
+              {customers.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                  {customers.slice(0, 20).map((c: any) => (
+                    <TouchableOpacity key={c.code} style={[s.curPick, { marginLeft: 4 }]} onPress={() => { setStmtSearch(c.phone); buildStatement(c.phone); }}>
+                      <Text style={s.curPickTxt}>{c.name} ({c.code})</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
+            {stmtCustomer && stmtData && (
+              <View>
+                {/* هدر مشتری */}
+                <View style={[s.dash, { backgroundColor: '#065f46', borderColor: '#10b981' }]}>
+                  <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                    <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>👤 {stmtCustomer.name}</Text>
+                    <Text style={{ color: '#a7f3d0', fontSize: 12, marginTop: 4, fontFamily: 'monospace' }}>
+                      🆔 {stmtCustomer.code}  |  📞 {stmtCustomer.phone || '—'}
+                    </Text>
+                    {stmtCustomer.bank ? (
+                      <Text style={{ color: '#a7f3d0', fontSize: 11, marginTop: 2 }}>
+                        🏦 {stmtCustomer.bank}  |  👤 {stmtCustomer.holder_name || '—'}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+
+                {/* آمار کلی */}
+                <View style={s.dash}>
+                  <View style={s.grid}>
+                    <View style={s.dItem}>
+                      <Text style={s.dLbl}>💰 سود از این مشتری</Text>
+                      <Text style={[s.dVal, { color: stmtData.totalProfit >= 0 ? '#00ff88' : '#ff3355', textShadowColor: stmtData.totalProfit >= 0 ? '#00ff88' : '#ff3355' }]}>{fmt(stmtData.totalProfit, 0)}</Text>
+                    </View>
+                    <View style={s.dItem}>
+                      <Text style={s.dLbl}>📊 معاملات</Text>
+                      <Text style={[s.dVal, { color: '#60a5fa', textShadowColor: '#60a5fa' }]}>{stmtData.tradeCount}</Text>
+                    </View>
+                    <View style={s.dItem}>
+                      <Text style={s.dLbl}>💸 حوالات</Text>
+                      <Text style={[s.dVal, { color: '#fbbf24', textShadowColor: '#fbbf24' }]}>{stmtData.hawalaCount}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* پوزیشن ارزی با این مشتری */}
+                <Text style={s.secT}>💱 پوزیشن ارزی با این مشتری</Text>
+                {Object.keys(stmtData.positions).length === 0 ? (
+                  <Text style={s.empty}>معامله‌ای با این مشتری ثبت نشده</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={s.tblHeader}>
+                        <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                        <Text style={[s.th, { width: 120 }]}>گرفتیم (خرید)</Text>
+                        <Text style={[s.th, { width: 120 }]}>دادیم (فروش)</Text>
+                        <Text style={[s.th, { width: 120 }]}>مانده خالص</Text>
+                      </View>
+                      {Object.keys(stmtData.positions).map((cur: string, i: number) => {
+                        const p = stmtData.positions[cur];
+                        const col = p.net > 0 ? '#00ff88' : p.net < 0 ? '#ff3355' : '#94a3b8';
+                        return (
+                          <View key={cur} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 80, color: '#d4af37', fontWeight: 'bold' }]}>{CUR[cur]?.flag} {cur}</Text>
+                            <Text style={[s.td, { width: 120, color: '#fb923c', fontWeight: 'bold' }]}>{fmt(p.bought, 0)}</Text>
+                            <Text style={[s.td, { width: 120, color: '#34d399', fontWeight: 'bold' }]}>{fmt(p.sold, 0)}</Text>
+                            <Text style={[s.td, { width: 120, color: col, fontWeight: 'bold', fontSize: 13 }]}>{p.net > 0 ? '+' : ''}{fmt(p.net, 0)}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* جدول معاملات */}
+                <Text style={[s.secT, { marginTop: 16 }]}>📋 معاملات ({stmtData.tradeCount})</Text>
+                {stmtData.tradeCount === 0 ? (
+                  <Text style={s.empty}>معامله‌ای نیست</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={s.tblHeader}>
+                        <Text style={[s.th, { width: 36 }]}>#</Text>
+                        <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                        <Text style={[s.th, { width: 100 }]}>فاکتور</Text>
+                        <Text style={[s.th, { width: 100 }]}>شریک</Text>
+                        <Text style={[s.th, { width: 90 }]}>از</Text>
+                        <Text style={[s.th, { width: 100 }]}>به</Text>
+                        <Text style={[s.th, { width: 90 }]}>نرخ</Text>
+                        <Text style={[s.th, { width: 100 }]}>سود</Text>
+                      </View>
+                      {stmtData.trades.map((t: any, i: number) => {
+                        const pcol = (Number(t.profit) || 0) > 0 ? '#00ff88' : (Number(t.profit) || 0) < 0 ? '#ff3355' : '#64748b';
+                        return (
+                          <View key={t.local_id || t.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                            <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{t.date || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#7c3aed', fontSize: 10, fontWeight: 'bold' }]}>{t.invoice_number || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#e2e8f0' }]}>{t.partner_name || '—'}</Text>
+                            <Text style={[s.td, { width: 90, color: '#fb923c' }]}>{CUR[t.from_currency]?.flag}{fmt(t.from_qty, CUR[t.from_currency]?.dec)}</Text>
+                            <Text style={[s.td, { width: 100, color: '#34d399' }]}>{CUR[t.to_currency]?.flag}{fmt(t.to_qty, CUR[t.to_currency]?.dec)}</Text>
+                            <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 10 }]}>{fmt(t.rate, 4)}</Text>
+                            <Text style={[s.td, { width: 100, color: pcol, fontWeight: 'bold' }]}>{fmt(t.profit, 0)}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* جدول حوالات */}
+                <Text style={[s.secT, { marginTop: 16 }]}>💸 حوالات ({stmtData.hawalaCount})</Text>
+                {stmtData.hawalaCount === 0 ? (
+                  <Text style={s.empty}>حواله‌ای نیست</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={s.tblHeader}>
+                        <Text style={[s.th, { width: 36 }]}>#</Text>
+                        <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                        <Text style={[s.th, { width: 90 }]}>کد</Text>
+                        <Text style={[s.th, { width: 80 }]}>نوع</Text>
+                        <Text style={[s.th, { width: 130 }]}>ذی‌نفع</Text>
+                        <Text style={[s.th, { width: 100 }]}>مبلغ</Text>
+                        <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                        <Text style={[s.th, { width: 90 }]}>کارمزد</Text>
+                        <Text style={[s.th, { width: 100 }]}>وضعیت</Text>
+                      </View>
+                      {stmtData.hawalas.map((h: any, i: number) => {
+                        const stCol = h.status === 'done' ? '#00ff88' : h.status === 'cancelled' ? '#ff3355' : '#fbbf24';
+                        return (
+                          <View key={h.local_id || h.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                            <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{h.date || '—'}</Text>
+                            <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{h.code || '—'}</Text>
+                            <Text style={[s.td, { width: 80, color: h.direction === 'send' ? '#fb923c' : '#34d399' }]}>{h.direction === 'send' ? '📤 ارسال' : '📥 دریافت'}</Text>
+                            <Text style={[s.td, { width: 130, color: '#fff', fontWeight: 'bold' }]}>{h.beneficiary_name || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(h.amount, 0)}</Text>
+                            <Text style={[s.td, { width: 80, color: '#60a5fa' }]}>{h.currency}</Text>
+                            <Text style={[s.td, { width: 90, color: '#00ff88' }]}>{fmt(h.commission, 0)}</Text>
+                            <Text style={[s.td, { width: 100, color: stCol, fontSize: 10, fontWeight: 'bold' }]}>{h.status === 'done' ? '✅ انجام' : h.status === 'cancelled' ? '❌ لغو' : '⏳ در انتظار'}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* خلاصه نهایی */}
+                <View style={[s.dash, { marginTop: 16, backgroundColor: '#1e1b4b', borderColor: '#7c3aed' }]}>
+                  <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>📊 خلاصه نهایی با {stmtCustomer.name}</Text>
+                  <View style={{ paddingHorizontal: 10 }}>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>📊 تعداد معاملات ارزی</Text><Text style={s.sumVal}>{stmtData.tradeCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💸 تعداد حوالات</Text><Text style={s.sumVal}>{stmtData.hawalaCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>📄 تعداد چک‌ها</Text><Text style={s.sumVal}>{stmtData.checkCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💰 سود از معاملات</Text><Text style={[s.sumVal, { color: '#00ff88' }]}>{fmt(stmtData.totalProfit, 0)}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💵 کارمزد حوالات</Text><Text style={[s.sumVal, { color: '#fbbf24' }]}>{fmt(stmtData.totalHawalaFees, 0)}</Text></View>
+                    <View style={[s.sumRow, { backgroundColor: 'rgba(0,255,136,0.1)', marginTop: 8, paddingVertical: 10, borderRadius: 8 }]}>
+                      <Text style={[s.sumLbl, { fontWeight: 'bold', fontSize: 14, color: '#fff' }]}>🎯 مجموع درآمد</Text>
+                      <Text style={[s.sumVal, { color: '#00ff88', fontSize: 16, fontWeight: 'bold' }]}>{fmt(stmtData.totalProfit + stmtData.totalHawalaFees, 0)}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+      </ScrollView>
+
+      {/* ═══ Modals ═══ */}
+      {/* ارز مبدأ */}
+      <Modal visible={showFromCur} transparent animationType="fade">
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={s.mHead}><Text style={s.mTitle}>📤 ارز مبدأ</Text><TouchableOpacity onPress={() => setShowFromCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <ScrollView style={{ maxHeight: 400, padding: 12 }}>
+            {Object.keys(CUR).map(k => (
+              <TouchableOpacity key={k} style={s.pickRow} onPress={() => { setFFrom(k); setShowFromCur(false); }}>
+                <Text style={s.pickName}>{CUR[k].flag} {CUR[k].name}</Text><Text style={s.badge}>{k}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View></View>
+      </Modal>
+
+      {/* ارز مقصد */}
+      <Modal visible={showToCur} transparent animationType="fade">
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={s.mHead}><Text style={s.mTitle}>📥 ارز مقصد</Text><TouchableOpacity onPress={() => setShowToCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <ScrollView style={{ maxHeight: 400, padding: 12 }}>
+            {Object.keys(CUR).map(k => (
+              <TouchableOpacity key={k} style={s.pickRow} onPress={() => { setFTo(k); setShowToCur(false); }}>
+                <Text style={s.pickName}>{CUR[k].flag} {CUR[k].name}</Text><Text style={s.badge}>{k}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View></View>
+      </Modal>
+
+      {/* انتخاب شریک */}
+      <Modal visible={showPartnerPick} transparent animationType="fade">
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={s.mHead}><Text style={s.mTitle}>💼 انتخاب شریک</Text><TouchableOpacity onPress={() => setShowPartnerPick(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <ScrollView style={{ maxHeight: 400, padding: 12 }}>
+            {partners.length === 0 ? <Text style={s.empty}>هنوز شریکی نیست</Text> : partners.map((p: any) => (
+              <TouchableOpacity key={p.code} style={s.pickRow} onPress={() => { setFPartner(p.code); setShowPartnerPick(false); }}>
+                <Text style={s.pickName}>{p.name}</Text><Text style={s.badge}>{p.code}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View></View>
+      </Modal>
+
+      {/* مشتری */}
+      <Modal visible={custModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>{custEditId ? '✏️ ویرایش' : '➕ مشتری جدید'}</Text><TouchableOpacity onPress={() => setCustModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>نام *</Text><TextInput style={s.inp} value={custForm.name} onChangeText={v => setCustForm({ ...custForm, name: v })} />
+            <Text style={s.lbl}>تلفن *</Text><TextInput style={s.inp} value={custForm.phone} onChangeText={v => setCustForm({ ...custForm, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} />
+            <Text style={s.lbl}>بانک</Text><TextInput style={s.inp} value={custForm.bank} onChangeText={v => setCustForm({ ...custForm, bank: v })} />
+            <Text style={s.lbl}>صاحب حساب</Text><TextInput style={s.inp} value={custForm.holder_name} onChangeText={v => setCustForm({ ...custForm, holder_name: v })} />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCustModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submitCustomer}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
       </Modal>
-    </View>
-  );
-}
 
-// ══════════════════════════════════════════════════════
-//  POSITIONS
-// ══════════════════════════════════════════════════════
-function Positions({ trades }: any) {
-  const pos: Record<string, number> = {};
-  Object.keys(CUR).forEach(c => pos[c] = 0);
-  trades.forEach((t: any) => {
-    pos[t.from_currency] = (pos[t.from_currency] || 0) - (Number(t.from_qty) || 0);
-    pos[t.to_currency] = (pos[t.to_currency] || 0) + (Number(t.to_qty) || 0);
-  });
-  const rows = Object.entries(pos).filter(([_, v]) => v !== 0);
-  return (
-    <View>
-      <Text style={s.secT}>📊 پوزیشن ارزی ({rows.length})</Text>
-      {rows.length === 0 ? <Text style={s.empty}>معامله‌ای ثبت نشده</Text> :
-        rows.map(([c, v]: any) => (
-          <View key={c} style={s.posCard}>
-            <Text style={{ fontSize: 26 }}>{CUR[c].flag}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={s.posName}>{CUR[c].name}</Text>
-              <Text style={s.posCode}>{c}</Text>
+      {/* شریک */}
+      <Modal visible={partnerModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>{partnerEditId ? '✏️ ویرایش' : '➕ شریک جدید'}</Text><TouchableOpacity onPress={() => setPartnerModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>نام *</Text><TextInput style={s.inp} value={partnerForm.name} onChangeText={v => setPartnerForm({ ...partnerForm, name: v })} />
+            <Text style={s.lbl}>تلفن</Text><TextInput style={s.inp} value={partnerForm.phone} onChangeText={v => setPartnerForm({ ...partnerForm, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setPartnerModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submitPartner}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
-            <Text style={[s.posVal, { color: v > 0 ? '#059669' : '#dc2626' }]}>
-              {v > 0 ? '+' : ''}{fmt(v, CUR[c].dec)}
-            </Text>
           </View>
-        ))}
+        </ScrollView></View>
+      </Modal>
+
+      {/* ═══ Modal حواله ═══ */}
+      <Modal visible={hawModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>{hawEditId ? '✏️ ویرایش حواله' : '➕ حواله جدید'}</Text><TouchableOpacity onPress={() => setHawModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>نوع حواله</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              <TouchableOpacity style={[s.typeBtn, hawForm.direction === 'send' && { backgroundColor: '#fb923c', borderColor: '#fb923c' }]} onPress={() => setHawForm({ ...hawForm, direction: 'send' })}>
+                <Text style={[s.typeBtnTxt, hawForm.direction === 'send' && { color: '#fff' }]}>📤 ارسال</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.typeBtn, hawForm.direction === 'receive' && { backgroundColor: '#34d399', borderColor: '#34d399' }]} onPress={() => setHawForm({ ...hawForm, direction: 'receive' })}>
+                <Text style={[s.typeBtnTxt, hawForm.direction === 'receive' && { color: '#fff' }]}>📥 دریافت</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={s.lbl}>نام ذی‌نفع *</Text>
+            <TextInput style={s.inp} value={hawForm.beneficiary_name} onChangeText={v => setHawForm({ ...hawForm, beneficiary_name: v })} />
+            <Text style={s.lbl}>تلفن ذی‌نفع</Text>
+            <TextInput style={s.inp} value={hawForm.beneficiary_phone} onChangeText={v => setHawForm({ ...hawForm, beneficiary_phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} />
+            <Text style={s.lbl}>شهر</Text>
+            <TextInput style={s.inp} value={hawForm.beneficiary_city} onChangeText={v => setHawForm({ ...hawForm, beneficiary_city: v })} />
+            <Text style={s.lbl}>شریک</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {partners.map((p: any) => (
+                <TouchableOpacity key={p.code} style={[s.curPick, hawForm.partner_code === p.code && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, partner_code: p.code })}>
+                  <Text style={[s.curPickTxt, hawForm.partner_code === p.code && { color: '#fff' }]}>{p.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['USD', 'EUR', 'AFN', 'PKR', 'AED', 'IRR'].map(c => (
+                <TouchableOpacity key={c} style={[s.curPick, hawForm.currency === c && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, currency: c })}>
+                  <Text style={[s.curPickTxt, hawForm.currency === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>مبلغ *</Text>
+            <TextInput style={s.inp} value={String(hawForm.amount)} onChangeText={v => setHawForm({ ...hawForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <Text style={s.lbl}>کارمزد</Text>
+            <TextInput style={s.inp} value={String(hawForm.commission)} onChangeText={v => setHawForm({ ...hawForm, commission: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <Text style={s.lbl}>تاریخ</Text>
+            <TextInput style={s.inp} value={hawForm.date} onChangeText={v => setHawForm({ ...hawForm, date: v })} />
+            <Text style={s.lbl}>وضعیت</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              {[{ k: 'pending', l: '⏳ در انتظار' }, { k: 'done', l: '✅ انجام' }, { k: 'cancelled', l: '❌ لغو' }].map(st => (
+                <TouchableOpacity key={st.k} style={[s.curPick, hawForm.status === st.k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, status: st.k })}>
+                  <Text style={[s.curPickTxt, hawForm.status === st.k && { color: '#fff' }]}>{st.l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>توضیحات</Text>
+            <TextInput style={[s.inp, { minHeight: 60 }]} value={hawForm.note} onChangeText={v => setHawForm({ ...hawForm, note: v })} multiline />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+                if (!hawForm.beneficiary_name) return showToast('نام ذی‌نفع الزامی', true);
+                const p = partners.find((x: any) => x.code === hawForm.partner_code);
+                const payload = { ...hawForm, partner_name: p?.name || '', amount: Number(hawForm.amount) || 0, commission: Number(hawForm.commission) || 0 };
+                if (hawEditId) await updateHawala(hawEditId, payload);
+                else await createHawala(payload);
+                await reload(); setHawModal(false); showToast('✅ ذخیره شد');
+              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+
+      {/* ═══ Modal صندوق ═══ */}
+      <Modal visible={boxModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>{boxEditId ? '✏️ ویرایش صندوق' : '➕ صندوق جدید'}</Text><TouchableOpacity onPress={() => setBoxModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>نام *</Text>
+            <TextInput style={s.inp} value={boxForm.name} onChangeText={v => setBoxForm({ ...boxForm, name: v })} placeholder="مثلاً: صندوق دالر" />
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['USD', 'EUR', 'AFN', 'PKR', 'AED', 'IRR'].map(c => (
+                <TouchableOpacity key={c} style={[s.curPick, boxForm.currency === c && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setBoxForm({ ...boxForm, currency: c })}>
+                  <Text style={[s.curPickTxt, boxForm.currency === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>شریک مالک (اختیاری)</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {partners.map((p: any) => (
+                <TouchableOpacity key={p.code} style={[s.curPick, boxForm.partner_code === p.code && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setBoxForm({ ...boxForm, partner_code: p.code })}>
+                  <Text style={[s.curPickTxt, boxForm.partner_code === p.code && { color: '#fff' }]}>{p.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>موجودی اولیه</Text>
+            <TextInput style={s.inp} value={String(boxForm.opening)} onChangeText={v => setBoxForm({ ...boxForm, opening: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setBoxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+                if (!boxForm.name) return showToast('نام الزامی', true);
+                const payload = { ...boxForm, opening: Number(boxForm.opening) || 0 };
+                if (boxEditId) await updateBox(boxEditId, payload);
+                else await createBox(payload);
+                await reload(); setBoxModal(false); showToast('✅ ذخیره شد');
+              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+
+      {/* ═══ Modal انتقال ═══ */}
+      <Modal visible={trModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>🔄 انتقال بین صندوق‌ها</Text><TouchableOpacity onPress={() => setTrModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>از صندوق *</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {boxes.map((b: any) => (
+                <TouchableOpacity key={b.code} style={[s.curPick, trForm.from_box === b.code && { backgroundColor: '#dc2626', borderColor: '#dc2626' }]} onPress={() => setTrForm({ ...trForm, from_box: b.code })}>
+                  <Text style={[s.curPickTxt, trForm.from_box === b.code && { color: '#fff' }]}>{b.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>به صندوق *</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {boxes.map((b: any) => (
+                <TouchableOpacity key={b.code} style={[s.curPick, trForm.to_box === b.code && { backgroundColor: '#059669', borderColor: '#059669' }]} onPress={() => setTrForm({ ...trForm, to_box: b.code })}>
+                  <Text style={[s.curPickTxt, trForm.to_box === b.code && { color: '#fff' }]}>{b.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>مبلغ *</Text>
+            <TextInput style={s.inp} value={String(trForm.amount)} onChangeText={v => setTrForm({ ...trForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <Text style={s.lbl}>نرخ تبدیل</Text>
+            <TextInput style={s.inp} value={String(trForm.rate)} onChangeText={v => setTrForm({ ...trForm, rate: v })} keyboardType="numeric" />
+            <Text style={s.lbl}>تاریخ</Text>
+            <TextInput style={s.inp} value={trForm.date} onChangeText={v => setTrForm({ ...trForm, date: v })} />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTrModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+                if (!trForm.from_box || !trForm.to_box) return showToast('صندوق‌ها را انتخاب کن', true);
+                if (trForm.from_box === trForm.to_box) return showToast('صندوق مبدأ و مقصد یکسان', true);
+                if (!trForm.amount || Number(trForm.amount) <= 0) return showToast('مبلغ را وارد کن', true);
+                await createTransfer({ ...trForm, amount: Number(trForm.amount) || 0, rate: Number(trForm.rate) || 1 });
+                await reload(); setTrModal(false); showToast('✅ انتقال ثبت شد');
+              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+
+      {/* ═══ Modal چک ═══ */}
+      <Modal visible={ckModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>{ckEditId ? '✏️ ویرایش چک' : '➕ چک جدید'}</Text><TouchableOpacity onPress={() => setCkModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>نوع چک</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              <TouchableOpacity style={[s.typeBtn, ckForm.direction === 'in' && { backgroundColor: '#34d399', borderColor: '#34d399' }]} onPress={() => setCkForm({ ...ckForm, direction: 'in' })}>
+                <Text style={[s.typeBtnTxt, ckForm.direction === 'in' && { color: '#fff' }]}>📥 دریافتی</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.typeBtn, ckForm.direction === 'out' && { backgroundColor: '#fb923c', borderColor: '#fb923c' }]} onPress={() => setCkForm({ ...ckForm, direction: 'out' })}>
+                <Text style={[s.typeBtnTxt, ckForm.direction === 'out' && { color: '#fff' }]}>📤 پرداختی</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={s.lbl}>شماره چک</Text>
+            <TextInput style={s.inp} value={ckForm.check_number} onChangeText={v => setCkForm({ ...ckForm, check_number: v })} />
+            <Text style={s.lbl}>بانک</Text>
+            <TextInput style={s.inp} value={ckForm.bank} onChangeText={v => setCkForm({ ...ckForm, bank: v })} />
+            <Text style={s.lbl}>طرف حساب</Text>
+            <TextInput style={s.inp} value={ckForm.partner_name} onChangeText={v => setCkForm({ ...ckForm, partner_name: v })} />
+            <Text style={s.lbl}>مبلغ *</Text>
+            <TextInput style={s.inp} value={String(ckForm.amount)} onChangeText={v => setCkForm({ ...ckForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['AFN', 'USD', 'EUR', 'PKR'].map(c => (
+                <TouchableOpacity key={c} style={[s.curPick, ckForm.currency === c && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setCkForm({ ...ckForm, currency: c })}>
+                  <Text style={[s.curPickTxt, ckForm.currency === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>تاریخ سرسید</Text>
+            <TextInput style={s.inp} value={ckForm.due_date} onChangeText={v => setCkForm({ ...ckForm, due_date: v })} placeholder="1405/09/15" />
+            <Text style={s.lbl}>وضعیت</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              {[{ k: 'pending', l: '⏳ در جریان' }, { k: 'cleared', l: '✅ پاس' }, { k: 'bounced', l: '❌ برگشتی' }].map(st => (
+                <TouchableOpacity key={st.k} style={[s.curPick, ckForm.status === st.k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setCkForm({ ...ckForm, status: st.k })}>
+                  <Text style={[s.curPickTxt, ckForm.status === st.k && { color: '#fff' }]}>{st.l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCkModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+                if (!ckForm.amount || Number(ckForm.amount) <= 0) return showToast('مبلغ الزامی', true);
+                const payload = { ...ckForm, amount: Number(ckForm.amount) || 0 };
+                if (ckEditId) await updateCheck(ckEditId, payload);
+                else await createCheck(payload);
+                await reload(); setCkModal(false); showToast('✅ ذخیره شد');
+              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+
     </View>
   );
 }
 
-// ══════════════════════════════════════════════════════
-//  Styles
-// ══════════════════════════════════════════════════════
+// ═══ Styles ═══
 const s = StyleSheet.create({
+  page: { flex: 1, backgroundColor: '#f5f7fa' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  subsBar: { maxHeight: 50, backgroundColor: '#fff' },
-  subsCont: { gap: 6, paddingHorizontal: 10, paddingVertical: 8 },
-  sub: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },
+
+  // Dashboard (دقیقاً مثل DigitalDashboard)
+  dash: { backgroundColor: '#080b13', borderRadius: 18, padding: 14, marginBottom: 12, borderWidth: 2, borderColor: '#1f3a5f' },
+  clockRow: { flexDirection: 'row-reverse', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, marginBottom: 14, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' },
+  time: { color: '#00ff88', fontSize: 32, fontWeight: '900', letterSpacing: 4, textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 },
+  dateSmall: { color: '#4ade80', fontSize: 13, fontFamily: 'monospace', letterSpacing: 1 },
+  dateSub: { color: '#4ade80', fontSize: 10, fontFamily: 'monospace' },
+  profitBox: { alignItems: 'center', paddingVertical: 14, marginBottom: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(0,255,136,0.15)' },
+  profitLbl: { color: '#94a3b8', fontSize: 13, marginBottom: 10, fontWeight: 'bold', letterSpacing: 1 },
+  profitVal: { fontSize: 42, fontWeight: '900', letterSpacing: 3, lineHeight: 50, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 24 },
+  profitUnit: { color: '#64748b', fontSize: 11, marginTop: 8, letterSpacing: 3 },
+  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 10 },
+  dItem: { width: '32%', paddingVertical: 10, paddingHorizontal: 4, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,255,136,0.18)', alignItems: 'center', minHeight: 60, justifyContent: 'center' },
+  dLbl: { color: '#94a3b8', fontSize: 9, marginBottom: 6, textAlign: 'center' },
+  dVal: { fontSize: 12, fontWeight: 'bold', letterSpacing: 1, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
+  posRow: { flexDirection: 'row-reverse', justifyContent: 'space-around', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.1)' },
+  posBox: { alignItems: 'center', minWidth: 55 },
+  posFlag: { fontSize: 20, marginBottom: 2 },
+  posCode: { color: '#94a3b8', fontSize: 9, fontFamily: 'monospace', marginBottom: 3 },
+  posVal: { fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 4 },
+
+  // زیرتب‌ها
+  subsBar: { maxHeight: 50, marginBottom: 10 },
+  subsCont: { gap: 6, paddingHorizontal: 2 },
+  sub: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
   subActive: { backgroundColor: '#065f46', borderColor: '#065f46' },
   subTxt: { fontSize: 12, fontWeight: 'bold', color: '#64748b' },
   subTxtActive: { color: '#fff' },
-  addBtn: { backgroundColor: '#059669', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginBottom: 12 },
-  addBtnTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  formTitle: { fontSize: 16, fontWeight: 'bold', color: '#065f46', textAlign: 'center', marginBottom: 8 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' },
-  secT: { fontSize: 13, fontWeight: 'bold', color: '#065f46', textAlign: 'right', marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#d1fae5', paddingBottom: 4 },
-  lbl: { fontSize: 12, fontWeight: 'bold', color: '#0f2438', textAlign: 'right', marginTop: 8, marginBottom: 4 },
-  inp: { borderWidth: 2, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 14, textAlign: 'right', backgroundColor: '#f8fafc', color: '#0f2438' },
-  chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },
-  chipActive: { backgroundColor: '#065f46', borderColor: '#065f46' },
-  chipTxt: { fontSize: 11, color: '#475569', fontWeight: 'bold' },
-  chipTxtActive: { color: '#fff' },
-  curRow: { marginTop: 4 },
-  curChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },
-  curChipActive: { backgroundColor: '#059669', borderColor: '#059669' },
-  curChipTxt: { fontSize: 10, color: '#475569', fontWeight: 'bold' },
-  curChipTxtActive: { color: '#fff' },
-  codeBadge: { color: '#7c3aed', fontSize: 11, fontWeight: 'bold', textAlign: 'right', flex: 1 },
-  miniBtn: { backgroundColor: '#dbeafe', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  miniBtnTxt: { color: '#1e40af', fontSize: 11, fontWeight: 'bold' },
-  dateBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 3, backgroundColor: '#f8fafc', borderRadius: 10, padding: 6, borderWidth: 2, borderColor: '#e2e8f0' },
-  dateInp: { padding: 8, fontSize: 13, color: '#0f2438', textAlign: 'center', fontFamily: 'monospace' },
-  dateSep: { fontSize: 13, color: '#64748b', fontWeight: 'bold' },
-  btn: { paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  btnTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  empty: { textAlign: 'center', color: '#94a3b8', padding: 20, fontSize: 12 },
-  // Table
-  tH: { flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 10, borderTopLeftRadius: 8, borderTopRightRadius: 8 },
+
+  secT: { fontSize: 14, fontWeight: 'bold', color: '#0f2438', textAlign: 'right', marginBottom: 8 },
+
+  // جدول ردیفی
+  tblHeader: { flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 10, borderTopLeftRadius: 8, borderTopRightRadius: 8 },
   th: { color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 4 },
-  tR: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 6, backgroundColor: '#f8fafc', alignItems: 'center' },
+  tblRow: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 6, backgroundColor: '#fff', alignItems: 'center' },
   td: { fontSize: 11, textAlign: 'center', paddingHorizontal: 4, color: '#1a2332' },
   iconBtn: { paddingHorizontal: 6, paddingVertical: 4 },
-  // Modal
-  mBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 10 },
-  mBox: { backgroundColor: '#fff', borderRadius: 16, maxHeight: '95%' },
+
+  // فرم
+  formCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#e2e8f0' },
+  formTitle: { fontSize: 16, fontWeight: 'bold', color: '#065f46', textAlign: 'center', marginBottom: 12 },
+  lbl: { fontSize: 12, fontWeight: 'bold', color: '#0f2438', textAlign: 'right', marginTop: 10, marginBottom: 4 },
+  inp: { borderWidth: 2, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 14, textAlign: 'right', backgroundColor: '#f8fafc', color: '#0f2438' },
+  badge: { fontSize: 10, backgroundColor: '#dbeafe', color: '#1e40af', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, fontWeight: 'bold' },
+  curPick: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, borderWidth: 2, borderColor: '#059669', backgroundColor: '#f0fdf4', minWidth: 100, alignItems: 'center' },
+  curPickTxt: { fontSize: 13, fontWeight: 'bold', color: '#065f46' },
+  typeBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 2, borderColor: '#e2e8f0', backgroundColor: '#f8fafc', alignItems: 'center' },
+  typeBtnBuy: { backgroundColor: '#f59e0b', borderColor: '#f59e0b' },
+  typeBtnSell: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
+  typeBtnTxt: { fontSize: 13, fontWeight: 'bold', color: '#475569' },
+  btn: { paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  btnTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  empty: { textAlign: 'center', color: '#94a3b8', padding: 30, fontSize: 12 },
+
+  // کارت‌های مشتری/شریک
+  headRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  addSmBtn: { backgroundColor: '#7c3aed', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  addSmBtnTxt: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  card: { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+  cardHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 4 },
+  cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#0f2438' },
+  cardSub: { fontSize: 11, color: '#64748b', textAlign: 'right', marginTop: 3 },
+  actions: { flexDirection: 'row-reverse', gap: 6, marginTop: 8 },
+  smBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#dbeafe' },
+  smBtnTxt: { fontSize: 11, color: '#1e40af', fontWeight: 'bold' },
+
+  // Modals
+  mBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 16 },
+  mBox: { backgroundColor: '#fff', borderRadius: 16, maxHeight: '90%' },
   mHead: { backgroundColor: '#065f46', padding: 14, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', borderTopLeftRadius: 16, borderTopRightRadius: 16 },
-  mTitle: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  pickRow: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  mTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  pickRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickName: { fontSize: 14, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' },
-  pickSub: { fontSize: 11, color: '#64748b', textAlign: 'right', marginTop: 2 },
-  // Positions
-  posCard: { flexDirection: 'row-reverse', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 6, borderWidth: 1, borderColor: '#e2e8f0' },
-  posName: { fontSize: 13, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' },
-  posCode: { fontSize: 10, color: '#94a3b8', textAlign: 'right', fontFamily: 'monospace' },
-  posVal: { fontSize: 15, fontWeight: 'bold', fontFamily: 'monospace' },
+  sumRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  sumLbl: { color: '#94a3b8', fontSize: 12 },
+  sumVal: { color: '#e2e8f0', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' },
 });

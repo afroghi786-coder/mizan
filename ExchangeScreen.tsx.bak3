@@ -44,8 +44,6 @@ export default function ExchangeScreen({ showToast }: any) {
   const [trades, setTrades] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
-  const [fxCustomers, setFxCustomers] = useState<any[]>([]);
-  const [fxBuyers, setFxBuyers] = useState<any[]>([]);
   const [load, setLoad] = useState(true);
   const [hawalas, setHawalas] = useState<any[]>([]);
   const [boxes, setBoxes] = useState<any[]>([]);
@@ -414,7 +412,7 @@ export default function ExchangeScreen({ showToast }: any) {
             { k: 'ledger', l: '📊 کاردکس' },
             { k: 'statement', l: '🖨️ پرینت حساب' },
             { k: 'customers', l: '👥 مشتریان' },
-            { k: 'partners', l: '🏢 خریداران' },
+            { k: 'partners', l: '💼 شرکا' },
           ].map(x => (
             <TouchableOpacity key={x.k} onPress={() => { if (x.k === 'form' && sub !== 'form') { openNew(); return; } setSub(x.k as any); }} style={[s.sub, sub === x.k && s.subActive]}>
               <Text style={[s.subTxt, sub === x.k && s.subTxtActive]}>{x.l}</Text>
@@ -547,12 +545,53 @@ export default function ExchangeScreen({ showToast }: any) {
 
         {/* ═══════ مشتریان ═══════ */}
         {sub === 'customers' && (
-          <PartyList type="customer" list={fxCustomers} reload={reload} showToast={showToast} />
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>👥 مشتریان ({customers.length})</Text>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setCustEditId(null); setCustForm({ name: '', phone: '', bank: '', holder_name: '', holder_code: '', notes: '' }); setCustModal(true); }}>
+                <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+              </TouchableOpacity>
+            </View>
+            {customers.map((c: any) => (
+              <View key={c.local_id || c.id} style={s.card}>
+                <View style={s.cardHead}>
+                  <Text style={s.cardTitle}>{c.name}</Text>
+                  <Text style={s.badge}>{c.code}</Text>
+                </View>
+                <Text style={s.cardSub}>📞 {c.phone || '—'}  |  🏦 {c.bank || '—'}</Text>
+                {c.holder_name ? <Text style={s.cardSub}>👤 {c.holder_name}</Text> : null}
+                <View style={s.actions}>
+                  <TouchableOpacity style={s.smBtn} onPress={() => { setCustEditId(c.local_id || c.id); setCustForm({ name: c.name, phone: c.phone, bank: c.bank || '', holder_name: c.holder_name || '', holder_code: c.holder_code || '', notes: c.notes || '' }); setCustModal(true); }}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
+                  <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteFxCustomer(c.local_id || c.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
         )}
 
         {/* ═══════ شرکا ═══════ */}
         {sub === 'partners' && (
-          <PartyList type="buyer" list={fxBuyers} reload={reload} showToast={showToast} />
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>💼 شرکا ({partners.length})</Text>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setPartnerEditId(null); setPartnerForm({ name: '', phone: '', notes: '' }); setPartnerModal(true); }}>
+                <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+              </TouchableOpacity>
+            </View>
+            {partners.map((p: any) => (
+              <View key={p.local_id || p.id} style={s.card}>
+                <View style={s.cardHead}>
+                  <Text style={s.cardTitle}>{p.name}</Text>
+                  <Text style={s.badge}>{p.code}</Text>
+                </View>
+                <Text style={s.cardSub}>📞 {p.phone || '—'}</Text>
+                <View style={s.actions}>
+                  <TouchableOpacity style={s.smBtn} onPress={() => { setPartnerEditId(p.local_id || p.id); setPartnerForm({ name: p.name, phone: p.phone || '', notes: p.notes || '' }); setPartnerModal(true); }}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
+                  <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteFxPartner(p.local_id || p.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
         )}
 
         {/* ═══════ حواله‌جات ═══════ */}
@@ -1262,165 +1301,6 @@ export default function ExchangeScreen({ showToast }: any) {
 }
 
 // ═══ Styles ═══
-
-
-// ═══════════════════════════════════════════
-//  PartyList — جدول ردیفی مشتریان/خریداران
-// ═══════════════════════════════════════════
-function PartyList({ type, list, reload, showToast }: any) {
-  const [modal, setModal] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<any>({});
-  const [q, setQ] = useState('');
-
-  const title = type === 'buyer' ? '🏢 خریداران' : '👤 مشتریان';
-  const color = type === 'buyer' ? '#059669' : '#1e3a8a';
-
-  const openNew = () => {
-    setEditId(null);
-    setForm({ type, code: '', name: '', phone: '', bank: '', account_number: '', holder_name: '', holder_code: '', address: '', note: '' });
-    setModal(true);
-  };
-  const openEdit = (x: any) => {
-    setEditId(x.local_id || x.id);
-    setForm({ ...x, type });
-    setModal(true);
-  };
-
-  const submit = async () => {
-    try {
-      if (!form.name) return showToast('نام الزامی', true);
-      if (!form.phone || String(form.phone).replace(/[^\d]/g, '').length < 10) return showToast('تلفن معتبر الزامی', true);
-      const payload = { ...form, type };
-      if (editId) await updateFxCustomer(editId, payload);
-      else await createFxCustomer(payload);
-      await reload();
-      setModal(false);
-      showToast(editId ? '✅ ویرایش شد' : '✅ ثبت شد');
-    } catch (e: any) { showToast('❌ ' + (e?.message || ''), true); }
-  };
-
-  const remove = async (id: string) => {
-    if (typeof window !== 'undefined' && window.confirm && !window.confirm('حذف شود؟')) return;
-    await deleteFxCustomer(id);
-    await reload();
-    showToast('🗑 حذف شد');
-  };
-
-  const filtered = q ? list.filter((x: any) => {
-    const h = `${x.code || ''} ${x.name || ''} ${x.phone || ''} ${x.bank || ''}`.toLowerCase();
-    return h.includes(q.toLowerCase());
-  }) : list;
-
-  return (
-    <View>
-      <TouchableOpacity style={[s.addBtn, { backgroundColor: color }]} onPress={openNew}>
-        <Text style={s.addBtnTxt}>➕ افزودن {type === 'buyer' ? 'خریدار' : 'مشتری'} جدید</Text>
-      </TouchableOpacity>
-
-      <TextInput
-        style={s.inp}
-        value={q}
-        onChangeText={setQ}
-        placeholder="🔍 جستجو: کد، نام، تلفن، بانک..."
-        placeholderTextColor="#94a3b8"
-      />
-
-      <Text style={s.secT}>{title} ({filtered.length})</Text>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator>
-        <View>
-          <View style={s.tH}>
-            <Text style={[s.th, { width: 36 }]}>#</Text>
-            <Text style={[s.th, { width: 110 }]}>کد</Text>
-            <Text style={[s.th, { width: 180 }]}>نام</Text>
-            <Text style={[s.th, { width: 120 }]}>تلفن</Text>
-            <Text style={[s.th, { width: 100 }]}>بانک</Text>
-            <Text style={[s.th, { width: 130 }]}>شماره حساب</Text>
-            <Text style={[s.th, { width: 140 }]}>صاحب حساب</Text>
-            <Text style={[s.th, { width: 180 }]}>آدرس</Text>
-            <Text style={[s.th, { width: 100 }]}>عملیات</Text>
-          </View>
-          {filtered.length === 0 ? (
-            <View style={{ padding: 30 }}><Text style={s.empty}>خالی</Text></View>
-          ) : filtered.map((x: any, i: number) => (
-            <View key={x.local_id || x.id} style={[s.tR, i % 2 === 0 && { backgroundColor: '#fff' }]}>
-              <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-              <Text style={[s.td, { width: 110, color: color, fontWeight: 'bold', fontSize: 11, fontFamily: 'monospace' }]}>{x.code}</Text>
-              <Text style={[s.td, { width: 180, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{x.name}</Text>
-              <Text style={[s.td, { width: 120, color: '#475569', fontSize: 11, fontFamily: 'monospace' }]}>{x.phone || '—'}</Text>
-              <Text style={[s.td, { width: 100, color: '#475569', fontSize: 11 }]}>{x.bank || '—'}</Text>
-              <Text style={[s.td, { width: 130, color: '#475569', fontSize: 10, fontFamily: 'monospace' }]}>{x.account_number || '—'}</Text>
-              <Text style={[s.td, { width: 140, color: '#0f2438', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{x.holder_name || '—'}</Text>
-              <Text style={[s.td, { width: 180, color: '#64748b', fontSize: 10, textAlign: 'right' }]} numberOfLines={1}>{x.address || '—'}</Text>
-              <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
-                <TouchableOpacity onPress={() => openEdit(x)} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => remove(x.local_id || x.id)} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-
-      <Modal visible={modal} transparent animationType="slide">
-        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
-          <View style={[s.mHead, { backgroundColor: color }]}>
-            <Text style={s.mTitle}>{editId ? '✏️ ویرایش' : '➕ افزودن'} {type === 'buyer' ? 'خریدار' : 'مشتری'}</Text>
-            <TouchableOpacity onPress={() => setModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
-          </View>
-          <View style={{ padding: 16 }}>
-            <Text style={s.lbl}>👤 نام *</Text>
-            <TextInput style={s.inp} value={form.name || ''} onChangeText={v => setForm({ ...form, name: v })} placeholder="نام کامل" />
-
-            <Text style={s.lbl}>📞 تلفن *</Text>
-            <TextInput
-              style={s.inp}
-              value={form.phone || ''}
-              onChangeText={v => setForm({ ...form, phone: v.replace(/[^\d]/g, '').slice(0, 11) })}
-              keyboardType="phone-pad"
-              maxLength={11}
-              placeholder="09..."
-            />
-
-            {form.phone && form.phone.length >= 10 ? (
-              <Text style={s.codeBadge}>🆔 کد خودکار: {form.code || ((type === 'buyer' ? 'B_' : 'X_') + form.phone)}</Text>
-            ) : null}
-
-            <Text style={s.lbl}>🏦 بانک</Text>
-            <TextInput style={s.inp} value={form.bank || ''} onChangeText={v => setForm({ ...form, bank: v })} placeholder="نام بانک" />
-
-            <Text style={s.lbl}>💳 شماره حساب</Text>
-            <TextInput
-              style={s.inp}
-              value={form.account_number || ''}
-              onChangeText={v => setForm({ ...form, account_number: v.replace(/[^\d]/g, '') })}
-              keyboardType="numeric"
-            />
-
-            <Text style={s.lbl}>👤 صاحب حساب</Text>
-            <TextInput style={s.inp} value={form.holder_name || ''} onChangeText={v => setForm({ ...form, holder_name: v })} placeholder="نام صاحب حساب" />
-
-            <Text style={s.lbl}>📍 آدرس</Text>
-            <TextInput style={[s.inp, { minHeight: 50 }]} value={form.address || ''} onChangeText={v => setForm({ ...form, address: v })} multiline />
-
-            <Text style={s.lbl}>📝 یادداشت</Text>
-            <TextInput style={[s.inp, { minHeight: 50 }]} value={form.note || ''} onChangeText={v => setForm({ ...form, note: v })} multiline />
-
-            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
-                <Text style={s.btnTxt}>انصراف</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: color, flex: 2 }]} onPress={submit}>
-                <Text style={s.btnTxt}>💾 ذخیره</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView></View>
-      </Modal>
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#f5f7fa' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },

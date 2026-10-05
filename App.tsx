@@ -5,6 +5,7 @@ import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';
 import { t, loadLang, getLang, isFirstTime } from './i18n';
+import { cl, loadCustomLabels, setCustomLabel, resetCustomLabel, subscribe as subscribeLabels } from './customLabels';
 import { loadPreset, getPreset, setPreset, term, PRESETS } from './presets';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
@@ -309,6 +310,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [themeTick, setThemeTick] = useState(0);
   const [langTick, setLangTick] = useState(0);
+  const [labelTick, setLabelTick] = useState(0);
   const [presetVersion, setPresetVersion] = useState(0);
   const [presetTick, setPresetTick] = useState(0);
   const [showLangFirst, setShowLangFirst] = useState(false);
@@ -326,6 +328,7 @@ export default function App() {
     setLangTick((v: number) => v + 1);
   };
 
+  useEffect(() => { const unsub = subscribeLabels(() => setLabelTick(v => v + 1)); return unsub; }, []);
   const showToast = useCallback((msg: string, error = false) => {
     setToast({ msg, error });
     setTimeout(() => setToast(null), 3000);
@@ -550,7 +553,7 @@ function PinModal({ visible, correctPin, onClose, onSuccess, showToast }: any) {
       <View style={s.modalBg}><View style={[s.modalBox, { backgroundColor: C.card }]}>
         <View style={[s.modalHead, { backgroundColor: '#6c3483' }]}><Text style={s.modalHeadTxt}>{t('🔒 رمز ورود')}</Text></View>
         <View style={{ padding: 20 }}>
-          <Text style={[s.lbl, { color: C.textMut }]}>{t('رمز را وارد کنید')}</Text>
+          <EL text="{t('رمز را وارد کنید')}" style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={s.pinInp} value={pin} onChangeText={(v) => setPin(v.replace(/\D/g, '').slice(0, 10))} keyboardType="phone-pad" secureTextEntry placeholder="••••" placeholderTextColor="#64748b" />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
             <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={onClose}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
@@ -933,7 +936,7 @@ function SalesScreen({ showToast }: any) {
           <Text style={[S.cardHeaderTitle, { color: S.order }]}>{t('پرینت مجدد فاکتور')}</Text>
         </View>
         <View style={{ padding: 16 }}>
-          <Text style={S.label}>{t('شماره فاکتور قدیمی')}</Text>
+          <EL text="{t('شماره فاکتور قدیمی')}" style={S.label} />
           <TextInput
             style={S.input}
             value={reprintInv}
@@ -989,7 +992,7 @@ function SalesScreen({ showToast }: any) {
               placeholderTextColor="#94a3b8"
             />
 
-            <Text style={S.label}>{t('آدرس')}</Text>
+            <EL text="{t('آدرس')}" style={S.label} />
             <TextInput
               style={S.input}
               value={address}
@@ -1464,20 +1467,20 @@ function PurchaseScreen({ showToast }: any) {
   if (view === 'form') return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
-        <Text style={s.formTitle}>{t('🛍️ فاکتور خرید')}</Text>
+        <EL text="{t('🛍️ فاکتور خرید')}" style={s.formTitle} />
 
         <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border }]}>
           <Text style={[s.customerCardTitle, { color: C.text }]}>{t('🏭 اطلاعات تأمین‌کننده')}</Text>
           <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...prods.map(p => p.supplier_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
-          <Text style={[s.lbl, { color: C.textMut }]}>{t('🆔 کد تأمین‌کننده')}</Text>
+          <EL text="{t('🆔 کد تأمین‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sCode} onChangeText={setSCode} placeholder="خودکار" placeholderTextColor={C.textMut} />
-          <Text style={[s.lbl, { color: C.textMut }]}>{t('📞 تلفن')}</Text>
+          <EL text="{t('📞 تلفن')}" style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sPhone} onChangeText={setSPhone} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor={C.textMut} />
-          <Text style={[s.lbl, { color: C.textMut }]}>{t('🧾 شماره فاکتور دستی *')}</Text>
+          <EL text="{t('🧾 شماره فاکتور دستی *')}" style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={manualInv} onChangeText={setManualInv} placeholder="شماره روی فاکتور" placeholderTextColor={C.textMut} />
         </View>
 
-        <Text style={s.secT}>📦 اقلام خرید ({toFaNum(items.length)})</Text>
+        <EL text="📦 اقلام خرید ({toFaNum(items.length)})" style={s.secT} />
 
         {items.map((it, i) => {
           const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
@@ -1531,8 +1534,8 @@ function PurchaseScreen({ showToast }: any) {
           <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>{t('📦 تعداد اقلام')}</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
         </View>
 
-        <Text style={s.secT}>{t('💳 اطلاعات پرداخت')}</Text>
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('مبلغ پرداخت نقدی')}</Text>
+        <EL text="{t('💳 اطلاعات پرداخت')}" style={s.secT} />
+        <EL text="{t('مبلغ پرداخت نقدی')}" style={[s.lbl, { color: C.textMut }]} />
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={payAmt} onChangeText={setPayAmt} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
 
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
@@ -1540,7 +1543,7 @@ function PurchaseScreen({ showToast }: any) {
           <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('📌 مانده')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? fmt(remaining) : '—'}</Text></View></View>
         </View>
 
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('📅 تاریخ پرداخت')}</Text>
+        <EL text="{t('📅 تاریخ پرداخت')}" style={[s.lbl, { color: C.textMut }]} />
         <DateField value={payDate} onChange={setPayDate} compact defaultToToday />
         <Autocomplete
           label="👤 نام پرداخت‌کننده"
@@ -1556,13 +1559,13 @@ function PurchaseScreen({ showToast }: any) {
           ]))}
           placeholder="کلیک..."
         />
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('🆔 کد پرداخت‌کننده')}</Text>
+        <EL text="{t('🆔 کد پرداخت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
         <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={payerCode} editable={false} placeholder="خودکار" placeholderTextColor={C.textMut} />
-        <Text style={[s.lbl, { color: C.textMut }]}>🏦 حساب پرداخت‌کننده (بانک)</Text>
+        <EL text="🏦 حساب پرداخت‌کننده (بانک)" style={[s.lbl, { color: C.textMut }]} />
         <Autocomplete value={bankAcc} onChange={setBankAcc} options={BANKS} placeholder="انتخاب بانک..." />
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('🏦 حساب دریافت‌کننده')}</Text>
+        <EL text="{t('🏦 حساب دریافت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAcc} onChangeText={setReceiverAcc} placeholder="اختیاری" placeholderTextColor={C.textMut} />
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('📝 شرح')}</Text>
+        <EL text="{t('📝 شرح')}" style={[s.lbl, { color: C.textMut }]} />
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder="توضیحات..." placeholderTextColor={C.textMut} />
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
@@ -1580,7 +1583,7 @@ function PurchaseScreen({ showToast }: any) {
       <TouchableOpacity style={[s.addBtn, { backgroundColor: '#166534', marginTop: 8 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
         <Text style={s.btnTxt}>{t('➕ فاکتور خرید جدید')}</Text>
       </TouchableOpacity>
-      <Text style={s.secT}>📄 خریدها ({toFaNum(list.length)})</Text>
+      <EL text="📄 خریدها ({toFaNum(list.length)})" style={s.secT} />
             {loading ? <ActivityIndicator color="#34d399" /> : list.filter((inv: any) => !hiddenPurchases.includes(inv.invoice)).map((inv: any) => (
               <View key={inv.invoice} style={[s.invCard, { backgroundColor: C.card, borderRightColor: '#166534' }]}>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -1760,8 +1763,8 @@ function PrintScreen({ showToast }: any) {
 
   return (
     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
-      <Text style={s.formTitle}>{t('🖨️ گزارش جامع حساب')}</Text>
-      <Text style={[s.lbl, { color: C.textMut }]}>{t('کد طرف حساب')}</Text>
+      <EL text="{t('🖨️ گزارش جامع حساب')}" style={s.formTitle} />
+      <EL text="{t('کد طرف حساب')}" style={[s.lbl, { color: C.textMut }]} />
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={code} onChangeText={setCode} placeholder="M_1001" placeholderTextColor={C.textMut} />
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={loadReport} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('🔍 نمایش گزارش کامل')}</Text>}
@@ -1985,7 +1988,7 @@ function ProfitScreen({ showToast, settings }: any) {
         <Text style={s.statsUnit}>{t('تومان')}</Text>
       </View>
       {stats?.estimatedCount > 0 && (<View style={s.warnBox}><Text style={s.warnTxt}>📊 {stats.estimatedCount} مدل بدون خرید — سود {Math.round((stats.defaultMargin || 0.1) * 100)}٪ تخمین زده شد</Text></View>)}
-      <Text style={s.secT}>💹 سود به تفکیک مدل ({toFaNum(models.length)})</Text>
+      <EL text="💹 سود به تفکیک مدل ({toFaNum(models.length)})" style={s.secT} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
         <View>
@@ -2084,7 +2087,7 @@ function InventoryScreen({ showToast }: any) {
 
       {/* آستانه */}
       <View style={[s.thresholdBox, { backgroundColor: C.card, borderColor: C.border }]}>
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('⚙️ آستانه کمبود')}</Text>
+        <EL text="{t('⚙️ آستانه کمبود')}" style={[s.lbl, { color: C.textMut }]} />
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
           <TextInput style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={thresholdInput} onChangeText={setThresholdInput} keyboardType="numeric" />
           <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#059669' }]} onPress={saveThreshold}><Text style={s.btnTxt}>💾</Text></TouchableOpacity>
@@ -2099,7 +2102,7 @@ function InventoryScreen({ showToast }: any) {
         ))}
       </ScrollView>
 
-      <Text style={s.secT}>📦 موجودی ({toFaNum(filtered.length)})</Text>
+      <EL text="📦 موجودی ({toFaNum(filtered.length)})" style={s.secT} />
 
       {/* ⭐ جدول ردیفی */}
       <ScrollView horizontal showsHorizontalScrollIndicator>
@@ -2243,7 +2246,7 @@ function UnpaidSection({ showToast }: any) {
         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#334155' }]} onPress={load}><Text style={s.btnTxt}>{t('🔄 بروزرسانی')}</Text></TouchableOpacity>
         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#dc2626' }]} onPress={del} disabled={!selected.size}><Text style={s.btnTxt}>🗑️ حذف ({toFaNum(selected.size)})</Text></TouchableOpacity>
       </View>
-      <Text style={s.secT}>📄 پرداخت‌نشده ({toFaNum(list.length)})</Text>
+      <EL text="📄 پرداخت‌نشده ({toFaNum(list.length)})" style={s.secT} />
 
       {/* جدول ۸ ستونه */}
       <ScrollView horizontal showsHorizontalScrollIndicator>
@@ -2344,18 +2347,18 @@ function NewOrderSection({ showToast }: any) {
 
   return (
     <View>
-      <Text style={s.formTitle}>{t('➕ سفارش جدید')}</Text>
-      <Text style={[s.lbl, { color: C.textMut }]}>📞 تلفن {status}</Text>
+      <EL text="{t('➕ سفارش جدید')}" style={s.formTitle} />
+      <EL text="📞 تلفن {status}" style={[s.lbl, { color: C.textMut }]} />
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={phone} onChangeText={onPhone} keyboardType="phone-pad" maxLength={11} placeholder="09121234567" placeholderTextColor={C.textMut} />
-      <Text style={[s.lbl, { color: C.textMut }]}>{t('👤 نام')}</Text>
+      <EL text="{t('👤 نام')}" style={[s.lbl, { color: C.textMut }]} />
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText={setName} placeholder={term('customer')} placeholderTextColor={C.textMut} />
-      <Text style={[s.lbl, { color: C.textMut }]}>{t('📍 آدرس')}</Text>
+      <EL text="{t('📍 آدرس')}" style={[s.lbl, { color: C.textMut }]} />
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={address} onChangeText={setAddress} placeholder="اختیاری" placeholderTextColor={C.textMut} />
       <Autocomplete label="🚚 باربری" value={shipping} onChange={setShipping} options={SHIPPINGS} placeholder="تایپ..." />
-      <Text style={[s.lbl, { color: C.textMut }]}>🧾 شماره فاکتور (خودکار)</Text>
+      <EL text="🧾 شماره فاکتور (خودکار)" style={[s.lbl, { color: C.textMut }]} />
       <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={invoice} editable={false} />
 
-      <Text style={s.secT}>{t('📦 اقلام')}</Text>
+      <EL text="{t('📦 اقلام')}" style={s.secT} />
 
       {items.map((it, i) => {
         const lt = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
@@ -2639,7 +2642,7 @@ function SearchSection({ showToast }: any) {
           <TouchableOpacity key={f.k} onPress={() => setStatusFilter(f.k)} style={[s.chip, statusFilter === f.k && { backgroundColor: '#6c3483', borderColor: '#6c3483' }]}><Text style={[s.chipTxt, statusFilter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
         ))}
       </View>
-      <Text style={s.secT}>📄 نتایج ({toFaNum(filtered.length)})</Text>
+      <EL text="📄 نتایج ({toFaNum(filtered.length)})" style={s.secT} />
 
       {/* جدول ۱۲ ستونه */}
       <ScrollView horizontal showsHorizontalScrollIndicator>
@@ -2763,7 +2766,7 @@ function ReportsSection({ showToast }: any) {
 
   return (
     <View>
-      <Text style={s.secT}>{t('📊 نوع گزارش')}</Text>
+      <EL text="{t('📊 نوع گزارش')}" style={s.secT} />
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {[
           { k: 'debtors', l: '📊 بدهکاران' },
@@ -2864,7 +2867,7 @@ function PresetSection({ showToast }: any) {
 
   return (
     <View>
-      <Text style={s.formTitle}>🎨 نوع کسب‌وکار</Text>
+      <EL text="🎨 نوع کسب‌وکار" style={s.formTitle} />
       <Text style={[s.lbl, { color: C.textMut, textAlign: 'center', marginBottom: 16 }]}>
         با انتخاب هرکدام، واژه‌های برنامه تغییر می‌کنند
       </Text>
@@ -2968,12 +2971,12 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const toggleDay = (d: string) => setSchedDailyDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
   return (
     <View>
-      <Text style={s.secT}>{t('🌍 زبان برنامه')}</Text>
+      <EL text="{t('🌍 زبان برنامه')}" style={s.secT} />
       <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginBottom: 12 }]} onPress={() => { (globalThis as any).__openLang?.(); }}>
         <Text style={s.btnTxt}>{t('🌍 تغییر زبان / Change Language')}</Text>
       </TouchableOpacity>
 
-      <Text style={s.secT}>{t('📅 نوع تقویم')}</Text>
+      <EL text="{t('📅 نوع تقویم')}" style={s.secT} />
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {[{ k: 'jalali', l: '🌙 شمسی' }, { k: 'gregorian', l: '🌍 میلادی' }, { k: 'hijri', l: '🕋 قمری' }].map((f) => (
           <TouchableOpacity key={f.k} onPress={() => { setSettings({ ...settings, cal_type: f.k as CalType }); saveCalType(f.k as CalType); }} style={[s.chip, settings.cal_type === f.k && s.chipActive]}>
@@ -2982,7 +2985,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={s.secT}>{t('📺 بازه داشبورد')}</Text>
+      <EL text="{t('📺 بازه داشبورد')}" style={s.secT} />
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {Object.entries(DASH_RANGE_LABELS).map(([k, l]) => (
           <TouchableOpacity key={k} onPress={() => setSettings({ ...settings, dashboard_range: k })} style={[s.chip, settings.dashboard_range === k && s.chipActive]}>
@@ -2991,7 +2994,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={s.secT}>{t('🔎 فیلتر داده')}</Text>
+      <EL text="{t('🔎 فیلتر داده')}" style={s.secT} />
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {[{ k: 'both', l: '📋 هر دو' }, { k: 'sales', l: '🛒 فروش' }, { k: 'purchase', l: '🛍️ خرید' }].map((f) => (
           <TouchableOpacity key={f.k} onPress={() => setSettings({ ...settings, dashboard_filter: f.k })} style={[s.chip, settings.dashboard_filter === f.k && s.chipActive]}>
@@ -3000,13 +3003,13 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={s.secT}>{t('💹 درصد سود تخمینی')}</Text>
+      <EL text="{t('💹 درصد سود تخمینی')}" style={s.secT} />
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(Math.round((settings.profit_margin || 0.1) * 100))} onChangeText={(v) => setSettings({ ...settings, profit_margin: (parseFloat(v) || 0) / 100 })} keyboardType="numeric" />
 
-      <Text style={s.secT}>{t('📦 آستانه کمبود')}</Text>
+      <EL text="{t('📦 آستانه کمبود')}" style={s.secT} />
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.inventory_threshold || 5)} onChangeText={(v) => setSettings({ ...settings, inventory_threshold: parseInt(v) || 5 })} keyboardType="numeric" />
 
-      <Text style={s.secT}>{t('📧 ایمیل‌های گزارش')}</Text>
+      <EL text="{t('📧 ایمیل‌های گزارش')}" style={s.secT} />
       {emails.map((e, i) => (
         <View key={i} style={[s.emailRow, { backgroundColor: C.cardAlt }]}>
           <Text style={[s.emailTxt, { color: C.text }]} numberOfLines={1}>{e}</Text>
@@ -3018,16 +3021,16 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#7c3aed' }]} onPress={addEmail}><Text style={s.btnTxt}>➕</Text></TouchableOpacity>
       </View>
 
-      <Text style={s.secT}>{t('🗑️ حذف خودکار')}</Text>
+      <EL text="{t('🗑️ حذف خودکار')}" style={s.secT} />
       <View style={s.rowBetween}>
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('فعال')}</Text>
+        <EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} />
         <Switch value={autoDelEnabled} onValueChange={setAutoDelEnabled} />
       </View>
       <Text style={[s.lblS, { color: C.textMut }]}>حذف بعد از (ساعت)</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={autoDelHours} onChangeText={setAutoDelHours} keyboardType="numeric" />
 
-      <Text style={s.secT}>{t('📊 گزارش روزانه')}</Text>
-      <View style={s.rowBetween}><Text style={[s.lbl, { color: C.textMut }]}>{t('فعال')}</Text><Switch value={schedDailyEnabled} onValueChange={setSchedDailyEnabled} /></View>
+      <EL text="{t('📊 گزارش روزانه')}" style={s.secT} />
+      <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedDailyEnabled} onValueChange={setSchedDailyEnabled} /></View>
       <Text style={[s.lblS, { color: C.textMut }]}>{t('ساعت ارسال')}</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={schedDailyHour} onChangeText={setSchedDailyHour} keyboardType="numeric" />
       <Text style={[s.lblS, { color: C.textMut }]}>{t('روزها')}</Text>
@@ -3039,8 +3042,8 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={s.secT}>{t('📅 گزارش هفتگی')}</Text>
-      <View style={s.rowBetween}><Text style={[s.lbl, { color: C.textMut }]}>{t('فعال')}</Text><Switch value={schedWeeklyEnabled} onValueChange={setSchedWeeklyEnabled} /></View>
+      <EL text="{t('📅 گزارش هفتگی')}" style={s.secT} />
+      <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedWeeklyEnabled} onValueChange={setSchedWeeklyEnabled} /></View>
       <Text style={[s.lblS, { color: C.textMut }]}>{t('روز هفته')}</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
@@ -3053,7 +3056,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={save} disabled={saving}>
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('💾 ذخیره همه تنظیمات')}</Text>}
       </TouchableOpacity>
-      <Text style={s.secT}>{t('🔐 رمز عبور تب‌ها')}</Text>
+      <EL text="{t('🔐 رمز عبور تب‌ها')}" style={s.secT} />
       <Text style={[s.lblS, { color: C.textMut, marginBottom: 8 }]}>خالی بگذاری = بدون رمز. مقدار پیش‌فرض: 4242</Text>
       {[
         { k: 'purchase', l: '🛍️ خرید' },
@@ -3092,7 +3095,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         <Text style={s.btnTxt}>{t('💾 ذخیره رمزهای تب‌ها')}</Text>
       </TouchableOpacity>
 
-      <Text style={s.secT}>{t('🚪 خروج از حساب')}</Text>
+      <EL text="{t('🚪 خروج از حساب')}" style={s.secT} />
       <TouchableOpacity
         style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}
         onPress={async () => {
@@ -3179,7 +3182,7 @@ function SourcesSection({ showToast }: any) {
       )}
 
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در کالاها..." placeholderTextColor={C.textMut} />
-      <Text style={s.secT}>📦 کالاها ({toFaNum(filtered.length)})</Text>
+      <EL text="📦 کالاها ({toFaNum(filtered.length)})" style={s.secT} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
         <View>
@@ -3394,6 +3397,59 @@ const Row = ({ k, v, gold }: any) => (
 
 // ══════════════════════════════════════════════════════════
 //  LOGIN SCREEN
+// ══════════════════════════════════════════════════════════
+//  EL — Editable Label (ویرایش‌پذیر)
+// ══════════════════════════════════════════════════════════
+function EL({ text, style, showIcon = true }: any) {
+  const [showEdit, setShowEdit] = useState(false);
+  const [tmp, setTmp] = useState('');
+  const lbl = cl(text);
+  const openEditor = () => { setTmp(lbl); setShowEdit(true); };
+  return (
+    <>
+      <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 4 }}>
+        <Text style={style}>{lbl}</Text>
+        {showIcon && (
+          <TouchableOpacity onPress={openEditor} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={{ fontSize: 9, opacity: 0.3 }}>✏️</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {showEdit && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setShowEdit(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16 }}>
+              <Text style={{ fontWeight: 'bold', textAlign: 'right', marginBottom: 12, color: '#0f2438', fontSize: 15 }}>✏️ ویرایش برچسب</Text>
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 6 }}>متن پیش‌فرض: {text}</Text>
+              <TextInput
+                value={tmp}
+                onChangeText={setTmp}
+                style={{ borderWidth: 2, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, textAlign: 'right', fontSize: 14, marginBottom: 12 }}
+                placeholder="متن جدید..."
+                placeholderTextColor="#94a3b8"
+              />
+              <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={async () => { await resetCustomLabel(text); setShowEdit(false); }}
+                  style={{ flex: 1, padding: 12, backgroundColor: '#64748b', borderRadius: 10, alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>↩️ پیش‌فرض</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => { await setCustomLabel(text, tmp); setShowEdit(false); }}
+                  style={{ flex: 2, padding: 12, backgroundColor: '#059669', borderRadius: 10, alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>💾 ذخیره</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </>
+  );
+}
+
 // ══════════════════════════════════════════════════════════
 function LoginScreen({ showToast }: any) {
   const [email, setEmail] = useState('');

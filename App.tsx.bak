@@ -3,8 +3,6 @@ import SyncControl from './SyncControl';
 import ExchangeScreen from './ExchangeScreen';
 import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
-import LanguageModal from './LanguageModal';
-import { t, loadLang, getLang, isFirstTime } from './i18n';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
@@ -307,8 +305,6 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [themeTick, setThemeTick] = useState(0);
-  const [langTick, setLangTick] = useState(0);
-  const [showLangFirst, setShowLangFirst] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -369,14 +365,7 @@ export default function App() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <LanguageModal
-        visible={showLangFirst}
-        current={getLang()}
-        firstTime={true}
-        onClose={() => setShowLangFirst(false)}
-        onSelect={() => { setShowLangFirst(false); setLangTick(v => v + 1); }}
-      />
-      <View key={themeTick + '-' + langTick} style={{ flex: 1 }}>
+      <View key={themeTick} style={{ flex: 1 }}>
         {isAdmin
           ? <AdminScreen showToast={showToast} />
           : !session
@@ -404,8 +393,6 @@ function getTabPins(settings: any): Record<string, string> {
 }
 
 function MainApp({ showToast, onCycleTheme }: any) {
-  const [showLang, setShowLang] = useState(false);
-  const [curLang, setCurLang] = useState(getLang());
   const [tab, setTab] = useState('order');
   const [unlockedTabs, setUnlockedTabs] = useState<Set<string>>(new Set());
   const [pendingTab, setPendingTab] = useState<string | null>(null);
@@ -416,18 +403,17 @@ function MainApp({ showToast, onCycleTheme }: any) {
   }, []);
 
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
-  useEffect(() => { (globalThis as any).__openLang = () => setShowLang(true); }, []);
 
   const tabs = [
-    { key: 'order', icon: '🛒', label: t('فروش'), color: '#1e3a8a' },
-    { key: 'purchase', icon: '🛍️', label: t('خرید'), color: '#166534' },
-    { key: 'print', icon: '🖨️', label: t('پرینت'), color: '#6c3483' },
-    { key: 'mgr', icon: '📋', label: t('مدیریت'), color: '#c0392b' },
-    { key: 'profit', icon: '💹', label: t('سود'), color: '#065f46' },
-    { key: 'inventory', icon: '📦', label: t('انبار'), color: '#0f5132' },
-    { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
-    { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
-    { key: 'employees', icon: '💼', label: t('کارمندان'), color: '#7c3aed' },
+    { key: 'order', icon: '🛒', label: 'فروش', color: '#1e3a8a' },
+    { key: 'purchase', icon: '🛍️', label: 'خرید', color: '#166534' },
+    { key: 'print', icon: '🖨️', label: 'پرینت', color: '#6c3483' },
+    { key: 'mgr', icon: '📋', label: 'مدیریت', color: '#c0392b' },
+    { key: 'profit', icon: '💹', label: 'سود', color: '#065f46' },
+    { key: 'inventory', icon: '📦', label: 'انبار', color: '#0f5132' },
+    { key: 'exchange', icon: '💱', label: 'صرافی', color: '#065f46' },
+    { key: 'expenses', icon: '🧾', label: 'هزینه‌ها', color: '#dc2626' },
+    { key: 'employees', icon: '💼', label: 'کارمندان', color: '#7c3aed' },
   ];
 
   const tabPins = getTabPins(settings);
@@ -495,13 +481,6 @@ function MainApp({ showToast, onCycleTheme }: any) {
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}
-      <LanguageModal
-        visible={showLang}
-        current={curLang}
-        firstTime={false}
-        onClose={() => setShowLang(false)}
-        onSelect={(l: any) => { setCurLang(l); setShowLang(false); }}
-      />
       <PinModal
         visible={!!pendingTab}
         correctPin={pendingTab ? (tabPins[pendingTab] || '') : ''}
@@ -2884,11 +2863,6 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const toggleDay = (d: string) => setSchedDailyDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
   return (
     <View>
-      <Text style={s.secT}>🌍 زبان برنامه</Text>
-      <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginBottom: 12 }]} onPress={() => { (globalThis as any).__openLang?.(); }}>
-        <Text style={s.btnTxt}>🌍 تغییر زبان / Change Language</Text>
-      </TouchableOpacity>
-
       <Text style={s.secT}>📅 نوع تقویم</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {[{ k: 'jalali', l: '🌙 شمسی' }, { k: 'gregorian', l: '🌍 میلادی' }, { k: 'hijri', l: '🕋 قمری' }].map((f) => (

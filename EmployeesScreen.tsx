@@ -54,7 +54,6 @@ export default function EmployeesScreen({ showToast }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f7fa' }}>
-      <HRDash emps={emps} atts={atts} salaries={salaries} loans={loans} leaves={leaves} />
       {/* Dashboard */}
       <View style={s.dash}>
         <Text style={s.dashTitle}>💼 مدیریت منابع انسانی</Text>
@@ -83,6 +82,8 @@ export default function EmployeesScreen({ showToast }: any) {
       </ScrollView>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+        <HRDash emps={emps} atts={atts} salaries={salaries} loans={loans} leaves={leaves} />
+
         {tab === 'emp' && <EmpTab {...{ emps, reload, showToast }} />}
         {tab === 'att' && <AttTab {...{ emps, atts, reload, showToast }} />}
         {tab === 'salary' && <SalaryTab {...{ emps, salaries, atts, prods, reload, showToast }} />}

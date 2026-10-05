@@ -40,7 +40,7 @@ function genInvoiceNumber(trades: any[]): string {
 }
 
 export default function ExchangeScreen({ showToast }: any) {
-  const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger'>('list');
+  const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger' | 'statement'>('list');
   const [trades, setTrades] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
@@ -60,6 +60,9 @@ export default function ExchangeScreen({ showToast }: any) {
   const [ckModal, setCkModal] = useState(false);
   const [ckForm, setCkForm] = useState<any>({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: '', status: 'pending', note: '' });
   const [ckEditId, setCkEditId] = useState<string | null>(null);
+  const [stmtSearch, setStmtSearch] = useState('');
+  const [stmtCustomer, setStmtCustomer] = useState<any>(null);
+  const [stmtData, setStmtData] = useState<any>(null);
   const [now, setNow] = useState(new Date());
 
   // فرم معامله
@@ -277,6 +280,64 @@ export default function ExchangeScreen({ showToast }: any) {
     setPartnerForm({ name: '', phone: '', notes: '' });
   };
 
+  const buildStatement = (q: string) => {
+    const s = String(q || '').trim().toLowerCase();
+    if (!s) return;
+    // جستجو در مشتری‌ها
+    const cust = customers.find((c: any) =>
+      String(c.code || '').toLowerCase() === s ||
+      String(c.phone || '').replace(/[^\d]/g, '') === s.replace(/[^\d]/g, '') ||
+      String(c.name || '').toLowerCase().includes(s)
+    );
+    if (!cust) {
+      showToast('❌ مشتری پیدا نشد', true);
+      setStmtCustomer(null);
+      setStmtData(null);
+      return;
+    }
+    setStmtCustomer(cust);
+
+    // ═══ معاملات این مشتری ═══
+    const myTrades = trades.filter((t: any) => t.customer_code === cust.code);
+    // ═══ حواله‌جات این مشتری (به‌عنوان ذی‌نفع یا فرستنده) ═══
+    const myHawalas = hawalas.filter((h: any) =>
+      String(h.beneficiary_name || '').includes(cust.name) ||
+      String(h.beneficiary_phone || '').replace(/[^\d]/g, '') === String(cust.phone || '').replace(/[^\d]/g, '')
+    );
+    // ═══ چک‌ها ═══
+    const myChecks = checks.filter((c2: any) => c2.partner_name === cust.name || c2.partner_code === cust.code);
+
+    // ═══ محاسبه پوزیشن ارزی ═══
+    const pos: Record<string, { bought: number; sold: number; net: number }> = {};
+    myTrades.forEach((t: any) => {
+      const f = t.from_currency, to = t.to_currency;
+      if (!pos[f]) pos[f] = { bought: 0, sold: 0, net: 0 };
+      if (!pos[to]) pos[to] = { bought: 0, sold: 0, net: 0 };
+      pos[f].sold += Number(t.from_qty) || 0;
+      pos[f].net -= Number(t.from_qty) || 0;
+      pos[to].bought += Number(t.to_qty) || 0;
+      pos[to].net += Number(t.to_qty) || 0;
+    });
+
+    // ═══ سود کل ═══
+    const totalProfit = myTrades.reduce((a: number, t: any) => a + (Number(t.profit) || 0), 0);
+    const totalHawalaFees = myHawalas.reduce((a: number, h: any) => a + (Number(h.commission) || 0), 0);
+    const totalChecks = myChecks.reduce((a: number, c2: any) => a + (Number(c2.amount) || 0), 0);
+
+    setStmtData({
+      trades: myTrades,
+      hawalas: myHawalas,
+      checks: myChecks,
+      positions: pos,
+      totalProfit,
+      totalHawalaFees,
+      totalChecks,
+      tradeCount: myTrades.length,
+      hawalaCount: myHawalas.length,
+      checkCount: myChecks.length,
+    });
+  };
+
   if (load) return <View style={s.center}><ActivityIndicator color="#d4af37" /></View>;
 
   const timeStr = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
@@ -349,6 +410,7 @@ export default function ExchangeScreen({ showToast }: any) {
             { k: 'boxes', l: '📦 صندوق‌ها' },
             { k: 'checks', l: '📄 چک‌ها' },
             { k: 'ledger', l: '📊 کاردکس' },
+            { k: 'statement', l: '🖨️ پرینت حساب' },
             { k: 'customers', l: '👥 مشتریان' },
             { k: 'partners', l: '💼 شرکا' },
           ].map(x => (
@@ -767,6 +829,195 @@ export default function ExchangeScreen({ showToast }: any) {
           </View>
         )}
 
+
+        {/* ═══════ پرینت حساب مشتری ═══════ */}
+        {sub === 'statement' && (
+          <View>
+            <Text style={s.secT}>🖨️ پرینت حساب مشتری صرافی</Text>
+
+            <View style={[s.formCard, { marginBottom: 12 }]}>
+              <Text style={s.lbl}>🔍 جستجو (کد، تلفن، یا نام مشتری)</Text>
+              <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+                <TextInput
+                  style={[s.inp, { flex: 1 }]}
+                  value={stmtSearch}
+                  onChangeText={setStmtSearch}
+                  placeholder="X_1001 یا 0912... یا احمد"
+                  placeholderTextColor="#94a3b8"
+                />
+                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', paddingHorizontal: 16 }]} onPress={() => buildStatement(stmtSearch)}>
+                  <Text style={s.btnTxt}>🔍 نمایش</Text>
+                </TouchableOpacity>
+              </View>
+              {customers.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                  {customers.slice(0, 20).map((c: any) => (
+                    <TouchableOpacity key={c.code} style={[s.curPick, { marginLeft: 4 }]} onPress={() => { setStmtSearch(c.phone); buildStatement(c.phone); }}>
+                      <Text style={s.curPickTxt}>{c.name} ({c.code})</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
+            {stmtCustomer && stmtData && (
+              <View>
+                {/* هدر مشتری */}
+                <View style={[s.dash, { backgroundColor: '#065f46', borderColor: '#10b981' }]}>
+                  <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                    <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>👤 {stmtCustomer.name}</Text>
+                    <Text style={{ color: '#a7f3d0', fontSize: 12, marginTop: 4, fontFamily: 'monospace' }}>
+                      🆔 {stmtCustomer.code}  |  📞 {stmtCustomer.phone || '—'}
+                    </Text>
+                    {stmtCustomer.bank ? (
+                      <Text style={{ color: '#a7f3d0', fontSize: 11, marginTop: 2 }}>
+                        🏦 {stmtCustomer.bank}  |  👤 {stmtCustomer.holder_name || '—'}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+
+                {/* آمار کلی */}
+                <View style={s.dash}>
+                  <View style={s.grid}>
+                    <View style={s.dItem}>
+                      <Text style={s.dLbl}>💰 سود از این مشتری</Text>
+                      <Text style={[s.dVal, { color: stmtData.totalProfit >= 0 ? '#00ff88' : '#ff3355', textShadowColor: stmtData.totalProfit >= 0 ? '#00ff88' : '#ff3355' }]}>{fmt(stmtData.totalProfit, 0)}</Text>
+                    </View>
+                    <View style={s.dItem}>
+                      <Text style={s.dLbl}>📊 معاملات</Text>
+                      <Text style={[s.dVal, { color: '#60a5fa', textShadowColor: '#60a5fa' }]}>{stmtData.tradeCount}</Text>
+                    </View>
+                    <View style={s.dItem}>
+                      <Text style={s.dLbl}>💸 حوالات</Text>
+                      <Text style={[s.dVal, { color: '#fbbf24', textShadowColor: '#fbbf24' }]}>{stmtData.hawalaCount}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* پوزیشن ارزی با این مشتری */}
+                <Text style={s.secT}>💱 پوزیشن ارزی با این مشتری</Text>
+                {Object.keys(stmtData.positions).length === 0 ? (
+                  <Text style={s.empty}>معامله‌ای با این مشتری ثبت نشده</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={s.tblHeader}>
+                        <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                        <Text style={[s.th, { width: 120 }]}>گرفتیم (خرید)</Text>
+                        <Text style={[s.th, { width: 120 }]}>دادیم (فروش)</Text>
+                        <Text style={[s.th, { width: 120 }]}>مانده خالص</Text>
+                      </View>
+                      {Object.keys(stmtData.positions).map((cur: string, i: number) => {
+                        const p = stmtData.positions[cur];
+                        const col = p.net > 0 ? '#00ff88' : p.net < 0 ? '#ff3355' : '#94a3b8';
+                        return (
+                          <View key={cur} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 80, color: '#d4af37', fontWeight: 'bold' }]}>{CUR[cur]?.flag} {cur}</Text>
+                            <Text style={[s.td, { width: 120, color: '#fb923c', fontWeight: 'bold' }]}>{fmt(p.bought, 0)}</Text>
+                            <Text style={[s.td, { width: 120, color: '#34d399', fontWeight: 'bold' }]}>{fmt(p.sold, 0)}</Text>
+                            <Text style={[s.td, { width: 120, color: col, fontWeight: 'bold', fontSize: 13 }]}>{p.net > 0 ? '+' : ''}{fmt(p.net, 0)}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* جدول معاملات */}
+                <Text style={[s.secT, { marginTop: 16 }]}>📋 معاملات ({stmtData.tradeCount})</Text>
+                {stmtData.tradeCount === 0 ? (
+                  <Text style={s.empty}>معامله‌ای نیست</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={s.tblHeader}>
+                        <Text style={[s.th, { width: 36 }]}>#</Text>
+                        <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                        <Text style={[s.th, { width: 100 }]}>فاکتور</Text>
+                        <Text style={[s.th, { width: 100 }]}>شریک</Text>
+                        <Text style={[s.th, { width: 90 }]}>از</Text>
+                        <Text style={[s.th, { width: 100 }]}>به</Text>
+                        <Text style={[s.th, { width: 90 }]}>نرخ</Text>
+                        <Text style={[s.th, { width: 100 }]}>سود</Text>
+                      </View>
+                      {stmtData.trades.map((t: any, i: number) => {
+                        const pcol = (Number(t.profit) || 0) > 0 ? '#00ff88' : (Number(t.profit) || 0) < 0 ? '#ff3355' : '#64748b';
+                        return (
+                          <View key={t.local_id || t.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                            <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{t.date || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#7c3aed', fontSize: 10, fontWeight: 'bold' }]}>{t.invoice_number || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#e2e8f0' }]}>{t.partner_name || '—'}</Text>
+                            <Text style={[s.td, { width: 90, color: '#fb923c' }]}>{CUR[t.from_currency]?.flag}{fmt(t.from_qty, CUR[t.from_currency]?.dec)}</Text>
+                            <Text style={[s.td, { width: 100, color: '#34d399' }]}>{CUR[t.to_currency]?.flag}{fmt(t.to_qty, CUR[t.to_currency]?.dec)}</Text>
+                            <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 10 }]}>{fmt(t.rate, 4)}</Text>
+                            <Text style={[s.td, { width: 100, color: pcol, fontWeight: 'bold' }]}>{fmt(t.profit, 0)}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* جدول حوالات */}
+                <Text style={[s.secT, { marginTop: 16 }]}>💸 حوالات ({stmtData.hawalaCount})</Text>
+                {stmtData.hawalaCount === 0 ? (
+                  <Text style={s.empty}>حواله‌ای نیست</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={s.tblHeader}>
+                        <Text style={[s.th, { width: 36 }]}>#</Text>
+                        <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                        <Text style={[s.th, { width: 90 }]}>کد</Text>
+                        <Text style={[s.th, { width: 80 }]}>نوع</Text>
+                        <Text style={[s.th, { width: 130 }]}>ذی‌نفع</Text>
+                        <Text style={[s.th, { width: 100 }]}>مبلغ</Text>
+                        <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                        <Text style={[s.th, { width: 90 }]}>کارمزد</Text>
+                        <Text style={[s.th, { width: 100 }]}>وضعیت</Text>
+                      </View>
+                      {stmtData.hawalas.map((h: any, i: number) => {
+                        const stCol = h.status === 'done' ? '#00ff88' : h.status === 'cancelled' ? '#ff3355' : '#fbbf24';
+                        return (
+                          <View key={h.local_id || h.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                            <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{h.date || '—'}</Text>
+                            <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{h.code || '—'}</Text>
+                            <Text style={[s.td, { width: 80, color: h.direction === 'send' ? '#fb923c' : '#34d399' }]}>{h.direction === 'send' ? '📤 ارسال' : '📥 دریافت'}</Text>
+                            <Text style={[s.td, { width: 130, color: '#fff', fontWeight: 'bold' }]}>{h.beneficiary_name || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(h.amount, 0)}</Text>
+                            <Text style={[s.td, { width: 80, color: '#60a5fa' }]}>{h.currency}</Text>
+                            <Text style={[s.td, { width: 90, color: '#00ff88' }]}>{fmt(h.commission, 0)}</Text>
+                            <Text style={[s.td, { width: 100, color: stCol, fontSize: 10, fontWeight: 'bold' }]}>{h.status === 'done' ? '✅ انجام' : h.status === 'cancelled' ? '❌ لغو' : '⏳ در انتظار'}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* خلاصه نهایی */}
+                <View style={[s.dash, { marginTop: 16, backgroundColor: '#1e1b4b', borderColor: '#7c3aed' }]}>
+                  <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>📊 خلاصه نهایی با {stmtCustomer.name}</Text>
+                  <View style={{ paddingHorizontal: 10 }}>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>📊 تعداد معاملات ارزی</Text><Text style={s.sumVal}>{stmtData.tradeCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💸 تعداد حوالات</Text><Text style={s.sumVal}>{stmtData.hawalaCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>📄 تعداد چک‌ها</Text><Text style={s.sumVal}>{stmtData.checkCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💰 سود از معاملات</Text><Text style={[s.sumVal, { color: '#00ff88' }]}>{fmt(stmtData.totalProfit, 0)}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💵 کارمزد حوالات</Text><Text style={[s.sumVal, { color: '#fbbf24' }]}>{fmt(stmtData.totalHawalaFees, 0)}</Text></View>
+                    <View style={[s.sumRow, { backgroundColor: 'rgba(0,255,136,0.1)', marginTop: 8, paddingVertical: 10, borderRadius: 8 }]}>
+                      <Text style={[s.sumLbl, { fontWeight: 'bold', fontSize: 14, color: '#fff' }]}>🎯 مجموع درآمد</Text>
+                      <Text style={[s.sumVal, { color: '#00ff88', fontSize: 16, fontWeight: 'bold' }]}>{fmt(stmtData.totalProfit + stmtData.totalHawalaFees, 0)}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
       </ScrollView>
 
       {/* ═══ Modals ═══ */}
@@ -1126,4 +1377,7 @@ const s = StyleSheet.create({
   mTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
   pickRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickName: { fontSize: 14, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' },
+  sumRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  sumLbl: { color: '#94a3b8', fontSize: 12 },
+  sumVal: { color: '#e2e8f0', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' },
 });

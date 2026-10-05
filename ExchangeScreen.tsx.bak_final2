@@ -1273,17 +1273,14 @@ function PartyList({ type, list, reload, showToast }: any) {
   const [form, setForm] = useState<any>({});
   const [q, setQ] = useState('');
 
-  const isBuyer = type === 'buyer';
-  const title = isBuyer ? 'خریداران' : 'مشتریان';
-  const color = isBuyer ? '#059669' : '#1e3a8a';
-  const prefix = isBuyer ? 'B_' : 'X_';
+  const title = type === 'buyer' ? '🏢 خریداران' : '👤 مشتریان';
+  const color = type === 'buyer' ? '#059669' : '#1e3a8a';
 
   const openNew = () => {
     setEditId(null);
     setForm({ type, code: '', name: '', phone: '', bank: '', account_number: '', holder_name: '', holder_code: '', address: '', note: '' });
     setModal(true);
   };
-
   const openEdit = (x: any) => {
     setEditId(x.local_id || x.id);
     setForm({ ...x, type });
@@ -1293,44 +1290,49 @@ function PartyList({ type, list, reload, showToast }: any) {
   const submit = async () => {
     try {
       if (!form.name) return showToast('نام الزامی', true);
-      const phone = String(form.phone || '').replace(/[^\d]/g, '');
-      if (phone.length < 10) return showToast('تلفن معتبر الزامی', true);
-      const payload = { ...form, phone, type };
+      if (!form.phone || String(form.phone).replace(/[^\d]/g, '').length < 10) return showToast('تلفن معتبر الزامی', true);
+      const payload = { ...form, type };
       if (editId) await updateFxCustomer(editId, payload);
       else await createFxCustomer(payload);
       await reload();
       setModal(false);
-      showToast(editId ? 'ویرایش شد' : 'ثبت شد');
-    } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+      showToast(editId ? '✅ ویرایش شد' : '✅ ثبت شد');
+    } catch (e: any) { showToast('❌ ' + (e?.message || ''), true); }
   };
 
   const remove = async (id: string) => {
     if (typeof window !== 'undefined' && window.confirm && !window.confirm('حذف شود؟')) return;
     await deleteFxCustomer(id);
     await reload();
-    showToast('حذف شد');
+    showToast('🗑 حذف شد');
   };
 
   const filtered = q ? list.filter((x: any) => {
-    const h = ((x.code || '') + ' ' + (x.name || '') + ' ' + (x.phone || '') + ' ' + (x.bank || '')).toLowerCase();
+    const h = `${x.code || ''} ${x.name || ''} ${x.phone || ''} ${x.bank || ''}`.toLowerCase();
     return h.includes(q.toLowerCase());
   }) : list;
 
   return (
     <View>
-      <TouchableOpacity style={[s.addBtn, { backgroundColor: color, marginTop: 8 }]} onPress={openNew} activeOpacity={0.8}>
-        <Text style={s.addBtnTxt}>{'افزودن ' + (isBuyer ? 'خریدار' : 'مشتری') + ' جدید'}</Text>
+      <TouchableOpacity style={[s.addBtn, { backgroundColor: color }]} onPress={openNew}>
+        <Text style={s.addBtnTxt}>➕ افزودن {type === 'buyer' ? 'خریدار' : 'مشتری'} جدید</Text>
       </TouchableOpacity>
 
-      <TextInput style={s.inp} value={q} onChangeText={setQ} placeholder="جستجو: کد، نام، تلفن، بانک..." placeholderTextColor="#94a3b8" />
+      <TextInput
+        style={s.inp}
+        value={q}
+        onChangeText={setQ}
+        placeholder="🔍 جستجو: کد، نام، تلفن، بانک..."
+        placeholderTextColor="#94a3b8"
+      />
 
-      <Text style={s.secT}>{title + ' (' + filtered.length + ')'}</Text>
+      <Text style={s.secT}>{title} ({filtered.length})</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
         <View>
           <View style={s.tH}>
             <Text style={[s.th, { width: 36 }]}>#</Text>
-            <Text style={[s.th, { width: 130 }]}>کد</Text>
+            <Text style={[s.th, { width: 110 }]}>کد</Text>
             <Text style={[s.th, { width: 180 }]}>نام</Text>
             <Text style={[s.th, { width: 120 }]}>تلفن</Text>
             <Text style={[s.th, { width: 100 }]}>بانک</Text>
@@ -1339,15 +1341,12 @@ function PartyList({ type, list, reload, showToast }: any) {
             <Text style={[s.th, { width: 180 }]}>آدرس</Text>
             <Text style={[s.th, { width: 100 }]}>عملیات</Text>
           </View>
-
           {filtered.length === 0 ? (
-            <View style={{ padding: 30 }}>
-              <Text style={s.empty}>{'هنوز ' + (isBuyer ? 'خریداری' : 'مشتری‌ای') + ' نیست — دکمه بالا رو بزن'}</Text>
-            </View>
+            <View style={{ padding: 30 }}><Text style={s.empty}>خالی</Text></View>
           ) : filtered.map((x: any, i: number) => (
             <View key={x.local_id || x.id} style={[s.tR, i % 2 === 0 && { backgroundColor: '#fff' }]}>
               <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-              <Text style={[s.td, { width: 130, color: color, fontWeight: 'bold', fontSize: 11, fontFamily: 'monospace' }]}>{x.code}</Text>
+              <Text style={[s.td, { width: 110, color: color, fontWeight: 'bold', fontSize: 11, fontFamily: 'monospace' }]}>{x.code}</Text>
               <Text style={[s.td, { width: 180, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{x.name}</Text>
               <Text style={[s.td, { width: 120, color: '#475569', fontSize: 11, fontFamily: 'monospace' }]}>{x.phone || '—'}</Text>
               <Text style={[s.td, { width: 100, color: '#475569', fontSize: 11 }]}>{x.bank || '—'}</Text>
@@ -1364,51 +1363,59 @@ function PartyList({ type, list, reload, showToast }: any) {
       </ScrollView>
 
       <Modal visible={modal} transparent animationType="slide">
-        <View style={s.mBg}>
-          <ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
-            <View style={[s.mHead, { backgroundColor: color }]}>
-              <Text style={s.mTitle}>{(editId ? 'ویرایش ' : 'افزودن ') + (isBuyer ? 'خریدار' : 'مشتری')}</Text>
-              <TouchableOpacity onPress={() => setModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={[s.mHead, { backgroundColor: color }]}>
+            <Text style={s.mTitle}>{editId ? '✏️ ویرایش' : '➕ افزودن'} {type === 'buyer' ? 'خریدار' : 'مشتری'}</Text>
+            <TouchableOpacity onPress={() => setModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
+          </View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>👤 نام *</Text>
+            <TextInput style={s.inp} value={form.name || ''} onChangeText={v => setForm({ ...form, name: v })} placeholder="نام کامل" />
+
+            <Text style={s.lbl}>📞 تلفن *</Text>
+            <TextInput
+              style={s.inp}
+              value={form.phone || ''}
+              onChangeText={v => setForm({ ...form, phone: v.replace(/[^\d]/g, '').slice(0, 11) })}
+              keyboardType="phone-pad"
+              maxLength={11}
+              placeholder="09..."
+            />
+
+            {form.phone && form.phone.length >= 10 ? (
+              <Text style={s.codeBadge}>🆔 کد خودکار: {form.code || ((type === 'buyer' ? 'B_' : 'X_') + form.phone)}</Text>
+            ) : null}
+
+            <Text style={s.lbl}>🏦 بانک</Text>
+            <TextInput style={s.inp} value={form.bank || ''} onChangeText={v => setForm({ ...form, bank: v })} placeholder="نام بانک" />
+
+            <Text style={s.lbl}>💳 شماره حساب</Text>
+            <TextInput
+              style={s.inp}
+              value={form.account_number || ''}
+              onChangeText={v => setForm({ ...form, account_number: v.replace(/[^\d]/g, '') })}
+              keyboardType="numeric"
+            />
+
+            <Text style={s.lbl}>👤 صاحب حساب</Text>
+            <TextInput style={s.inp} value={form.holder_name || ''} onChangeText={v => setForm({ ...form, holder_name: v })} placeholder="نام صاحب حساب" />
+
+            <Text style={s.lbl}>📍 آدرس</Text>
+            <TextInput style={[s.inp, { minHeight: 50 }]} value={form.address || ''} onChangeText={v => setForm({ ...form, address: v })} multiline />
+
+            <Text style={s.lbl}>📝 یادداشت</Text>
+            <TextInput style={[s.inp, { minHeight: 50 }]} value={form.note || ''} onChangeText={v => setForm({ ...form, note: v })} multiline />
+
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
+                <Text style={s.btnTxt}>انصراف</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: color, flex: 2 }]} onPress={submit}>
+                <Text style={s.btnTxt}>💾 ذخیره</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ padding: 16 }}>
-              <Text style={s.lbl}>نام و نام خانوادگی *</Text>
-              <TextInput style={s.inp} value={form.name || ''} onChangeText={v => setForm({ ...form, name: v })} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
-
-              <Text style={s.lbl}>تلفن همراه *</Text>
-              <TextInput style={s.inp} value={form.phone || ''} onChangeText={v => setForm({ ...form, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} placeholder="09123456789" placeholderTextColor="#94a3b8" />
-
-              {form.phone && String(form.phone).length >= 10 ? (
-                <View style={{ backgroundColor: '#d1fae5', padding: 8, borderRadius: 8, marginTop: 6 }}>
-                  <Text style={{ color: '#065f46', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>{'کد خودکار: ' + (form.code || (prefix + form.phone))}</Text>
-                </View>
-              ) : null}
-
-              <Text style={s.lbl}>بانک</Text>
-              <TextInput style={s.inp} value={form.bank || ''} onChangeText={v => setForm({ ...form, bank: v })} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
-
-              <Text style={s.lbl}>شماره حساب</Text>
-              <TextInput style={s.inp} value={form.account_number || ''} onChangeText={v => setForm({ ...form, account_number: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
-
-              <Text style={s.lbl}>صاحب حساب</Text>
-              <TextInput style={s.inp} value={form.holder_name || ''} onChangeText={v => setForm({ ...form, holder_name: v })} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
-
-              <Text style={s.lbl}>آدرس</Text>
-              <TextInput style={[s.inp, { minHeight: 50 }]} value={form.address || ''} onChangeText={v => setForm({ ...form, address: v })} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
-
-              <Text style={s.lbl}>یادداشت</Text>
-              <TextInput style={[s.inp, { minHeight: 50 }]} value={form.note || ''} onChangeText={v => setForm({ ...form, note: v })} multiline placeholder="اختیاری" placeholderTextColor="#94a3b8" />
-
-              <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 20 }}>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
-                  <Text style={s.btnTxt}>انصراف</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.btn, { backgroundColor: color, flex: 2 }]} onPress={submit}>
-                  <Text style={s.btnTxt}>ذخیره</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </ScrollView>
-        </View>
+          </View>
+        </ScrollView></View>
       </Modal>
     </View>
   );

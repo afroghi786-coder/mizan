@@ -1,7 +1,7 @@
 // ExchangeScreen.tsx — صرافی (کاملاً آفلاین با AsyncStorage)
 import { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getFxTrades, createFxTrade, deleteFxTrade } from './lib.offline';
 
 // ═══ ۲۷ ارز ═══
 const CUR: Record<string, { name: string; flag: string; dec: number; color: string }> = {
@@ -34,8 +34,6 @@ const CUR: Record<string, { name: string; flag: string; dec: number; color: stri
   SGD:{name:'دالر سنگاپور',flag:'🇸🇬',dec:2,color:'#dc2626'},
 };
 const MAIN = ['AFN','USD','EUR','GBP','PKR','AED','IRR','TOM'];
-const POS_KEY = '@mizan_fx_positions';
-const TRD_KEY = '@mizan_fx_trades';
 
 const fmt = (n: number, d = 2) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 });
 const parse = (s: any) => Number(String(s || '').replace(/[^\d.-]/g, '')) || 0;
@@ -53,26 +51,23 @@ export default function ExchangeScreen({ showToast }: any) {
   const [load, setLoad] = useState(true);
 
   // ─── بارگذاری ───
-  useEffect(() => {
-    (async () => {
-      try {
-        const p = await AsyncStorage.getItem(POS_KEY);
-        const t = await AsyncStorage.getItem(TRD_KEY);
-        const pos: Record<string, number> = p ? JSON.parse(p) : {};
-        Object.keys(CUR).forEach(k => { if (pos[k] === undefined) pos[k] = 0; });
-        setPositions(pos);
-        setTrades(t ? JSON.parse(t) : []);
-      } catch {}
-      setLoad(false);
-    })();
-  }, []);
-
-  const save = async (p: Record<string, number>, t: any[]) => {
+  const reload = async () => {
     try {
-      await AsyncStorage.setItem(POS_KEY, JSON.stringify(p));
-      await AsyncStorage.setItem(TRD_KEY, JSON.stringify(t));
+      const t = await getFxTrades();
+      setTrades(t);
+      const pos: Record<string, number> = {};
+      Object.keys(CUR).forEach(k => pos[k] = 0);
+      t.forEach((tr: any) => {
+        pos[tr.from_currency] = (pos[tr.from_currency] || 0) - (Number(tr.from_qty) || 0);
+        pos[tr.to_currency] = (pos[tr.to_currency] || 0) + (Number(tr.to_qty) || 0);
+      });
+      setPositions(pos);
     } catch {}
   };
+
+  useEffect(() => {
+    (async () => { await reload(); setLoad(false); })();
+  }, []);
 
   // ─── محاسبه ───
   const recalc = (fq: string, r: string, field: 'to' | 'rate') => {
@@ -96,35 +91,22 @@ export default function ExchangeScreen({ showToast }: any) {
     if (fq <= 0) return showToast('مقدار مبدأ را وارد کن', true);
     if (tq <= 0) return showToast('مقدار مقصد را وارد کن', true);
     if (from === to) return showToast('ارز مبدأ و مقصد یکسان است', true);
-
-    const newPos = { ...positions };
-    newPos[from] = (newPos[from] || 0) - fq;
-    newPos[to] = (newPos[to] || 0) + tq;
-
-    const newTrade = {
-      id: Date.now(), date: new Date().toLocaleDateString('fa-IR'),
-      from, to, fromQty: fq, toQty: tq, rate: r || (fq ? tq / fq : 0), desc,
-    };
-    const newTrades = [newTrade, ...trades].slice(0, 500);
-
-    setPositions(newPos);
-    setTrades(newTrades);
-    await save(newPos, newTrades);
+    await createFxTrade({
+      from_currency: from, to_currency: to,
+      from_qty: fq, to_qty: tq, rate: r || (fq ? tq / fq : 0),
+      description: desc,
+    });
+    await reload();
     setModal(false);
     showToast('✅ معامله ثبت شد');
   };
 
-  const deleteTrade = async (id: number) => {
-    const t = trades.find((x: any) => x.id === id);
+  const deleteTrade = async (id: any) => {
+    const t = trades.find((x: any) => (x.local_id || x.id) === id);
     if (!t) return;
-    const newPos = { ...positions };
-    newPos[t.from] = (newPos[t.from] || 0) + t.fromQty;
-    newPos[t.to] = (newPos[t.to] || 0) - t.toQty;
-    const newTrades = trades.filter((x: any) => x.id !== id);
-    setPositions(newPos);
-    setTrades(newTrades);
-    await save(newPos, newTrades);
-    showToast('↩️ معامله حذف شد');
+    await deleteFxTrade(t.local_id || t.id);
+    await reload();
+    showToast('↩️ حذف شد');
   };
 
   if (load) return <View style={s.center}><ActivityIndicator color="#d4af37" /></View>;
@@ -182,16 +164,16 @@ export default function ExchangeScreen({ showToast }: any) {
         <>
           <Text style={s.secT}>📜 تاریخچه ({trades.length})</Text>
           {trades.slice(0, 30).map((t: any) => (
-            <View key={t.id} style={s.tradeRow}>
+            <View key={t.local_id || t.id} style={s.tradeRow}>
               <View style={{ flex: 1 }}>
                 <Text style={s.tradeLine}>
-                  {CUR[t.from]?.flag} {fmt(t.fromQty, CUR[t.from]?.dec)} {t.from}
+                  {CUR[t.from_currency]?.flag} {fmt(t.from_qty, CUR[t.from_currency]?.dec)} {t.from_currency}
                   {' → '}
-                  {CUR[t.to]?.flag} {fmt(t.toQty, CUR[t.to]?.dec)} {t.to}
+                  {CUR[t.to_currency]?.flag} {fmt(t.to_qty, CUR[t.to_currency]?.dec)} {t.to_currency}
                 </Text>
-                <Text style={s.tradeSub}>📅 {t.date} — نرخ: {fmt(t.rate, 6)}{t.desc ? ' — ' + t.desc : ''}</Text>
+                <Text style={s.tradeSub}>📅 {(t.created_at || '').slice(0, 10)} — نرخ: {fmt(t.rate, 6)}{t.description ? ' — ' + t.description : ''}</Text>
               </View>
-              <TouchableOpacity onPress={() => deleteTrade(t.id)} style={s.delBtn}>
+              <TouchableOpacity onPress={() => deleteTrade(t.local_id || t.id)} style={s.delBtn}>
                 <Text style={{ fontSize: 16 }}>🗑</Text>
               </TouchableOpacity>
             </View>

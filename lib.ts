@@ -752,3 +752,48 @@ export async function lookupCodeByName(name: string): Promise<string> {
   if (p3 && p3[0]?.customer_code) return p3[0].customer_code;
   return '';
 }
+
+
+// ═══════════════════════════════════════════
+//  صرافی
+// ═══════════════════════════════════════════
+export async function createFxTrade(p: any) {
+  const { error } = await supabase.from('fx_trades').insert({
+    from_currency: p.from_currency, to_currency: p.to_currency,
+    from_qty: p.from_qty, to_qty: p.to_qty, rate: p.rate || 0,
+    description: p.description || '', local_id: p.local_id || '',
+  });
+  if (error) throw new Error(error.message);
+}
+
+// ═══════════════════════════════════════════
+//  هزینه‌ها
+// ═══════════════════════════════════════════
+export async function createExpense(p: any) {
+  const { error } = await supabase.from('expenses').insert({
+    type: p.type, title: p.title, amount: p.amount, date: p.date,
+    bank: p.bank || '', description: p.description || '', local_id: p.local_id || '',
+  });
+  if (error) throw new Error(error.message);
+}
+
+// ═══════════════════════════════════════════
+//  کارمندان
+// ═══════════════════════════════════════════
+export async function createEmployee(p: any) {
+  const { error } = await supabase.from('employees').insert({
+    code: p.code, name: p.name, phone: p.phone || '', role: p.role || '',
+    contract_type: p.contract_type, amount: p.amount || 0,
+    overtime_rate: p.overtime_rate || 0, local_id: p.local_id || '',
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function createAttendance(p: any) {
+  const { error } = await supabase.from('attendance').insert({
+    employee_code: p.employee_code, employee_name: p.employee_name || '',
+    date: p.date, status: p.status, hours: p.hours || 0,
+    overtime: p.overtime || 0, local_id: p.local_id || '',
+  });
+  if (error) throw new Error(error.message);
+}

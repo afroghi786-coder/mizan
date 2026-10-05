@@ -1,10 +1,8 @@
 // EmployeesScreen.tsx — کارمندان + حضور + حقوق (آفلاین)
 import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getEmployees, createEmployee, deleteEmployee, getAttendance, createAttendance, deleteAttendance } from './lib.offline';
 
-const EMP_KEY = '@mizan_employees';
-const ATT_KEY = '@mizan_attendance';
 
 export default function EmployeesScreen({ showToast }: any) {
   const [tab, setTab] = useState<'emp' | 'att' | 'sal'>('emp');
@@ -24,20 +22,13 @@ export default function EmployeesScreen({ showToast }: any) {
   const [salTo, setSalTo] = useState('');
   const [salResult, setSalResult] = useState<any>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const e = await AsyncStorage.getItem(EMP_KEY);
-        const a = await AsyncStorage.getItem(ATT_KEY);
-        setEmps(e ? JSON.parse(e) : []);
-        setAtts(a ? JSON.parse(a) : []);
-      } catch {}
-      setLoad(false);
-    })();
-  }, []);
-
-  const saveEmps = async (l: any[]) => { try { await AsyncStorage.setItem(EMP_KEY, JSON.stringify(l)); } catch {} };
-  const saveAtts = async (l: any[]) => { try { await AsyncStorage.setItem(ATT_KEY, JSON.stringify(l)); } catch {} };
+  const reload = async () => {
+    try {
+      const [e, a] = await Promise.all([getEmployees(), getAttendance()]);
+      setEmps(e); setAtts(a);
+    } catch {}
+  };
+  useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, []);
 
   // ─── کارمندان ───
   const openNewEmp = () => {
@@ -50,17 +41,14 @@ export default function EmployeesScreen({ showToast }: any) {
 
   const submitEmp = async () => {
     if (!empForm.name) return showToast('نام الزامی', true);
-    const item = { ...empForm, amount: Number(empForm.amount) || 0, overtime: Number(empForm.overtime) || 0, id: empEdit?.id || Date.now() };
-    const newList = empEdit ? emps.map(x => x.id === empEdit.id ? item : x) : [item, ...emps];
-    setEmps(newList);
-    await saveEmps(newList);
+    await createEmployee({ code: empForm.code, name: empForm.name, phone: empForm.phone, role: empForm.role, contract_type: empForm.type, amount: Number(empForm.amount) || 0, overtime_rate: Number(empForm.overtime) || 0 });
+    await reload();
     setEmpModal(false);
-    showToast(empEdit ? '✅ ویرایش شد' : '✅ ثبت شد');
+    showToast('✅ ثبت شد');
   };
-  const removeEmp = async (id: number) => {
-    const newList = emps.filter(x => x.id !== id);
-    setEmps(newList);
-    await saveEmps(newList);
+  const removeEmp = async (id: any) => {
+    await deleteEmployee(String(id));
+    await reload();
     showToast('🗑 حذف شد');
   };
 
@@ -73,17 +61,14 @@ export default function EmployeesScreen({ showToast }: any) {
     if (!attForm.code) return showToast('کارمند انتخاب کن', true);
     if (!attForm.date) return showToast('تاریخ الزامی', true);
     const emp = emps.find(e => e.code === attForm.code);
-    const item = { ...attForm, empName: emp?.name || '', hours: Number(attForm.hours) || 0, overtime: Number(attForm.overtime) || 0, id: Date.now() };
-    const newList = [item, ...atts];
-    setAtts(newList);
-    await saveAtts(newList);
+    await createAttendance({ employee_code: attForm.code, employee_name: emp?.name || '', date: attForm.date, status: attForm.status, hours: Number(attForm.hours) || 0, overtime: Number(attForm.overtime) || 0 });
+    await reload();
     setAttModal(false);
     showToast('✅ ثبت شد');
   };
-  const removeAtt = async (id: number) => {
-    const newList = atts.filter(x => x.id !== id);
-    setAtts(newList);
-    await saveAtts(newList);
+  const removeAtt = async (id: any) => {
+    await deleteAttendance(String(id));
+    await reload();
     showToast('🗑 حذف شد');
   };
 
@@ -92,7 +77,7 @@ export default function EmployeesScreen({ showToast }: any) {
     if (!salEmp) return showToast('کارمند انتخاب کن', true);
     const emp = emps.find(e => e.code === salEmp);
     if (!emp) return showToast('کارمند یافت نشد', true);
-    const filtered = atts.filter(a => a.code === salEmp);
+    const filtered = atts.filter(a => a.employee_code === salEmp);
     const present = filtered.filter(a => a.status === 'حاضر').length;
     const absent = filtered.filter(a => a.status === 'غایب').length;
     const totalHours = filtered.reduce((s, a) => s + (a.hours || 0), 0);
@@ -123,7 +108,7 @@ export default function EmployeesScreen({ showToast }: any) {
         <>
           <TouchableOpacity style={s.addBtn} onPress={openNewEmp}><Text style={s.addBtnTxt}>➕ کارمند جدید</Text></TouchableOpacity>
           {emps.length === 0 ? <Text style={s.empty}>هنوز کارمندی ثبت نشده</Text> : emps.map((e: any) => (
-            <View key={e.id} style={s.card}>
+            <View key={e.local_id || e.id} style={s.card}>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
                 <Text style={s.cardTitle}>{e.name}</Text>
                 <Text style={s.codeBadge}>{e.code}</Text>
@@ -131,8 +116,8 @@ export default function EmployeesScreen({ showToast }: any) {
               <Text style={s.cardSub}>📞 {e.phone || '—'} | 🏷️ {e.role || '—'}</Text>
               <Text style={s.cardSub}>💼 {e.type} | 💵 {(e.amount || 0).toLocaleString()}</Text>
               <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 8 }}>
-                <TouchableOpacity onPress={() => openEditEmp(e)} style={s.smBtn}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
-                <TouchableOpacity onPress={() => removeEmp(e.id)} style={[s.smBtn, { backgroundColor: '#fee2e2' }]}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => openEditEmp({ ...e, id: e.local_id || e.id })} style={s.smBtn}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => removeEmp(e.local_id || e.id)} style={[s.smBtn, { backgroundColor: '#fee2e2' }]}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
               </View>
             </View>
           ))}
@@ -144,7 +129,7 @@ export default function EmployeesScreen({ showToast }: any) {
         <>
           <TouchableOpacity style={[s.addBtn, { backgroundColor: '#1e3a8a' }]} onPress={openNewAtt}><Text style={s.addBtnTxt}>➕ ثبت حضور</Text></TouchableOpacity>
           {atts.length === 0 ? <Text style={s.empty}>هنوز حضوری ثبت نشده</Text> : atts.slice(0, 50).map((a: any) => (
-            <View key={a.id} style={[s.card, { borderRightColor: a.status === 'حاضر' ? '#059669' : a.status === 'غایب' ? '#dc2626' : '#f59e0b' }]}>
+            <View key={a.local_id || a.id} style={[s.card, { borderRightColor: a.status === 'حاضر' ? '#059669' : a.status === 'غایب' ? '#dc2626' : '#f59e0b' }]}>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
                 <Text style={s.cardTitle}>{a.empName}</Text>
                 <Text style={[s.status, {
@@ -153,7 +138,7 @@ export default function EmployeesScreen({ showToast }: any) {
                 }]}>{a.status}</Text>
               </View>
               <Text style={s.cardSub}>📅 {a.date} | ⏰ {a.hours} ساعت | ⚡ اضافه: {a.overtime}</Text>
-              <TouchableOpacity onPress={() => removeAtt(a.id)} style={[s.smBtn, { backgroundColor: '#fee2e2', marginTop: 6, alignSelf: 'flex-end' }]}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => removeAtt(a.local_id || a.id)} style={[s.smBtn, { backgroundColor: '#fee2e2', marginTop: 6, alignSelf: 'flex-end' }]}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
             </View>
           ))}
         </>
@@ -166,7 +151,7 @@ export default function EmployeesScreen({ showToast }: any) {
             <Text style={s.lbl}>کارمند</Text>
             <View style={s.pickRow}>
               {emps.map(e => (
-                <TouchableOpacity key={e.id} onPress={() => setSalEmp(e.code)} style={[s.pick, salEmp === e.code && s.pickActive]}>
+                <TouchableOpacity key={e.local_id || e.id} onPress={() => setSalEmp(e.code)} style={[s.pick, salEmp === e.code && s.pickActive]}>
                   <Text style={[s.pickTxt, salEmp === e.code && s.pickTxtActive]}>{e.name}</Text>
                 </TouchableOpacity>
               ))}
@@ -241,7 +226,7 @@ export default function EmployeesScreen({ showToast }: any) {
               <Text style={s.lbl}>کارمند</Text>
               <View style={s.pickRow}>
                 {emps.map(e => (
-                  <TouchableOpacity key={e.id} onPress={() => setAttForm({ ...attForm, code: e.code })} style={[s.pick, attForm.code === e.code && s.pickActive]}>
+                  <TouchableOpacity key={e.local_id || e.id} onPress={() => setAttForm({ ...attForm, code: e.code })} style={[s.pick, attForm.code === e.code && s.pickActive]}>
                     <Text style={[s.pickTxt, attForm.code === e.code && s.pickTxtActive]}>{e.name}</Text>
                   </TouchableOpacity>
                 ))}

@@ -1,9 +1,8 @@
 // ExpensesScreen.tsx — هزینه‌ها (آفلاین)
 import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getExpenses, createExpense, deleteExpense } from './lib.offline';
 
-const KEY = '@mizan_expenses';
 const TYPES = ['حقوق','اجاره','برق','آب','حمل‌ونقل','لوازم','تعمیرات','مالیات','متفرقه'];
 
 export default function ExpensesScreen({ showToast }: any) {
@@ -13,14 +12,10 @@ export default function ExpensesScreen({ showToast }: any) {
   const [edit, setEdit] = useState<any>(null);
   const [form, setForm] = useState<any>({ type: 'متفرقه', date: '', title: '', amount: '', bank: '', desc: '' });
 
-  useEffect(() => {
-    (async () => {
-      try { const r = await AsyncStorage.getItem(KEY); setList(r ? JSON.parse(r) : []); } catch {}
-      setLoad(false);
-    })();
-  }, []);
-
-  const save = async (l: any[]) => { try { await AsyncStorage.setItem(KEY, JSON.stringify(l)); } catch {} };
+  const reload = async () => {
+    try { setList(await getExpenses()); } catch {}
+  };
+  useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, []);
 
   const openNew = () => {
     setEdit(null);
@@ -32,18 +27,15 @@ export default function ExpensesScreen({ showToast }: any) {
   const submit = async () => {
     if (!form.title) return showToast('عنوان الزامی', true);
     if (!form.amount || Number(form.amount) <= 0) return showToast('مبلغ الزامی', true);
-    const item = { ...form, amount: Number(form.amount), id: edit?.id || Date.now() };
-    const newList = edit ? list.map(x => x.id === edit.id ? item : x) : [item, ...list];
-    setList(newList);
-    await save(newList);
+    await createExpense({ type: form.type, title: form.title, amount: Number(form.amount), date: form.date, bank: form.bank || '', description: form.desc || '' });
+    await reload();
     setModal(false);
-    showToast(edit ? '✅ ویرایش شد' : '✅ ثبت شد');
+    showToast('✅ ثبت شد');
   };
 
-  const remove = async (id: number) => {
-    const newList = list.filter(x => x.id !== id);
-    setList(newList);
-    await save(newList);
+  const remove = async (id: any) => {
+    await deleteExpense(String(id));
+    await reload();
     showToast('🗑 حذف شد');
   };
 
@@ -69,7 +61,7 @@ export default function ExpensesScreen({ showToast }: any) {
       {list.length === 0 ? (
         <Text style={s.empty}>هنوز هزینه‌ای ثبت نشده</Text>
       ) : list.map((x: any) => (
-        <View key={x.id} style={s.card}>
+        <View key={x.local_id || x.id} style={s.card}>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
             <Text style={s.cardTitle}>{x.title}</Text>
             <Text style={s.cardAmount}>{(Number(x.amount) || 0).toLocaleString()}</Text>
@@ -81,8 +73,8 @@ export default function ExpensesScreen({ showToast }: any) {
           </View>
           {x.desc ? <Text style={s.cardDesc}>{x.desc}</Text> : null}
           <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 8 }}>
-            <TouchableOpacity onPress={() => openEdit(x)} style={s.smBtn}><Text style={s.smBtnTxt}>✏️ ویرایش</Text></TouchableOpacity>
-            <TouchableOpacity onPress={() => remove(x.id)} style={[s.smBtn, { backgroundColor: '#fee2e2' }]}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑 حذف</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => openEdit({ ...x, id: x.local_id || x.id })} style={s.smBtn}><Text style={s.smBtnTxt}>✏️ ویرایش</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => remove(x.local_id || x.id)} style={[s.smBtn, { backgroundColor: '#fee2e2' }]}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑 حذف</Text></TouchableOpacity>
           </View>
         </View>
       ))}

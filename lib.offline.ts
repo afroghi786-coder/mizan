@@ -787,3 +787,135 @@ async function getCustomerList(): Promise<any[]> {
 
   return result;
 }
+
+
+// ═══════════════════════════════════════════
+//  صرافی (FX Trades)
+// ═══════════════════════════════════════════
+export async function getFxTrades(): Promise<any[]> {
+  return cachedRead('fx_trades', async () => {
+    const { data } = await lib.supabase.from('fx_trades').select('*').order('created_at', { ascending: false });
+    return data || [];
+  });
+}
+export async function createFxTrade(p: any): Promise<any> {
+  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  const local = (await getLocal<any[]>('fx_trades')) || [];
+  await setLocal('fx_trades', [item, ...local]);
+  if (MODE === 'online') {
+    try {
+      const { error } = await lib.supabase.from('fx_trades').insert({
+        from_currency: p.from_currency, to_currency: p.to_currency,
+        from_qty: p.from_qty, to_qty: p.to_qty, rate: p.rate || 0,
+        description: p.description || '', local_id: item.local_id,
+      });
+      if (error) throw error;
+    } catch { await enqueue('createFxTrade', p); }
+  } else { await enqueue('createFxTrade', p); }
+  return item;
+}
+export async function deleteFxTrade(localId: string) {
+  const local = (await getLocal<any[]>('fx_trades')) || [];
+  await setLocal('fx_trades', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  if (MODE === 'online') {
+    try { await lib.supabase.from('fx_trades').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════
+//  هزینه‌ها (Expenses)
+// ═══════════════════════════════════════════
+export async function getExpenses(): Promise<any[]> {
+  return cachedRead('expenses', async () => {
+    const { data } = await lib.supabase.from('expenses').select('*').order('created_at', { ascending: false });
+    return data || [];
+  });
+}
+export async function createExpense(p: any): Promise<any> {
+  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  const local = (await getLocal<any[]>('expenses')) || [];
+  await setLocal('expenses', [item, ...local]);
+  if (MODE === 'online') {
+    try {
+      const { error } = await lib.supabase.from('expenses').insert({
+        type: p.type, title: p.title, amount: p.amount,
+        date: p.date, bank: p.bank || '', description: p.description || '', local_id: item.local_id,
+      });
+      if (error) throw error;
+    } catch { await enqueue('createExpense', p); }
+  } else { await enqueue('createExpense', p); }
+  return item;
+}
+export async function deleteExpense(localId: string) {
+  const local = (await getLocal<any[]>('expenses')) || [];
+  await setLocal('expenses', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  if (MODE === 'online') {
+    try { await lib.supabase.from('expenses').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════
+//  کارمندان (Employees)
+// ═══════════════════════════════════════════
+export async function getEmployees(): Promise<any[]> {
+  return cachedRead('employees', async () => {
+    const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+    return data || [];
+  });
+}
+export async function createEmployee(p: any): Promise<any> {
+  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  const local = (await getLocal<any[]>('employees')) || [];
+  await setLocal('employees', [item, ...local]);
+  if (MODE === 'online') {
+    try {
+      const { error } = await lib.supabase.from('employees').insert({
+        code: p.code, name: p.name, phone: p.phone || '', role: p.role || '',
+        contract_type: p.contract_type, amount: p.amount || 0, overtime_rate: p.overtime_rate || 0,
+        local_id: item.local_id,
+      });
+      if (error) throw error;
+    } catch { await enqueue('createEmployee', p); }
+  } else { await enqueue('createEmployee', p); }
+  return item;
+}
+export async function deleteEmployee(localId: string) {
+  const local = (await getLocal<any[]>('employees')) || [];
+  await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  if (MODE === 'online') {
+    try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════
+//  حضور (Attendance)
+// ═══════════════════════════════════════════
+export async function getAttendance(): Promise<any[]> {
+  return cachedRead('attendance', async () => {
+    const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+    return data || [];
+  });
+}
+export async function createAttendance(p: any): Promise<any> {
+  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  const local = (await getLocal<any[]>('attendance')) || [];
+  await setLocal('attendance', [item, ...local]);
+  if (MODE === 'online') {
+    try {
+      const { error } = await lib.supabase.from('attendance').insert({
+        employee_code: p.employee_code, employee_name: p.employee_name || '',
+        date: p.date, status: p.status, hours: p.hours || 0, overtime: p.overtime || 0,
+        local_id: item.local_id,
+      });
+      if (error) throw error;
+    } catch { await enqueue('createAttendance', p); }
+  } else { await enqueue('createAttendance', p); }
+  return item;
+}
+export async function deleteAttendance(localId: string) {
+  const local = (await getLocal<any[]>('attendance')) || [];
+  await setLocal('attendance', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  if (MODE === 'online') {
+    try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}

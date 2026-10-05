@@ -778,7 +778,7 @@ function DigitalDashboard({ refreshKey, settings }: any) {
 
       {/* سود خالص */}
       <View style={dash.profitBox}>
-        <EL text="💰 سود خالص" style={dash.profitLbl}>{rangeLabel}</EL>
+        <Text style={dash.profitLbl}>💰 سود خالص {rangeLabel}</Text>
         <Text style={[dash.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88', textShadowColor: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>
           {fmt(profit)}
         </Text>
@@ -983,7 +983,7 @@ function SalesScreen({ showToast }: any) {
               placeholderTextColor="#94a3b8"
             />
 
-            <EL text="{t('نام و نام خانوادگی')}" style={S.label}><Text style={S.required}>*</Text></EL>
+            <Text style={S.label}>{t('نام و نام خانوادگی')} <Text style={S.required}>*</Text></Text>
             <TextInput
               style={S.input}
               value={name}
@@ -1001,7 +1001,7 @@ function SalesScreen({ showToast }: any) {
               placeholderTextColor="#94a3b8"
             />
 
-            <EL text="{t('باربری')}" style={S.label}><Text style={S.required}>*</Text></EL>
+            <Text style={S.label}>{t('باربری')} <Text style={S.required}>*</Text></Text>
             <Autocomplete
               value={shipping}
               onChange={setShipping}
@@ -1050,7 +1050,7 @@ function SalesScreen({ showToast }: any) {
                       </View>
                     </View>
                     <View style={S.threeColCell}>
-                      <EL text="{t('تعداد')}" style={S.miniLabel}><Text style={S.required}>*</Text></EL>
+                      <Text style={S.miniLabel}>{t('تعداد')} <Text style={S.required}>*</Text></Text>
                       <TextInput
                         style={S.miniInput}
                         value={String(it.quantity || '')}
@@ -1061,7 +1061,7 @@ function SalesScreen({ showToast }: any) {
                       />
                     </View>
                     <View style={S.threeColCell}>
-                      <EL text="{t('قیمت')}" style={S.miniLabel}><Text style={S.required}>*</Text></EL>
+                      <Text style={S.miniLabel}>{t('قیمت')} <Text style={S.required}>*</Text></Text>
                       <TextInput
                         style={S.miniInput}
                         value={String(it.priceUnit || '')}
@@ -2150,7 +2150,7 @@ function InventoryScreen({ showToast }: any) {
       {/* Modal قفسه */}
       <Modal visible={!!editItem} transparent animationType="fade" onRequestClose={() => setEditItem(null)}>
         <View style={s.modalBg}><View style={[s.modalBox, { backgroundColor: C.card }]}>
-          <View style={[s.modalHead, { backgroundColor: '#7c3aed' }]}><EL text="📍 قفسه —" style={s.modalHeadTxt}>{editItem?.name}</EL><TouchableOpacity onPress={() => setEditItem(null)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={[s.modalHead, { backgroundColor: '#7c3aed' }]}><Text style={s.modalHeadTxt}>📍 قفسه — {editItem?.name}</Text><TouchableOpacity onPress={() => setEditItem(null)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 16 }}>
             <Text style={[s.modalLbl, { color: C.textMut }]}>{t('کد:')} <Text style={[s.modalVal, { color: C.text }]}>{editItem?.code}</Text></Text>
             <Text style={[s.modalLbl, { color: C.textMut }]}>{t('موجودی:')} <Text style={[s.modalVal, { color: C.text }]}>{fmt(editItem?.currentQty || 0)} عدد</Text></Text>
@@ -3400,15 +3400,15 @@ const Row = ({ k, v, gold }: any) => (
 // ══════════════════════════════════════════════════════════
 //  EL — Editable Label (ویرایش‌پذیر)
 // ══════════════════════════════════════════════════════════
-function EL({ text, style, showIcon = true, children }: any) {
+function EL({ text, style, showIcon = true }: any) {
   const [showEdit, setShowEdit] = useState(false);
   const [tmp, setTmp] = useState('');
   const lbl = cl(text);
   const openEditor = () => { setTmp(lbl); setShowEdit(true); };
   return (
     <>
-      <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-        <Text style={style}>{lbl}{children}</Text>
+      <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 4 }}>
+        <Text style={style}>{lbl}</Text>
         {showIcon && (
           <TouchableOpacity onPress={openEditor} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={{ fontSize: 9, opacity: 0.3 }}>✏️</Text>

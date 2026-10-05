@@ -1328,7 +1328,7 @@ function PartyList({ type, list, reload, showToast }: any) {
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
         <View>
-          <View style={s.tH}>
+          <View style={[s.tH, { flexDirection: "row-reverse" }]}>
             <Text style={[s.th, { width: 36 }]}>#</Text>
             <Text style={[s.th, { width: 140 }]}>کد</Text>
             <Text style={[s.th, { width: 180 }]}>نام</Text>

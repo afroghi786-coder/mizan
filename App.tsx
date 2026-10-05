@@ -383,7 +383,7 @@ export default function App() {
           ? <LoginScreen showToast={showToast} />
           : <LicenseGate showToast={showToast}>
               <LicenseNotification showToast={showToast} />
-              <MainApp showToast={showToast} onCycleTheme={cycleTheme} />
+              <MainApp showToast={showToast} onCycleTheme={cycleTheme} langTick={langTick} />
             </LicenseGate>}
       </View>
       {toast && <View style={[s.toast, toast.error && { backgroundColor: '#b91c1c' }]}><Text style={s.toastTxt}>{toast.msg}</Text></View>}
@@ -403,7 +403,7 @@ function getTabPins(settings: any): Record<string, string> {
   return { ...DEFAULT_TAB_PINS, ...p };
 }
 
-function MainApp({ showToast, onCycleTheme }: any) {
+function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const [showLang, setShowLang] = useState(false);
   const [curLang, setCurLang] = useState(getLang());
   const [tab, setTab] = useState('order');
@@ -487,6 +487,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      <View key={`tab-${tab}-${langTick || 0}`} style={{ flex: 1 }}>
       {tab === 'order' && <SalesScreen showToast={showToast} />}
       {tab === 'purchase' && <PurchaseScreen showToast={showToast} />}
       {tab === 'print' && <PrintScreen showToast={showToast} />}
@@ -496,6 +497,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}
+      </View>
       <LanguageModal
         visible={showLang}
         current={curLang}
@@ -1689,7 +1691,7 @@ function PrintScreen({ showToast }: any) {
           'بانک': r.bank, 'صاحب حساب': r.holder, 'کد صاحب حساب': r.holderCode,
           'تاریخ واریز': displayDateOnly(r.depositDate), 'باربری': r.shipping, 'شرح': r.desc,
         }));
-        data.push({ 'نام مدل': 'جمع فروش', 'جمع': t.totalSales, 'پرداخت': t.paidByCustomer, 'مانده': t.customerOwes } as any);
+        data.push({ 'نام مدل': 'جمع فروش', 'جمع': totals.totalSales, 'پرداخت': totals.paidByCustomer, 'مانده': totals.customerOwes } as any);
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'فروش');
       }
 
@@ -1702,7 +1704,7 @@ function PrintScreen({ showToast }: any) {
           'بانک': r.bank, 'صاحب حساب': r.holder, 'کد پرداخت‌کننده': r.payerCode,
           'تاریخ واریز': displayDateOnly(r.depositDate), 'شرح': r.desc,
         }));
-        data.push({ 'نام مدل': 'جمع خرید', 'جمع': t.totalPurchases, 'پرداخت': t.paidToSupplier, 'مانده': t.weOwe + t.totalTriang } as any);
+        data.push({ 'نام مدل': 'جمع خرید', 'جمع': totals.totalPurchases, 'پرداخت': totals.paidToSupplier, 'مانده': totals.weOwe + totals.totalTriang } as any);
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'خرید');
       }
 
@@ -1713,7 +1715,7 @@ function PrintScreen({ showToast }: any) {
           'مبلغ': r.amount, 'بانک': r.bank, 'گیرنده': r.holder,
           'تاریخ واریز': displayDateOnly(r.depositDate),
         }));
-        data.push({ 'فرستنده': 'جمع مثلثی', 'مبلغ': t.totalTriang } as any);
+        data.push({ 'فرستنده': 'جمع مثلثی', 'مبلغ': totals.totalTriang } as any);
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'مثلثی');
       }
 
@@ -1721,14 +1723,14 @@ function PrintScreen({ showToast }: any) {
         { 'شرح': 'نام', 'مقدار': report.name },
         { 'شرح': 'کد', 'مقدار': report.code },
         { 'شرح': 'تلفن', 'مقدار': report.phone },
-        { 'شرح': 'جمع فروش ما به ایشان', 'مقدار': t.totalSales },
-        { 'شرح': 'دریافت از ایشان', 'مقدار': t.paidByCustomer },
-        { 'شرح': 'بدهی ایشان به ما', 'مقدار': t.customerOwes },
-        { 'شرح': 'جمع خرید ما از ایشان', 'مقدار': t.totalPurchases },
-        { 'شرح': 'پرداخت ما به ایشان', 'مقدار': t.paidToSupplier },
-        { 'شرح': 'دریافت مثلثی به نیابت', 'مقدار': t.totalTriang },
-        { 'شرح': 'بدهی ما به ایشان', 'مقدار': t.weOwe },
-        { 'شرح': t.net > 0 ? 'بدهی نهایی ایشان' : t.net < 0 ? 'بدهی نهایی ما' : 'تسویه', 'مقدار': Math.abs(t.net) },
+        { 'شرح': 'جمع فروش ما به ایشان', 'مقدار': totals.totalSales },
+        { 'شرح': 'دریافت از ایشان', 'مقدار': totals.paidByCustomer },
+        { 'شرح': 'بدهی ایشان به ما', 'مقدار': totals.customerOwes },
+        { 'شرح': 'جمع خرید ما از ایشان', 'مقدار': totals.totalPurchases },
+        { 'شرح': 'پرداخت ما به ایشان', 'مقدار': totals.paidToSupplier },
+        { 'شرح': 'دریافت مثلثی به نیابت', 'مقدار': totals.totalTriang },
+        { 'شرح': 'بدهی ما به ایشان', 'مقدار': totals.weOwe },
+        { 'شرح': totals.net > 0 ? 'بدهی نهایی ایشان' : totals.net < 0 ? 'بدهی نهایی ما' : 'تسویه', 'مقدار': Math.abs(totals.net) },
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'خلاصه');
 
@@ -1740,7 +1742,7 @@ function PrintScreen({ showToast }: any) {
     } catch (e: any) { showToast(e.message, true); }
   };
 
-  const t = report?.totals;
+  const totals = report?.totals;
 
   return (
     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
@@ -1812,9 +1814,9 @@ function PrintScreen({ showToast }: any) {
                   </View>
                 </ScrollView>
                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTopWidth: 2, borderTopColor: '#3b82f6', paddingHorizontal: 6 }}>
-                  <Text style={{ fontSize: 10, color: '#1e3a5f', fontWeight: 'bold' }}>جمع: {fmt(t.totalSales)}</Text>
-                  <Text style={{ fontSize: 10, color: '#059669', fontWeight: 'bold' }}>دریافت: {fmt(t.paidByCustomer)}</Text>
-                  <Text style={{ fontSize: 10, color: '#dc2626', fontWeight: 'bold' }}>بدهی ایشان: {fmt(t.customerOwes)}</Text>
+                  <Text style={{ fontSize: 10, color: '#1e3a5f', fontWeight: 'bold' }}>جمع: {fmt(totals.totalSales)}</Text>
+                  <Text style={{ fontSize: 10, color: '#059669', fontWeight: 'bold' }}>دریافت: {fmt(totals.paidByCustomer)}</Text>
+                  <Text style={{ fontSize: 10, color: '#dc2626', fontWeight: 'bold' }}>بدهی ایشان: {fmt(totals.customerOwes)}</Text>
                 </View>
               </View>
             )}
@@ -1865,9 +1867,9 @@ function PrintScreen({ showToast }: any) {
                   </View>
                 </ScrollView>
                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTopWidth: 2, borderTopColor: '#f97316', paddingHorizontal: 6 }}>
-                  <Text style={{ fontSize: 10, color: '#1e3a5f', fontWeight: 'bold' }}>جمع: {fmt(t.totalPurchases)}</Text>
-                  <Text style={{ fontSize: 10, color: '#059669', fontWeight: 'bold' }}>پرداخت: {fmt(t.paidToSupplier)}</Text>
-                  <Text style={{ fontSize: 10, color: '#dc2626', fontWeight: 'bold' }}>بدهی ما: {fmt(t.weOwe + t.totalTriang)}</Text>
+                  <Text style={{ fontSize: 10, color: '#1e3a5f', fontWeight: 'bold' }}>جمع: {fmt(totals.totalPurchases)}</Text>
+                  <Text style={{ fontSize: 10, color: '#059669', fontWeight: 'bold' }}>پرداخت: {fmt(totals.paidToSupplier)}</Text>
+                  <Text style={{ fontSize: 10, color: '#dc2626', fontWeight: 'bold' }}>بدهی ما: {fmt(totals.weOwe + totals.totalTriang)}</Text>
                 </View>
               </View>
             )}
@@ -1908,26 +1910,26 @@ function PrintScreen({ showToast }: any) {
                   </View>
                 </ScrollView>
                 <Text style={{ fontSize: 10, color: '#065f46', fontWeight: 'bold', textAlign: 'right', marginTop: 6, paddingTop: 6, borderTopWidth: 2, borderTopColor: '#10b981' }}>
-                  جمع دریافتی مثلثی: {fmt(t.totalTriang)} تومان
+                  جمع دریافتی مثلثی: {fmt(totals.totalTriang)} تومان
                 </Text>
               </View>
             )}
 
-            <View style={{ backgroundColor: t.net > 0 ? '#fef2f2' : t.net < 0 ? '#f0fdf4' : '#f3f4f6', borderRadius: 8, padding: 10, marginTop: 8, borderWidth: 2, borderColor: t.net > 0 ? '#dc2626' : t.net < 0 ? '#059669' : '#94a3b8' }}>
-              <Text style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6, color: t.net > 0 ? '#991b1b' : t.net < 0 ? '#065f46' : '#475569' }}>
-                {t.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : t.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
+            <View style={{ backgroundColor: totals.net > 0 ? '#fef2f2' : totals.net < 0 ? '#f0fdf4' : '#f3f4f6', borderRadius: 8, padding: 10, marginTop: 8, borderWidth: 2, borderColor: totals.net > 0 ? '#dc2626' : totals.net < 0 ? '#059669' : '#94a3b8' }}>
+              <Text style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6, color: totals.net > 0 ? '#991b1b' : totals.net < 0 ? '#065f46' : '#475569' }}>
+                {totals.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : totals.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
               </Text>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
                 <Text style={{ fontSize: 10, color: '#64748b' }}>{t('بدهی ایشان به ما:')}</Text>
-                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(t.customerOwes)}</Text>
+                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(totals.customerOwes)}</Text>
               </View>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
                 <Text style={{ fontSize: 10, color: '#64748b' }}>{t('بدهی ما به ایشان:')}</Text>
-                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(t.weOwe + t.totalTriang)}</Text>
+                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(totals.weOwe + totals.totalTriang)}</Text>
               </View>
               <View style={{ borderTopWidth: 1, borderTopColor: '#cbd5e1', marginTop: 4, paddingTop: 4 }}>
-                <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', color: t.net > 0 ? '#dc2626' : t.net < 0 ? '#059669' : '#475569' }}>
-                  {fmt(Math.abs(t.net))} تومان
+                <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', color: totals.net > 0 ? '#dc2626' : totals.net < 0 ? '#059669' : '#475569' }}>
+                  {fmt(Math.abs(totals.net))} تومان
                 </Text>
               </View>
             </View>

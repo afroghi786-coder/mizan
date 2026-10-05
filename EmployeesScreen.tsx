@@ -65,7 +65,7 @@ export default function EmployeesScreen({ showToast }: any) {
       </View>
 
       {/* زیرتب‌ها */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.subsBar} contentContainerStyle={s.subsCont}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={s.subsBar} contentContainerStyle={s.subsCont}>
         {[
           { k: 'emp', l: '👥 کارمندان' },
           { k: 'att', l: '📅 حضور' },
@@ -139,9 +139,9 @@ function EmpTab({ emps, reload, showToast }: any) {
       <TouchableOpacity style={s.addBtn} onPress={openNew}><Text style={s.addBtnTxt}>➕ استخدام کارمند جدید</Text></TouchableOpacity>
       <Text style={s.secT}>📋 لیست کارمندان ({emps.length})</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
         <View>
-          <View style={s.tblHeader}>
+          <View style={[s.tblHeader, { minWidth: 1300 }]}>
             <Text style={[s.th, { width: 40 }]}>#</Text>
             <Text style={[s.th, { width: 80 }]}>کد</Text>
             <Text style={[s.th, { width: 150 }]}>نام و نام خانوادگی</Text>
@@ -289,9 +289,9 @@ function AttTab({ emps, atts, reload, showToast }: any) {
       </View>
 
       <Text style={s.secT}>📋 حضور و غیاب ({filtered.length})</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
         <View>
-          <View style={s.tblHeader}>
+          <View style={[s.tblHeader, { minWidth: 1300 }]}>
             <Text style={[s.th, { width: 40 }]}>#</Text>
             <Text style={[s.th, { width: 100 }]}>تاریخ</Text>
             <Text style={[s.th, { width: 90 }]}>کد</Text>
@@ -435,9 +435,9 @@ function SalaryTab({ emps, salaries, atts, prods, reload, showToast }: any) {
       <TouchableOpacity style={[s.addBtn, { backgroundColor: '#059669' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ پرداخت حقوق جدید</Text></TouchableOpacity>
       <Text style={s.secT}>📋 لیست پرداختی‌ها ({salaries.length})</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
         <View>
-          <View style={s.tblHeader}>
+          <View style={[s.tblHeader, { minWidth: 1300 }]}>
             <Text style={[s.th, { width: 40 }]}>#</Text>
             <Text style={[s.th, { width: 130 }]}>شماره فیش</Text>
             <Text style={[s.th, { width: 100 }]}>تاریخ</Text>
@@ -594,9 +594,9 @@ function LoansTab({ emps, loans, reload, showToast }: any) {
     <View>
       <TouchableOpacity style={[s.addBtn, { backgroundColor: '#dc2626' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت وام / مساعده</Text></TouchableOpacity>
       <Text style={s.secT}>📋 وام‌ها و مساعده‌ها ({loans.length})</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
         <View>
-          <View style={s.tblHeader}>
+          <View style={[s.tblHeader, { minWidth: 1300 }]}>
             <Text style={[s.th, { width: 40 }]}>#</Text>
             <Text style={[s.th, { width: 150 }]}>کارمند</Text>
             <Text style={[s.th, { width: 80 }]}>نوع</Text>
@@ -691,9 +691,9 @@ function LeavesTab({ emps, leaves, reload, showToast }: any) {
     <View>
       <TouchableOpacity style={[s.addBtn, { backgroundColor: '#10b981' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت مرخصی</Text></TouchableOpacity>
       <Text style={s.secT}>📋 مرخصی‌ها ({leaves.length})</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
+      <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
         <View>
-          <View style={s.tblHeader}>
+          <View style={[s.tblHeader, { minWidth: 1300 }]}>
             <Text style={[s.th, { width: 40 }]}>#</Text>
             <Text style={[s.th, { width: 150 }]}>کارمند</Text>
             <Text style={[s.th, { width: 120 }]}>نوع</Text>
@@ -869,9 +869,9 @@ function PayrollTab({ emps, atts, loans, salaries, batches, reload, showToast }:
 
           {/* جدول */}
           <Text style={s.secT}>📋 لیست محاسبه‌شده</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator>
+          <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
             <View>
-              <View style={s.tblHeader}>
+              <View style={[s.tblHeader, { minWidth: 1300 }]}>
                 <Text style={[s.th, { width: 40 }]}>#</Text>
                 <Text style={[s.th, { width: 150 }]}>کارمند</Text>
                 <Text style={[s.th, { width: 70 }]}>حاضر</Text>

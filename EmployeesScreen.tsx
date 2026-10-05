@@ -35,15 +35,16 @@ export default function EmployeesScreen({ showToast }: any) {
   const [load, setLoad] = useState(true);
 
   const reload = useCallback(async () => {
+    try { setEmps(await getEmployees()); } catch (e) { console.log('emp:', e); }
+    try { setAtts(await getAttendance()); } catch (e) { console.log('att:', e); }
+    try { setSalaries(await getSalaryPayments()); } catch (e) { console.log('sal:', e); }
+    try { setLoans(await getLoans()); } catch (e) { console.log('loan:', e); }
+    try { setLeaves(await getLeaves()); } catch (e) { console.log('leave:', e); }
+    try { setBatches(await getBatches()); } catch (e) { console.log('batch:', e); }
     try {
-      const [e, a, s, l, lv, b] = await Promise.all([getEmployees(), getAttendance(), getSalaryPayments(), getLoans(), getLeaves(), getBatches()]);
-      setEmps(e); setAtts(a); setSalaries(s); setLoans(l); setLeaves(lv); setBatches(b);
-      try {
-        const { getProducts } = require('./lib.offline');
-        const p = await getProducts();
-        setProds(p || []);
-      } catch {}
-    } catch {}
+      const { getProducts } = require('./lib.offline');
+      setProds((await getProducts()) || []);
+    } catch (e) { console.log('prods:', e); }
   }, []);
 
   useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, [reload]);
@@ -112,15 +113,34 @@ function EmpTab({ emps, reload, showToast }: any) {
   const openEdit = (e: any) => { setEditId(e.local_id || e.id); setForm({ ...e }); setModal(true); };
 
   const submit = async () => {
-    if (!form.name) return showToast('نام الزامی', true);
-    if (!form.phone) return showToast('تلفن الزامی', true);
-    if (!form.role) return showToast('سمت الزامی', true);
-    const payload = { ...form, amount: parse(form.amount), overtime_rate: parse(form.overtime_rate) };
-    if (editId) await updateEmployee(editId, payload);
-    else await createEmployee(payload);
-    await reload();
-    setModal(false);
-    showToast(editId ? '✅ ویرایش شد' : '✅ کارمند ثبت شد');
+    try {
+      if (!form.name) return showToast('نام الزامی', true);
+      if (!form.phone) return showToast('تلفن الزامی', true);
+      if (!form.role) return showToast('سمت الزامی', true);
+      const payload = {
+        ...form,
+        amount: parse(form.amount),
+        base_salary: parse(form.base_salary),
+        housing_allowance: parse(form.housing_allowance),
+        food_allowance: parse(form.food_allowance),
+        transport_allowance: parse(form.transport_allowance),
+        other_allowance: parse(form.other_allowance),
+        overtime_rate: parse(form.overtime_rate),
+      };
+      console.log('[submit] payload:', payload);
+      if (editId) await updateEmployee(editId, payload);
+      else {
+        const created = await createEmployee(payload);
+        console.log('[submit] created:', created);
+      }
+      await reload();
+      console.log('[submit] reloaded, emps:', emps.length);
+      setModal(false);
+      showToast(editId ? '✅ ویرایش شد' : '✅ کارمند ثبت شد');
+    } catch (e: any) {
+      console.log('[submit ERR]', e);
+      showToast('❌ ' + (e?.message || 'خطا در ذخیره'), true);
+    }
   };
 
   const remove = async (id: string) => {

@@ -5,7 +5,6 @@ import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';
 import { t, loadLang, getLang, isFirstTime } from './i18n';
-import { loadPreset, getPreset, getTerms, getTabs, term, setPreset, setTerm, setTabs, PRESETS, TERM_KEYS, TERM_LABELS, PresetKey } from './presets';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
@@ -309,7 +308,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [themeTick, setThemeTick] = useState(0);
   const [langTick, setLangTick] = useState(0);
-  const [presetTick, setPresetTick] = useState(0);
   const [showLangFirst, setShowLangFirst] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -378,7 +376,7 @@ export default function App() {
         onClose={() => setShowLangFirst(false)}
         onSelect={() => { setShowLangFirst(false); setLangTick(v => v + 1); }}
       />
-      <View key={themeTick + '-' + langTick + '-' + presetTick} style={{ flex: 1 }}>
+      <View key={themeTick + '-' + langTick} style={{ flex: 1 }}>
         {isAdmin
           ? <AdminScreen showToast={showToast} />
           : !session
@@ -420,25 +418,17 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
   useEffect(() => { (globalThis as any).__openLang = () => setShowLang(true); }, []);
 
-  const allTabs = [
-    { key: 'order', icon: '🛒', label: term('sale'), color: '#1e3a8a' },
-    { key: 'purchase', icon: '🛍️', label: term('purchase'), color: '#166534' },
+  const tabs = [
+    { key: 'order', icon: '🛒', label: t('فروش'), color: '#1e3a8a' },
+    { key: 'purchase', icon: '🛍️', label: t('خرید'), color: '#166534' },
     { key: 'print', icon: '🖨️', label: t('پرینت'), color: '#6c3483' },
     { key: 'mgr', icon: '📋', label: t('مدیریت'), color: '#c0392b' },
-    { key: 'profit', icon: '💹', label: term('profit'), color: '#065f46' },
-    { key: 'inventory', icon: '📦', label: term('inventory'), color: '#0f5132' },
+    { key: 'profit', icon: '💹', label: t('سود'), color: '#065f46' },
+    { key: 'inventory', icon: '📦', label: t('انبار'), color: '#0f5132' },
     { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
     { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
     { key: 'employees', icon: '💼', label: t('کارمندان'), color: '#7c3aed' },
   ];
-  const enabledTabs = getTabs();
-  const tabs = allTabs.filter((tb: any) => enabledTabs.includes(tb.key));
-
-  useEffect(() => {
-    if (tabs.length && !tabs.find((x: any) => x.key === tab)) {
-      setTab(tabs[0].key);
-    }
-  }, [presetTick, tabs.length]);
 
   const tabPins = getTabPins(settings);
   const isLocked = (t: string) => !!tabPins[t] && !unlockedTabs.has(t);

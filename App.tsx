@@ -5,6 +5,7 @@ import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';
 import { t, loadLang, getLang, isFirstTime } from './i18n';
+import { loadPreset, getPreset, getTerms, getTabs, term, setPreset, setTerm, setTabs, PRESETS, TERM_KEYS, TERM_LABELS, PresetKey } from './presets';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
@@ -308,6 +309,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [themeTick, setThemeTick] = useState(0);
   const [langTick, setLangTick] = useState(0);
+  const [presetTick, setPresetTick] = useState(0);
   const [showLangFirst, setShowLangFirst] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -376,7 +378,7 @@ export default function App() {
         onClose={() => setShowLangFirst(false)}
         onSelect={() => { setShowLangFirst(false); setLangTick(v => v + 1); }}
       />
-      <View key={themeTick + '-' + langTick} style={{ flex: 1 }}>
+      <View key={themeTick + '-' + langTick + '-' + presetTick} style={{ flex: 1 }}>
         {isAdmin
           ? <AdminScreen showToast={showToast} />
           : !session
@@ -418,17 +420,25 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
   useEffect(() => { (globalThis as any).__openLang = () => setShowLang(true); }, []);
 
-  const tabs = [
-    { key: 'order', icon: '🛒', label: t('فروش'), color: '#1e3a8a' },
-    { key: 'purchase', icon: '🛍️', label: t('خرید'), color: '#166534' },
+  const allTabs = [
+    { key: 'order', icon: '🛒', label: term('sale'), color: '#1e3a8a' },
+    { key: 'purchase', icon: '🛍️', label: term('purchase'), color: '#166534' },
     { key: 'print', icon: '🖨️', label: t('پرینت'), color: '#6c3483' },
     { key: 'mgr', icon: '📋', label: t('مدیریت'), color: '#c0392b' },
-    { key: 'profit', icon: '💹', label: t('سود'), color: '#065f46' },
-    { key: 'inventory', icon: '📦', label: t('انبار'), color: '#0f5132' },
+    { key: 'profit', icon: '💹', label: term('profit'), color: '#065f46' },
+    { key: 'inventory', icon: '📦', label: term('inventory'), color: '#0f5132' },
     { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
     { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
     { key: 'employees', icon: '💼', label: t('کارمندان'), color: '#7c3aed' },
   ];
+  const enabledTabs = getTabs();
+  const tabs = allTabs.filter((tb: any) => enabledTabs.includes(tb.key));
+
+  useEffect(() => {
+    if (tabs.length && !tabs.find((x: any) => x.key === tab)) {
+      setTab(tabs[0].key);
+    }
+  }, [presetTick, tabs.length]);
 
   const tabPins = getTabPins(settings);
   const isLocked = (t: string) => !!tabPins[t] && !unlockedTabs.has(t);
@@ -971,7 +981,7 @@ function SalesScreen({ showToast }: any) {
               style={S.input}
               value={name}
               onChangeText={setName}
-              placeholder="نام مشتری"
+              placeholder={term('customer')}
               placeholderTextColor="#94a3b8"
             />
 
@@ -1021,7 +1031,7 @@ function SalesScreen({ showToast }: any) {
                     onChange={(v) => updItem(i, 'modelName', v)}
                     onSelect={(v) => setModel(i, v)}
                     options={prods.map(p => p.name)}
-                    placeholder="نام مدل..."
+                    placeholder={term('product') + '...'}
                   />
 
                   {/* ردیف ۳ ستونه */}
@@ -1476,7 +1486,7 @@ function PurchaseScreen({ showToast }: any) {
                 </TouchableOpacity>
               </View>
               <View style={{ padding: 10 }}>
-                <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="نام مدل..." />
+                <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={term('product') + '...'} />
                 <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={[s.miniLbl, { color: C.textMut }]}>{t('کد مدل')}</Text>
@@ -2332,7 +2342,7 @@ function NewOrderSection({ showToast }: any) {
       <Text style={[s.lbl, { color: C.textMut }]}>📞 تلفن {status}</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={phone} onChangeText={onPhone} keyboardType="phone-pad" maxLength={11} placeholder="09121234567" placeholderTextColor={C.textMut} />
       <Text style={[s.lbl, { color: C.textMut }]}>{t('👤 نام')}</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText={setName} placeholder="نام مشتری" placeholderTextColor={C.textMut} />
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText={setName} placeholder={term('customer')} placeholderTextColor={C.textMut} />
       <Text style={[s.lbl, { color: C.textMut }]}>{t('📍 آدرس')}</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={address} onChangeText={setAddress} placeholder="اختیاری" placeholderTextColor={C.textMut} />
       <Autocomplete label="🚚 باربری" value={shipping} onChange={setShipping} options={SHIPPINGS} placeholder="تایپ..." />
@@ -2351,7 +2361,7 @@ function NewOrderSection({ showToast }: any) {
               <TouchableOpacity onPress={() => del(i)} style={s.delBtnRound}><Text style={{ fontSize: 13, color: '#fff', fontWeight: 'bold' }}>🗑</Text></TouchableOpacity>
             </View>
             <View style={{ padding: 10 }}>
-              <Autocomplete value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="نام مدل..." />
+              <Autocomplete value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={term('product') + '...'} />
               <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                 <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('کد')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text></View></View>
                 <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('تعداد')}</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
@@ -2541,7 +2551,7 @@ function SearchSection({ showToast }: any) {
                         }
                       }}
                       options={prods.map(p => p.name).filter(Boolean)}
-                      placeholder="نام مدل..."
+                      placeholder={term('product') + '...'}
                     />
                   </View>
                   <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.quantity || '')} onChangeText={(v) => updRow(i, 'quantity', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
@@ -2832,6 +2842,32 @@ function ReportsSection({ showToast }: any) {
 // ══════════════════════════════════════════════════════════
 function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const [saving, setSaving] = useState(false);
+  const [presetKey, setPresetKey] = useState<string>(getPreset());
+  const [customTerms, setCustomTerms] = useState<Record<string, string>>({ ...getTerms() });
+  const [enabledTabs, setEnabledTabs] = useState<string[]>(getTabs());
+  const [showTermsEditor, setShowTermsEditor] = useState(false);
+  const [showTabsEditor, setShowTabsEditor] = useState(false);
+
+  const applyPreset = async (p: PresetKey) => {
+    await setPreset(p);
+    setPresetKey(p);
+    setCustomTerms({ ...getTerms() });
+    setEnabledTabs(getTabs());
+    alertMsg('✅', 'نوع کسب‌وکار تغییر کرد. برنامه دوباره بارگذاری می‌شود.');
+    setTimeout(() => { (globalThis as any).__reload?.(); }, 800);
+  };
+
+  const saveTerm = async (k: string, v: string) => {
+    await setTerm(k, v);
+    setCustomTerms({ ...getTerms() });
+  };
+
+  const toggleTab = async (k: string) => {
+    const next = enabledTabs.includes(k) ? enabledTabs.filter((x: string) => x !== k) : [...enabledTabs, k];
+    if (next.length === 0) return showToast('حداقل یک تب باید فعال باشد', true);
+    setEnabledTabs(next);
+    await setTabs(next);
+  };
   const pins = settings.tab_pins || {};
   const [emailInput, setEmailInput] = useState('');
   const [autoDelEnabled, setAutoDelEnabled] = useState(false);

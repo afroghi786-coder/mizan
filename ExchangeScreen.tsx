@@ -6,6 +6,12 @@ import {
   getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer,
   getFxPartners, createFxPartner, updateFxPartner, deleteFxPartner,
 } from './lib.offline';
+import {
+  getHawalas, createHawala, updateHawala, deleteHawala,
+  getBoxes, createBox, updateBox, deleteBox,
+  getTransfers, createTransfer, deleteTransfer,
+  getChecks, createCheck, updateCheck, deleteCheck,
+} from './lib.fx';
 
 // ═══ ارزها ═══
 const CUR: Record<string, { name: string; flag: string; dec: number }> = {
@@ -34,11 +40,26 @@ function genInvoiceNumber(trades: any[]): string {
 }
 
 export default function ExchangeScreen({ showToast }: any) {
-  const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners'>('list');
+  const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger'>('list');
   const [trades, setTrades] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
   const [load, setLoad] = useState(true);
+  const [hawalas, setHawalas] = useState<any[]>([]);
+  const [boxes, setBoxes] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [checks, setChecks] = useState<any[]>([]);
+  const [hawModal, setHawModal] = useState(false);
+  const [hawForm, setHawForm] = useState<any>({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: new Date().toLocaleDateString('fa-IR'), note: '' });
+  const [hawEditId, setHawEditId] = useState<string | null>(null);
+  const [boxModal, setBoxModal] = useState(false);
+  const [boxForm, setBoxForm] = useState<any>({ name: '', currency: 'USD', partner_code: '', opening: '0' });
+  const [boxEditId, setBoxEditId] = useState<string | null>(null);
+  const [trModal, setTrModal] = useState(false);
+  const [trForm, setTrForm] = useState<any>({ from_box: '', to_box: '', amount: '', rate: '1', date: new Date().toLocaleDateString('fa-IR'), note: '' });
+  const [ckModal, setCkModal] = useState(false);
+  const [ckForm, setCkForm] = useState<any>({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: '', status: 'pending', note: '' });
+  const [ckEditId, setCkEditId] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
   // فرم معامله
@@ -75,8 +96,12 @@ export default function ExchangeScreen({ showToast }: any) {
 
   const reload = useCallback(async () => {
     try {
-      const [t, c, p] = await Promise.all([getFxTrades(), getFxCustomers(), getFxPartners()]);
+      const [t, c, p, h, b, tr, ck] = await Promise.all([
+        getFxTrades(), getFxCustomers(), getFxPartners(),
+        getHawalas(), getBoxes(), getTransfers(), getChecks(),
+      ]);
       setTrades(t); setCustomers(c); setPartners(p);
+      setHawalas(h); setBoxes(b); setTransfers(tr); setChecks(ck);
     } catch {}
   }, []);
 
@@ -318,8 +343,12 @@ export default function ExchangeScreen({ showToast }: any) {
         {/* ═══════ زیرتب‌ها ═══════ */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.subsBar} contentContainerStyle={s.subsCont}>
           {[
-            { k: 'list', l: '📋 لیست معاملات' },
-            { k: 'form', l: '➕ معامله جدید' },
+            { k: 'list', l: '📋 معاملات' },
+            { k: 'form', l: '➕ جدید' },
+            { k: 'hawalas', l: '💸 حواله‌جات' },
+            { k: 'boxes', l: '📦 صندوق‌ها' },
+            { k: 'checks', l: '📄 چک‌ها' },
+            { k: 'ledger', l: '📊 کاردکس' },
             { k: 'customers', l: '👥 مشتریان' },
             { k: 'partners', l: '💼 شرکا' },
           ].map(x => (
@@ -502,6 +531,242 @@ export default function ExchangeScreen({ showToast }: any) {
             ))}
           </View>
         )}
+
+        {/* ═══════ حواله‌جات ═══════ */}
+        {sub === 'hawalas' && (
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>💸 حواله‌جات ({hawalas.length})</Text>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setHawEditId(null); setHawForm({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: new Date().toLocaleDateString('fa-IR'), note: '' }); setHawModal(true); }}>
+                <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator>
+              <View>
+                <View style={s.tblHeader}>
+                  <Text style={[s.th, { width: 36 }]}>#</Text>
+                  <Text style={[s.th, { width: 90 }]}>کد</Text>
+                  <Text style={[s.th, { width: 80 }]}>نوع</Text>
+                  <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                  <Text style={[s.th, { width: 130 }]}>ذی‌نفع</Text>
+                  <Text style={[s.th, { width: 100 }]}>شهر</Text>
+                  <Text style={[s.th, { width: 100 }]}>مبلغ</Text>
+                  <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                  <Text style={[s.th, { width: 90 }]}>کارمزد</Text>
+                  <Text style={[s.th, { width: 100 }]}>شریک</Text>
+                  <Text style={[s.th, { width: 90 }]}>وضعیت</Text>
+                  <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+                </View>
+                {hawalas.length === 0 ? (
+                  <View style={{ padding: 30, alignItems: 'center' }}><Text style={s.empty}>هنوز حواله‌ای نیست</Text></View>
+                ) : hawalas.map((h: any, i: number) => {
+                  const stCol = h.status === 'done' ? '#00ff88' : h.status === 'cancelled' ? '#ff3355' : '#fbbf24';
+                  return (
+                    <View key={h.local_id || h.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                      <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                      <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{h.code}</Text>
+                      <Text style={[s.td, { width: 80, color: h.direction === 'send' ? '#fb923c' : '#34d399' }]}>{h.direction === 'send' ? '📤 ارسال' : '📥 دریافت'}</Text>
+                      <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{h.date || '—'}</Text>
+                      <Text style={[s.td, { width: 130, color: '#fff', fontWeight: 'bold' }]}>{h.beneficiary_name || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10 }]}>{h.beneficiary_city || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(h.amount, 0)}</Text>
+                      <Text style={[s.td, { width: 80, color: '#60a5fa' }]}>{h.currency}</Text>
+                      <Text style={[s.td, { width: 90, color: '#00ff88' }]}>{fmt(h.commission, 0)}</Text>
+                      <Text style={[s.td, { width: 100, color: '#e2e8f0' }]}>{h.partner_name || '—'}</Text>
+                      <Text style={[s.td, { width: 90, color: stCol, fontWeight: 'bold', fontSize: 10 }]}>{h.status === 'done' ? '✅ انجام' : h.status === 'cancelled' ? '❌ لغو' : '⏳ در انتظار'}</Text>
+                      <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                        <TouchableOpacity onPress={() => { setHawEditId(h.local_id || h.id); setHawForm({ ...h }); setHawModal(true); }} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={async () => { await deleteHawala(h.local_id || h.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ═══════ صندوق‌ها ═══════ */}
+        {sub === 'boxes' && (
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>📦 صندوق‌ها ({boxes.length})</Text>
+              <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+                <TouchableOpacity style={[s.addSmBtn, { backgroundColor: '#059669' }]} onPress={() => setTrModal(true)}>
+                  <Text style={s.addSmBtnTxt}>🔄 انتقال</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.addSmBtn} onPress={() => { setBoxEditId(null); setBoxForm({ name: '', currency: 'USD', partner_code: '', opening: '0' }); setBoxModal(true); }}>
+                  <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            {/* محاسبه موجودی هر صندوق */}
+            {(() => {
+              const balances: Record<string, number> = {};
+              boxes.forEach(b => { balances[b.local_id || b.id] = Number(b.opening) || 0; });
+              transfers.forEach((t: any) => {
+                const fb = boxes.find((b: any) => b.code === t.from_box);
+                const tb = boxes.find((b: any) => b.code === t.to_box);
+                if (fb) balances[fb.local_id || fb.id] -= Number(t.amount) || 0;
+                if (tb) balances[tb.local_id || tb.id] += Number(t.amount) || 0;
+              });
+              return boxes.length === 0 ? (
+                <Text style={s.empty}>هنوز صندوقی نیست</Text>
+              ) : boxes.map((b: any) => {
+                const bal = balances[b.local_id || b.id] || 0;
+                const col = bal > 0 ? '#059669' : bal < 0 ? '#dc2626' : '#94a3b8';
+                const partner = partners.find((p: any) => p.code === b.partner_code);
+                return (
+                  <View key={b.local_id || b.id} style={s.card}>
+                    <View style={s.cardHead}>
+                      <Text style={s.cardTitle}>📦 {b.name}</Text>
+                      <Text style={s.badge}>{b.code}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 8 }}>
+                      <Text style={s.cardSub}>💱 {CUR[b.currency]?.flag} {b.currency}</Text>
+                      {partner ? <Text style={s.cardSub}>💼 {partner.name}</Text> : null}
+                    </View>
+                    <Text style={[s.cardTitle, { color: col, fontSize: 18, textAlign: 'left', marginTop: 8, fontFamily: 'monospace' }]}>
+                      {bal > 0 ? '+' : ''}{fmt(bal, CUR[b.currency]?.dec || 2)}
+                    </Text>
+                    <View style={s.actions}>
+                      <TouchableOpacity style={s.smBtn} onPress={() => { setBoxEditId(b.local_id || b.id); setBoxForm({ ...b }); setBoxModal(true); }}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteBox(b.local_id || b.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              });
+            })()}
+            {/* لیست انتقالات */}
+            {transfers.length > 0 && (
+              <>
+                <Text style={[s.secT, { marginTop: 16 }]}>🔄 انتقالات اخیر ({transfers.length})</Text>
+                {transfers.slice(0, 20).map((t: any) => (
+                  <View key={t.local_id || t.id} style={s.card}>
+                    <View style={s.cardHead}>
+                      <Text style={s.cardTitle}>{t.from_box} → {t.to_box}</Text>
+                      <Text style={s.badge}>{t.code}</Text>
+                    </View>
+                    <Text style={s.cardSub}>💰 {fmt(t.amount, 0)} | 📅 {t.date}</Text>
+                    <View style={s.actions}>
+                      <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteTransfer(t.local_id || t.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+        )}
+
+        {/* ═══════ چک‌ها ═══════ */}
+        {sub === 'checks' && (
+          <View>
+            <View style={s.headRow}>
+              <Text style={s.secT}>📄 چک‌ها ({checks.length})</Text>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setCkEditId(null); setCkForm({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: '', status: 'pending', note: '' }); setCkModal(true); }}>
+                <Text style={s.addSmBtnTxt}>➕ جدید</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator>
+              <View>
+                <View style={s.tblHeader}>
+                  <Text style={[s.th, { width: 36 }]}>#</Text>
+                  <Text style={[s.th, { width: 90 }]}>کد</Text>
+                  <Text style={[s.th, { width: 80 }]}>نوع</Text>
+                  <Text style={[s.th, { width: 100 }]}>شماره چک</Text>
+                  <Text style={[s.th, { width: 100 }]}>بانک</Text>
+                  <Text style={[s.th, { width: 100 }]}>مبلغ</Text>
+                  <Text style={[s.th, { width: 85 }]}>سرسید</Text>
+                  <Text style={[s.th, { width: 120 }]}>طرف</Text>
+                  <Text style={[s.th, { width: 90 }]}>وضعیت</Text>
+                  <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+                </View>
+                {checks.length === 0 ? (
+                  <View style={{ padding: 30, alignItems: 'center' }}><Text style={s.empty}>هنوز چکی نیست</Text></View>
+                ) : checks.map((c: any, i: number) => {
+                  const stCol = c.status === 'cleared' ? '#00ff88' : c.status === 'bounced' ? '#ff3355' : '#fbbf24';
+                  const stTxt = c.status === 'cleared' ? '✅ پاس' : c.status === 'bounced' ? '❌ برگشتی' : '⏳ در جریان';
+                  return (
+                    <View key={c.local_id || c.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                      <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                      <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{c.code}</Text>
+                      <Text style={[s.td, { width: 80, color: c.direction === 'in' ? '#34d399' : '#fb923c' }]}>{c.direction === 'in' ? '📥 دریافتی' : '📤 پرداختی'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#fff', fontWeight: 'bold', fontSize: 11 }]}>{c.check_number || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#94a3b8' }]}>{c.bank || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(c.amount, 0)}</Text>
+                      <Text style={[s.td, { width: 85, color: '#60a5fa', fontSize: 10 }]}>{c.due_date || '—'}</Text>
+                      <Text style={[s.td, { width: 120, color: '#e2e8f0' }]}>{c.partner_name || '—'}</Text>
+                      <Text style={[s.td, { width: 90, color: stCol, fontWeight: 'bold', fontSize: 10 }]}>{stTxt}</Text>
+                      <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                        <TouchableOpacity onPress={() => { setCkEditId(c.local_id || c.id); setCkForm({ ...c }); setCkModal(true); }} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={async () => { await deleteCheck(c.local_id || c.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ═══════ کاردکس (دفتر کل) ═══════ */}
+        {sub === 'ledger' && (
+          <View>
+            <Text style={s.secT}>📊 کاردکس ارزی — همه معاملات به ترتیب</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator>
+              <View>
+                <View style={s.tblHeader}>
+                  <Text style={[s.th, { width: 36 }]}>#</Text>
+                  <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
+                  <Text style={[s.th, { width: 100 }]}>سند</Text>
+                  <Text style={[s.th, { width: 130 }]}>شرح</Text>
+                  <Text style={[s.th, { width: 90 }]}>ارز</Text>
+                  <Text style={[s.th, { width: 100 }]}>بدهکار</Text>
+                  <Text style={[s.th, { width: 100 }]}>بستانکار</Text>
+                  <Text style={[s.th, { width: 100 }]}>مانده</Text>
+                </View>
+                {(() => {
+                  // ساخت کاردکس از معاملات + حوالات + چک‌ها
+                  const entries: any[] = [];
+                  trades.forEach((t: any) => {
+                    entries.push({ date: t.date || '', ref: t.invoice_number || '', desc: 'معامله با ' + (t.customer_name || ''), cur: t.from_currency, debit: Number(t.from_qty) || 0, credit: 0 });
+                    entries.push({ date: t.date || '', ref: t.invoice_number || '', desc: 'معامله با ' + (t.customer_name || ''), cur: t.to_currency, debit: 0, credit: Number(t.to_qty) || 0 });
+                  });
+                  hawalas.forEach((h: any) => {
+                    if (h.direction === 'send') {
+                      entries.push({ date: h.date || '', ref: h.code, desc: 'حواله ارسالی به ' + (h.beneficiary_name || ''), cur: h.currency, debit: Number(h.amount) || 0, credit: 0 });
+                    } else {
+                      entries.push({ date: h.date || '', ref: h.code, desc: 'حواله دریافتی از ' + (h.beneficiary_name || ''), cur: h.currency, debit: 0, credit: Number(h.amount) || 0 });
+                    }
+                  });
+                  // مرتب‌سازی
+                  entries.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+                  // محاسبه مانده
+                  const bal: Record<string, number> = {};
+                  return entries.length === 0 ? (
+                    <View style={{ padding: 30, alignItems: 'center' }}><Text style={s.empty}>هیچ سندی ثبت نشده</Text></View>
+                  ) : entries.map((e: any, i: number) => {
+                    bal[e.cur] = (bal[e.cur] || 0) + e.debit - e.credit;
+                    const b = bal[e.cur] || 0;
+                    return (
+                      <View key={i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                        <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                        <Text style={[s.td, { width: 90, color: '#94a3b8', fontSize: 10 }]}>{e.date || '—'}</Text>
+                        <Text style={[s.td, { width: 100, color: '#7c3aed', fontSize: 10 }]}>{e.ref}</Text>
+                        <Text style={[s.td, { width: 130, color: '#e2e8f0', textAlign: 'right', fontSize: 10 }]} numberOfLines={1}>{e.desc}</Text>
+                        <Text style={[s.td, { width: 90, color: '#60a5fa' }]}>{e.cur}</Text>
+                        <Text style={[s.td, { width: 100, color: '#fb923c', fontWeight: 'bold' }]}>{e.debit ? fmt(e.debit, 0) : '—'}</Text>
+                        <Text style={[s.td, { width: 100, color: '#34d399', fontWeight: 'bold' }]}>{e.credit ? fmt(e.credit, 0) : '—'}</Text>
+                        <Text style={[s.td, { width: 100, color: b > 0 ? '#00ff88' : '#ff3355', fontWeight: 'bold' }]}>{fmt(b, 0)}</Text>
+                      </View>
+                    );
+                  });
+                })()}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
       </ScrollView>
 
       {/* ═══ Modals ═══ */}
@@ -578,6 +843,208 @@ export default function ExchangeScreen({ showToast }: any) {
           </View>
         </ScrollView></View>
       </Modal>
+
+      {/* ═══ Modal حواله ═══ */}
+      <Modal visible={hawModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>{hawEditId ? '✏️ ویرایش حواله' : '➕ حواله جدید'}</Text><TouchableOpacity onPress={() => setHawModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>نوع حواله</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              <TouchableOpacity style={[s.typeBtn, hawForm.direction === 'send' && { backgroundColor: '#fb923c', borderColor: '#fb923c' }]} onPress={() => setHawForm({ ...hawForm, direction: 'send' })}>
+                <Text style={[s.typeBtnTxt, hawForm.direction === 'send' && { color: '#fff' }]}>📤 ارسال</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.typeBtn, hawForm.direction === 'receive' && { backgroundColor: '#34d399', borderColor: '#34d399' }]} onPress={() => setHawForm({ ...hawForm, direction: 'receive' })}>
+                <Text style={[s.typeBtnTxt, hawForm.direction === 'receive' && { color: '#fff' }]}>📥 دریافت</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={s.lbl}>نام ذی‌نفع *</Text>
+            <TextInput style={s.inp} value={hawForm.beneficiary_name} onChangeText={v => setHawForm({ ...hawForm, beneficiary_name: v })} />
+            <Text style={s.lbl}>تلفن ذی‌نفع</Text>
+            <TextInput style={s.inp} value={hawForm.beneficiary_phone} onChangeText={v => setHawForm({ ...hawForm, beneficiary_phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} />
+            <Text style={s.lbl}>شهر</Text>
+            <TextInput style={s.inp} value={hawForm.beneficiary_city} onChangeText={v => setHawForm({ ...hawForm, beneficiary_city: v })} />
+            <Text style={s.lbl}>شریک</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {partners.map((p: any) => (
+                <TouchableOpacity key={p.code} style={[s.curPick, hawForm.partner_code === p.code && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, partner_code: p.code })}>
+                  <Text style={[s.curPickTxt, hawForm.partner_code === p.code && { color: '#fff' }]}>{p.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['USD', 'EUR', 'AFN', 'PKR', 'AED', 'IRR'].map(c => (
+                <TouchableOpacity key={c} style={[s.curPick, hawForm.currency === c && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, currency: c })}>
+                  <Text style={[s.curPickTxt, hawForm.currency === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>مبلغ *</Text>
+            <TextInput style={s.inp} value={String(hawForm.amount)} onChangeText={v => setHawForm({ ...hawForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <Text style={s.lbl}>کارمزد</Text>
+            <TextInput style={s.inp} value={String(hawForm.commission)} onChangeText={v => setHawForm({ ...hawForm, commission: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <Text style={s.lbl}>تاریخ</Text>
+            <TextInput style={s.inp} value={hawForm.date} onChangeText={v => setHawForm({ ...hawForm, date: v })} />
+            <Text style={s.lbl}>وضعیت</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              {[{ k: 'pending', l: '⏳ در انتظار' }, { k: 'done', l: '✅ انجام' }, { k: 'cancelled', l: '❌ لغو' }].map(st => (
+                <TouchableOpacity key={st.k} style={[s.curPick, hawForm.status === st.k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, status: st.k })}>
+                  <Text style={[s.curPickTxt, hawForm.status === st.k && { color: '#fff' }]}>{st.l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>توضیحات</Text>
+            <TextInput style={[s.inp, { minHeight: 60 }]} value={hawForm.note} onChangeText={v => setHawForm({ ...hawForm, note: v })} multiline />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+                if (!hawForm.beneficiary_name) return showToast('نام ذی‌نفع الزامی', true);
+                const p = partners.find((x: any) => x.code === hawForm.partner_code);
+                const payload = { ...hawForm, partner_name: p?.name || '', amount: Number(hawForm.amount) || 0, commission: Number(hawForm.commission) || 0 };
+                if (hawEditId) await updateHawala(hawEditId, payload);
+                else await createHawala(payload);
+                await reload(); setHawModal(false); showToast('✅ ذخیره شد');
+              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+
+      {/* ═══ Modal صندوق ═══ */}
+      <Modal visible={boxModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>{boxEditId ? '✏️ ویرایش صندوق' : '➕ صندوق جدید'}</Text><TouchableOpacity onPress={() => setBoxModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>نام *</Text>
+            <TextInput style={s.inp} value={boxForm.name} onChangeText={v => setBoxForm({ ...boxForm, name: v })} placeholder="مثلاً: صندوق دالر" />
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['USD', 'EUR', 'AFN', 'PKR', 'AED', 'IRR'].map(c => (
+                <TouchableOpacity key={c} style={[s.curPick, boxForm.currency === c && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setBoxForm({ ...boxForm, currency: c })}>
+                  <Text style={[s.curPickTxt, boxForm.currency === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>شریک مالک (اختیاری)</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {partners.map((p: any) => (
+                <TouchableOpacity key={p.code} style={[s.curPick, boxForm.partner_code === p.code && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setBoxForm({ ...boxForm, partner_code: p.code })}>
+                  <Text style={[s.curPickTxt, boxForm.partner_code === p.code && { color: '#fff' }]}>{p.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>موجودی اولیه</Text>
+            <TextInput style={s.inp} value={String(boxForm.opening)} onChangeText={v => setBoxForm({ ...boxForm, opening: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setBoxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+                if (!boxForm.name) return showToast('نام الزامی', true);
+                const payload = { ...boxForm, opening: Number(boxForm.opening) || 0 };
+                if (boxEditId) await updateBox(boxEditId, payload);
+                else await createBox(payload);
+                await reload(); setBoxModal(false); showToast('✅ ذخیره شد');
+              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+
+      {/* ═══ Modal انتقال ═══ */}
+      <Modal visible={trModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>🔄 انتقال بین صندوق‌ها</Text><TouchableOpacity onPress={() => setTrModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>از صندوق *</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {boxes.map((b: any) => (
+                <TouchableOpacity key={b.code} style={[s.curPick, trForm.from_box === b.code && { backgroundColor: '#dc2626', borderColor: '#dc2626' }]} onPress={() => setTrForm({ ...trForm, from_box: b.code })}>
+                  <Text style={[s.curPickTxt, trForm.from_box === b.code && { color: '#fff' }]}>{b.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>به صندوق *</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {boxes.map((b: any) => (
+                <TouchableOpacity key={b.code} style={[s.curPick, trForm.to_box === b.code && { backgroundColor: '#059669', borderColor: '#059669' }]} onPress={() => setTrForm({ ...trForm, to_box: b.code })}>
+                  <Text style={[s.curPickTxt, trForm.to_box === b.code && { color: '#fff' }]}>{b.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>مبلغ *</Text>
+            <TextInput style={s.inp} value={String(trForm.amount)} onChangeText={v => setTrForm({ ...trForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <Text style={s.lbl}>نرخ تبدیل</Text>
+            <TextInput style={s.inp} value={String(trForm.rate)} onChangeText={v => setTrForm({ ...trForm, rate: v })} keyboardType="numeric" />
+            <Text style={s.lbl}>تاریخ</Text>
+            <TextInput style={s.inp} value={trForm.date} onChangeText={v => setTrForm({ ...trForm, date: v })} />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTrModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+                if (!trForm.from_box || !trForm.to_box) return showToast('صندوق‌ها را انتخاب کن', true);
+                if (trForm.from_box === trForm.to_box) return showToast('صندوق مبدأ و مقصد یکسان', true);
+                if (!trForm.amount || Number(trForm.amount) <= 0) return showToast('مبلغ را وارد کن', true);
+                await createTransfer({ ...trForm, amount: Number(trForm.amount) || 0, rate: Number(trForm.rate) || 1 });
+                await reload(); setTrModal(false); showToast('✅ انتقال ثبت شد');
+              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+
+      {/* ═══ Modal چک ═══ */}
+      <Modal visible={ckModal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={s.mHead}><Text style={s.mTitle}>{ckEditId ? '✏️ ویرایش چک' : '➕ چک جدید'}</Text><TouchableOpacity onPress={() => setCkModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>نوع چک</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              <TouchableOpacity style={[s.typeBtn, ckForm.direction === 'in' && { backgroundColor: '#34d399', borderColor: '#34d399' }]} onPress={() => setCkForm({ ...ckForm, direction: 'in' })}>
+                <Text style={[s.typeBtnTxt, ckForm.direction === 'in' && { color: '#fff' }]}>📥 دریافتی</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.typeBtn, ckForm.direction === 'out' && { backgroundColor: '#fb923c', borderColor: '#fb923c' }]} onPress={() => setCkForm({ ...ckForm, direction: 'out' })}>
+                <Text style={[s.typeBtnTxt, ckForm.direction === 'out' && { color: '#fff' }]}>📤 پرداختی</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={s.lbl}>شماره چک</Text>
+            <TextInput style={s.inp} value={ckForm.check_number} onChangeText={v => setCkForm({ ...ckForm, check_number: v })} />
+            <Text style={s.lbl}>بانک</Text>
+            <TextInput style={s.inp} value={ckForm.bank} onChangeText={v => setCkForm({ ...ckForm, bank: v })} />
+            <Text style={s.lbl}>طرف حساب</Text>
+            <TextInput style={s.inp} value={ckForm.partner_name} onChangeText={v => setCkForm({ ...ckForm, partner_name: v })} />
+            <Text style={s.lbl}>مبلغ *</Text>
+            <TextInput style={s.inp} value={String(ckForm.amount)} onChangeText={v => setCkForm({ ...ckForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['AFN', 'USD', 'EUR', 'PKR'].map(c => (
+                <TouchableOpacity key={c} style={[s.curPick, ckForm.currency === c && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setCkForm({ ...ckForm, currency: c })}>
+                  <Text style={[s.curPickTxt, ckForm.currency === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>تاریخ سرسید</Text>
+            <TextInput style={s.inp} value={ckForm.due_date} onChangeText={v => setCkForm({ ...ckForm, due_date: v })} placeholder="1405/09/15" />
+            <Text style={s.lbl}>وضعیت</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              {[{ k: 'pending', l: '⏳ در جریان' }, { k: 'cleared', l: '✅ پاس' }, { k: 'bounced', l: '❌ برگشتی' }].map(st => (
+                <TouchableOpacity key={st.k} style={[s.curPick, ckForm.status === st.k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setCkForm({ ...ckForm, status: st.k })}>
+                  <Text style={[s.curPickTxt, ckForm.status === st.k && { color: '#fff' }]}>{st.l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCkModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+                if (!ckForm.amount || Number(ckForm.amount) <= 0) return showToast('مبلغ الزامی', true);
+                const payload = { ...ckForm, amount: Number(ckForm.amount) || 0 };
+                if (ckEditId) await updateCheck(ckEditId, payload);
+                else await createCheck(payload);
+                await reload(); setCkModal(false); showToast('✅ ذخیره شد');
+              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+
     </View>
   );
 }

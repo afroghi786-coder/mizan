@@ -54,15 +54,7 @@ export default function EmployeesScreen({ showToast }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f7fa' }}>
       {/* Dashboard */}
-      <View style={s.dash}>
-        <Text style={s.dashTitle}>💼 مدیریت منابع انسانی</Text>
-        <View style={s.dashRow}>
-          <View style={s.dashItem}><Text style={s.dashLbl}>👥 کارمندان</Text><Text style={[s.dashVal, { color: '#60a5fa' }]}>{emps.filter((x: any) => x.status !== 'اخراجی').length}</Text></View>
-          <View style={s.dashItem}><Text style={s.dashLbl}>✅ حاضر امروز</Text><Text style={[s.dashVal, { color: '#34d399' }]}>{atts.filter((x: any) => x.date === today() && x.status === 'حاضر').length}</Text></View>
-          <View style={s.dashItem}><Text style={s.dashLbl}>💰 حقوق پرداختی</Text><Text style={[s.dashVal, { color: '#fbbf24' }]}>{fmt(salaries.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0))}</Text></View>
-          <View style={s.dashItem}><Text style={s.dashLbl}>🏦 وام فعال</Text><Text style={[s.dashVal, { color: '#f87171' }]}>{loans.filter((x: any) => x.status === 'active').length}</Text></View>
-        </View>
-      </View>
+      <HRDashboard emps={emps} atts={atts} salaries={salaries} loans={loans} leaves={leaves} batches={batches} />
 
       {/* زیرتب‌ها */}
       <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={s.subsBar} contentContainerStyle={s.subsCont}>

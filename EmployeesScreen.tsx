@@ -6,7 +6,11 @@ import {
   getAttendance, createAttendance, updateAttendance, deleteAttendance,
   getSalaryPayments, createSalaryPayment, updateSalaryPayment, deleteSalaryPayment,
   getLoans, createLoan, updateLoan, deleteLoan,
+  getLeaves, createLeave, deleteLeave,
+  getBatches, createBatch, deleteBatch,
+  calcEmployeeSalary, calcTax, calcInsurance, TAX_BRACKETS,
 } from './lib.emp';
+import { printPayslip, exportBankFile } from './EmpHelpers';
 
 const BANKS = ['ملی','ملت','صادرات','تجارت','سپه','کشاورزی','مسکن','پاسارگاد','پارسیان','سامان','رفاه','اقتصاد نوین','سینا','شهر','آینده','دی','قوامین','صنعت و معدن','کارآفرین','مهر ایران','بلوبانک','رسالت'];
 const DEPTS = ['فروش','انبار','حسابداری','مدیریت','تولید','کنترل کیفیت','پشتیبانی','مالی'];
@@ -20,18 +24,20 @@ const today = () => new Date().toLocaleDateString('fa-IR');
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 export default function EmployeesScreen({ showToast }: any) {
-  const [tab, setTab] = useState<'emp' | 'att' | 'salary' | 'loans'>('emp');
+  const [tab, setTab] = useState<'emp' | 'att' | 'salary' | 'loans' | 'leaves' | 'payroll'>('emp');
   const [emps, setEmps] = useState<any[]>([]);
   const [atts, setAtts] = useState<any[]>([]);
   const [salaries, setSalaries] = useState<any[]>([]);
   const [loans, setLoans] = useState<any[]>([]);
+  const [leaves, setLeaves] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
   const [prods, setProds] = useState<any[]>([]);
   const [load, setLoad] = useState(true);
 
   const reload = useCallback(async () => {
     try {
-      const [e, a, s, l] = await Promise.all([getEmployees(), getAttendance(), getSalaryPayments(), getLoans()]);
-      setEmps(e); setAtts(a); setSalaries(s); setLoans(l);
+      const [e, a, s, l, lv, b] = await Promise.all([getEmployees(), getAttendance(), getSalaryPayments(), getLoans(), getLeaves(), getBatches()]);
+      setEmps(e); setAtts(a); setSalaries(s); setLoans(l); setLeaves(lv); setBatches(b);
       try {
         const { getProducts } = require('./lib.offline');
         const p = await getProducts();
@@ -61,9 +67,11 @@ export default function EmployeesScreen({ showToast }: any) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.subsBar} contentContainerStyle={s.subsCont}>
         {[
           { k: 'emp', l: '👥 کارمندان' },
-          { k: 'att', l: '📅 حضور و غیاب' },
-          { k: 'salary', l: '💰 پرداخت حقوق' },
-          { k: 'loans', l: '🏦 وام و مساعده' },
+          { k: 'att', l: '📅 حضور' },
+          { k: 'leaves', l: '🌴 مرخصی' },
+          { k: 'payroll', l: '💼 لیست حقوق' },
+          { k: 'salary', l: '💰 پرداخت' },
+          { k: 'loans', l: '🏦 وام' },
         ].map((x: any) => (
           <TouchableOpacity key={x.k} onPress={() => setTab(x.k)} style={[s.sub, tab === x.k && s.subActive]}>
             <Text style={[s.subTxt, tab === x.k && s.subTxtActive]}>{x.l}</Text>
@@ -76,6 +84,8 @@ export default function EmployeesScreen({ showToast }: any) {
         {tab === 'att' && <AttTab {...{ emps, atts, reload, showToast }} />}
         {tab === 'salary' && <SalaryTab {...{ emps, salaries, atts, prods, reload, showToast }} />}
         {tab === 'loans' && <LoansTab {...{ emps, loans, reload, showToast }} />}
+        {tab === 'leaves' && <LeavesTab {...{ emps, leaves, reload, showToast }} />}
+        {tab === 'payroll' && <PayrollTab {...{ emps, atts, loans, salaries, batches, reload, showToast }} />}
       </ScrollView>
     </View>
   );
@@ -94,7 +104,7 @@ function EmpTab({ emps, reload, showToast }: any) {
     setForm({
       code: '', name: '', father_name: '', national_id: '', phone: '', emergency_phone: '',
       address: '', department: 'فروش', role: '', contract_type: 'ماهانه', start_date: today(),
-      end_date: '', amount: '', overtime_rate: '', bank: '', account_number: '',
+      end_date: '', amount: '', base_salary: '', housing_allowance: '', food_allowance: '', transport_allowance: '', other_allowance: '', overtime_rate: '', bank: '', account_number: '',
       education: '', insurance_number: '', status: 'فعال', note: '',
     });
     setModal(true);
@@ -199,7 +209,17 @@ function EmpTab({ emps, reload, showToast }: any) {
             </View>
             <Text style={s.lbl}>تاریخ شروع</Text>
             <TextInput style={s.inp} value={form.start_date} onChangeText={v => setForm({ ...form, start_date: v })} placeholder="1405/08/15" />
-            <Text style={s.lbl}>مبلغ قرارداد (افغانی)</Text>
+            <Text style={s.lbl}>حقوق پایه ماهانه</Text>
+            <TextInput style={s.inp} value={String(form.base_salary || '')} onChangeText={v => setForm({ ...form, base_salary: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="0" />
+            <Text style={s.lbl}>حق مسکن</Text>
+            <TextInput style={s.inp} value={String(form.housing_allowance || '')} onChangeText={v => setForm({ ...form, housing_allowance: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="0" />
+            <Text style={s.lbl}>حق خواربار</Text>
+            <TextInput style={s.inp} value={String(form.food_allowance || '')} onChangeText={v => setForm({ ...form, food_allowance: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="0" />
+            <Text style={s.lbl}>حق ایاب و ذهاب</Text>
+            <TextInput style={s.inp} value={String(form.transport_allowance || '')} onChangeText={v => setForm({ ...form, transport_allowance: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="0" />
+            <Text style={s.lbl}>سایر مزایا</Text>
+            <TextInput style={s.inp} value={String(form.other_allowance || '')} onChangeText={v => setForm({ ...form, other_allowance: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="0" />
+            <Text style={s.lbl}>مبلغ قرارداد (کل)</Text>
             <TextInput style={s.inp} value={String(form.amount || '')} onChangeText={v => setForm({ ...form, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
             <Text style={s.lbl}>نرخ اضافه‌کاری (ساعتی)</Text>
             <TextInput style={s.inp} value={String(form.overtime_rate || '')} onChangeText={v => setForm({ ...form, overtime_rate: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
@@ -634,6 +654,282 @@ function LoansTab({ emps, loans, reload, showToast }: any) {
           </View>
         </ScrollView></View>
       </Modal>
+    </View>
+  );
+}
+
+
+
+// ═══════════════════════════════════════════
+//  TAB 5: مرخصی‌ها
+// ═══════════════════════════════════════════
+function LeavesTab({ emps, leaves, reload, showToast }: any) {
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState<any>({});
+
+  const openNew = () => {
+    setForm({ employee_code: '', employee_name: '', leave_type: 'annual', from_date: today(), to_date: today(), days: '1', reason: '', status: 'approved' });
+    setModal(true);
+  };
+
+  const submit = async () => {
+    if (!form.employee_code) return showToast('کارمند را انتخاب کن', true);
+    const payload = { ...form, days: parse(form.days) };
+    await createLeave(payload);
+    await reload();
+    setModal(false);
+    showToast('✅ ثبت شد');
+  };
+
+  const TYPE_LABELS: Record<string, string> = { annual: '🌴 استحقاقی', sick: '🤒 استعلاجی', unpaid: '🚫 بدون حقوق', maternity: '👶 زایمان', emergency: '⚠️ اضطراری' };
+
+  return (
+    <View>
+      <TouchableOpacity style={[s.addBtn, { backgroundColor: '#10b981' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت مرخصی</Text></TouchableOpacity>
+      <Text style={s.secT}>📋 مرخصی‌ها ({leaves.length})</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator>
+        <View>
+          <View style={s.tblHeader}>
+            <Text style={[s.th, { width: 40 }]}>#</Text>
+            <Text style={[s.th, { width: 150 }]}>کارمند</Text>
+            <Text style={[s.th, { width: 120 }]}>نوع</Text>
+            <Text style={[s.th, { width: 100 }]}>از تاریخ</Text>
+            <Text style={[s.th, { width: 100 }]}>تا تاریخ</Text>
+            <Text style={[s.th, { width: 80 }]}>روز</Text>
+            <Text style={[s.th, { width: 150 }]}>دلیل</Text>
+            <Text style={[s.th, { width: 90 }]}>وضعیت</Text>
+            <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+          </View>
+          {leaves.length === 0 ? <View style={{ padding: 30 }}><Text style={s.empty}>مرخصی ثبت نشده</Text></View> : leaves.map((l: any, i: number) => (
+            <View key={l.local_id || l.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#fff' }]}>
+              <Text style={[s.td, { width: 40, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+              <Text style={[s.td, { width: 150, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }]}>{l.employee_name}</Text>
+              <Text style={[s.td, { width: 120, color: '#7c3aed', fontSize: 11 }]}>{TYPE_LABELS[l.leave_type] || l.leave_type}</Text>
+              <Text style={[s.td, { width: 100, color: '#475569', fontSize: 11 }]}>{l.from_date}</Text>
+              <Text style={[s.td, { width: 100, color: '#475569', fontSize: 11 }]}>{l.to_date}</Text>
+              <Text style={[s.td, { width: 80, color: '#dc2626', fontWeight: 'bold' }]}>{l.days}</Text>
+              <Text style={[s.td, { width: 150, color: '#475569', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{l.reason || '—'}</Text>
+              <Text style={[s.td, { width: 90 }]}><Text style={[s.badge, l.status === 'approved' && { backgroundColor: '#d1fae5', color: '#065f46' }, l.status === 'pending' && { backgroundColor: '#fef3c7', color: '#78350f' }]}>{l.status === 'approved' ? '✅ تأیید' : '⏳'}</Text></Text>
+              <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                <TouchableOpacity onPress={async () => { await deleteLeave(l.local_id || l.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+
+      <Modal visible={modal} transparent animationType="slide">
+        <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
+          <View style={[s.mHead, { backgroundColor: '#10b981' }]}><Text style={s.mTitle}>➕ ثبت مرخصی</Text><TouchableOpacity onPress={() => setModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={{ padding: 16 }}>
+            <Text style={s.lbl}>کارمند</Text>
+            <View style={s.chips}>
+              {emps.map((e: any) => <TouchableOpacity key={e.code} onPress={() => setForm({ ...form, employee_code: e.code, employee_name: e.name })} style={[s.chip, form.employee_code === e.code && s.chipActive]}><Text style={[s.chipTxt, form.employee_code === e.code && s.chipTxtActive]}>{e.name}</Text></TouchableOpacity>)}
+            </View>
+            <Text style={s.lbl}>نوع مرخصی</Text>
+            <View style={s.chips}>
+              {Object.entries(TYPE_LABELS).map(([k, v]: any) => <TouchableOpacity key={k} onPress={() => setForm({ ...form, leave_type: k })} style={[s.chip, form.leave_type === k && s.chipActive]}><Text style={[s.chipTxt, form.leave_type === k && s.chipTxtActive]}>{v}</Text></TouchableOpacity>)}
+            </View>
+            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+              <View style={{ flex: 1 }}><Text style={s.lbl}>از تاریخ</Text><TextInput style={s.inp} value={form.from_date} onChangeText={v => setForm({ ...form, from_date: v })} /></View>
+              <View style={{ flex: 1 }}><Text style={s.lbl}>تا تاریخ</Text><TextInput style={s.inp} value={form.to_date} onChangeText={v => setForm({ ...form, to_date: v })} /></View>
+              <View style={{ width: 80 }}><Text style={s.lbl}>روز</Text><TextInput style={s.inp} value={String(form.days)} onChangeText={v => setForm({ ...form, days: v.replace(/[^\d]/g, '') })} keyboardType="numeric" /></View>
+            </View>
+            <Text style={s.lbl}>دلیل</Text>
+            <TextInput style={[s.inp, { minHeight: 50 }]} value={form.reason} onChangeText={v => setForm({ ...form, reason: v })} multiline />
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#10b981', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView></View>
+      </Modal>
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════
+//  TAB 6: لیست حقوق (Payroll Batch)
+// ═══════════════════════════════════════════
+function PayrollTab({ emps, atts, loans, salaries, batches, reload, showToast }: any) {
+  const [month, setMonth] = useState(new Date().toLocaleDateString('fa-IR').slice(0, 7));
+  const [calc, setCalc] = useState<any[]>([]);
+  const [modal, setModal] = useState(false);
+  const [payslipData, setPayslipData] = useState<any>(null);
+
+  const doCalc = () => {
+    const results = emps.filter((e: any) => e.status === 'فعال').map((e: any) => {
+      const d = calcEmployeeSalary(e, month, atts, loans);
+      return { employee: e, ...d };
+    });
+    setCalc(results);
+    showToast('✅ ' + results.length + ' کارمند محاسبه شد');
+  };
+
+  const totals = calc.reduce((a: any, x: any) => ({
+    gross: a.gross + x.gross_salary,
+    net: a.net + x.net_salary,
+    tax: a.tax + x.tax,
+    insurance: a.insurance + x.employee_insurance,
+    employer: a.employer + x.employer_insurance,
+  }), { gross: 0, net: 0, tax: 0, insurance: 0, employer: 0 });
+
+  const saveBatch = async () => {
+    if (!calc.length) return showToast('اول محاسبه کن', true);
+    const batch = await createBatch({
+      month,
+      total_employees: calc.length,
+      total_gross: totals.gross,
+      total_deductions: totals.gross - totals.net,
+      total_net: totals.net,
+      total_tax: totals.tax,
+      total_insurance: totals.insurance,
+      status: 'draft',
+    });
+    // ذخیره هر پرداخت
+    for (const c of calc) {
+      await createSalaryPayment({
+        batch_number: batch.batch_number,
+        employee_code: c.employee.code,
+        employee_name: c.employee.name,
+        month,
+        attendance_days: c.attendance_days,
+        absent_days: c.absent_days,
+        leave_days: c.leave_days,
+        worked_hours: c.worked_hours,
+        base_salary: c.base_salary,
+        housing_allowance: c.housing_allowance,
+        food_allowance: c.food_allowance,
+        transport_allowance: c.transport_allowance,
+        other_allowance: c.other_allowance,
+        overtime: c.overtime,
+        gross_salary: c.gross_salary,
+        employee_insurance: c.employee_insurance,
+        employer_insurance: c.employer_insurance,
+        tax: c.tax,
+        loan: c.loan,
+        deduction: c.deduction,
+        net_salary: c.net_salary,
+        payment: c.net_salary,
+        balance: 0,
+        payment_method: 'bank',
+        bank: c.employee.bank || '',
+        payment_date: today(),
+        status: 'paid',
+      });
+    }
+    await reload();
+    showToast('✅ دسته ' + batch.batch_number + ' ذخیره شد');
+  };
+
+  return (
+    <View>
+      <View style={[s.card, { padding: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0' }]}>
+        <Text style={s.lbl}>📅 ماه حقوق (مثلاً 1405/08)</Text>
+        <TextInput style={s.inp} value={month} onChangeText={setMonth} placeholder="1405/08" />
+        <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 12 }}>
+          <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 1 }]} onPress={doCalc}>
+            <Text style={s.btnTxt}>🧮 محاسبه حقوق همه</Text>
+          </TouchableOpacity>
+          {calc.length > 0 && (
+            <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 1 }]} onPress={saveBatch}>
+              <Text style={s.btnTxt}>💾 ذخیره دسته</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {calc.length > 0 && (
+          <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginTop: 8 }]} onPress={() => { if (exportBankFile(calc.map((c: any) => c.employee), calc, month)) showToast('✅ فایل بانکی'); }}>
+            <Text style={s.btnTxt}>📥 فایل بانکی (CSV)</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {calc.length > 0 && (
+        <>
+          {/* جمع کل */}
+          <View style={[s.dash, { marginTop: 12 }]}>
+            <Text style={s.dashTitle}>📊 خلاصه دسته {month}</Text>
+            <View style={s.dashRow}>
+              <View style={s.dashItem}><Text style={s.dashLbl}>👥 تعداد</Text><Text style={[s.dashVal, { color: '#60a5fa' }]}>{calc.length}</Text></View>
+              <View style={s.dashItem}><Text style={s.dashLbl}>💰 کل دریافتی</Text><Text style={[s.dashVal, { color: '#fbbf24' }]}>{fmt(totals.gross)}</Text></View>
+              <View style={s.dashItem}><Text style={s.dashLbl}>📉 کل کسورات</Text><Text style={[s.dashVal, { color: '#f87171' }]}>{fmt(totals.gross - totals.net)}</Text></View>
+              <View style={s.dashItem}><Text style={s.dashLbl}>✅ خالص</Text><Text style={[s.dashVal, { color: '#34d399' }]}>{fmt(totals.net)}</Text></View>
+            </View>
+            <View style={[s.dashRow, { marginTop: 6 }]}>
+              <View style={s.dashItem}><Text style={s.dashLbl}>مالیات</Text><Text style={[s.dashVal, { color: '#dc2626' }]}>{fmt(totals.tax)}</Text></View>
+              <View style={s.dashItem}><Text style={s.dashLbl}>بیمه کارمند</Text><Text style={[s.dashVal, { color: '#dc2626' }]}>{fmt(totals.insurance)}</Text></View>
+              <View style={s.dashItem}><Text style={s.dashLbl}>بیمه کارفرما</Text><Text style={[s.dashVal, { color: '#f59e0b' }]}>{fmt(totals.employer)}</Text></View>
+              <View style={s.dashItem}><Text style={s.dashLbl}>هزینه کارفرما</Text><Text style={[s.dashVal, { color: '#a78bfa' }]}>{fmt(totals.gross + totals.employer)}</Text></View>
+            </View>
+          </View>
+
+          {/* جدول */}
+          <Text style={s.secT}>📋 لیست محاسبه‌شده</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator>
+            <View>
+              <View style={s.tblHeader}>
+                <Text style={[s.th, { width: 40 }]}>#</Text>
+                <Text style={[s.th, { width: 150 }]}>کارمند</Text>
+                <Text style={[s.th, { width: 70 }]}>حاضر</Text>
+                <Text style={[s.th, { width: 70 }]}>غایب</Text>
+                <Text style={[s.th, { width: 70 }]}>مرخصی</Text>
+                <Text style={[s.th, { width: 90 }]}>اضافه‌کار</Text>
+                <Text style={[s.th, { width: 100 }]}>پایه</Text>
+                <Text style={[s.th, { width: 100 }]}>مزایا</Text>
+                <Text style={[s.th, { width: 110 }]}>کل دریافتی</Text>
+                <Text style={[s.th, { width: 100 }]}>بیمه</Text>
+                <Text style={[s.th, { width: 100 }]}>مالیات</Text>
+                <Text style={[s.th, { width: 90 }]}>وام</Text>
+                <Text style={[s.th, { width: 110 }]}>خالص</Text>
+                <Text style={[s.th, { width: 100 }]}>فیش</Text>
+              </View>
+              {calc.map((c: any, i: number) => (
+                <View key={c.employee.code} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#fff' }]}>
+                  <Text style={[s.td, { width: 40, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                  <Text style={[s.td, { width: 150, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }]}>{c.employee.name}</Text>
+                  <Text style={[s.td, { width: 70, color: '#059669', fontWeight: 'bold' }]}>{c.attendance_days}</Text>
+                  <Text style={[s.td, { width: 70, color: '#dc2626' }]}>{c.absent_days}</Text>
+                  <Text style={[s.td, { width: 70, color: '#f59e0b' }]}>{c.leave_days}</Text>
+                  <Text style={[s.td, { width: 90, color: '#7c3aed' }]}>{c.overtime_hours}س</Text>
+                  <Text style={[s.td, { width: 100, color: '#475569' }]}>{fmt(c.base_salary)}</Text>
+                  <Text style={[s.td, { width: 100, color: '#475569' }]}>{fmt(c.housing_allowance + c.food_allowance + c.transport_allowance + c.other_allowance)}</Text>
+                  <Text style={[s.td, { width: 110, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(c.gross_salary)}</Text>
+                  <Text style={[s.td, { width: 100, color: '#dc2626' }]}>{fmt(c.employee_insurance)}</Text>
+                  <Text style={[s.td, { width: 100, color: '#dc2626' }]}>{fmt(c.tax)}</Text>
+                  <Text style={[s.td, { width: 90, color: '#dc2626' }]}>{fmt(c.loan)}</Text>
+                  <Text style={[s.td, { width: 110, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(c.net_salary)}</Text>
+                  <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                    <TouchableOpacity onPress={() => printPayslip(c.employee, c, month).then((ok: any) => ok && showToast('✅ فیش'))} style={[s.iconBtn, { backgroundColor: '#dbeafe', borderRadius: 6, paddingHorizontal: 10 }]}>
+                      <Text style={{ fontSize: 11 }}>🖨️ فیش</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </>
+      )}
+
+      {/* دسته‌های قبلی */}
+      {batches.length > 0 && (
+        <>
+          <Text style={[s.secT, { marginTop: 20 }]}>📁 دسته‌های قبلی ({batches.length})</Text>
+          {batches.map((b: any) => (
+            <View key={b.local_id || b.id} style={[s.card, { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, borderRightWidth: 4, borderRightColor: '#7c3aed' }]}>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                <Text style={{ fontWeight: 'bold', color: '#7c3aed', fontSize: 13 }}>{b.batch_number}</Text>
+                <Text style={{ color: '#64748b', fontSize: 11 }}>{b.month}</Text>
+              </View>
+              <Text style={{ color: '#0f2438', fontSize: 12, marginTop: 6, textAlign: 'right' }}>
+                👥 {b.total_employees} کارمند | 💰 کل: {fmt(b.total_net)} | 📉 مالیات: {fmt(b.total_tax)}
+              </Text>
+              <TouchableOpacity onPress={async () => { await deleteBatch(b.local_id || b.id); await reload(); showToast('🗑'); }} style={[s.iconBtn, { marginTop: 6, alignSelf: 'flex-end' }]}>
+                <Text>🗑</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </>
+      )}
     </View>
   );
 }

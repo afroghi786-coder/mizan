@@ -472,9 +472,9 @@ function MainApp({ showToast, onCycleTheme }: any) {
           <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 12 }}>
             <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontSize: 24, color: '#f4d47a' }}>⚖️</Text>
-              <Text style={s.hTitle}>{t('میزان')}</Text>
+              <Text style={s.hTitle}>میزان</Text>
             </View>
-            <Text style={s.hSub}>{t('حساب‌ها دقیق، معاملات امن، ذهن آسوده')}</Text>
+            <Text style={s.hSub}>حساب‌ها دقیق، معاملات امن، ذهن آسوده</Text>
           </View>
         </View>
       </View>
@@ -532,13 +532,13 @@ function PinModal({ visible, correctPin, onClose, onSuccess, showToast }: any) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.modalBg}><View style={[s.modalBox, { backgroundColor: C.card }]}>
-        <View style={[s.modalHead, { backgroundColor: '#6c3483' }]}><Text style={s.modalHeadTxt}>{t('🔒 رمز ورود')}</Text></View>
+        <View style={[s.modalHead, { backgroundColor: '#6c3483' }]}><Text style={s.modalHeadTxt}>🔒 رمز ورود</Text></View>
         <View style={{ padding: 20 }}>
-          <Text style={[s.lbl, { color: C.textMut }]}>{t('رمز را وارد کنید')}</Text>
+          <Text style={[s.lbl, { color: C.textMut }]}>رمز را وارد کنید</Text>
           <TextInput style={s.pinInp} value={pin} onChangeText={(v) => setPin(v.replace(/\D/g, '').slice(0, 10))} keyboardType="phone-pad" secureTextEntry placeholder="••••" placeholderTextColor="#64748b" />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={onClose}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
-            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#059669' }]} onPress={verify}><Text style={s.btnTxt}>{t('تأیید')}</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={onClose}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#059669' }]} onPress={verify}><Text style={s.btnTxt}>تأیید</Text></TouchableOpacity>
           </View>
         </View>
       </View></View>
@@ -569,7 +569,7 @@ function Autocomplete({ value, onChange, onSelect, options, placeholder, label }
               </TouchableOpacity>
             ))}
           </ScrollView>
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#475569', margin: 4, paddingVertical: 6 }]} onPress={() => setShow(false)}><Text style={[s.btnTxt, { fontSize: 11 }]}>{t('بستن')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.btn, { backgroundColor: '#475569', margin: 4, paddingVertical: 6 }]} onPress={() => setShow(false)}><Text style={[s.btnTxt, { fontSize: 11 }]}>بستن</Text></TouchableOpacity>
         </View>
       )}
     </View>
@@ -629,13 +629,13 @@ function CellAutocomplete({ value, onChange, onSelect, options, placeholder }: a
                 style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, marginBottom: 8 }]}
                 value={query}
                 onChangeText={setQuery}
-                placeholder={t('🔍 جستجو...')}
+                placeholder="🔍 جستجو..."
                 placeholderTextColor={C.textMut}
                 autoFocus
               />
               <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
                 {filtered.length === 0 && (
-                  <Text style={{ textAlign: 'center', color: C.textMut, padding: 20 }}>{t('موردی یافت نشد')}</Text>
+                  <Text style={{ textAlign: 'center', color: C.textMut, padding: 20 }}>موردی یافت نشد</Text>
                 )}
                 {filtered.map((opt: string) => (
                   <TouchableOpacity
@@ -763,7 +763,7 @@ function DigitalDashboard({ refreshKey, settings }: any) {
         <Text style={[dash.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88', textShadowColor: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>
           {fmt(profit)}
         </Text>
-        <Text style={dash.profitUnit}>{t('تومان')}</Text>
+        <Text style={dash.profitUnit}>تومان</Text>
       </View>
 
       {/* کارت‌ها */}
@@ -914,26 +914,26 @@ function SalesScreen({ showToast }: any) {
       <View style={S.card}>
         <View style={S.cardHeader}>
           <Text style={S.cardHeaderIcon}>🖨️</Text>
-          <Text style={[S.cardHeaderTitle, { color: S.order }]}>{t('پرینت مجدد فاکتور')}</Text>
+          <Text style={[S.cardHeaderTitle, { color: S.order }]}>پرینت مجدد فاکتور</Text>
         </View>
         <View style={{ padding: 16 }}>
-          <Text style={S.label}>{t('شماره فاکتور قدیمی')}</Text>
+          <Text style={S.label}>شماره فاکتور قدیمی</Text>
           <TextInput
             style={S.input}
             value={reprintInv}
             onChangeText={setReprintInv}
-            placeholder={t('مثلاً 14050612-1001')}
+            placeholder="مثلاً 14050612-1001"
             placeholderTextColor="#94a3b8"
           />
           <TouchableOpacity style={[S.btnPrimary, { marginTop: 10 }]} onPress={doReprint}>
-            <Text style={S.btnPrimaryTxt}>{t('🔍 نمایش فاکتور')}</Text>
+            <Text style={S.btnPrimaryTxt}>🔍 نمایش فاکتور</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* دکمه برگشت */}
       <TouchableOpacity style={[S.btnSecondary, { marginTop: 12 }]} onPress={() => setView('list')}>
-        <Text style={S.btnSecondaryTxt}>{t('↩️ برگشت به لیست')}</Text>
+        <Text style={S.btnSecondaryTxt}>↩️ برگشت به لیست</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -947,7 +947,7 @@ function SalesScreen({ showToast }: any) {
         <View style={S.card}>
           <View style={S.cardHeader}>
             <Text style={S.cardHeaderIcon}>📞</Text>
-            <Text style={[S.cardHeaderTitle, { color: S.order }]}>{t('اطلاعات مشتری')}</Text>
+            <Text style={[S.cardHeaderTitle, { color: S.order }]}>اطلاعات مشتری</Text>
           </View>
           <View style={{ padding: 16 }}>
             <Text style={S.label}>
@@ -964,30 +964,30 @@ function SalesScreen({ showToast }: any) {
               placeholderTextColor="#94a3b8"
             />
 
-            <Text style={S.label}>{t('نام و نام خانوادگی')} <Text style={S.required}>*</Text></Text>
+            <Text style={S.label}>نام و نام خانوادگی <Text style={S.required}>*</Text></Text>
             <TextInput
               style={S.input}
               value={name}
               onChangeText={setName}
-              placeholder={t('نام مشتری')}
+              placeholder="نام مشتری"
               placeholderTextColor="#94a3b8"
             />
 
-            <Text style={S.label}>{t('آدرس')}</Text>
+            <Text style={S.label}>آدرس</Text>
             <TextInput
               style={S.input}
               value={address}
               onChangeText={setAddress}
-              placeholder={t('اختیاری')}
+              placeholder="اختیاری"
               placeholderTextColor="#94a3b8"
             />
 
-            <Text style={S.label}>{t('باربری')} <Text style={S.required}>*</Text></Text>
+            <Text style={S.label}>باربری <Text style={S.required}>*</Text></Text>
             <Autocomplete
               value={shipping}
               onChange={setShipping}
               options={[...new Set([...SHIPPINGS, ...prods.map(p => p.shipping_name || '').filter(Boolean)])]}
-              placeholder={t('تایپ یا انتخاب...')}
+              placeholder="تایپ یا انتخاب..."
             />
           </View>
         </View>
@@ -996,7 +996,7 @@ function SalesScreen({ showToast }: any) {
         <View style={S.card}>
           <View style={S.cardHeader}>
             <Text style={S.cardHeaderIcon}>📦</Text>
-            <Text style={[S.cardHeaderTitle, { color: S.order }]}>{t('اقلام فروش')}</Text>
+            <Text style={[S.cardHeaderTitle, { color: S.order }]}>اقلام فروش</Text>
           </View>
           <View style={{ padding: 16 }}>
             {items.map((it, i) => {
@@ -1019,19 +1019,19 @@ function SalesScreen({ showToast }: any) {
                     onChange={(v) => updItem(i, 'modelName', v)}
                     onSelect={(v) => setModel(i, v)}
                     options={prods.map(p => p.name)}
-                    placeholder={t('نام مدل...')}
+                    placeholder="نام مدل..."
                   />
 
                   {/* ردیف ۳ ستونه */}
                   <View style={S.threeColRow}>
                     <View style={S.threeColCell}>
-                      <Text style={S.miniLabel}>{t('کد مدل')}</Text>
+                      <Text style={S.miniLabel}>کد مدل</Text>
                       <View style={S.miniValue}>
                         <Text style={S.miniValueTxt}>{it.modelCode || '—'}</Text>
                       </View>
                     </View>
                     <View style={S.threeColCell}>
-                      <Text style={S.miniLabel}>{t('تعداد')} <Text style={S.required}>*</Text></Text>
+                      <Text style={S.miniLabel}>تعداد <Text style={S.required}>*</Text></Text>
                       <TextInput
                         style={S.miniInput}
                         value={String(it.quantity || '')}
@@ -1042,7 +1042,7 @@ function SalesScreen({ showToast }: any) {
                       />
                     </View>
                     <View style={S.threeColCell}>
-                      <Text style={S.miniLabel}>{t('قیمت')} <Text style={S.required}>*</Text></Text>
+                      <Text style={S.miniLabel}>قیمت <Text style={S.required}>*</Text></Text>
                       <TextInput
                         style={S.miniInput}
                         value={String(it.priceUnit || '')}
@@ -1057,7 +1057,7 @@ function SalesScreen({ showToast }: any) {
                   {/* مبلغ کل */}
                   <View style={S.threeColRow}>
                     <View style={S.threeColCell}>
-                      <Text style={S.miniLabel}>{t('مبلغ کل')}</Text>
+                      <Text style={S.miniLabel}>مبلغ کل</Text>
                       <View style={S.miniValue}>
                         <Text style={[S.miniValueTxt, { color: lineTotal ? S.order : '#94a3b8' }]}>
                           {lineTotal ? fmt(lineTotal) : '—'}
@@ -1072,7 +1072,7 @@ function SalesScreen({ showToast }: any) {
             })}
 
             <TouchableOpacity style={S.addModelBtn} onPress={addItem}>
-              <Text style={S.addModelBtnTxt}>{t('➕ افزودن مدل')}</Text>
+              <Text style={S.addModelBtnTxt}>➕ افزودن مدل</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1080,11 +1080,11 @@ function SalesScreen({ showToast }: any) {
         {/* ─── خلاصه کل ─── */}
         <View style={S.summaryCard}>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <Text style={S.summaryLbl}>{t('💰 جمع مبلغ کل')}</Text>
+            <Text style={S.summaryLbl}>💰 جمع مبلغ کل</Text>
             <Text style={S.summaryVal}>{toFaNum(fmt(grandTotal))}</Text>
           </View>
           <View style={{ alignItems: 'flex-start' }}>
-            <Text style={S.summaryLbl}>{t('📦 تعداد اقلام')}</Text>
+            <Text style={S.summaryLbl}>📦 تعداد اقلام</Text>
             <Text style={S.summaryCnt}>{toFaNum(grandQty)} مدل</Text>
           </View>
         </View>
@@ -1092,10 +1092,10 @@ function SalesScreen({ showToast }: any) {
         {/* ─── دکمه‌های ثبت/برگشت ─── */}
         <View style={S.btnRowBottom}>
           <TouchableOpacity style={[S.btnSecondary, { flex: 1 }]} onPress={() => setView('list')}>
-            <Text style={S.btnSecondaryTxt}>{t('↩️ برگشت')}</Text>
+            <Text style={S.btnSecondaryTxt}>↩️ برگشت</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[S.btnSubmit, { flex: 2 }]} onPress={submit} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={S.btnSubmitTxt}>{t('✅ ثبت نهایی فروش')}</Text>}
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={S.btnSubmitTxt}>✅ ثبت نهایی فروش</Text>}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -1107,10 +1107,10 @@ function SalesScreen({ showToast }: any) {
     <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
       <View style={{ flexDirection: 'row-reverse', gap: 8, marginVertical: 8 }}>
         <TouchableOpacity style={[S.btnPrimary, { flex: 1 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
-          <Text style={S.btnPrimaryTxt}>{t('➕ فاکتور جدید')}</Text>
+          <Text style={S.btnPrimaryTxt}>➕ فاکتور جدید</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[S.btnSecondary, { flex: 1 }]} onPress={() => setView('reprint')}>
-          <Text style={S.btnSecondaryTxt}>{t('🖨️ پرینت مجدد')}</Text>
+          <Text style={S.btnSecondaryTxt}>🖨️ پرینت مجدد</Text>
         </TouchableOpacity>
       </View>
 
@@ -1448,17 +1448,17 @@ function PurchaseScreen({ showToast }: any) {
   if (view === 'form') return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
-        <Text style={s.formTitle}>{t('🛍️ فاکتور خرید')}</Text>
+        <Text style={s.formTitle}>🛍️ فاکتور خرید</Text>
 
         <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border }]}>
-          <Text style={[s.customerCardTitle, { color: C.text }]}>{t('🏭 اطلاعات تأمین‌کننده')}</Text>
-          <Autocomplete label={t('🏭 نام تأمین‌کننده *')} value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...prods.map(p => p.supplier_name || '').filter(Boolean)])]} placeholder={t('تایپ یا انتخاب...')} />
-          <Text style={[s.lbl, { color: C.textMut }]}>{t('🆔 کد تأمین‌کننده')}</Text>
-          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sCode} onChangeText={setSCode} placeholder={t('خودکار')} placeholderTextColor={C.textMut} />
-          <Text style={[s.lbl, { color: C.textMut }]}>{t('📞 تلفن')}</Text>
+          <Text style={[s.customerCardTitle, { color: C.text }]}>🏭 اطلاعات تأمین‌کننده</Text>
+          <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...prods.map(p => p.supplier_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
+          <Text style={[s.lbl, { color: C.textMut }]}>🆔 کد تأمین‌کننده</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sCode} onChangeText={setSCode} placeholder="خودکار" placeholderTextColor={C.textMut} />
+          <Text style={[s.lbl, { color: C.textMut }]}>📞 تلفن</Text>
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sPhone} onChangeText={setSPhone} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor={C.textMut} />
-          <Text style={[s.lbl, { color: C.textMut }]}>{t('🧾 شماره فاکتور دستی *')}</Text>
-          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={manualInv} onChangeText={setManualInv} placeholder={t('شماره روی فاکتور')} placeholderTextColor={C.textMut} />
+          <Text style={[s.lbl, { color: C.textMut }]}>🧾 شماره فاکتور دستی *</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={manualInv} onChangeText={setManualInv} placeholder="شماره روی فاکتور" placeholderTextColor={C.textMut} />
         </View>
 
         <Text style={s.secT}>📦 اقلام خرید ({toFaNum(items.length)})</Text>
@@ -1474,33 +1474,33 @@ function PurchaseScreen({ showToast }: any) {
                 </TouchableOpacity>
               </View>
               <View style={{ padding: 10 }}>
-                <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={t('نام مدل...')} />
+                <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="نام مدل..." />
                 <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('کد مدل')}</Text>
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>کد مدل</Text>
                     <View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}>
                       <Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text>
                     </View>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('تعداد')}</Text>
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>تعداد</Text>
                     <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('قیمت')}</Text>
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>قیمت</Text>
                     <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('مبلغ کل')}</Text>
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>مبلغ کل</Text>
                     <View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lineTotal ? '#00ff88' : C.border }]}>
                       <Text style={[s.miniValueTxt, { color: lineTotal ? '#00ff88' : C.textMut }]}>{lineTotal ? fmt(lineTotal) : '—'}</Text>
                     </View>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('شرح')}</Text>
-                    <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder={t('اختیاری')} placeholderTextColor={C.textMut} />
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>شرح</Text>
+                    <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="اختیاری" placeholderTextColor={C.textMut} />
                   </View>
                 </View>
               </View>
@@ -1508,26 +1508,26 @@ function PurchaseScreen({ showToast }: any) {
           );
         })}
 
-        <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>{t('➕ افزودن مدل')}</Text></TouchableOpacity>
+        <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>➕ افزودن مدل</Text></TouchableOpacity>
 
         <View style={s.grandSummary}>
-          <View style={{ flex: 1 }}><Text style={s.gsLbl}>{t('💰 جمع مبلغ کل')}</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
-          <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>{t('📦 تعداد اقلام')}</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع مبلغ کل</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
+          <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>📦 تعداد اقلام</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
         </View>
 
-        <Text style={s.secT}>{t('💳 اطلاعات پرداخت')}</Text>
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('مبلغ پرداخت نقدی')}</Text>
+        <Text style={s.secT}>💳 اطلاعات پرداخت</Text>
+        <Text style={[s.lbl, { color: C.textMut }]}>مبلغ پرداخت نقدی</Text>
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={payAmt} onChangeText={setPayAmt} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
 
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-          <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('💵 پرداخت')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: '#059669' }]}><Text style={[s.miniValueTxt, { color: '#059669' }]}>{paidAmt ? fmt(paidAmt) : '—'}</Text></View></View>
-          <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('📌 مانده')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? fmt(remaining) : '—'}</Text></View></View>
+          <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>💵 پرداخت</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: '#059669' }]}><Text style={[s.miniValueTxt, { color: '#059669' }]}>{paidAmt ? fmt(paidAmt) : '—'}</Text></View></View>
+          <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>📌 مانده</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? fmt(remaining) : '—'}</Text></View></View>
         </View>
 
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('📅 تاریخ پرداخت')}</Text>
+        <Text style={[s.lbl, { color: C.textMut }]}>📅 تاریخ پرداخت</Text>
         <DateField value={payDate} onChange={setPayDate} compact defaultToToday />
         <Autocomplete
-          label={t('👤 نام پرداخت‌کننده')}
+          label="👤 نام پرداخت‌کننده"
           value={payerName}
           onChange={setPayerName}
           onSelect={async (v: string) => {
@@ -1538,21 +1538,21 @@ function PurchaseScreen({ showToast }: any) {
             ...prods.map((p: any) => p.payer_name || '').filter(Boolean),
             ...prods.map((p: any) => p.supplier_name || '').filter(Boolean),
           ]))}
-          placeholder={t('کلیک...')}
+          placeholder="کلیک..."
         />
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('🆔 کد پرداخت‌کننده')}</Text>
-        <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={payerCode} editable={false} placeholder={t('خودکار')} placeholderTextColor={C.textMut} />
+        <Text style={[s.lbl, { color: C.textMut }]}>🆔 کد پرداخت‌کننده</Text>
+        <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={payerCode} editable={false} placeholder="خودکار" placeholderTextColor={C.textMut} />
         <Text style={[s.lbl, { color: C.textMut }]}>🏦 حساب پرداخت‌کننده (بانک)</Text>
-        <Autocomplete value={bankAcc} onChange={setBankAcc} options={BANKS} placeholder={t('انتخاب بانک...')} />
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('🏦 حساب دریافت‌کننده')}</Text>
-        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAcc} onChangeText={setReceiverAcc} placeholder={t('اختیاری')} placeholderTextColor={C.textMut} />
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('📝 شرح')}</Text>
-        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder={t('توضیحات...')} placeholderTextColor={C.textMut} />
+        <Autocomplete value={bankAcc} onChange={setBankAcc} options={BANKS} placeholder="انتخاب بانک..." />
+        <Text style={[s.lbl, { color: C.textMut }]}>🏦 حساب دریافت‌کننده</Text>
+        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAcc} onChangeText={setReceiverAcc} placeholder="اختیاری" placeholderTextColor={C.textMut} />
+        <Text style={[s.lbl, { color: C.textMut }]}>📝 شرح</Text>
+        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder="توضیحات..." placeholderTextColor={C.textMut} />
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setView('list')}><Text style={s.btnTxt}>{t('↩️ برگشت')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setView('list')}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
           <TouchableOpacity style={[s.btn, { flex: 2, backgroundColor: '#166534' }]} onPress={submit} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('✅ ثبت نهایی خرید')}</Text>}
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>✅ ثبت نهایی خرید</Text>}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -1562,7 +1562,7 @@ function PurchaseScreen({ showToast }: any) {
    return (
     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
       <TouchableOpacity style={[s.addBtn, { backgroundColor: '#166534', marginTop: 8 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
-        <Text style={s.btnTxt}>{t('➕ فاکتور خرید جدید')}</Text>
+        <Text style={s.btnTxt}>➕ فاکتور خرید جدید</Text>
       </TouchableOpacity>
       <Text style={s.secT}>📄 خریدها ({toFaNum(list.length)})</Text>
             {loading ? <ActivityIndicator color="#34d399" /> : list.filter((inv: any) => !hiddenPurchases.includes(inv.invoice)).map((inv: any) => (
@@ -1744,18 +1744,18 @@ function PrintScreen({ showToast }: any) {
 
   return (
     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
-      <Text style={s.formTitle}>{t('🖨️ گزارش جامع حساب')}</Text>
-      <Text style={[s.lbl, { color: C.textMut }]}>{t('کد طرف حساب')}</Text>
+      <Text style={s.formTitle}>🖨️ گزارش جامع حساب</Text>
+      <Text style={[s.lbl, { color: C.textMut }]}>کد طرف حساب</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={code} onChangeText={setCode} placeholder="M_1001" placeholderTextColor={C.textMut} />
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={loadReport} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('🔍 نمایش گزارش کامل')}</Text>}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>🔍 نمایش گزارش کامل</Text>}
       </TouchableOpacity>
 
       {report && t && (
         <>
           <View ref={ref} collapsable={false} style={{ backgroundColor: '#ffffff', borderRadius: 12, padding: 12, marginTop: 16 }}>
             <View style={{ borderBottomWidth: 2, borderBottomColor: '#d4af37', paddingBottom: 6, marginBottom: 10 }}>
-              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' }}>{t('⚖️ گزارش جامع — میزان')}</Text>
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' }}>⚖️ گزارش جامع — میزان</Text>
               <Text style={{ fontSize: 9, color: '#64748b', textAlign: 'right', marginTop: 3 }}>📅 {report.timeString}</Text>
             </View>
 
@@ -1773,21 +1773,21 @@ function PrintScreen({ showToast }: any) {
                   <View>
                     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#1e3a8a', paddingVertical: 4 }}>
                       <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
-                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ')}</Text>
-                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('فاکتور')}</Text>
-                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد مدل')}</Text>
-                      <Text style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('نام مدل')}</Text>
-                      <Text style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تعداد')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('قیمت')}</Text>
-                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('جمع')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('پرداخت')}</Text>
-                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('مانده')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('بانک')}</Text>
-                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('صاحب حساب')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد صاحب')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ واریز')}</Text>
-                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('باربری')}</Text>
-                      <Text style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('شرح')}</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد مدل</Text>
+                      <Text style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>نام مدل</Text>
+                      <Text style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>پرداخت</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>صاحب حساب</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد صاحب</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>باربری</Text>
+                      <Text style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>شرح</Text>
                     </View>
                     {report.salesRows.map((r: any, i: number) => (
                       <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
@@ -1828,20 +1828,20 @@ function PrintScreen({ showToast }: any) {
                   <View>
                     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#9a3412', paddingVertical: 4 }}>
                       <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
-                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ')}</Text>
-                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('فاکتور')}</Text>
-                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد مدل')}</Text>
-                      <Text style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('نام مدل')}</Text>
-                      <Text style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تعداد')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('قیمت')}</Text>
-                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('جمع')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('پرداخت')}</Text>
-                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('مانده')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('بانک')}</Text>
-                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('صاحب حساب')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد پرداخت')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ واریز')}</Text>
-                      <Text style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('شرح')}</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد مدل</Text>
+                      <Text style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>نام مدل</Text>
+                      <Text style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>پرداخت</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>صاحب حساب</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد پرداخت</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
+                      <Text style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>شرح</Text>
                     </View>
                     {report.purchaseRows.map((r: any, i: number) => (
                       <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#fff7ed' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#fed7aa' }}>
@@ -1881,15 +1881,15 @@ function PrintScreen({ showToast }: any) {
                   <View>
                     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#065f46', paddingVertical: 4 }}>
                       <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
-                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ')}</Text>
-                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('فاکتور')}</Text>
-                      <Text style={{ width: 130, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('فرستنده')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد فرستنده')}</Text>
-                      <Text style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تلفن')}</Text>
-                      <Text style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('مبلغ')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('بانک')}</Text>
-                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('گیرنده')}</Text>
-                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ واریز')}</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+                      <Text style={{ width: 130, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>فرستنده</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>کد فرستنده</Text>
+                      <Text style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تلفن</Text>
+                      <Text style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>مبلغ</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>گیرنده</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
                     </View>
                     {report.triangRows.map((r: any, i: number) => (
                       <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f0fdf4' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#d1fae5' }}>
@@ -1918,11 +1918,11 @@ function PrintScreen({ showToast }: any) {
                 {t.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : t.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
               </Text>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
-                <Text style={{ fontSize: 10, color: '#64748b' }}>{t('بدهی ایشان به ما:')}</Text>
+                <Text style={{ fontSize: 10, color: '#64748b' }}>بدهی ایشان به ما:</Text>
                 <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(t.customerOwes)}</Text>
               </View>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
-                <Text style={{ fontSize: 10, color: '#64748b' }}>{t('بدهی ما به ایشان:')}</Text>
+                <Text style={{ fontSize: 10, color: '#64748b' }}>بدهی ما به ایشان:</Text>
                 <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(t.weOwe + t.totalTriang)}</Text>
               </View>
               <View style={{ borderTopWidth: 1, borderTopColor: '#cbd5e1', marginTop: 4, paddingTop: 4 }}>
@@ -1932,13 +1932,13 @@ function PrintScreen({ showToast }: any) {
               </View>
             </View>
 
-            <Text style={{ fontSize: 8, color: '#94a3b8', textAlign: 'center', marginTop: 8 }}>{t('میزان — حساب‌ها دقیق، معاملات امن، ذهن آسوده')}</Text>
+            <Text style={{ fontSize: 8, color: '#94a3b8', textAlign: 'center', marginTop: 8 }}>میزان — حساب‌ها دقیق، معاملات امن، ذهن آسوده</Text>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#c0392b' }]} onPress={exportExcel}><Text style={s.btnTxt}>{t('📥 اکسل')}</Text></TouchableOpacity>
-            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#0ea5e9' }]} onPress={() => capture('share')}><Text style={s.btnTxt}>{t('📤 اشتراک')}</Text></TouchableOpacity>
-            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#8e44ad' }]} onPress={() => capture('print')}><Text style={s.btnTxt}>{t('🖨️ پرینت')}</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#c0392b' }]} onPress={exportExcel}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#0ea5e9' }]} onPress={() => capture('share')}><Text style={s.btnTxt}>📤 اشتراک</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#8e44ad' }]} onPress={() => capture('print')}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
           </View>
         </>
       )}
@@ -1966,7 +1966,7 @@ function ProfitScreen({ showToast, settings }: any) {
       <View style={[s.statsCard, { marginTop: 8 }]}>
         <Text style={s.statsLbl}>💰 سود کل ({stats?.rangeLabel || 'ماه'})</Text>
         <Text style={[s.statsVal, { color: total >= 0 ? '#00ff88' : '#ff3355' }]}>{fmt(total)}</Text>
-        <Text style={s.statsUnit}>{t('تومان')}</Text>
+        <Text style={s.statsUnit}>تومان</Text>
       </View>
       {stats?.estimatedCount > 0 && (<View style={s.warnBox}><Text style={s.warnTxt}>📊 {stats.estimatedCount} مدل بدون خرید — سود {Math.round((stats.defaultMargin || 0.1) * 100)}٪ تخمین زده شد</Text></View>)}
       <Text style={s.secT}>💹 سود به تفکیک مدل ({toFaNum(models.length)})</Text>
@@ -1975,14 +1975,14 @@ function ProfitScreen({ showToast, settings }: any) {
         <View>
           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <Text style={[s.thCell, { width: 90 }]}>{t('کد')}</Text>
-            <Text style={[s.thCell, { width: 180 }]}>{t('نام مدل')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('خرید')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('فروش')}</Text>
-            <Text style={[s.thCell, { width: 110 }]}>{t('سود/واحد')}</Text>
-            <Text style={[s.thCell, { width: 90 }]}>{t('تعداد فروش')}</Text>
-            <Text style={[s.thCell, { width: 130 }]}>{t('جمع سود')}</Text>
-            <Text style={[s.thCell, { width: 140 }]}>{t('منبع قیمت')}</Text>
+            <Text style={[s.thCell, { width: 90 }]}>کد</Text>
+            <Text style={[s.thCell, { width: 180 }]}>نام مدل</Text>
+            <Text style={[s.thCell, { width: 120 }]}>خرید</Text>
+            <Text style={[s.thCell, { width: 120 }]}>فروش</Text>
+            <Text style={[s.thCell, { width: 110 }]}>سود/واحد</Text>
+            <Text style={[s.thCell, { width: 90 }]}>تعداد فروش</Text>
+            <Text style={[s.thCell, { width: 130 }]}>جمع سود</Text>
+            <Text style={[s.thCell, { width: 140 }]}>منبع قیمت</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : models.map((m: any, i: number) => {
             const avgSale = m.totalQty ? (m.totalSales / m.totalQty) : 0;
@@ -2007,7 +2007,7 @@ function ProfitScreen({ showToast, settings }: any) {
           })}
         </View>
       </ScrollView>
-      {!loading && !models.length && <Text style={s.empty}>{t('💹 در این بازه فروشی ثبت نشده')}</Text>}
+      {!loading && !models.length && <Text style={s.empty}>💹 در این بازه فروشی ثبت نشده</Text>}
     </ScrollView>
   );
 }
@@ -2068,7 +2068,7 @@ function InventoryScreen({ showToast }: any) {
 
       {/* آستانه */}
       <View style={[s.thresholdBox, { backgroundColor: C.card, borderColor: C.border }]}>
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('⚙️ آستانه کمبود')}</Text>
+        <Text style={[s.lbl, { color: C.textMut }]}>⚙️ آستانه کمبود</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
           <TextInput style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={thresholdInput} onChangeText={setThresholdInput} keyboardType="numeric" />
           <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#059669' }]} onPress={saveThreshold}><Text style={s.btnTxt}>💾</Text></TouchableOpacity>
@@ -2076,7 +2076,7 @@ function InventoryScreen({ showToast }: any) {
       </View>
 
       {/* جستجو و فیلتر */}
-      <TextInput style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder={t('🔍 جستجو: کد، نام، قفسه...')} placeholderTextColor={C.textMut} />
+      <TextInput style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو: کد، نام، قفسه..." placeholderTextColor={C.textMut} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
         {[{ k: 'all', l: '📋 همه' }, { k: 'negative', l: '⚫ منفی' }, { k: 'out', l: '🔴 ناموجود' }, { k: 'low', l: '⚠️ کمبود' }, { k: 'ok', l: '✅ سالم' }].map((f) => (
           <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
@@ -2090,14 +2090,14 @@ function InventoryScreen({ showToast }: any) {
         <View>
           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <Text style={[s.thCell, { width: 100 }]}>{t('کد')}</Text>
-            <Text style={[s.thCell, { width: 180 }]}>{t('نام مدل')}</Text>
-            <Text style={[s.thCell, { width: 90 }]}>{t('خرید')}</Text>
-            <Text style={[s.thCell, { width: 90 }]}>{t('فروش')}</Text>
-            <Text style={[s.thCell, { width: 100 }]}>{t('موجودی')}</Text>
-            <Text style={[s.thCell, { width: 140 }]}>{t('موقعیت قفسه')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('وضعیت')}</Text>
-            <Text style={[s.thCell, { width: 100 }]}>{t('عملیات')}</Text>
+            <Text style={[s.thCell, { width: 100 }]}>کد</Text>
+            <Text style={[s.thCell, { width: 180 }]}>نام مدل</Text>
+            <Text style={[s.thCell, { width: 90 }]}>خرید</Text>
+            <Text style={[s.thCell, { width: 90 }]}>فروش</Text>
+            <Text style={[s.thCell, { width: 100 }]}>موجودی</Text>
+            <Text style={[s.thCell, { width: 140 }]}>موقعیت قفسه</Text>
+            <Text style={[s.thCell, { width: 120 }]}>وضعیت</Text>
+            <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((m: any, i: number) => {
             const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
@@ -2119,7 +2119,7 @@ function InventoryScreen({ showToast }: any) {
                 </View>
                 <TouchableOpacity onPress={() => { setEditItem(m); setShelfVal(m.shelf || ''); }} style={[s.tdCell, { width: 100, alignItems: 'center' }]}>
                   <View style={{ backgroundColor: '#7c3aed', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}>
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{t('📍 قفسه')}</Text>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>📍 قفسه</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -2133,13 +2133,13 @@ function InventoryScreen({ showToast }: any) {
         <View style={s.modalBg}><View style={[s.modalBox, { backgroundColor: C.card }]}>
           <View style={[s.modalHead, { backgroundColor: '#7c3aed' }]}><Text style={s.modalHeadTxt}>📍 قفسه — {editItem?.name}</Text><TouchableOpacity onPress={() => setEditItem(null)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 16 }}>
-            <Text style={[s.modalLbl, { color: C.textMut }]}>{t('کد:')} <Text style={[s.modalVal, { color: C.text }]}>{editItem?.code}</Text></Text>
-            <Text style={[s.modalLbl, { color: C.textMut }]}>{t('موجودی:')} <Text style={[s.modalVal, { color: C.text }]}>{fmt(editItem?.currentQty || 0)} عدد</Text></Text>
-            <Text style={[s.modalLbl, { color: C.textMut }]}>{t('موقعیت قفسه:')}</Text>
-            <TextInput style={[s.modalInp, { color: C.text, borderColor: '#a78bfa' }]} value={shelfVal} onChangeText={setShelfVal} placeholder={t('مثلاً A-12')} placeholderTextColor={C.textMut} />
+            <Text style={[s.modalLbl, { color: C.textMut }]}>کد: <Text style={[s.modalVal, { color: C.text }]}>{editItem?.code}</Text></Text>
+            <Text style={[s.modalLbl, { color: C.textMut }]}>موجودی: <Text style={[s.modalVal, { color: C.text }]}>{fmt(editItem?.currentQty || 0)} عدد</Text></Text>
+            <Text style={[s.modalLbl, { color: C.textMut }]}>موقعیت قفسه:</Text>
+            <TextInput style={[s.modalInp, { color: C.text, borderColor: '#a78bfa' }]} value={shelfVal} onChangeText={setShelfVal} placeholder="مثلاً A-12" placeholderTextColor={C.textMut} />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditItem(null)}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={saveShelf}><Text style={s.btnTxt}>{t('💾 ذخیره')}</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditItem(null)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={saveShelf}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </View></View>
@@ -2222,7 +2222,7 @@ function UnpaidSection({ showToast }: any) {
   return (
     <View>
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#334155' }]} onPress={load}><Text style={s.btnTxt}>{t('🔄 بروزرسانی')}</Text></TouchableOpacity>
+        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#334155' }]} onPress={load}><Text style={s.btnTxt}>🔄 بروزرسانی</Text></TouchableOpacity>
         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#dc2626' }]} onPress={del} disabled={!selected.size}><Text style={s.btnTxt}>🗑️ حذف ({toFaNum(selected.size)})</Text></TouchableOpacity>
       </View>
       <Text style={s.secT}>📄 پرداخت‌نشده ({toFaNum(list.length)})</Text>
@@ -2235,12 +2235,12 @@ function UnpaidSection({ showToast }: any) {
               <Text style={{ fontSize: 18 }}>{selected.size === list.length && list.length > 0 ? '✅' : '⬜'}</Text>
             </TouchableOpacity>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <Text style={[s.thCell, { width: 150 }]}>{t('فاکتور')}</Text>
-            <Text style={[s.thCell, { width: 160 }]}>{t('نام')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('تلفن')}</Text>
-            <Text style={[s.thCell, { width: 130 }]}>{t('مبلغ کل')}</Text>
-            <Text style={[s.thCell, { width: 130 }]}>{t('پرداخت')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('وضعیت')}</Text>
+            <Text style={[s.thCell, { width: 150 }]}>فاکتور</Text>
+            <Text style={[s.thCell, { width: 160 }]}>نام</Text>
+            <Text style={[s.thCell, { width: 120 }]}>تلفن</Text>
+            <Text style={[s.thCell, { width: 130 }]}>مبلغ کل</Text>
+            <Text style={[s.thCell, { width: 130 }]}>پرداخت</Text>
+            <Text style={[s.thCell, { width: 120 }]}>وضعیت</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : list.map((inv: any, i: number) => (
             <TouchableOpacity key={inv.invoice} onPress={() => toggle(inv.invoice)} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, selected.has(inv.invoice) && { backgroundColor: '#fee2e2' }]}>
@@ -2254,13 +2254,13 @@ function UnpaidSection({ showToast }: any) {
               <Text style={[s.tdCell, { width: 130, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
               <Text style={[s.tdCell, { width: 130, color: '#dc2626', fontWeight: 'bold' }]}>{fmt(inv.paid)}</Text>
               <View style={[s.tdCell, { width: 120, alignItems: 'center' }]}>
-                <Text style={{ backgroundColor: '#f8d7da', color: '#721c24', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, fontSize: 10, fontWeight: 'bold' }}>{t('❌ پرداخت‌نشده')}</Text>
+                <Text style={{ backgroundColor: '#f8d7da', color: '#721c24', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, fontSize: 10, fontWeight: 'bold' }}>❌ پرداخت‌نشده</Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
-      {!loading && !list.length && <Text style={s.empty}>{t('✅ پرداخت‌نشده‌ای نیست')}</Text>}
+      {!loading && !list.length && <Text style={s.empty}>✅ پرداخت‌نشده‌ای نیست</Text>}
     </View>
   );
 }
@@ -2326,18 +2326,18 @@ function NewOrderSection({ showToast }: any) {
 
   return (
     <View>
-      <Text style={s.formTitle}>{t('➕ سفارش جدید')}</Text>
+      <Text style={s.formTitle}>➕ سفارش جدید</Text>
       <Text style={[s.lbl, { color: C.textMut }]}>📞 تلفن {status}</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={phone} onChangeText={onPhone} keyboardType="phone-pad" maxLength={11} placeholder="09121234567" placeholderTextColor={C.textMut} />
-      <Text style={[s.lbl, { color: C.textMut }]}>{t('👤 نام')}</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText={setName} placeholder={t('نام مشتری')} placeholderTextColor={C.textMut} />
-      <Text style={[s.lbl, { color: C.textMut }]}>{t('📍 آدرس')}</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={address} onChangeText={setAddress} placeholder={t('اختیاری')} placeholderTextColor={C.textMut} />
-      <Autocomplete label={t('🚚 باربری')} value={shipping} onChange={setShipping} options={SHIPPINGS} placeholder={t('تایپ...')} />
+      <Text style={[s.lbl, { color: C.textMut }]}>👤 نام</Text>
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText={setName} placeholder="نام مشتری" placeholderTextColor={C.textMut} />
+      <Text style={[s.lbl, { color: C.textMut }]}>📍 آدرس</Text>
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={address} onChangeText={setAddress} placeholder="اختیاری" placeholderTextColor={C.textMut} />
+      <Autocomplete label="🚚 باربری" value={shipping} onChange={setShipping} options={SHIPPINGS} placeholder="تایپ..." />
       <Text style={[s.lbl, { color: C.textMut }]}>🧾 شماره فاکتور (خودکار)</Text>
       <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={invoice} editable={false} />
 
-      <Text style={s.secT}>{t('📦 اقلام')}</Text>
+      <Text style={s.secT}>📦 اقلام</Text>
 
       {items.map((it, i) => {
         const lt = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
@@ -2349,29 +2349,29 @@ function NewOrderSection({ showToast }: any) {
               <TouchableOpacity onPress={() => del(i)} style={s.delBtnRound}><Text style={{ fontSize: 13, color: '#fff', fontWeight: 'bold' }}>🗑</Text></TouchableOpacity>
             </View>
             <View style={{ padding: 10 }}>
-              <Autocomplete value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={t('نام مدل...')} />
+              <Autocomplete value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="نام مدل..." />
               <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('کد')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text></View></View>
-                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('تعداد')}</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
-                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('قیمت')}</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => upd(i, 'priceUnit', parseNum(v))} keyboardType="numeric" /></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>کد</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text></View></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>تعداد</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>قیمت</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => upd(i, 'priceUnit', parseNum(v))} keyboardType="numeric" /></View>
               </View>
               <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
-                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('💰 مبلغ')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lt ? '#00ff88' : C.border }]}><Text style={[s.miniValueTxt, { color: lt ? '#00ff88' : C.textMut }]}>{lt ? fmt(lt) : '—'}</Text></View></View>
-                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('پرداخت')}</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => upd(i, 'payment', parseNum(v))} keyboardType="numeric" /></View>
-                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('⚖️ مانده')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lb > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: lb > 0 ? '#dc2626' : '#059669' }]}>{lt ? fmt(lb) : '—'}</Text></View></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>💰 مبلغ</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lt ? '#00ff88' : C.border }]}><Text style={[s.miniValueTxt, { color: lt ? '#00ff88' : C.textMut }]}>{lt ? fmt(lt) : '—'}</Text></View></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>پرداخت</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => upd(i, 'payment', parseNum(v))} keyboardType="numeric" /></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>⚖️ مانده</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lb > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: lb > 0 ? '#dc2626' : '#059669' }]}>{lt ? fmt(lb) : '—'}</Text></View></View>
               </View>
             </View>
           </View>
         );
       })}
 
-      <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
+      <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>➕ افزودن ردیف</Text></TouchableOpacity>
       <View style={s.grandSummary}>
-        <View style={{ flex: 1 }}><Text style={s.gsLbl}>{t('💰 جمع کل')}</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
-        <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>{t('📦 تعداد')}</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
+        <View style={{ flex: 1 }}><Text style={s.gsLbl}>💰 جمع کل</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
+        <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>📦 تعداد</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
       </View>
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={submit} disabled={saving}>
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('✅ ثبت سفارش')}</Text>}
+        {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>✅ ثبت سفارش</Text>}
       </TouchableOpacity>
     </View>
   );
@@ -2493,7 +2493,7 @@ function SearchSection({ showToast }: any) {
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
         <View style={[s.mgrHead, { backgroundColor: '#c0392b' }]}>
           <TouchableOpacity onPress={async () => { if (dirty) { const ok = await confirmMsg('خروج', 'تغییرات ذخیره نشده — خارج شوی؟'); if (!ok) return; } setEditing(null); setEditRows([]); setDirty(false); }}>
-            <Text style={{ color: '#fff', fontSize: 16 }}>{t('← بازگشت')}</Text>
+            <Text style={{ color: '#fff', fontSize: 16 }}>← بازگشت</Text>
           </TouchableOpacity>
           <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={s.mgrHeadTxt}>✏️ {editing.invoice}</Text>
@@ -2505,20 +2505,20 @@ function SearchSection({ showToast }: any) {
           <View>
             <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
               <Text style={[s.thCell, { width: 36 }]}>#</Text>
-              <Text style={[s.thCell, { width: 90 }]}>{t('کد')}</Text>
-              <Text style={[s.thCell, { width: 180 }]}>{t('نام مدل')}</Text>
-              <Text style={[s.thCell, { width: 80 }]}>{t('تعداد')}</Text>
-              <Text style={[s.thCell, { width: 110 }]}>{t('قیمت')}</Text>
-              <Text style={[s.thCell, { width: 100 }]}>{t('مبلغ')}</Text>
-              <Text style={[s.thCell, { width: 100 }]}>{t('پرداخت')}</Text>
-              <Text style={[s.thCell, { width: 100 }]}>{t('مانده')}</Text>
-             <Text style={[s.thCell, { width: 340 }]}>{t('تاریخ واریز')}</Text>
-              <Text style={[s.thCell, { width: 100 }]}>{t('بانک')}</Text>
-              <Text style={[s.thCell, { width: 130 }]}>{t('صاحب حساب')}</Text>
-              <Text style={[s.thCell, { width: 110 }]}>{t('کد صاحب حساب')}</Text>
-              <Text style={[s.thCell, { width: 140 }]}>{t('شرح')}</Text>
-              {editing.type === 'sales' && <Text style={[s.thCell, { width: 130 }]}>{t('باربری')}</Text>}
-              <Text style={[s.thCell, { width: 56 }]}>{t('حذف')}</Text>
+              <Text style={[s.thCell, { width: 90 }]}>کد</Text>
+              <Text style={[s.thCell, { width: 180 }]}>نام مدل</Text>
+              <Text style={[s.thCell, { width: 80 }]}>تعداد</Text>
+              <Text style={[s.thCell, { width: 110 }]}>قیمت</Text>
+              <Text style={[s.thCell, { width: 100 }]}>مبلغ</Text>
+              <Text style={[s.thCell, { width: 100 }]}>پرداخت</Text>
+              <Text style={[s.thCell, { width: 100 }]}>مانده</Text>
+             <Text style={[s.thCell, { width: 340 }]}>تاریخ واریز</Text>
+              <Text style={[s.thCell, { width: 100 }]}>بانک</Text>
+              <Text style={[s.thCell, { width: 130 }]}>صاحب حساب</Text>
+              <Text style={[s.thCell, { width: 110 }]}>کد صاحب حساب</Text>
+              <Text style={[s.thCell, { width: 140 }]}>شرح</Text>
+              {editing.type === 'sales' && <Text style={[s.thCell, { width: 130 }]}>باربری</Text>}
+              <Text style={[s.thCell, { width: 56 }]}>حذف</Text>
             </View>
             {editRows.map((r, i) => {
               const lt = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
@@ -2539,7 +2539,7 @@ function SearchSection({ showToast }: any) {
                         }
                       }}
                       options={prods.map(p => p.name).filter(Boolean)}
-                      placeholder={t('نام مدل...')}
+                      placeholder="نام مدل..."
                     />
                   </View>
                   <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.quantity || '')} onChangeText={(v) => updRow(i, 'quantity', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
@@ -2553,7 +2553,7 @@ function SearchSection({ showToast }: any) {
                       value={r.bankName}
                       onChange={(v: string) => updRow(i, 'bankName', v)}
                       options={BANKS}
-                      placeholder={t('بانک...')}
+                      placeholder="بانک..."
                     />
                   </View>
                                   <View style={{ width: 130, paddingHorizontal: 3 }}>
@@ -2565,7 +2565,7 @@ function SearchSection({ showToast }: any) {
                         updRow(i, 'accountHolderCode', code);
                       }}
                       options={Array.from(new Set(prods.map((p: any) => p.supplier_name || '').filter(Boolean)))}
-                      placeholder={t('صاحب حساب...')}
+                      placeholder="صاحب حساب..."
                     />
                   </View>
                   <View style={{ width: 110, paddingHorizontal: 3 }}>
@@ -2573,7 +2573,7 @@ function SearchSection({ showToast }: any) {
                       style={[s.tdInput, { backgroundColor: C.cardAlt, color: '#059669', borderColor: C.border, fontWeight: 'bold' }]}
                       value={r.accountHolderCode || ''}
                       editable={false}
-                      placeholder={t('خودکار')}
+                      placeholder="خودکار"
                     />
                   </View>
                   <View style={{ width: 140, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.description} onChangeText={(v) => updRow(i, 'description', v)} editable={!r._deleted} /></View>
@@ -2583,7 +2583,7 @@ function SearchSection({ showToast }: any) {
                         value={r.shipping}
                         onChange={(v: string) => updRow(i, 'shipping', v)}
                         options={SHIPPINGS}
-                        placeholder={t('باربری...')}
+                        placeholder="باربری..."
                       />
                     </View>
                   )}
@@ -2594,10 +2594,10 @@ function SearchSection({ showToast }: any) {
           </View>
         </ScrollView>
 
-        <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
+        <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>➕ افزودن ردیف</Text></TouchableOpacity>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => { setEditing(null); setEditRows([]); }}><Text style={s.btnTxt}>{t('↩️ برگشت')}</Text></TouchableOpacity>
-          <TouchableOpacity style={[s.btn, { flex: 2, backgroundColor: '#059669' }]} onPress={save}><Text style={s.btnTxt}>{t('💾 ذخیره')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => { setEditing(null); setEditRows([]); }}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
+          <TouchableOpacity style={[s.btn, { flex: 2, backgroundColor: '#059669' }]} onPress={save}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -2610,7 +2610,7 @@ function SearchSection({ showToast }: any) {
 
   return (
     <View>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder={t('🔍 فاکتور، نام، تلفن...')} placeholderTextColor={C.textMut} />
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 فاکتور، نام، تلفن..." placeholderTextColor={C.textMut} />
       <View style={{ flexDirection: 'row', gap: 6, marginVertical: 8, flexWrap: 'wrap' }}>
         {[{ k: 'all', l: '📋 همه' }, { k: 'sales', l: '🛒 فروش' }, { k: 'purchases', l: '🛍️ خرید' }].map((f) => (
           <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
@@ -2628,17 +2628,17 @@ function SearchSection({ showToast }: any) {
         <View>
           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <Text style={[s.thCell, { width: 150 }]}>{t('فاکتور')}</Text>
-            <Text style={[s.thCell, { width: 100 }]}>{t('نوع')}</Text>
-            <Text style={[s.thCell, { width: 150 }]}>{t('نام')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('تلفن')}</Text>
-            <Text style={[s.thCell, { width: 130 }]}>{t('تاریخ')}</Text>
-            <Text style={[s.thCell, { width: 70 }]}>{t('ردیف')}</Text>
-            <Text style={[s.thCell, { width: 130 }]}>{t('مبلغ')}</Text>
-            <Text style={[s.thCell, { width: 130 }]}>{t('پرداخت')}</Text>
-            <Text style={[s.thCell, { width: 130 }]}>{t('مانده')}</Text>
-            <Text style={[s.thCell, { width: 130 }]}>{t('وضعیت')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('عملیات')}</Text>
+            <Text style={[s.thCell, { width: 150 }]}>فاکتور</Text>
+            <Text style={[s.thCell, { width: 100 }]}>نوع</Text>
+            <Text style={[s.thCell, { width: 150 }]}>نام</Text>
+            <Text style={[s.thCell, { width: 120 }]}>تلفن</Text>
+            <Text style={[s.thCell, { width: 130 }]}>تاریخ</Text>
+            <Text style={[s.thCell, { width: 70 }]}>ردیف</Text>
+            <Text style={[s.thCell, { width: 130 }]}>مبلغ</Text>
+            <Text style={[s.thCell, { width: 130 }]}>پرداخت</Text>
+            <Text style={[s.thCell, { width: 130 }]}>مانده</Text>
+            <Text style={[s.thCell, { width: 130 }]}>وضعیت</Text>
+            <Text style={[s.thCell, { width: 120 }]}>عملیات</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.slice(0, 200).map((r: any, i: number) => (
             <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
@@ -2665,7 +2665,7 @@ function SearchSection({ showToast }: any) {
           ))}
         </View>
       </ScrollView>
-      {!loading && !filtered.length && (<View style={s.emptyState}><Text style={{ fontSize: 48, opacity: 0.5 }}>🔍</Text><Text style={s.emptyStateTxt}>{t('نتیجه‌ای یافت نشد')}</Text></View>)}
+      {!loading && !filtered.length && (<View style={s.emptyState}><Text style={{ fontSize: 48, opacity: 0.5 }}>🔍</Text><Text style={s.emptyStateTxt}>نتیجه‌ای یافت نشد</Text></View>)}
     </View>
   );
 }
@@ -2745,7 +2745,7 @@ function ReportsSection({ showToast }: any) {
 
   return (
     <View>
-      <Text style={s.secT}>{t('📊 نوع گزارش')}</Text>
+      <Text style={s.secT}>📊 نوع گزارش</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {[
           { k: 'debtors', l: '📊 بدهکاران' },
@@ -2816,8 +2816,8 @@ function ReportsSection({ showToast }: any) {
           </ScrollView>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#c0392b' }]} onPress={exportExcel}><Text style={s.btnTxt}>{t('📥 اکسل')}</Text></TouchableOpacity>
-            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#059669' }]} onPress={load}><Text style={s.btnTxt}>{t('🔄 بروزرسانی')}</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#c0392b' }]} onPress={exportExcel}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#059669' }]} onPress={load}><Text style={s.btnTxt}>🔄 بروزرسانی</Text></TouchableOpacity>
           </View>
         </View>
       )}
@@ -2885,12 +2885,12 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const toggleDay = (d: string) => setSchedDailyDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
   return (
     <View>
-      <Text style={s.secT}>{t('🌍 زبان برنامه')}</Text>
+      <Text style={s.secT}>🌍 زبان برنامه</Text>
       <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginBottom: 12 }]} onPress={() => { (globalThis as any).__openLang?.(); }}>
-        <Text style={s.btnTxt}>{t('🌍 تغییر زبان / Change Language')}</Text>
+        <Text style={s.btnTxt}>🌍 تغییر زبان / Change Language</Text>
       </TouchableOpacity>
 
-      <Text style={s.secT}>{t('📅 نوع تقویم')}</Text>
+      <Text style={s.secT}>📅 نوع تقویم</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {[{ k: 'jalali', l: '🌙 شمسی' }, { k: 'gregorian', l: '🌍 میلادی' }, { k: 'hijri', l: '🕋 قمری' }].map((f) => (
           <TouchableOpacity key={f.k} onPress={() => { setSettings({ ...settings, cal_type: f.k as CalType }); saveCalType(f.k as CalType); }} style={[s.chip, settings.cal_type === f.k && s.chipActive]}>
@@ -2899,7 +2899,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={s.secT}>{t('📺 بازه داشبورد')}</Text>
+      <Text style={s.secT}>📺 بازه داشبورد</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {Object.entries(DASH_RANGE_LABELS).map(([k, l]) => (
           <TouchableOpacity key={k} onPress={() => setSettings({ ...settings, dashboard_range: k })} style={[s.chip, settings.dashboard_range === k && s.chipActive]}>
@@ -2908,7 +2908,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={s.secT}>{t('🔎 فیلتر داده')}</Text>
+      <Text style={s.secT}>🔎 فیلتر داده</Text>
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {[{ k: 'both', l: '📋 هر دو' }, { k: 'sales', l: '🛒 فروش' }, { k: 'purchase', l: '🛍️ خرید' }].map((f) => (
           <TouchableOpacity key={f.k} onPress={() => setSettings({ ...settings, dashboard_filter: f.k })} style={[s.chip, settings.dashboard_filter === f.k && s.chipActive]}>
@@ -2917,13 +2917,13 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={s.secT}>{t('💹 درصد سود تخمینی')}</Text>
+      <Text style={s.secT}>💹 درصد سود تخمینی</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(Math.round((settings.profit_margin || 0.1) * 100))} onChangeText={(v) => setSettings({ ...settings, profit_margin: (parseFloat(v) || 0) / 100 })} keyboardType="numeric" />
 
-      <Text style={s.secT}>{t('📦 آستانه کمبود')}</Text>
+      <Text style={s.secT}>📦 آستانه کمبود</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.inventory_threshold || 5)} onChangeText={(v) => setSettings({ ...settings, inventory_threshold: parseInt(v) || 5 })} keyboardType="numeric" />
 
-      <Text style={s.secT}>{t('📧 ایمیل‌های گزارش')}</Text>
+      <Text style={s.secT}>📧 ایمیل‌های گزارش</Text>
       {emails.map((e, i) => (
         <View key={i} style={[s.emailRow, { backgroundColor: C.cardAlt }]}>
           <Text style={[s.emailTxt, { color: C.text }]} numberOfLines={1}>{e}</Text>
@@ -2931,23 +2931,23 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         </View>
       ))}
       <View style={{ flexDirection: 'row', gap: 6 }}>
-        <TextInput style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={emailInput} onChangeText={setEmailInput} placeholder={t('ایمیل جدید...')} placeholderTextColor={C.textMut} keyboardType="email-address" autoCapitalize="none" />
+        <TextInput style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={emailInput} onChangeText={setEmailInput} placeholder="ایمیل جدید..." placeholderTextColor={C.textMut} keyboardType="email-address" autoCapitalize="none" />
         <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#7c3aed' }]} onPress={addEmail}><Text style={s.btnTxt}>➕</Text></TouchableOpacity>
       </View>
 
-      <Text style={s.secT}>{t('🗑️ حذف خودکار')}</Text>
+      <Text style={s.secT}>🗑️ حذف خودکار</Text>
       <View style={s.rowBetween}>
-        <Text style={[s.lbl, { color: C.textMut }]}>{t('فعال')}</Text>
+        <Text style={[s.lbl, { color: C.textMut }]}>فعال</Text>
         <Switch value={autoDelEnabled} onValueChange={setAutoDelEnabled} />
       </View>
       <Text style={[s.lblS, { color: C.textMut }]}>حذف بعد از (ساعت)</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={autoDelHours} onChangeText={setAutoDelHours} keyboardType="numeric" />
 
-      <Text style={s.secT}>{t('📊 گزارش روزانه')}</Text>
-      <View style={s.rowBetween}><Text style={[s.lbl, { color: C.textMut }]}>{t('فعال')}</Text><Switch value={schedDailyEnabled} onValueChange={setSchedDailyEnabled} /></View>
-      <Text style={[s.lblS, { color: C.textMut }]}>{t('ساعت ارسال')}</Text>
+      <Text style={s.secT}>📊 گزارش روزانه</Text>
+      <View style={s.rowBetween}><Text style={[s.lbl, { color: C.textMut }]}>فعال</Text><Switch value={schedDailyEnabled} onValueChange={setSchedDailyEnabled} /></View>
+      <Text style={[s.lblS, { color: C.textMut }]}>ساعت ارسال</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={schedDailyHour} onChangeText={setSchedDailyHour} keyboardType="numeric" />
-      <Text style={[s.lblS, { color: C.textMut }]}>{t('روزها')}</Text>
+      <Text style={[s.lblS, { color: C.textMut }]}>روزها</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
           <TouchableOpacity key={i} onPress={() => toggleDay(String(i))} style={[s.chip, schedDailyDays.includes(String(i)) && s.chipActive]}>
@@ -2956,9 +2956,9 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         ))}
       </View>
 
-      <Text style={s.secT}>{t('📅 گزارش هفتگی')}</Text>
-      <View style={s.rowBetween}><Text style={[s.lbl, { color: C.textMut }]}>{t('فعال')}</Text><Switch value={schedWeeklyEnabled} onValueChange={setSchedWeeklyEnabled} /></View>
-      <Text style={[s.lblS, { color: C.textMut }]}>{t('روز هفته')}</Text>
+      <Text style={s.secT}>📅 گزارش هفتگی</Text>
+      <View style={s.rowBetween}><Text style={[s.lbl, { color: C.textMut }]}>فعال</Text><Switch value={schedWeeklyEnabled} onValueChange={setSchedWeeklyEnabled} /></View>
+      <Text style={[s.lblS, { color: C.textMut }]}>روز هفته</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
           <TouchableOpacity key={i} onPress={() => setSchedWeeklyDay(String(i))} style={[s.chip, schedWeeklyDay === String(i) && s.chipActive]}>
@@ -2968,9 +2968,9 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
       </View>
 
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={save} disabled={saving}>
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('💾 ذخیره همه تنظیمات')}</Text>}
+        {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>💾 ذخیره همه تنظیمات</Text>}
       </TouchableOpacity>
-      <Text style={s.secT}>{t('🔐 رمز عبور تب‌ها')}</Text>
+      <Text style={s.secT}>🔐 رمز عبور تب‌ها</Text>
       <Text style={[s.lblS, { color: C.textMut, marginBottom: 8 }]}>خالی بگذاری = بدون رمز. مقدار پیش‌فرض: 4242</Text>
       {[
         { k: 'purchase', l: '🛍️ خرید' },
@@ -3006,10 +3006,10 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
           } catch (e: any) { showToast(e?.message || 'خطا', true); }
         }}
       >
-        <Text style={s.btnTxt}>{t('💾 ذخیره رمزهای تب‌ها')}</Text>
+        <Text style={s.btnTxt}>💾 ذخیره رمزهای تب‌ها</Text>
       </TouchableOpacity>
 
-      <Text style={s.secT}>{t('🚪 خروج از حساب')}</Text>
+      <Text style={s.secT}>🚪 خروج از حساب</Text>
       <TouchableOpacity
         style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}
         onPress={async () => {
@@ -3018,7 +3018,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
           await supabase.auth.signOut();
         }}
       >
-        <Text style={s.btnTxt}>{t('🚪 خروج از حساب')}</Text>
+        <Text style={s.btnTxt}>🚪 خروج از حساب</Text>
       </TouchableOpacity>
     </View>
   );
@@ -3082,7 +3082,7 @@ function SourcesSection({ showToast }: any) {
     <View>
       <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={() => setEditing({ id: null, code: '', name: '', price: 0, shelf: '', supplier_name: '', supplier_code: '', supplier_phone: '', payer_name: '', shipping_name: '' })}>
-          <Text style={s.btnTxt}>{t('➕ افزودن کالا')}</Text>
+          <Text style={s.btnTxt}>➕ افزودن کالا</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.btn, { backgroundColor: inlineMode ? '#059669' : '#334155' }]} onPress={() => setInlineMode(!inlineMode)}>
           <Text style={s.btnTxt}>{inlineMode ? '✅ حالت ویرایش' : '✏️ ویرایش جدولی'}</Text>
@@ -3095,21 +3095,21 @@ function SourcesSection({ showToast }: any) {
         </TouchableOpacity>
       )}
 
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder={t('🔍 جستجو در کالاها...')} placeholderTextColor={C.textMut} />
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در کالاها..." placeholderTextColor={C.textMut} />
       <Text style={s.secT}>📦 کالاها ({toFaNum(filtered.length)})</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
         <View>
           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <Text style={[s.thCell, { width: 100 }]}>{t('کد')}</Text>
-            <Text style={[s.thCell, { width: 180 }]}>{t('نام')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('قیمت')}</Text>
-            <Text style={[s.thCell, { width: 100 }]}>{t('قفسه')}</Text>
-            <Text style={[s.thCell, { width: 160 }]}>{t('تأمین‌کننده')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('تلفن')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('باربری')}</Text>
-            <Text style={[s.thCell, { width: 120 }]}>{t('عملیات')}</Text>
+            <Text style={[s.thCell, { width: 100 }]}>کد</Text>
+            <Text style={[s.thCell, { width: 180 }]}>نام</Text>
+            <Text style={[s.thCell, { width: 120 }]}>قیمت</Text>
+            <Text style={[s.thCell, { width: 100 }]}>قفسه</Text>
+            <Text style={[s.thCell, { width: 160 }]}>تأمین‌کننده</Text>
+            <Text style={[s.thCell, { width: 120 }]}>تلفن</Text>
+            <Text style={[s.thCell, { width: 120 }]}>باربری</Text>
+            <Text style={[s.thCell, { width: 120 }]}>عملیات</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((p, i) => (
             <View key={p.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, p.id && dirtyRows.has(p.id) && { backgroundColor: C.isDark ? '#2e1065' : '#f5f3ff' }]}>
@@ -3162,8 +3162,8 @@ function SourcesSection({ showToast }: any) {
                 </View>
               ))}
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-                <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditing(null)}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
-                <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#059669' }]} onPress={save}><Text style={s.btnTxt}>{t('💾 ذخیره')}</Text></TouchableOpacity>
+                <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditing(null)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+                <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#059669' }]} onPress={save}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
               </View>
             </View>
           </ScrollView>
@@ -3195,8 +3195,8 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={{ fontSize: 20 }}>⚖️</Text>
             <View>
-              <Text style={s.invBrand}>{t('میزان')}</Text>
-                       <Text style={s.invSlogan}>{t('حساب‌ها دقیق، معاملات امن، ذهن آسوده.')}</Text>
+              <Text style={s.invBrand}>میزان</Text>
+                       <Text style={s.invSlogan}>حساب‌ها دقیق، معاملات امن، ذهن آسوده.</Text>
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
@@ -3205,29 +3205,29 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
           </View>
         </View>
 
-        <Text style={s.invTitle}>{t('پیش فروش کفش تاج')}</Text>
+        <Text style={s.invTitle}>پیش فروش کفش تاج</Text>
         <Text style={s.invDateTxt}>📅 {invoice.timeString}</Text>
 
         <View style={s.invSection}>
-          <Text style={s.invSectionTitle}>{t('👤 اطلاعات مشتری')}</Text>
+          <Text style={s.invSectionTitle}>👤 اطلاعات مشتری</Text>
           <View style={s.invCGrid}>
-            <View style={s.invCell}><Text style={s.invCellL}>{t('نام')}</Text><Text style={s.invCellV}>{c.name}</Text></View>
-            <View style={s.invCell}><Text style={s.invCellL}>{t('تلفن')}</Text><Text style={s.invCellV}>{c.phone}</Text></View>
-            <View style={s.invCell}><Text style={s.invCellL}>{t('کد مشتری')}</Text><Text style={s.invCellV}>{c.code}</Text></View>
-            <View style={s.invCell}><Text style={s.invCellL}>{t('شماره فاکتور')}</Text><Text style={s.invCellV}>{cur.invoiceNumber}</Text></View>
-            {c.address ? <View style={[s.invCell, { width: '100%' }]}><Text style={s.invCellL}>{t('📍 آدرس')}</Text><Text style={s.invCellV}>{c.address}</Text></View> : null}
-            {c.shipping ? <View style={s.invCell}><Text style={s.invCellL}>{t('🚚 باربری')}</Text><Text style={s.invCellV}>{c.shipping}</Text></View> : null}
+            <View style={s.invCell}><Text style={s.invCellL}>نام</Text><Text style={s.invCellV}>{c.name}</Text></View>
+            <View style={s.invCell}><Text style={s.invCellL}>تلفن</Text><Text style={s.invCellV}>{c.phone}</Text></View>
+            <View style={s.invCell}><Text style={s.invCellL}>کد مشتری</Text><Text style={s.invCellV}>{c.code}</Text></View>
+            <View style={s.invCell}><Text style={s.invCellL}>شماره فاکتور</Text><Text style={s.invCellV}>{cur.invoiceNumber}</Text></View>
+            {c.address ? <View style={[s.invCell, { width: '100%' }]}><Text style={s.invCellL}>📍 آدرس</Text><Text style={s.invCellV}>{c.address}</Text></View> : null}
+            {c.shipping ? <View style={s.invCell}><Text style={s.invCellL}>🚚 باربری</Text><Text style={s.invCellV}>{c.shipping}</Text></View> : null}
           </View>
         </View>
 
         <View style={s.invSection}>
-          <Text style={s.invSectionTitle}>{t('📦 اقلام')}</Text>
+          <Text style={s.invSectionTitle}>📦 اقلام</Text>
           <View style={s.invTableHead}>
             <Text style={[s.invTh, { flex: 0.4 }]}>#</Text>
-            <Text style={[s.invTh, { flex: 2.5 }]}>{t('نام مدل')}</Text>
-            <Text style={[s.invTh, { flex: 0.8 }]}>{t('تعداد')}</Text>
-            <Text style={[s.invTh, { flex: 1 }]}>{t('قیمت')}</Text>
-            <Text style={[s.invTh, { flex: 1.2 }]}>{t('مبلغ')}</Text>
+            <Text style={[s.invTh, { flex: 2.5 }]}>نام مدل</Text>
+            <Text style={[s.invTh, { flex: 0.8 }]}>تعداد</Text>
+            <Text style={[s.invTh, { flex: 1 }]}>قیمت</Text>
+            <Text style={[s.invTh, { flex: 1.2 }]}>مبلغ</Text>
           </View>
           {cur.items.map((it: any, i: number) => (
             <View key={i} style={[s.invRow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
@@ -3241,7 +3241,7 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
         </View>
 
               <View style={s.invSection}>
-          <Text style={s.invSectionTitle}>{t('💰 خلاصه مالی')}</Text>
+          <Text style={s.invSectionTitle}>💰 خلاصه مالی</Text>
 
           {/* این سفارش */}
           <SumRow l="🛍️ مبلغ این سفارش" v={fmt(cur.sales) + ' تومان'} />
@@ -3270,26 +3270,26 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
         </View>
 
         <View style={s.invFooter}>
-          <Text style={s.invFooterTxt}>{t('📞 کفش تاج: ________________')}</Text>
-          <Text style={s.invFooterThanks}>{t('با تشکر از اعتماد شما 🙏')}</Text>
+          <Text style={s.invFooterTxt}>📞 کفش تاج: ________________</Text>
+          <Text style={s.invFooterThanks}>با تشکر از اعتماد شما 🙏</Text>
         </View>
       </View>
 
       {/* دکمه‌های عملیات */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 90, backgroundColor: '#fff', borderWidth: 2, borderColor: '#1e3a5f' }]} onPress={() => captureAndShare('print')}>
-          <Text style={[s.btnTxt, { color: '#1e3a5f' }]}>{t('🖨️ پرینت')}</Text>
+          <Text style={[s.btnTxt, { color: '#1e3a5f' }]}>🖨️ پرینت</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 90, backgroundColor: '#0ea5e9' }]} onPress={() => captureAndShare('share')}>
-          <Text style={s.btnTxt}>{t('📤 اشتراک')}</Text>
+          <Text style={s.btnTxt}>📤 اشتراک</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 90, backgroundColor: '#8e44ad' }]} onPress={() => captureAndShare('save')}>
-          <Text style={s.btnTxt}>{t('💾 ذخیره')}</Text>
+          <Text style={s.btnTxt}>💾 ذخیره</Text>
         </TouchableOpacity>
       </View>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={onBack}><Text style={s.btnTxt}>{t('↩️ برگشت')}</Text></TouchableOpacity>
-        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#1e3a8a' }]} onPress={onNew}><Text style={s.btnTxt}>{t('🛒 فاکتور جدید')}</Text></TouchableOpacity>
+        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={onBack}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
+        <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#1e3a8a' }]} onPress={onNew}><Text style={s.btnTxt}>🛒 فاکتور جدید</Text></TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -3337,14 +3337,14 @@ function LoginScreen({ showToast }: any) {
     <KeyboardAvoidingView style={[s.loginWrap, { backgroundColor: C.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.loginCard}>
         <Text style={s.loginLogo}>⚖️</Text>
-        <Text style={s.loginTitle}>{t('میزان')}</Text>
-        <Text style={s.loginSub}>{t('ورود یا ثبت‌نام')}</Text>
-        <TextInput style={s.loginInp} value={email} onChangeText={setEmail} placeholder={t('ایمیل')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
+        <Text style={s.loginTitle}>میزان</Text>
+        <Text style={s.loginSub}>ورود یا ثبت‌نام</Text>
+        <TextInput style={s.loginInp} value={email} onChangeText={setEmail} placeholder="ایمیل" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
         <TextInput style={s.loginInp} value={pass} onChangeText={setPass} placeholder="رمز (حداقل ۶ کاراکتر)" placeholderTextColor="#94a3b8" secureTextEntry />
         <TouchableOpacity style={[s.btn, { backgroundColor: '#1e3a8a', marginTop: 6 }]} onPress={submit} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('ورود / ثبت‌نام')}</Text>}
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>ورود / ثبت‌نام</Text>}
         </TouchableOpacity>
-        <Text style={s.loginNote}>{t('اگر حساب ندارید، خودکار ساخته می‌شود')}</Text>
+        <Text style={s.loginNote}>اگر حساب ندارید، خودکار ساخته می‌شود</Text>
       </View>
     </KeyboardAvoidingView>
   );

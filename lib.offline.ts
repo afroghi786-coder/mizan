@@ -919,3 +919,107 @@ export async function deleteAttendance(localId: string) {
     try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
   }
 }
+
+
+// ═══════════════════════════════════════════
+//  مشتریان صرافی (X_)
+// ═══════════════════════════════════════════
+export async function getFxCustomers(): Promise<any[]> {
+  return cachedRead('fx_customers', async () => {
+    const { data } = await lib.supabase.from('fx_customers').select('*').order('created_at', { ascending: false });
+    return data || [];
+  });
+}
+export async function createFxCustomer(p: any): Promise<any> {
+  const local = (await getLocal<any[]>('fx_customers')) || [];
+  // تولید کد خودکار
+  let code = p.code || '';
+  if (!code) {
+    let maxN = 1000;
+    local.forEach((x: any) => { const m = String(x.code || '').match(/^X_(\d+)$/); if (m) { const n = +m[1]; if (n > maxN) maxN = n; } });
+    code = 'X_' + (maxN + 1);
+  }
+  const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  await setLocal('fx_customers', [item, ...local]);
+  if (MODE === 'online') {
+    try {
+      await lib.supabase.from('fx_customers').insert({
+        code, name: p.name, phone: p.phone || '', bank: p.bank || '',
+        holder_name: p.holder_name || '', holder_code: p.holder_code || '',
+        notes: p.notes || '', local_id: item.local_id,
+      });
+    } catch { await enqueue('createFxCustomer', { ...p, code }); }
+  } else { await enqueue('createFxCustomer', { ...p, code }); }
+  return item;
+}
+export async function updateFxCustomer(localId: string, p: any) {
+  const local = (await getLocal<any[]>('fx_customers')) || [];
+  const newList = local.map((x: any) => (x.local_id === localId || x.id === localId) ? { ...x, ...p } : x);
+  await setLocal('fx_customers', newList);
+  if (MODE === 'online') {
+    try { await lib.supabase.from('fx_customers').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}
+export async function deleteFxCustomer(localId: string) {
+  const local = (await getLocal<any[]>('fx_customers')) || [];
+  await setLocal('fx_customers', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  if (MODE === 'online') {
+    try { await lib.supabase.from('fx_customers').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════
+//  شرکا (P_)
+// ═══════════════════════════════════════════
+export async function getFxPartners(): Promise<any[]> {
+  return cachedRead('fx_partners', async () => {
+    const { data } = await lib.supabase.from('fx_partners').select('*').order('created_at', { ascending: false });
+    return data || [];
+  });
+}
+export async function createFxPartner(p: any): Promise<any> {
+  const local = (await getLocal<any[]>('fx_partners')) || [];
+  let code = p.code || '';
+  if (!code) {
+    let maxN = 1000;
+    local.forEach((x: any) => { const m = String(x.code || '').match(/^P_(\d+)$/); if (m) { const n = +m[1]; if (n > maxN) maxN = n; } });
+    code = 'P_' + (maxN + 1);
+  }
+  const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  await setLocal('fx_partners', [item, ...local]);
+  if (MODE === 'online') {
+    try {
+      await lib.supabase.from('fx_partners').insert({
+        code, name: p.name, phone: p.phone || '', notes: p.notes || '', local_id: item.local_id,
+      });
+    } catch { await enqueue('createFxPartner', { ...p, code }); }
+  } else { await enqueue('createFxPartner', { ...p, code }); }
+  return item;
+}
+export async function updateFxPartner(localId: string, p: any) {
+  const local = (await getLocal<any[]>('fx_partners')) || [];
+  const newList = local.map((x: any) => (x.local_id === localId || x.id === localId) ? { ...x, ...p } : x);
+  await setLocal('fx_partners', newList);
+  if (MODE === 'online') {
+    try { await lib.supabase.from('fx_partners').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}
+export async function deleteFxPartner(localId: string) {
+  const local = (await getLocal<any[]>('fx_partners')) || [];
+  await setLocal('fx_partners', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  if (MODE === 'online') {
+    try { await lib.supabase.from('fx_partners').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════
+//  updateFxTrade
+// ═══════════════════════════════════════════
+export async function updateFxTrade(localId: string, p: any) {
+  const local = (await getLocal<any[]>('fx_trades')) || [];
+  const newList = local.map((x: any) => (x.local_id === localId || x.id === localId) ? { ...x, ...p } : x);
+  await setLocal('fx_trades', newList);
+  if (MODE === 'online') {
+    try { await lib.supabase.from('fx_trades').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  }
+}

@@ -797,3 +797,19 @@ export async function createAttendance(p: any) {
   });
   if (error) throw new Error(error.message);
 }
+
+
+export async function createFxCustomer(p: any) {
+  const { error } = await supabase.from('fx_customers').insert({
+    code: p.code, name: p.name, phone: p.phone || '', bank: p.bank || '',
+    holder_name: p.holder_name || '', holder_code: p.holder_code || '',
+    notes: p.notes || '', local_id: p.local_id || '',
+  });
+  if (error) throw new Error(error.message);
+}
+export async function createFxPartner(p: any) {
+  const { error } = await supabase.from('fx_partners').insert({
+    code: p.code, name: p.name, phone: p.phone || '', notes: p.notes || '', local_id: p.local_id || '',
+  });
+  if (error) throw new Error(error.message);
+}

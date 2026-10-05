@@ -64,8 +64,6 @@ export default function EmployeesScreen({ showToast }: any) {
         </View>
       </View>
 
-      <HRDashboard emps={emps} atts={atts} salaries={salaries} loans={loans} leaves={leaves} />
-
       {/* زیرتب‌ها */}
       <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={s.subsBar} contentContainerStyle={s.subsCont}>
         {[

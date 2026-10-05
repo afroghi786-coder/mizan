@@ -2832,32 +2832,6 @@ function ReportsSection({ showToast }: any) {
 // ══════════════════════════════════════════════════════════
 function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const [saving, setSaving] = useState(false);
-  const [presetKey, setPresetKey] = useState<string>(getPreset());
-  const [customTerms, setCustomTerms] = useState<Record<string, string>>({ ...getTerms() });
-  const [enabledTabs, setEnabledTabs] = useState<string[]>(getTabs());
-  const [showTermsEditor, setShowTermsEditor] = useState(false);
-  const [showTabsEditor, setShowTabsEditor] = useState(false);
-
-  const applyPreset = async (p: PresetKey) => {
-    await setPreset(p);
-    setPresetKey(p);
-    setCustomTerms({ ...getTerms() });
-    setEnabledTabs(getTabs());
-    alertMsg('✅', 'نوع کسب‌وکار تغییر کرد. برنامه دوباره بارگذاری می‌شود.');
-    setTimeout(() => { (globalThis as any).__reload?.(); }, 800);
-  };
-
-  const saveTerm = async (k: string, v: string) => {
-    await setTerm(k, v);
-    setCustomTerms({ ...getTerms() });
-  };
-
-  const toggleTab = async (k: string) => {
-    const next = enabledTabs.includes(k) ? enabledTabs.filter((x: string) => x !== k) : [...enabledTabs, k];
-    if (next.length === 0) return showToast('حداقل یک تب باید فعال باشد', true);
-    setEnabledTabs(next);
-    await setTabs(next);
-  };
   const pins = settings.tab_pins || {};
   const [emailInput, setEmailInput] = useState('');
   const [autoDelEnabled, setAutoDelEnabled] = useState(false);

@@ -11,6 +11,7 @@ import {
   calcEmployeeSalary, calcTax, calcInsurance, TAX_BRACKETS,
 } from './lib.emp';
 import { printPayslip, exportBankFile } from './EmpHelpers';
+import HRDash from './HRDash';
 
 const BANKS = ['ملی','ملت','صادرات','تجارت','سپه','کشاورزی','مسکن','پاسارگاد','پارسیان','سامان','رفاه','اقتصاد نوین','سینا','شهر','آینده','دی','قوامین','صنعت و معدن','کارآفرین','مهر ایران','بلوبانک','رسالت'];
 const DEPTS = ['فروش','انبار','حسابداری','مدیریت','تولید','کنترل کیفیت','پشتیبانی','مالی'];
@@ -53,6 +54,7 @@ export default function EmployeesScreen({ showToast }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f7fa' }}>
+      <HRDash emps={emps} atts={atts} salaries={salaries} loans={loans} leaves={leaves} />
       {/* Dashboard */}
       <View style={s.dash}>
         <Text style={s.dashTitle}>💼 مدیریت منابع انسانی</Text>

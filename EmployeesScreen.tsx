@@ -114,32 +114,16 @@ function EmpTab({ emps, reload, showToast }: any) {
 
   const submit = async () => {
     try {
-      if (!form.name) return showToast('نام الزامی', true);
-      if (!form.phone) return showToast('تلفن الزامی', true);
-      if (!form.role) return showToast('سمت الزامی', true);
-      const payload = {
-        ...form,
-        amount: parse(form.amount),
-        base_salary: parse(form.base_salary),
-        housing_allowance: parse(form.housing_allowance),
-        food_allowance: parse(form.food_allowance),
-        transport_allowance: parse(form.transport_allowance),
-        other_allowance: parse(form.other_allowance),
-        overtime_rate: parse(form.overtime_rate),
-      };
-      console.log('[submit] payload:', payload);
+      if (!form.name) { alert('⚠️ نام الزامی'); return; }
+      if (!form.phone) { alert('⚠️ تلفن الزامی'); return; }
+      const payload = { ...form };
       if (editId) await updateEmployee(editId, payload);
-      else {
-        const created = await createEmployee(payload);
-        console.log('[submit] created:', created);
-      }
+      else await createEmployee(payload);
       await reload();
-      console.log('[submit] reloaded, emps:', emps.length);
       setModal(false);
-      showToast(editId ? '✅ ویرایش شد' : '✅ کارمند ثبت شد');
-    } catch (e: any) {
-      console.log('[submit ERR]', e);
-      showToast('❌ ' + (e?.message || 'خطا در ذخیره'), true);
+      alert('✅ ذخیره شد');
+    } catch (e) {
+      alert('❌ خطا: ' + (e.message || ''));
     }
   };
 

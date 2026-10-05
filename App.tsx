@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
+import ExchangeScreen from './ExchangeScreen';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
@@ -408,6 +409,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
     { key: 'mgr', icon: '📋', label: 'مدیریت', color: '#c0392b' },
     { key: 'profit', icon: '💹', label: 'سود', color: '#065f46' },
     { key: 'inventory', icon: '📦', label: 'انبار', color: '#0f5132' },
+    { key: 'exchange', icon: '💱', label: 'صرافی', color: '#065f46' },
   ];
 
   const tabPins = getTabPins(settings);
@@ -428,6 +430,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
           tab === 'mgr' ? '#334155' :
           tab === 'profit' ? '#4a235a' :
           tab === 'inventory' ? '#0f5132' :
+          tab === 'exchange' ? '#065f46' :
           '#0f2438',
       }]}>
         <View style={{
@@ -469,6 +472,7 @@ function MainApp({ showToast, onCycleTheme }: any) {
       {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />}
       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
+      {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
       <PinModal
         visible={!!pendingTab}
         correctPin={pendingTab ? (tabPins[pendingTab] || '') : ''}

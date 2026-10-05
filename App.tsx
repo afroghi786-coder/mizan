@@ -5,7 +5,7 @@ import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';
 import { t, loadLang, getLang, isFirstTime } from './i18n';
-import { loadPreset, getPreset, term, setPreset, PRESETS } from './presets';
+import { loadPreset, getPreset, setPreset, term, PRESETS } from './presets';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
@@ -309,6 +309,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [themeTick, setThemeTick] = useState(0);
   const [langTick, setLangTick] = useState(0);
+  const [presetVersion, setPresetVersion] = useState(0);
   const [presetTick, setPresetTick] = useState(0);
   const [showLangFirst, setShowLangFirst] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
@@ -317,6 +318,11 @@ export default function App() {
   (globalThis as any).__changePreset = async (k: string) => {
     await setPreset(k as any);
     setPresetTick((v: number) => v + 1);
+    setLangTick((v: number) => v + 1);
+  };
+
+  (globalThis as any).__reloadPreset = () => {
+    setPresetVersion((v: number) => v + 1);
     setLangTick((v: number) => v + 1);
   };
 
@@ -426,7 +432,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
   useEffect(() => { (globalThis as any).__openLang = () => setShowLang(true); }, []);
 
-  const tabs = [
+    const tabs = [
     { key: 'order', icon: '🛒', label: term('sale'), color: '#1e3a8a' },
     { key: 'purchase', icon: '🛍️', label: term('purchase'), color: '#166534' },
     { key: 'print', icon: '🖨️', label: t('پرینت'), color: '#6c3483' },
@@ -2850,11 +2856,7 @@ function PresetSection({ showToast }: any) {
       await setPreset(k as any);
       setCurrent(k);
       showToast('✅ ' + (PRESETS as any)[k].name);
-      setTimeout(() => {
-        if (typeof window !== 'undefined' && window.location) {
-          window.location.reload();
-        }
-      }, 700);
+      if ((globalThis as any).__reloadPreset) (globalThis as any).__reloadPreset();
     } catch (e: any) {
       showToast(e?.message || 'خطا', true);
     }

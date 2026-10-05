@@ -54,10 +54,15 @@ export default function EmployeesScreen({ showToast }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f7fa' }}>
       {/* Dashboard */}
-      {/* Dashboard HR Pro */}
-      <HRDashboard emps={emps} atts={atts} salaries={salaries} loans={loans} leaves={leaves} batches={batches} />
-
-      
+      <View style={s.dash}>
+        <Text style={s.dashTitle}>💼 مدیریت منابع انسانی</Text>
+        <View style={s.dashRow}>
+          <View style={s.dashItem}><Text style={s.dashLbl}>👥 کارمندان</Text><Text style={[s.dashVal, { color: '#60a5fa' }]}>{emps.filter((x: any) => x.status !== 'اخراجی').length}</Text></View>
+          <View style={s.dashItem}><Text style={s.dashLbl}>✅ حاضر امروز</Text><Text style={[s.dashVal, { color: '#34d399' }]}>{atts.filter((x: any) => x.date === today() && x.status === 'حاضر').length}</Text></View>
+          <View style={s.dashItem}><Text style={s.dashLbl}>💰 حقوق پرداختی</Text><Text style={[s.dashVal, { color: '#fbbf24' }]}>{fmt(salaries.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0))}</Text></View>
+          <View style={s.dashItem}><Text style={s.dashLbl}>🏦 وام فعال</Text><Text style={[s.dashVal, { color: '#f87171' }]}>{loans.filter((x: any) => x.status === 'active').length}</Text></View>
+        </View>
+      </View>
 
       {/* زیرتب‌ها */}
       <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={s.subsBar} contentContainerStyle={s.subsCont}>
@@ -90,25 +95,20 @@ export default function EmployeesScreen({ showToast }: any) {
 // ═══════════════════════════════════════════
 //  TAB 1: کارمندان
 
-
 // ═══════════════════════════════════════════
-//  HR Dashboard Pro — داشبورد استاندارد
+//  HR Dashboard Pro
 // ═══════════════════════════════════════════
-function HRDashboard({ emps, atts, salaries, loans, leaves, batches }: any) {
+function HRDashboard({ emps, atts, salaries, loans, leaves }: any) {
   const today = new Date();
   const todayStr = today.toLocaleDateString('fa-IR');
   const thisMonth = todayStr.slice(0, 7);
-  const yearStart = todayStr.slice(0, 4) + '/01';
 
-  // ─── محاسبات ───
   const activeEmps = emps.filter((e: any) => e.status === 'فعال');
-  const inactiveEmps = emps.filter((e: any) => e.status !== 'فعال');
   const todayAtts = atts.filter((a: any) => a.date === todayStr);
   const presentToday = todayAtts.filter((a: any) => a.status === 'حاضر').length;
   const absentToday = todayAtts.filter((a: any) => a.status === 'غایب').length;
   const leaveToday = todayAtts.filter((a: any) => a.status === 'مرخصی').length;
   const missionToday = todayAtts.filter((a: any) => a.status === 'ماموریت').length;
-
   const attendanceRate = activeEmps.length ? Math.round((presentToday / activeEmps.length) * 100) : 0;
 
   const monthSalaries = salaries.filter((s: any) => String(s.payment_date || '').startsWith(thisMonth) || String(s.month || '') === thisMonth);
@@ -116,247 +116,145 @@ function HRDashboard({ emps, atts, salaries, loans, leaves, batches }: any) {
   const monthTax = monthSalaries.reduce((a: number, x: any) => a + (Number(x.tax) || 0), 0);
   const monthInsurance = monthSalaries.reduce((a: number, x: any) => a + (Number(x.employee_insurance) || 0), 0);
   const monthEmployer = monthSalaries.reduce((a: number, x: any) => a + (Number(x.employer_insurance) || 0), 0);
-
-  const activeLoans = loans.filter((l: any) => l.status === 'active');
-  const totalLoanBalance = activeLoans.reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0);
-
+  const totalLoanBalance = loans.filter((l: any) => l.status === 'active').reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0);
   const monthLeaves = leaves.filter((l: any) => String(l.from_date || '').startsWith(thisMonth));
 
-  // ─── توزیع دپارتمان‌ها ───
   const deptDist: Record<string, number> = {};
   activeEmps.forEach((e: any) => { const d = e.department || 'سایر'; deptDist[d] = (deptDist[d] || 0) + 1; });
   const maxDept = Math.max(...Object.values(deptDist), 1);
 
-  // ─── حضور هفته (۷ روز اخیر) ───
   const last7: { date: string; present: number }[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today.getTime() - i * 86400000);
     const ds = d.toLocaleDateString('fa-IR');
-    const cnt = atts.filter((a: any) => a.date === ds && a.status === 'حاضر').length;
-    last7.push({ date: ds.slice(5), present: cnt });
+    last7.push({ date: ds.slice(5), present: atts.filter((a: any) => a.date === ds && a.status === 'حاضر').length });
   }
   const maxWeek = Math.max(...last7.map(x => x.present), 1);
 
-  // ─── Top 5 کارمندان (بر اساس حضور) ───
-  const empStats: Record<string, { name: string; present: number; hours: number; ot: number }> = {};
+  const empStats: Record<string, any> = {};
   atts.forEach((a: any) => {
     if (!a.employee_code) return;
-    if (!empStats[a.employee_code]) empStats[a.employee_code] = { name: a.employee_name || '—', present: 0, hours: 0, ot: 0 };
+    if (!empStats[a.employee_code]) empStats[a.employee_code] = { name: a.employee_name || '—', present: 0, ot: 0 };
     if (a.status === 'حاضر') empStats[a.employee_code].present++;
-    empStats[a.employee_code].hours += Number(a.hours) || 0;
     empStats[a.employee_code].ot += Number(a.overtime) || 0;
   });
-  const top5 = Object.entries(empStats).sort((a, b) => b[1].present - a[1].present).slice(0, 5);
+  const top5 = Object.entries(empStats).sort((a: any, b: any) => b[1].present - a[1].present).slice(0, 5);
 
-  // ─── هشدارها ───
-  const alerts: { icon: string; text: string; color: string }[] = [];
-  
-  // قراردادهای نزدیک به پایان (اگر end_date داره)
-  const expiringContracts = activeEmps.filter((e: any) => {
-    if (!e.end_date) return false;
-    const end = new Date(e.end_date.replace(/\D/g, '-'));
-    if (isNaN(end.getTime())) return false;
-    const diff = (end.getTime() - today.getTime()) / 86400000;
-    return diff > 0 && diff <= 30;
-  });
-  if (expiringContracts.length) alerts.push({ icon: '⚠️', text: expiringContracts.length + ' قرارداد نزدیک پایان', color: '#f59e0b' });
-
-  // کارمندان بدون بانک
-  const noBank = activeEmps.filter((e: any) => !e.bank || !e.account_number);
-  if (noBank.length) alerts.push({ icon: '🏦', text: noBank.length + ' کارمند بدون اطلاعات بانکی', color: '#3b82f6' });
-
-  // غیبت‌های زیاد این ماه
-  const highAbsent = Object.entries(empStats).filter(([_, s]) => false); // placeholder
-  const absentEmpStats: Record<string, number> = {};
-  atts.filter((a: any) => String(a.date || '').startsWith(thisMonth) && a.status === 'غایب').forEach((a: any) => {
-    absentEmpStats[a.employee_code] = (absentEmpStats[a.employee_code] || 0) + 1;
-  });
-  const highAbsentCount = Object.values(absentEmpStats).filter(c => c >= 3).length;
-  if (highAbsentCount) alerts.push({ icon: '🚨', text: highAbsentCount + ' کارمند با غیبت زیاد', color: '#dc2626' });
-
-  // ماه جاری — چند کارمند حقوق نگرفتن
   const paidCodes = new Set(monthSalaries.map((s: any) => s.employee_code));
   const unpaidCount = activeEmps.filter((e: any) => !paidCodes.has(e.code)).length;
-  if (unpaidCount) alerts.push({ icon: '💰', text: unpaidCount + ' کارمند هنوز حقوق نگرفته', color: '#f97316' });
-
-  // امروز کسی حضور ثبت نشده
-  if (todayAtts.length === 0 && activeEmps.length > 0) {
-    alerts.push({ icon: '📅', text: 'امروز هیچ حضوری ثبت نشده', color: '#8b5cf6' });
-  }
 
   return (
-    <View style={{ backgroundColor: '#080b13', padding: 12, margin: 8, marginBottom: 0, borderRadius: 16, borderWidth: 2, borderColor: '#1f3a5f' }}>
+    <View style={{ backgroundColor: '#080b13', padding: 10, margin: 8, marginBottom: 6, borderRadius: 14, borderWidth: 2, borderColor: '#1f3a5f' }}>
+      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,136,0.15)' }}>
+        <Text style={{ color: '#f4d47a', fontSize: 14, fontWeight: 'bold' }}>💼 داشبورد منابع انسانی</Text>
+        <Text style={{ color: '#00ff88', fontSize: 10, fontFamily: 'monospace' }}>{todayStr}</Text>
+      </View>
 
-      {/* ═══ Header ═══ */}
-      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(0,255,136,0.15)' }}>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
-          <Text style={{ fontSize: 22 }}>💼</Text>
-          <Text style={{ color: '#f4d47a', fontSize: 15, fontWeight: 'bold' }}>داشبورد منابع انسانی</Text>
+      {/* KPI کارمندان */}
+      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={[hd.c, { borderRightColor: '#3b82f6' }]}><Text style={hd.l}>👥 کل</Text><Text style={[hd.v, { color: '#60a5fa' }]}>{emps.length}</Text></View>
+        <View style={[hd.c, { borderRightColor: '#10b981' }]}><Text style={hd.l}>✅ فعال</Text><Text style={[hd.v, { color: '#34d399' }]}>{activeEmps.length}</Text></View>
+        <View style={[hd.c, { borderRightColor: '#f59e0b' }]}><Text style={hd.l}>⏰ مرخصی</Text><Text style={[hd.v, { color: '#fbbf24' }]}>{monthLeaves.length}</Text></View>
+        <View style={[hd.c, { borderRightColor: '#8b5cf6' }]}><Text style={hd.l}>🏦 وام</Text><Text style={[hd.v, { color: '#a78bfa' }]}>{loans.filter((l: any) => l.status === 'active').length}</Text></View>
+      </View>
+
+      {/* KPI حضور */}
+      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={[hd.c, { borderRightColor: '#00ff88' }]}><Text style={hd.l}>✅ حاضر</Text><Text style={[hd.v, { color: '#00ff88' }]}>{presentToday}</Text></View>
+        <View style={[hd.c, { borderRightColor: '#dc2626' }]}><Text style={hd.l}>❌ غایب</Text><Text style={[hd.v, { color: '#ff3355' }]}>{absentToday}</Text></View>
+        <View style={[hd.c, { borderRightColor: '#fbbf24' }]}><Text style={hd.l}>🌴 مرخصی</Text><Text style={[hd.v, { color: '#fbbf24' }]}>{leaveToday}</Text></View>
+        <View style={[hd.c, { borderRightColor: '#a78bfa' }]}><Text style={hd.l}>✈️ ماموریت</Text><Text style={[hd.v, { color: '#a78bfa' }]}>{missionToday}</Text></View>
+      </View>
+
+      {/* نرخ حضور */}
+      <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, padding: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' }}>
+        <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 4 }}>
+          <Text style={{ color: '#94a3b8', fontSize: 10 }}>🎯 نرخ حضور امروز</Text>
+          <Text style={{ color: '#00ff88', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' }}>{attendanceRate}%</Text>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: '#00ff88', fontSize: 11, fontFamily: 'monospace' }}>{todayStr}</Text>
-          <Text style={{ color: '#64748b', fontSize: 9 }}>{_pad2(today.getHours())}:{_pad2(today.getMinutes())}</Text>
+        <View style={{ height: 6, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+          <View style={{ width: attendanceRate + '%', height: 6, backgroundColor: attendanceRate >= 80 ? '#00ff88' : attendanceRate >= 50 ? '#fbbf24' : '#ff3355', borderRadius: 3 }} />
         </View>
       </View>
 
-      {/* ═══ KPI ردیف ۱ — کارمندان ═══ */}
-      <Text style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, textAlign: 'right', letterSpacing: 1 }}>👥 آمار کارمندان</Text>
-      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 10 }}>
-        <View style={[hd.card, { borderRightColor: '#3b82f6' }]}>
-          <Text style={hd.lbl}>👥 کل</Text>
-          <Text style={[hd.val, { color: '#60a5fa', textShadowColor: '#60a5fa' }]}>{emps.length}</Text>
-        </View>
-        <View style={[hd.card, { borderRightColor: '#10b981' }]}>
-          <Text style={hd.lbl}>✅ فعال</Text>
-          <Text style={[hd.val, { color: '#34d399', textShadowColor: '#34d399' }]}>{activeEmps.length}</Text>
-        </View>
-        <View style={[hd.card, { borderRightColor: '#f59e0b' }]}>
-          <Text style={hd.lbl}>⏰ مرخصی</Text>
-          <Text style={[hd.val, { color: '#fbbf24', textShadowColor: '#fbbf24' }]}>{monthLeaves.length}</Text>
-        </View>
-        <View style={[hd.card, { borderRightColor: '#64748b' }]}>
-          <Text style={hd.lbl}>🚫 غیرفعال</Text>
-          <Text style={[hd.val, { color: '#94a3b8', textShadowColor: '#94a3b8' }]}>{inactiveEmps.length}</Text>
-        </View>
+      {/* مالی */}
+      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+        <View style={[hd.cw, { borderRightColor: '#00ff88' }]}><Text style={hd.l}>💰 کل حقوق ماه</Text><Text style={[hd.vw, { color: '#00ff88' }]} numberOfLines={1}>{fmt(monthTotal)}</Text></View>
+        <View style={[hd.cw, { borderRightColor: '#dc2626' }]}><Text style={hd.l}>📊 مالیات</Text><Text style={[hd.vw, { color: '#ff3355' }]} numberOfLines={1}>{fmt(monthTax)}</Text></View>
+      </View>
+      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={[hd.cw, { borderRightColor: '#f59e0b' }]}><Text style={hd.l}>🏥 بیمه</Text><Text style={[hd.vw, { color: '#fbbf24' }]} numberOfLines={1}>{fmt(monthInsurance + monthEmployer)}</Text></View>
+        <View style={[hd.cw, { borderRightColor: '#8b5cf6' }]}><Text style={hd.l}>🏦 مانده وام</Text><Text style={[hd.vw, { color: '#a78bfa' }]} numberOfLines={1}>{fmt(totalLoanBalance)}</Text></View>
       </View>
 
-      {/* ═══ KPI ردیف ۲ — حضور امروز ═══ */}
-      <Text style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, textAlign: 'right', letterSpacing: 1 }}>📅 حضور امروز</Text>
-      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 10 }}>
-        <View style={[hd.card, { borderRightColor: '#059669' }]}>
-          <Text style={hd.lbl}>✅ حاضر</Text>
-          <Text style={[hd.val, { color: '#00ff88', textShadowColor: '#00ff88' }]}>{presentToday}</Text>
-        </View>
-        <View style={[hd.card, { borderRightColor: '#dc2626' }]}>
-          <Text style={hd.lbl}>❌ غایب</Text>
-          <Text style={[hd.val, { color: '#ff3355', textShadowColor: '#ff3355' }]}>{absentToday}</Text>
-        </View>
-        <View style={[hd.card, { borderRightColor: '#f59e0b' }]}>
-          <Text style={hd.lbl}>🌴 مرخصی</Text>
-          <Text style={[hd.val, { color: '#fbbf24', textShadowColor: '#fbbf24' }]}>{leaveToday}</Text>
-        </View>
-        <View style={[hd.card, { borderRightColor: '#8b5cf6' }]}>
-          <Text style={hd.lbl}>✈️ ماموریت</Text>
-          <Text style={[hd.val, { color: '#a78bfa', textShadowColor: '#a78bfa' }]}>{missionToday}</Text>
-        </View>
-      </View>
-
-      {/* ═══ نرخ حضور (Progress) ═══ */}
-      <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' }}>
-        <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
-          <Text style={{ color: '#94a3b8', fontSize: 11 }}>🎯 نرخ حضور امروز</Text>
-          <Text style={{ color: '#00ff88', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace' }}>{attendanceRate}%</Text>
-        </View>
-        <View style={{ height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
-          <View style={{ width: attendanceRate + '%', height: 8, backgroundColor: attendanceRate >= 80 ? '#00ff88' : attendanceRate >= 50 ? '#fbbf24' : '#ff3355', borderRadius: 4 }} />
-        </View>
-      </View>
-
-      {/* ═══ KPI ردیف ۳ — مالی ═══ */}
-      <Text style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, textAlign: 'right', letterSpacing: 1 }}>💰 آمار مالی (این ماه)</Text>
-      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 10 }}>
-        <View style={[hd.cardWide, { borderRightColor: '#00ff88' }]}>
-          <Text style={hd.lbl}>💰 کل حقوق</Text>
-          <Text style={[hd.valWide, { color: '#00ff88', textShadowColor: '#00ff88' }]} numberOfLines={1}>{fmt(monthTotal)}</Text>
-        </View>
-        <View style={[hd.cardWide, { borderRightColor: '#dc2626' }]}>
-          <Text style={hd.lbl}>📊 مالیات</Text>
-          <Text style={[hd.valWide, { color: '#ff3355', textShadowColor: '#ff3355' }]} numberOfLines={1}>{fmt(monthTax)}</Text>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 10 }}>
-        <View style={[hd.cardWide, { borderRightColor: '#f59e0b' }]}>
-          <Text style={hd.lbl}>🏥 بیمه کارمند + کارفرما</Text>
-          <Text style={[hd.valWide, { color: '#fbbf24', textShadowColor: '#fbbf24' }]} numberOfLines={1}>{fmt(monthInsurance + monthEmployer)}</Text>
-        </View>
-        <View style={[hd.cardWide, { borderRightColor: '#8b5cf6' }]}>
-          <Text style={hd.lbl}>🏦 مانده وام‌ها</Text>
-          <Text style={[hd.valWide, { color: '#a78bfa', textShadowColor: '#a78bfa' }]} numberOfLines={1}>{fmt(totalLoanBalance)}</Text>
-        </View>
-      </View>
-
-      {/* ═══ نمودار حضور ۷ روز ═══ */}
-      <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' }}>
-        <Text style={{ color: '#94a3b8', fontSize: 11, marginBottom: 8, textAlign: 'right' }}>📊 حضور ۷ روز اخیر</Text>
-        <View style={{ flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-around', height: 80, gap: 4 }}>
+      {/* نمودار ۷ روز */}
+      <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, padding: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' }}>
+        <Text style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, textAlign: 'right' }}>📊 حضور ۷ روز اخیر</Text>
+        <View style={{ flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-around', height: 60, gap: 3 }}>
           {last7.map((d, i) => (
             <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-              <Text style={{ color: '#00ff88', fontSize: 10, marginBottom: 2, fontFamily: 'monospace' }}>{d.present}</Text>
-              <View style={{ width: '80%', height: Math.max(4, (d.present / maxWeek) * 60), backgroundColor: 'rgba(0,255,136,0.6)', borderRadius: 3 }} />
-              <Text style={{ color: '#64748b', fontSize: 8, marginTop: 4, fontFamily: 'monospace' }}>{d.date}</Text>
+              <Text style={{ color: '#00ff88', fontSize: 9, marginBottom: 2 }}>{d.present}</Text>
+              <View style={{ width: '70%', height: Math.max(3, (d.present / maxWeek) * 45), backgroundColor: 'rgba(0,255,136,0.6)', borderRadius: 2 }} />
+              <Text style={{ color: '#64748b', fontSize: 7, marginTop: 3 }}>{d.date}</Text>
             </View>
           ))}
         </View>
       </View>
 
-      {/* ═══ توزیع دپارتمان‌ها ═══ */}
+      {/* توزیع دپارتمان */}
       {Object.keys(deptDist).length > 0 && (
-        <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(96,165,250,0.2)' }}>
-          <Text style={{ color: '#94a3b8', fontSize: 11, marginBottom: 8, textAlign: 'right' }}>🏢 توزیع دپارتمان‌ها</Text>
+        <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, padding: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(96,165,250,0.2)' }}>
+          <Text style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, textAlign: 'right' }}>🏢 توزیع دپارتمان‌ها</Text>
           {Object.entries(deptDist).map(([dept, cnt]: any) => (
-            <View key={dept} style={{ marginBottom: 6 }}>
-              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 3 }}>
-                <Text style={{ color: '#e2e8f0', fontSize: 10 }}>{dept}</Text>
-                <Text style={{ color: '#60a5fa', fontSize: 10, fontFamily: 'monospace' }}>{cnt} نفر</Text>
+            <View key={dept} style={{ marginBottom: 4 }}>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ color: '#e2e8f0', fontSize: 9 }}>{dept}</Text>
+                <Text style={{ color: '#60a5fa', fontSize: 9, fontFamily: 'monospace' }}>{cnt}</Text>
               </View>
-              <View style={{ height: 5, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                <View style={{ width: ((cnt / maxDept) * 100) + '%', height: 5, backgroundColor: '#3b82f6' }} />
+              <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+                <View style={{ width: ((cnt / maxDept) * 100) + '%', height: 4, backgroundColor: '#3b82f6' }} />
               </View>
             </View>
           ))}
         </View>
       )}
 
-      {/* ═══ Top 5 کارمندان ═══ */}
+      {/* Top 5 */}
       {top5.length > 0 && (
-        <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(244,212,122,0.2)' }}>
-          <Text style={{ color: '#94a3b8', fontSize: 11, marginBottom: 8, textAlign: 'right' }}>🏆 ۵ کارمند برتر (حضور)</Text>
-          {top5.map(([code, s], i) => (
-            <View key={code} style={{ flexDirection: 'row-reverse', alignItems: 'center', paddingVertical: 6, borderBottomWidth: i < top5.length - 1 ? 1 : 0, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
-              <Text style={{ color: ['#fbbf24', '#94a3b8', '#a16207', '#64748b', '#64748b'][i], fontSize: 14, width: 26, fontWeight: 'bold', fontFamily: 'monospace' }}>{i + 1}.</Text>
-              <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>{s.name}</Text>
-                <Text style={{ color: '#64748b', fontSize: 9, fontFamily: 'monospace' }}>{code}</Text>
-              </View>
-              <View style={{ alignItems: 'center', marginRight: 10 }}>
-                <Text style={{ color: '#00ff88', fontSize: 12, fontWeight: 'bold' }}>{s.present}</Text>
-                <Text style={{ color: '#64748b', fontSize: 8 }}>روز حاضر</Text>
-              </View>
-              <View style={{ alignItems: 'center', marginRight: 10 }}>
-                <Text style={{ color: '#fbbf24', fontSize: 12, fontWeight: 'bold' }}>{s.ot}</Text>
-                <Text style={{ color: '#64748b', fontSize: 8 }}>اضافه‌کار</Text>
-              </View>
+        <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, padding: 8, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(244,212,122,0.2)' }}>
+          <Text style={{ color: '#94a3b8', fontSize: 10, marginBottom: 6, textAlign: 'right' }}>🏆 ۵ کارمند برتر</Text>
+          {top5.map(([code, s]: any, i: number) => (
+            <View key={code} style={{ flexDirection: 'row-reverse', alignItems: 'center', paddingVertical: 4 }}>
+              <Text style={{ color: ['#fbbf24','#94a3b8','#a16207','#64748b','#64748b'][i], fontSize: 12, width: 22, fontWeight: 'bold' }}>{i + 1}.</Text>
+              <Text style={{ flex: 1, color: '#fff', fontSize: 11, textAlign: 'right' }}>{s.name}</Text>
+              <Text style={{ color: '#00ff88', fontSize: 11, fontWeight: 'bold', marginRight: 8 }}>{s.present} روز</Text>
             </View>
           ))}
         </View>
       )}
 
-      {/* ═══ هشدارها ═══ */}
-      {alerts.length > 0 && (
-        <View style={{ backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: 12, marginBottom: 4, borderWidth: 1, borderColor: 'rgba(255,51,85,0.2)' }}>
-          <Text style={{ color: '#94a3b8', fontSize: 11, marginBottom: 8, textAlign: 'right' }}>🔔 هشدارها ({alerts.length})</Text>
-          {alerts.map((a, i) => (
-            <View key={i} style={{ flexDirection: 'row-reverse', alignItems: 'center', paddingVertical: 6, gap: 8, borderBottomWidth: i < alerts.length - 1 ? 1 : 0, borderBottomColor: 'rgba(255,255,255,0.05)' }}>
-              <Text style={{ fontSize: 14 }}>{a.icon}</Text>
-              <Text style={{ flex: 1, color: a.color, fontSize: 11, textAlign: 'right' }}>{a.text}</Text>
-            </View>
-          ))}
+      {/* هشدارها */}
+      {unpaidCount > 0 && (
+        <View style={{ backgroundColor: 'rgba(251,146,60,0.15)', borderRadius: 8, padding: 8, borderWidth: 1, borderColor: 'rgba(251,146,60,0.4)' }}>
+          <Text style={{ color: '#fb923c', fontSize: 10, textAlign: 'right' }}>💰 {unpaidCount} کارمند حقوق این ماه را نگرفته‌اند</Text>
+        </View>
+      )}
+      {todayAtts.length === 0 && activeEmps.length > 0 && (
+        <View style={{ backgroundColor: 'rgba(139,92,246,0.15)', borderRadius: 8, padding: 8, marginTop: 4, borderWidth: 1, borderColor: 'rgba(139,92,246,0.4)' }}>
+          <Text style={{ color: '#a78bfa', fontSize: 10, textAlign: 'right' }}>📅 امروز هیچ حضوری ثبت نشده</Text>
         </View>
       )}
     </View>
   );
 }
 
-const _pad2 = (n: number) => String(n).padStart(2, '0');
-
 const hd = StyleSheet.create({
-  card: { flex: 1, marginHorizontal: 2, padding: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, borderRightWidth: 3, borderRightColor: '#3b82f6', alignItems: 'center', minHeight: 60, justifyContent: 'center' },
-  lbl: { color: '#94a3b8', fontSize: 9, marginBottom: 4, textAlign: 'center' },
-  val: { fontSize: 16, fontWeight: '900', fontFamily: 'monospace', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
-  cardWide: { flex: 1, marginHorizontal: 2, padding: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, borderRightWidth: 3, borderRightColor: '#3b82f6', alignItems: 'center', minHeight: 58, justifyContent: 'center' },
-  valWide: { fontSize: 13, fontWeight: '900', fontFamily: 'monospace', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
+  c: { flex: 1, marginHorizontal: 2, padding: 6, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 6, borderRightWidth: 3, alignItems: 'center', minHeight: 52, justifyContent: 'center' },
+  l: { color: '#94a3b8', fontSize: 8, marginBottom: 3, textAlign: 'center' },
+  v: { fontSize: 14, fontWeight: '900', fontFamily: 'monospace' },
+  cw: { flex: 1, marginHorizontal: 2, padding: 6, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 6, borderRightWidth: 3, alignItems: 'center', minHeight: 50, justifyContent: 'center' },
+  vw: { fontSize: 12, fontWeight: '900', fontFamily: 'monospace' },
 });
-
 
 // ═══════════════════════════════════════════
 function EmpTab({ emps, reload, showToast }: any) {

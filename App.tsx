@@ -461,7 +461,8 @@ function MainApp({ showToast, onCycleTheme }: any) {
 
         <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
                  <View style={{ flexDirection: 'row-reverse', gap: 8, alignItems: 'center' }}>
-            <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
+            <TouchableOpacity onPress={() => setShowLang(true)} style={[s.themeBtn, { borderColor: "#d4af37" }]}><Text style={{ fontSize: 20 }}>🌍</Text></TouchableOpacity>
+          <TouchableOpacity onPress={onCycleTheme} style={[s.themeBtn, { borderColor: '#d4af37' }]}>
               <Text style={{ fontSize: 20 }}>
                 {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
               </Text>

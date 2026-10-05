@@ -1347,9 +1347,9 @@ function PartyList({ type, list, reload, showToast }: any) {
           ) : filtered.map((x: any, i: number) => (
             <View key={x.local_id || x.id} style={[s.tR, i % 2 === 0 && { backgroundColor: '#fff' }]}>
               <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-              <Text style={[s.td, { width: 140, color: color, fontWeight: 'bold', fontSize: 11, fontFamily: 'monospace' }]}>{x.code}</Text>
-              <Text style={[s.td, { width: 180, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{x.name}</Text>
-              <Text style={[s.td, { width: 120, color: '#475569', fontSize: 11, fontFamily: 'monospace' }]}>{x.phone || '—'}</Text>
+              <Text style={[s.td, s.rowCode, { width: 140 }]}>{x.code}</Text>
+              <Text style={[s.td, s.rowName, { width: 180 }]} numberOfLines={1}>{x.name}</Text>
+              <Text style={[s.td, s.rowPhone, { width: 120 }]}>{x.phone || '—'}</Text>
               <Text style={[s.td, { width: 100, color: '#475569', fontSize: 11 }]}>{x.bank || '—'}</Text>
               <Text style={[s.td, { width: 130, color: '#475569', fontSize: 10, fontFamily: 'monospace' }]}>{x.account_number || '—'}</Text>
               <Text style={[s.td, { width: 140, color: '#0f2438', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{x.holder_name || '—'}</Text>
@@ -1450,9 +1450,9 @@ const s = StyleSheet.create({
 
   // جدول ردیفی
   tblHeader: { flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 10, borderTopLeftRadius: 8, borderTopRightRadius: 8 },
-  th: { color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 4 },
+  th: { color: '#f4d47a', fontSize: 11, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 6, letterSpacing: 0.3 },
   tblRow: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 6, backgroundColor: '#fff', alignItems: 'center' },
-  td: { fontSize: 11, textAlign: 'center', paddingHorizontal: 4, color: '#1a2332' },
+  td: { fontSize: 12, textAlign: 'center', paddingHorizontal: 6, color: '#334155' },
   iconBtn: { paddingHorizontal: 6, paddingVertical: 4 },
 
   // فرم

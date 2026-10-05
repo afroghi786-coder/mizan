@@ -119,6 +119,15 @@ export async function deleteCheck(id: string) {
 // ═══════════════════════════════════════════
 //  مشتری/خریدار — کد از تلفن
 // ═══════════════════════════════════════════
+
+
+
+
+
+
+// ═══════════════════════════════════════════
+//  مشتریان / خریداران صرافی
+// ═══════════════════════════════════════════
 export const getFxCustomers = () => fetchAll('fx_customers', 'fx_customers');
 
 export async function findFxCustomerByPhone(phone: string, type: string) {
@@ -132,7 +141,6 @@ export async function createFxCustomer(p: any): Promise<any> {
   const type = p.type || 'customer';
   const prefix = type === 'buyer' ? 'B_' : 'X_';
   const phone = String(p.phone || '').replace(/[^\d]/g, '');
-
   let code = p.code || '';
   if (!code && phone) code = prefix + phone;
   if (!code) {
@@ -143,18 +151,15 @@ export async function createFxCustomer(p: any): Promise<any> {
     });
     code = prefix + (maxN + 1);
   }
-
   const existing = list.find((x: any) => x.code === code);
   const item = {
-    ...(existing || {}),
-    ...p,
+    ...(existing || {}), ...p,
     code, type,
     local_id: existing?.local_id || gid(),
     created_at: existing?.created_at || new Date().toISOString(),
   };
   const newList = [item, ...list.filter((x: any) => x.code !== code)];
   await writeLocal('fx_customers', newList);
-
   const clean: any = { ...item }; delete clean.user_id; delete clean.id;
   setTimeout(async () => { try { await supabase.from('fx_customers').upsert(clean, { onConflict: 'local_id' }); } catch {} }, 0);
   return item;

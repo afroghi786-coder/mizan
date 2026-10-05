@@ -46,7 +46,7 @@ export const TERM_LABELS: Record<string, string> = {
 export const PRESETS: Record<PresetKey, Preset> = {
   store: {
     key: 'store', name: 'فروشگاه عمومی', icon: '🏪',
-    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory'],
+    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory', 'exchange', 'expenses', 'employees'],
     terms: {
       product: 'کالا', customer: 'مشتری', sale: 'فروش', purchase: 'خرید',
       inventory: 'انبار', supplier: 'تأمین‌کننده', profit: 'سود', order: 'سفارش',
@@ -54,7 +54,7 @@ export const PRESETS: Record<PresetKey, Preset> = {
   },
   pharmacy: {
     key: 'pharmacy', name: 'داروخانه', icon: '💊',
-    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory'],
+    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory', 'exchange', 'expenses', 'employees'],
     terms: {
       product: 'دارو', customer: 'بیمار', sale: 'فروش دارو', purchase: 'خرید دارو',
       inventory: 'قفسه دارو', supplier: 'پخش دارو', profit: 'سود', order: 'نسخه',
@@ -62,7 +62,7 @@ export const PRESETS: Record<PresetKey, Preset> = {
   },
   clothing: {
     key: 'clothing', name: 'پوشاک / کفش', icon: '👟',
-    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory'],
+    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory', 'exchange', 'expenses', 'employees'],
     terms: {
       product: 'مدل', customer: 'مشتری', sale: 'فروش', purchase: 'خرید',
       inventory: 'انبار', supplier: 'تأمین‌کننده', profit: 'سود', order: 'سفارش',
@@ -70,7 +70,7 @@ export const PRESETS: Record<PresetKey, Preset> = {
   },
   restaurant: {
     key: 'restaurant', name: 'رستوران / فست‌فود', icon: '🍔',
-    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory'],
+    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory', 'exchange', 'expenses', 'employees'],
     terms: {
       product: 'غذا', customer: 'مشتری', sale: 'فروش', purchase: 'خرید مواد',
       inventory: 'انبار مواد', supplier: 'تأمین‌کننده', profit: 'سود', order: 'سفارش',
@@ -78,7 +78,7 @@ export const PRESETS: Record<PresetKey, Preset> = {
   },
   academy: {
     key: 'academy', name: 'آموزشگاه', icon: '🎓',
-    tabs: ['order', 'print', 'mgr', 'profit'],
+    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory', 'exchange', 'expenses', 'employees'],
     terms: {
       product: 'دوره', customer: 'شاگرد', sale: 'ثبت‌نام', purchase: 'خرید تجهیزات',
       inventory: 'کلاس', supplier: 'تأمین‌کننده', profit: 'درآمد', order: 'ثبت‌نام',
@@ -86,7 +86,7 @@ export const PRESETS: Record<PresetKey, Preset> = {
   },
   auto: {
     key: 'auto', name: 'لوازم یدکی', icon: '🔧',
-    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory'],
+    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory', 'exchange', 'expenses', 'employees'],
     terms: {
       product: 'قطعه', customer: 'مشتری', sale: 'فروش', purchase: 'خرید',
       inventory: 'انبار', supplier: 'تأمین‌کننده', profit: 'سود', order: 'سفارش',
@@ -102,7 +102,7 @@ export const PRESETS: Record<PresetKey, Preset> = {
   },
   custom: {
     key: 'custom', name: 'سفارشی', icon: '⚙️',
-    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory'],
+    tabs: ['order', 'purchase', 'print', 'mgr', 'profit', 'inventory', 'exchange', 'expenses', 'employees'],
     terms: {
       product: 'کالا', customer: 'مشتری', sale: 'فروش', purchase: 'خرید',
       inventory: 'انبار', supplier: 'تأمین‌کننده', profit: 'سود', order: 'سفارش',

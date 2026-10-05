@@ -5,7 +5,7 @@ import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';
 import { t, loadLang, getLang, isFirstTime } from './i18n';
-import { loadPreset, getPreset, getTerms, getTabs, term, setPreset, setTerm, PRESETS, TERM_KEYS, TERM_LABELS } from './presets';
+import { term, loadPreset } from './presets';
 import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
@@ -309,8 +309,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [themeTick, setThemeTick] = useState(0);
   const [langTick, setLangTick] = useState(0);
-  const [presetKey, setPresetKey] = useState<string>('store');
-  const [presetTick, setPresetTick] = useState(0);
   const [showLangFirst, setShowLangFirst] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -358,16 +356,6 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => { subscription.unsubscribe(); clearTimeout(failsafe); clearInterval(licTimer); };
   }, []);
-  useEffect(() => {
-    loadPreset().then((p: any) => setPresetKey(p));
-  }, []);
-
-  const changePreset = useCallback(async (k: string) => {
-    await setPreset(k as any);
-    setPresetKey(k);
-    setPresetTick(v => v + 1);
-  }, []);
-
   const cycleTheme = useCallback(() => {
     const next: ThemeMode =
       THEME_MODE === 'dark' ? 'light' :
@@ -389,14 +377,14 @@ export default function App() {
         onClose={() => setShowLangFirst(false)}
         onSelect={() => { setShowLangFirst(false); setLangTick(v => v + 1); }}
       />
-      <View key={themeTick + '-' + langTick + '-' + presetTick} style={{ flex: 1 }}>
+      <View key={themeTick + '-' + langTick} style={{ flex: 1 }}>
         {isAdmin
           ? <AdminScreen showToast={showToast} />
           : !session
           ? <LoginScreen showToast={showToast} />
           : <LicenseGate showToast={showToast}>
               <LicenseNotification showToast={showToast} />
-              <MainApp showToast={showToast} onCycleTheme={cycleTheme} langTick={langTick} presetKey={presetKey} presetTick={presetTick} onChangePreset={changePreset} />
+              <MainApp showToast={showToast} onCycleTheme={cycleTheme} langTick={langTick} />
             </LicenseGate>}
       </View>
       {toast && <View style={[s.toast, toast.error && { backgroundColor: '#b91c1c' }]}><Text style={s.toastTxt}>{toast.msg}</Text></View>}
@@ -416,7 +404,7 @@ function getTabPins(settings: any): Record<string, string> {
   return { ...DEFAULT_TAB_PINS, ...p };
 }
 
-function MainApp({ showToast, onCycleTheme, langTick, presetKey, presetTick, onChangePreset }: any) {
+function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const [showLang, setShowLang] = useState(false);
   const [curLang, setCurLang] = useState(getLang());
   const [tab, setTab] = useState('order');
@@ -431,7 +419,7 @@ function MainApp({ showToast, onCycleTheme, langTick, presetKey, presetTick, onC
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
   useEffect(() => { (globalThis as any).__openLang = () => setShowLang(true); }, []);
 
-  const ALL_TABS = [
+  const tabs = [
     { key: 'order', icon: '🛒', label: term('sale'), color: '#1e3a8a' },
     { key: 'purchase', icon: '🛍️', label: term('purchase'), color: '#166534' },
     { key: 'print', icon: '🖨️', label: t('پرینت'), color: '#6c3483' },
@@ -442,14 +430,6 @@ function MainApp({ showToast, onCycleTheme, langTick, presetKey, presetTick, onC
     { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
     { key: 'employees', icon: '💼', label: t('کارمندان'), color: '#7c3aed' },
   ];
-  const enabled = getTabs();
-  const tabs = ALL_TABS.filter((x: any) => enabled.length === 0 || enabled.indexOf(x.key) !== -1);
-
-  useEffect(() => {
-    if (tabs.length && !tabs.find((x: any) => x.key === tab)) {
-      setTab(tabs[0].key);
-    }
-  }, [presetTick]);
 
   const tabPins = getTabPins(settings);
   const isLocked = (t: string) => !!tabPins[t] && !unlockedTabs.has(t);
@@ -2202,7 +2182,7 @@ function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }:
       {sub === 'newOrder' && <NewOrderSection showToast={showToast} />}
       {sub === 'search' && <SearchSection showToast={showToast} />}
       {sub === 'reports' && <ReportsSection showToast={showToast} />}
-      {sub === 'settings' && <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reload} presetKey={presetKey} onChangePreset={onChangePreset} />}
+      {sub === 'settings' && <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reload} />}
       {sub === 'sources' && <SourcesSection showToast={showToast} />}
       <PinModal
         visible={pendingSettingsUnlock}
@@ -2851,7 +2831,7 @@ function ReportsSection({ showToast }: any) {
 // ══════════════════════════════════════════════════════════
 //  SETTINGS SECTION
 // ══════════════════════════════════════════════════════════
-function SettingsSection({ showToast, settings, setSettings, reload, presetKey, onChangePreset }: any) {
+function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const [saving, setSaving] = useState(false);
   const pins = settings.tab_pins || {};
   const [emailInput, setEmailInput] = useState('');

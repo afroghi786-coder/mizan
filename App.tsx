@@ -2173,6 +2173,7 @@ function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }:
     { k: 'newOrder', l: '➕ سفارش جدید' },
     { k: 'search', l: '🔍 جستجو و ویرایش' },
     { k: 'reports', l: '📊 گزارشات' },
+    { k: 'preset', l: '🎨 نوع کسب‌وکار' },
     { k: 'settings', l: '⚙️ تنظیمات' },
     { k: 'sources', l: '🌿 منابع' },
   ];
@@ -2190,6 +2191,7 @@ function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }:
       {sub === 'search' && <SearchSection showToast={showToast} />}
       {sub === 'reports' && <ReportsSection showToast={showToast} />}
       {sub === 'settings' && <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reload} />}
+      {sub === 'preset' && <PresetSection showToast={showToast} />}
       {sub === 'sources' && <SourcesSection showToast={showToast} />}
       <PinModal
         visible={pendingSettingsUnlock}
@@ -2837,6 +2839,75 @@ function ReportsSection({ showToast }: any) {
 
 // ══════════════════════════════════════════════════════════
 //  SETTINGS SECTION
+// ══════════════════════════════════════════════════════════
+//  PRESET SECTION — انتخاب نوع کسب‌وکار
+// ══════════════════════════════════════════════════════════
+function PresetSection({ showToast }: any) {
+  const [current, setCurrent] = useState<string>(getPreset());
+
+  const applyPreset = async (k: string) => {
+    try {
+      await setPreset(k as any);
+      setCurrent(k);
+      showToast('✅ ' + (PRESETS as any)[k].name);
+      setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location) {
+          window.location.reload();
+        }
+      }, 700);
+    } catch (e: any) {
+      showToast(e?.message || 'خطا', true);
+    }
+  };
+
+  return (
+    <View>
+      <Text style={s.formTitle}>🎨 نوع کسب‌وکار</Text>
+      <Text style={[s.lbl, { color: C.textMut, textAlign: 'center', marginBottom: 16 }]}>
+        با انتخاب هرکدام، واژه‌های برنامه تغییر می‌کنند
+      </Text>
+
+      {Object.values(PRESETS).map((p: any) => {
+        const active = current === p.key;
+        return (
+          <TouchableOpacity
+            key={p.key}
+            onPress={() => applyPreset(p.key)}
+            style={[s.customerCard, {
+              backgroundColor: active ? (C.isDark ? '#064e3b' : '#ecfdf5') : C.card,
+              borderColor: active ? '#059669' : C.border,
+              borderWidth: 2,
+              marginBottom: 10,
+            }]}
+          >
+            <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 12 }}>
+              <Text style={{ fontSize: 34 }}>{p.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.customerCardTitle, {
+                  color: C.text,
+                  borderBottomWidth: 0,
+                  marginBottom: 0,
+                  paddingBottom: 0,
+                }]}>
+                  {p.name}
+                </Text>
+                <Text style={{ color: C.textMut, fontSize: 11, marginTop: 4, textAlign: 'right' }}>
+                  {p.terms.product} • {p.terms.customer} • {p.terms.sale}
+                </Text>
+              </View>
+              {active ? <Text style={{ color: '#059669', fontSize: 22 }}>✅</Text> : null}
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+
+      <Text style={[s.lblS, { color: C.textMut, textAlign: 'center', marginTop: 12 }]}>
+        💡 پس از انتخاب، برنامه خودکار دوباره بارگذاری می‌شود
+      </Text>
+    </View>
+  );
+}
+
 // ══════════════════════════════════════════════════════════
 function SettingsSection({ showToast, settings, setSettings, reload }: any) {
   const [saving, setSaving] = useState(false);

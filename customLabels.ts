@@ -5,6 +5,11 @@ const KEY = '@mizan_custom_labels';
 let CUSTOM: Record<string, string> = {};
 let listeners: Array<() => void> = [];
 
+export function clRaw(text: string): string | undefined {
+  if (!text) return undefined;
+  return CUSTOM[String(text).trim()];
+}
+
 export function cl(text: string): string {
   if (!text) return text;
   return CUSTOM[String(text).trim()] || text;

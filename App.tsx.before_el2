@@ -551,7 +551,7 @@ function PinModal({ visible, correctPin, onClose, onSuccess, showToast }: any) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={s.modalBg}><View style={[s.modalBox, { backgroundColor: C.card }]}>
-        <View style={[s.modalHead, { backgroundColor: '#6c3483' }]}><EL textKey="🔒 رمز ورود" style={s.modalHeadTxt} /></View>
+        <View style={[s.modalHead, { backgroundColor: '#6c3483' }]}><Text style={s.modalHeadTxt}>{t('🔒 رمز ورود')}</Text></View>
         <View style={{ padding: 20 }}>
           <EL text="{t('رمز را وارد کنید')}" style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={s.pinInp} value={pin} onChangeText={(v) => setPin(v.replace(/\D/g, '').slice(0, 10))} keyboardType="phone-pad" secureTextEntry placeholder="••••" placeholderTextColor="#64748b" />
@@ -654,7 +654,7 @@ function CellAutocomplete({ value, onChange, onSelect, options, placeholder }: a
               />
               <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
                 {filtered.length === 0 && (
-                  <EL textKey="موردی یافت نشد" style={{ textAlign: 'center', color: C.textMut, padding: 20 }} />
+                  <Text style={{ textAlign: 'center', color: C.textMut, padding: 20 }}>{t('موردی یافت نشد')}</Text>
                 )}
                 {filtered.map((opt: string) => (
                   <TouchableOpacity
@@ -933,7 +933,7 @@ function SalesScreen({ showToast }: any) {
       <View style={S.card}>
         <View style={S.cardHeader}>
           <Text style={S.cardHeaderIcon}>🖨️</Text>
-          <EL textKey="پرینت مجدد فاکتور" style={[S.cardHeaderTitle, { color: S.order }]} />
+          <Text style={[S.cardHeaderTitle, { color: S.order }]}>{t('پرینت مجدد فاکتور')}</Text>
         </View>
         <View style={{ padding: 16 }}>
           <EL text="{t('شماره فاکتور قدیمی')}" style={S.label} />
@@ -966,7 +966,7 @@ function SalesScreen({ showToast }: any) {
         <View style={S.card}>
           <View style={S.cardHeader}>
             <Text style={S.cardHeaderIcon}>📞</Text>
-            <EL textKey="اطلاعات مشتری" style={[S.cardHeaderTitle, { color: S.order }]} />
+            <Text style={[S.cardHeaderTitle, { color: S.order }]}>{t('اطلاعات مشتری')}</Text>
           </View>
           <View style={{ padding: 16 }}>
             <Text style={S.label}>
@@ -1015,7 +1015,7 @@ function SalesScreen({ showToast }: any) {
         <View style={S.card}>
           <View style={S.cardHeader}>
             <Text style={S.cardHeaderIcon}>📦</Text>
-            <EL textKey="اقلام فروش" style={[S.cardHeaderTitle, { color: S.order }]} />
+            <Text style={[S.cardHeaderTitle, { color: S.order }]}>{t('اقلام فروش')}</Text>
           </View>
           <View style={{ padding: 16 }}>
             {items.map((it, i) => {
@@ -1044,7 +1044,7 @@ function SalesScreen({ showToast }: any) {
                   {/* ردیف ۳ ستونه */}
                   <View style={S.threeColRow}>
                     <View style={S.threeColCell}>
-                      <EL textKey="کد مدل" style={S.miniLabel} />
+                      <Text style={S.miniLabel}>{t('کد مدل')}</Text>
                       <View style={S.miniValue}>
                         <Text style={S.miniValueTxt}>{it.modelCode || '—'}</Text>
                       </View>
@@ -1076,7 +1076,7 @@ function SalesScreen({ showToast }: any) {
                   {/* مبلغ کل */}
                   <View style={S.threeColRow}>
                     <View style={S.threeColCell}>
-                      <EL textKey="مبلغ کل" style={S.miniLabel} />
+                      <Text style={S.miniLabel}>{t('مبلغ کل')}</Text>
                       <View style={S.miniValue}>
                         <Text style={[S.miniValueTxt, { color: lineTotal ? S.order : '#94a3b8' }]}>
                           {lineTotal ? fmt(lineTotal) : '—'}
@@ -1091,7 +1091,7 @@ function SalesScreen({ showToast }: any) {
             })}
 
             <TouchableOpacity style={S.addModelBtn} onPress={addItem}>
-              <EL textKey="➕ افزودن مدل" style={S.addModelBtnTxt} />
+              <Text style={S.addModelBtnTxt}>{t('➕ افزودن مدل')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1099,11 +1099,11 @@ function SalesScreen({ showToast }: any) {
         {/* ─── خلاصه کل ─── */}
         <View style={S.summaryCard}>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <EL textKey="💰 جمع مبلغ کل" style={S.summaryLbl} />
+            <Text style={S.summaryLbl}>{t('💰 جمع مبلغ کل')}</Text>
             <Text style={S.summaryVal}>{toFaNum(fmt(grandTotal))}</Text>
           </View>
           <View style={{ alignItems: 'flex-start' }}>
-            <EL textKey="📦 تعداد اقلام" style={S.summaryLbl} />
+            <Text style={S.summaryLbl}>{t('📦 تعداد اقلام')}</Text>
             <Text style={S.summaryCnt}>{toFaNum(grandQty)} مدل</Text>
           </View>
         </View>
@@ -1470,7 +1470,7 @@ function PurchaseScreen({ showToast }: any) {
         <EL text="{t('🛍️ فاکتور خرید')}" style={s.formTitle} />
 
         <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border }]}>
-          <EL textKey="🏭 اطلاعات تأمین‌کننده" style={[s.customerCardTitle, { color: C.text }]} />
+          <Text style={[s.customerCardTitle, { color: C.text }]}>{t('🏭 اطلاعات تأمین‌کننده')}</Text>
           <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...prods.map(p => p.supplier_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
           <EL text="{t('🆔 کد تأمین‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sCode} onChangeText={setSCode} placeholder="خودکار" placeholderTextColor={C.textMut} />
@@ -1496,29 +1496,29 @@ function PurchaseScreen({ showToast }: any) {
                 <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={term('product') + '...'} />
                 <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                   <View style={{ flex: 1 }}>
-                    <EL textKey="کد مدل" style={[s.miniLbl, { color: C.textMut }]} />
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('کد مدل')}</Text>
                     <View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}>
                       <Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text>
                     </View>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} />
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('تعداد')}</Text>
                     <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <EL textKey="قیمت" style={[s.miniLbl, { color: C.textMut }]} />
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('قیمت')}</Text>
                     <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
                   <View style={{ flex: 1 }}>
-                    <EL textKey="مبلغ کل" style={[s.miniLbl, { color: C.textMut }]} />
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('مبلغ کل')}</Text>
                     <View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lineTotal ? '#00ff88' : C.border }]}>
                       <Text style={[s.miniValueTxt, { color: lineTotal ? '#00ff88' : C.textMut }]}>{lineTotal ? fmt(lineTotal) : '—'}</Text>
                     </View>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <EL textKey="شرح" style={[s.miniLbl, { color: C.textMut }]} />
+                    <Text style={[s.miniLbl, { color: C.textMut }]}>{t('شرح')}</Text>
                     <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="اختیاری" placeholderTextColor={C.textMut} />
                   </View>
                 </View>
@@ -1530,8 +1530,8 @@ function PurchaseScreen({ showToast }: any) {
         <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>{t('➕ افزودن مدل')}</Text></TouchableOpacity>
 
         <View style={s.grandSummary}>
-          <View style={{ flex: 1 }}><EL textKey="💰 جمع مبلغ کل" style={s.gsLbl} /><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
-          <View style={{ alignItems: 'center' }}><EL textKey="📦 تعداد اقلام" style={s.gsLbl} /><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
+          <View style={{ flex: 1 }}><Text style={s.gsLbl}>{t('💰 جمع مبلغ کل')}</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
+          <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>{t('📦 تعداد اقلام')}</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
         </View>
 
         <EL text="{t('💳 اطلاعات پرداخت')}" style={s.secT} />
@@ -1539,8 +1539,8 @@ function PurchaseScreen({ showToast }: any) {
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={payAmt} onChangeText={setPayAmt} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
 
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-          <View style={{ flex: 1 }}><EL textKey="💵 پرداخت" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: '#059669' }]}><Text style={[s.miniValueTxt, { color: '#059669' }]}>{paidAmt ? fmt(paidAmt) : '—'}</Text></View></View>
-          <View style={{ flex: 1 }}><EL textKey="📌 مانده" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? fmt(remaining) : '—'}</Text></View></View>
+          <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('💵 پرداخت')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: '#059669' }]}><Text style={[s.miniValueTxt, { color: '#059669' }]}>{paidAmt ? fmt(paidAmt) : '—'}</Text></View></View>
+          <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('📌 مانده')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? fmt(remaining) : '—'}</Text></View></View>
         </View>
 
         <EL text="{t('📅 تاریخ پرداخت')}" style={[s.lbl, { color: C.textMut }]} />
@@ -1774,7 +1774,7 @@ function PrintScreen({ showToast }: any) {
         <>
           <View ref={ref} collapsable={false} style={{ backgroundColor: '#ffffff', borderRadius: 12, padding: 12, marginTop: 16 }}>
             <View style={{ borderBottomWidth: 2, borderBottomColor: '#d4af37', paddingBottom: 6, marginBottom: 10 }}>
-              <EL textKey="⚖️ گزارش جامع — میزان" style={{ fontSize: 15, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' }} />
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' }}>{t('⚖️ گزارش جامع — میزان')}</Text>
               <Text style={{ fontSize: 9, color: '#64748b', textAlign: 'right', marginTop: 3 }}>📅 {report.timeString}</Text>
             </View>
 
@@ -1792,21 +1792,21 @@ function PrintScreen({ showToast }: any) {
                   <View>
                     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#1e3a8a', paddingVertical: 4 }}>
                       <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
-                      <EL textKey="تاریخ" style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="فاکتور" style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="کد مدل" style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="نام مدل" style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="تعداد" style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="قیمت" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="جمع" style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="پرداخت" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="مانده" style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="بانک" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="صاحب حساب" style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="کد صاحب" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="تاریخ واریز" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="باربری" style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="شرح" style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ')}</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('فاکتور')}</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد مدل')}</Text>
+                      <Text style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('نام مدل')}</Text>
+                      <Text style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تعداد')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('قیمت')}</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('جمع')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('پرداخت')}</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('مانده')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('بانک')}</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('صاحب حساب')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد صاحب')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ واریز')}</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('باربری')}</Text>
+                      <Text style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('شرح')}</Text>
                     </View>
                     {report.salesRows.map((r: any, i: number) => (
                       <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
@@ -1847,20 +1847,20 @@ function PrintScreen({ showToast }: any) {
                   <View>
                     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#9a3412', paddingVertical: 4 }}>
                       <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
-                      <EL textKey="تاریخ" style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="فاکتور" style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="کد مدل" style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="نام مدل" style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="تعداد" style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="قیمت" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="جمع" style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="پرداخت" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="مانده" style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="بانک" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="صاحب حساب" style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="کد پرداخت" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="تاریخ واریز" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="شرح" style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ')}</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('فاکتور')}</Text>
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد مدل')}</Text>
+                      <Text style={{ width: 140, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('نام مدل')}</Text>
+                      <Text style={{ width: 40, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تعداد')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('قیمت')}</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('جمع')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('پرداخت')}</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('مانده')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('بانک')}</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('صاحب حساب')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد پرداخت')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ واریز')}</Text>
+                      <Text style={{ width: 110, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('شرح')}</Text>
                     </View>
                     {report.purchaseRows.map((r: any, i: number) => (
                       <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#fff7ed' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#fed7aa' }}>
@@ -1900,15 +1900,15 @@ function PrintScreen({ showToast }: any) {
                   <View>
                     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#065f46', paddingVertical: 4 }}>
                       <Text style={{ width: 28, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
-                      <EL textKey="تاریخ" style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="فاکتور" style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="فرستنده" style={{ width: 130, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="کد فرستنده" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="تلفن" style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="مبلغ" style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="بانک" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="گیرنده" style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
-                      <EL textKey="تاریخ واریز" style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }} />
+                      <Text style={{ width: 75, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ')}</Text>
+                      <Text style={{ width: 95, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('فاکتور')}</Text>
+                      <Text style={{ width: 130, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('فرستنده')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('کد فرستنده')}</Text>
+                      <Text style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تلفن')}</Text>
+                      <Text style={{ width: 100, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('مبلغ')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('بانک')}</Text>
+                      <Text style={{ width: 90, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('گیرنده')}</Text>
+                      <Text style={{ width: 80, color: '#fff', fontSize: 9, fontWeight: 'bold', textAlign: 'center' }}>{t('تاریخ واریز')}</Text>
                     </View>
                     {report.triangRows.map((r: any, i: number) => (
                       <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f0fdf4' : '#fff', paddingVertical: 3, borderBottomWidth: 1, borderBottomColor: '#d1fae5' }}>
@@ -1937,11 +1937,11 @@ function PrintScreen({ showToast }: any) {
                 {totals.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : totals.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
               </Text>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
-                <EL textKey="بدهی ایشان به ما:" style={{ fontSize: 10, color: '#64748b' }} />
+                <Text style={{ fontSize: 10, color: '#64748b' }}>{t('بدهی ایشان به ما:')}</Text>
                 <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(totals.customerOwes)}</Text>
               </View>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
-                <EL textKey="بدهی ما به ایشان:" style={{ fontSize: 10, color: '#64748b' }} />
+                <Text style={{ fontSize: 10, color: '#64748b' }}>{t('بدهی ما به ایشان:')}</Text>
                 <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(totals.weOwe + totals.totalTriang)}</Text>
               </View>
               <View style={{ borderTopWidth: 1, borderTopColor: '#cbd5e1', marginTop: 4, paddingTop: 4 }}>
@@ -1951,7 +1951,7 @@ function PrintScreen({ showToast }: any) {
               </View>
             </View>
 
-            <EL textKey="میزان — حساب‌ها دقیق، معاملات امن، ذهن آسوده" style={{ fontSize: 8, color: '#94a3b8', textAlign: 'center', marginTop: 8 }} />
+            <Text style={{ fontSize: 8, color: '#94a3b8', textAlign: 'center', marginTop: 8 }}>{t('میزان — حساب‌ها دقیق، معاملات امن، ذهن آسوده')}</Text>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -1994,14 +1994,14 @@ function ProfitScreen({ showToast, settings }: any) {
         <View>
           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <EL textKey="کد" style={[s.thCell, { width: 90 }]} />
-            <EL textKey="نام مدل" style={[s.thCell, { width: 180 }]} />
-            <EL textKey="خرید" style={[s.thCell, { width: 120 }]} />
-            <EL textKey="فروش" style={[s.thCell, { width: 120 }]} />
-            <EL textKey="سود/واحد" style={[s.thCell, { width: 110 }]} />
-            <EL textKey="تعداد فروش" style={[s.thCell, { width: 90 }]} />
-            <EL textKey="جمع سود" style={[s.thCell, { width: 130 }]} />
-            <EL textKey="منبع قیمت" style={[s.thCell, { width: 140 }]} />
+            <Text style={[s.thCell, { width: 90 }]}>{t('کد')}</Text>
+            <Text style={[s.thCell, { width: 180 }]}>{t('نام مدل')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('خرید')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('فروش')}</Text>
+            <Text style={[s.thCell, { width: 110 }]}>{t('سود/واحد')}</Text>
+            <Text style={[s.thCell, { width: 90 }]}>{t('تعداد فروش')}</Text>
+            <Text style={[s.thCell, { width: 130 }]}>{t('جمع سود')}</Text>
+            <Text style={[s.thCell, { width: 140 }]}>{t('منبع قیمت')}</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : models.map((m: any, i: number) => {
             const avgSale = m.totalQty ? (m.totalSales / m.totalQty) : 0;
@@ -2026,7 +2026,7 @@ function ProfitScreen({ showToast, settings }: any) {
           })}
         </View>
       </ScrollView>
-      {!loading && !models.length && <EL textKey="💹 در این بازه فروشی ثبت نشده" style={s.empty} />}
+      {!loading && !models.length && <Text style={s.empty}>{t('💹 در این بازه فروشی ثبت نشده')}</Text>}
     </ScrollView>
   );
 }
@@ -2109,14 +2109,14 @@ function InventoryScreen({ showToast }: any) {
         <View>
           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <EL textKey="کد" style={[s.thCell, { width: 100 }]} />
-            <EL textKey="نام مدل" style={[s.thCell, { width: 180 }]} />
-            <EL textKey="خرید" style={[s.thCell, { width: 90 }]} />
-            <EL textKey="فروش" style={[s.thCell, { width: 90 }]} />
-            <EL textKey="موجودی" style={[s.thCell, { width: 100 }]} />
-            <EL textKey="موقعیت قفسه" style={[s.thCell, { width: 140 }]} />
-            <EL textKey="وضعیت" style={[s.thCell, { width: 120 }]} />
-            <EL textKey="عملیات" style={[s.thCell, { width: 100 }]} />
+            <Text style={[s.thCell, { width: 100 }]}>{t('کد')}</Text>
+            <Text style={[s.thCell, { width: 180 }]}>{t('نام مدل')}</Text>
+            <Text style={[s.thCell, { width: 90 }]}>{t('خرید')}</Text>
+            <Text style={[s.thCell, { width: 90 }]}>{t('فروش')}</Text>
+            <Text style={[s.thCell, { width: 100 }]}>{t('موجودی')}</Text>
+            <Text style={[s.thCell, { width: 140 }]}>{t('موقعیت قفسه')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('وضعیت')}</Text>
+            <Text style={[s.thCell, { width: 100 }]}>{t('عملیات')}</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((m: any, i: number) => {
             const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
@@ -2138,7 +2138,7 @@ function InventoryScreen({ showToast }: any) {
                 </View>
                 <TouchableOpacity onPress={() => { setEditItem(m); setShelfVal(m.shelf || ''); }} style={[s.tdCell, { width: 100, alignItems: 'center' }]}>
                   <View style={{ backgroundColor: '#7c3aed', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}>
-                    <EL textKey="📍 قفسه" style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{t('📍 قفسه')}</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -2154,7 +2154,7 @@ function InventoryScreen({ showToast }: any) {
           <View style={{ padding: 16 }}>
             <Text style={[s.modalLbl, { color: C.textMut }]}>{t('کد:')} <Text style={[s.modalVal, { color: C.text }]}>{editItem?.code}</Text></Text>
             <Text style={[s.modalLbl, { color: C.textMut }]}>{t('موجودی:')} <Text style={[s.modalVal, { color: C.text }]}>{fmt(editItem?.currentQty || 0)} عدد</Text></Text>
-            <EL textKey="موقعیت قفسه:" style={[s.modalLbl, { color: C.textMut }]} />
+            <Text style={[s.modalLbl, { color: C.textMut }]}>{t('موقعیت قفسه:')}</Text>
             <TextInput style={[s.modalInp, { color: C.text, borderColor: '#a78bfa' }]} value={shelfVal} onChangeText={setShelfVal} placeholder="مثلاً A-12" placeholderTextColor={C.textMut} />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
               <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditItem(null)}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
@@ -2256,12 +2256,12 @@ function UnpaidSection({ showToast }: any) {
               <Text style={{ fontSize: 18 }}>{selected.size === list.length && list.length > 0 ? '✅' : '⬜'}</Text>
             </TouchableOpacity>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <EL textKey="فاکتور" style={[s.thCell, { width: 150 }]} />
-            <EL textKey="نام" style={[s.thCell, { width: 160 }]} />
-            <EL textKey="تلفن" style={[s.thCell, { width: 120 }]} />
-            <EL textKey="مبلغ کل" style={[s.thCell, { width: 130 }]} />
-            <EL textKey="پرداخت" style={[s.thCell, { width: 130 }]} />
-            <EL textKey="وضعیت" style={[s.thCell, { width: 120 }]} />
+            <Text style={[s.thCell, { width: 150 }]}>{t('فاکتور')}</Text>
+            <Text style={[s.thCell, { width: 160 }]}>{t('نام')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('تلفن')}</Text>
+            <Text style={[s.thCell, { width: 130 }]}>{t('مبلغ کل')}</Text>
+            <Text style={[s.thCell, { width: 130 }]}>{t('پرداخت')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('وضعیت')}</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : list.map((inv: any, i: number) => (
             <TouchableOpacity key={inv.invoice} onPress={() => toggle(inv.invoice)} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, selected.has(inv.invoice) && { backgroundColor: '#fee2e2' }]}>
@@ -2275,13 +2275,13 @@ function UnpaidSection({ showToast }: any) {
               <Text style={[s.tdCell, { width: 130, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
               <Text style={[s.tdCell, { width: 130, color: '#dc2626', fontWeight: 'bold' }]}>{fmt(inv.paid)}</Text>
               <View style={[s.tdCell, { width: 120, alignItems: 'center' }]}>
-                <EL textKey="❌ پرداخت‌نشده" style={{ backgroundColor: '#f8d7da', color: '#721c24', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, fontSize: 10, fontWeight: 'bold' }} />
+                <Text style={{ backgroundColor: '#f8d7da', color: '#721c24', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, fontSize: 10, fontWeight: 'bold' }}>{t('❌ پرداخت‌نشده')}</Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
-      {!loading && !list.length && <EL textKey="✅ پرداخت‌نشده‌ای نیست" style={s.empty} />}
+      {!loading && !list.length && <Text style={s.empty}>{t('✅ پرداخت‌نشده‌ای نیست')}</Text>}
     </View>
   );
 }
@@ -2372,14 +2372,14 @@ function NewOrderSection({ showToast }: any) {
             <View style={{ padding: 10 }}>
               <Autocomplete value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={term('product') + '...'} />
               <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-                <View style={{ flex: 1 }}><EL textKey="کد" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text></View></View>
-                <View style={{ flex: 1 }}><EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
-                <View style={{ flex: 1 }}><EL textKey="قیمت" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => upd(i, 'priceUnit', parseNum(v))} keyboardType="numeric" /></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('کد')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text></View></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('تعداد')}</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('قیمت')}</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => upd(i, 'priceUnit', parseNum(v))} keyboardType="numeric" /></View>
               </View>
               <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
-                <View style={{ flex: 1 }}><EL textKey="💰 مبلغ" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lt ? '#00ff88' : C.border }]}><Text style={[s.miniValueTxt, { color: lt ? '#00ff88' : C.textMut }]}>{lt ? fmt(lt) : '—'}</Text></View></View>
-                <View style={{ flex: 1 }}><EL textKey="پرداخت" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => upd(i, 'payment', parseNum(v))} keyboardType="numeric" /></View>
-                <View style={{ flex: 1 }}><EL textKey="⚖️ مانده" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lb > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: lb > 0 ? '#dc2626' : '#059669' }]}>{lt ? fmt(lb) : '—'}</Text></View></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('💰 مبلغ')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lt ? '#00ff88' : C.border }]}><Text style={[s.miniValueTxt, { color: lt ? '#00ff88' : C.textMut }]}>{lt ? fmt(lt) : '—'}</Text></View></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('پرداخت')}</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => upd(i, 'payment', parseNum(v))} keyboardType="numeric" /></View>
+                <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('⚖️ مانده')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lb > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: lb > 0 ? '#dc2626' : '#059669' }]}>{lt ? fmt(lb) : '—'}</Text></View></View>
               </View>
             </View>
           </View>
@@ -2388,8 +2388,8 @@ function NewOrderSection({ showToast }: any) {
 
       <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
       <View style={s.grandSummary}>
-        <View style={{ flex: 1 }}><EL textKey="💰 جمع کل" style={s.gsLbl} /><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
-        <View style={{ alignItems: 'center' }}><EL textKey="📦 تعداد" style={s.gsLbl} /><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
+        <View style={{ flex: 1 }}><Text style={s.gsLbl}>{t('💰 جمع کل')}</Text><Text style={s.gsVal}>{fmt(grandTotal)}</Text></View>
+        <View style={{ alignItems: 'center' }}><Text style={s.gsLbl}>{t('📦 تعداد')}</Text><Text style={s.gsQty}>{toFaNum(grandQty)}</Text></View>
       </View>
       <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={submit} disabled={saving}>
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('✅ ثبت سفارش')}</Text>}
@@ -2514,7 +2514,7 @@ function SearchSection({ showToast }: any) {
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
         <View style={[s.mgrHead, { backgroundColor: '#c0392b' }]}>
           <TouchableOpacity onPress={async () => { if (dirty) { const ok = await confirmMsg('خروج', 'تغییرات ذخیره نشده — خارج شوی؟'); if (!ok) return; } setEditing(null); setEditRows([]); setDirty(false); }}>
-            <EL textKey="← بازگشت" style={{ color: '#fff', fontSize: 16 }} />
+            <Text style={{ color: '#fff', fontSize: 16 }}>{t('← بازگشت')}</Text>
           </TouchableOpacity>
           <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={s.mgrHeadTxt}>✏️ {editing.invoice}</Text>
@@ -2526,20 +2526,20 @@ function SearchSection({ showToast }: any) {
           <View>
             <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
               <Text style={[s.thCell, { width: 36 }]}>#</Text>
-              <EL textKey="کد" style={[s.thCell, { width: 90 }]} />
-              <EL textKey="نام مدل" style={[s.thCell, { width: 180 }]} />
-              <EL textKey="تعداد" style={[s.thCell, { width: 80 }]} />
-              <EL textKey="قیمت" style={[s.thCell, { width: 110 }]} />
-              <EL textKey="مبلغ" style={[s.thCell, { width: 100 }]} />
-              <EL textKey="پرداخت" style={[s.thCell, { width: 100 }]} />
-              <EL textKey="مانده" style={[s.thCell, { width: 100 }]} />
-             <EL textKey="تاریخ واریز" style={[s.thCell, { width: 340 }]} />
-              <EL textKey="بانک" style={[s.thCell, { width: 100 }]} />
-              <EL textKey="صاحب حساب" style={[s.thCell, { width: 130 }]} />
-              <EL textKey="کد صاحب حساب" style={[s.thCell, { width: 110 }]} />
-              <EL textKey="شرح" style={[s.thCell, { width: 140 }]} />
-              {editing.type === 'sales' && <EL textKey="باربری" style={[s.thCell, { width: 130 }]} />}
-              <EL textKey="حذف" style={[s.thCell, { width: 56 }]} />
+              <Text style={[s.thCell, { width: 90 }]}>{t('کد')}</Text>
+              <Text style={[s.thCell, { width: 180 }]}>{t('نام مدل')}</Text>
+              <Text style={[s.thCell, { width: 80 }]}>{t('تعداد')}</Text>
+              <Text style={[s.thCell, { width: 110 }]}>{t('قیمت')}</Text>
+              <Text style={[s.thCell, { width: 100 }]}>{t('مبلغ')}</Text>
+              <Text style={[s.thCell, { width: 100 }]}>{t('پرداخت')}</Text>
+              <Text style={[s.thCell, { width: 100 }]}>{t('مانده')}</Text>
+             <Text style={[s.thCell, { width: 340 }]}>{t('تاریخ واریز')}</Text>
+              <Text style={[s.thCell, { width: 100 }]}>{t('بانک')}</Text>
+              <Text style={[s.thCell, { width: 130 }]}>{t('صاحب حساب')}</Text>
+              <Text style={[s.thCell, { width: 110 }]}>{t('کد صاحب حساب')}</Text>
+              <Text style={[s.thCell, { width: 140 }]}>{t('شرح')}</Text>
+              {editing.type === 'sales' && <Text style={[s.thCell, { width: 130 }]}>{t('باربری')}</Text>}
+              <Text style={[s.thCell, { width: 56 }]}>{t('حذف')}</Text>
             </View>
             {editRows.map((r, i) => {
               const lt = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
@@ -2649,17 +2649,17 @@ function SearchSection({ showToast }: any) {
         <View>
           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <EL textKey="فاکتور" style={[s.thCell, { width: 150 }]} />
-            <EL textKey="نوع" style={[s.thCell, { width: 100 }]} />
-            <EL textKey="نام" style={[s.thCell, { width: 150 }]} />
-            <EL textKey="تلفن" style={[s.thCell, { width: 120 }]} />
-            <EL textKey="تاریخ" style={[s.thCell, { width: 130 }]} />
-            <EL textKey="ردیف" style={[s.thCell, { width: 70 }]} />
-            <EL textKey="مبلغ" style={[s.thCell, { width: 130 }]} />
-            <EL textKey="پرداخت" style={[s.thCell, { width: 130 }]} />
-            <EL textKey="مانده" style={[s.thCell, { width: 130 }]} />
-            <EL textKey="وضعیت" style={[s.thCell, { width: 130 }]} />
-            <EL textKey="عملیات" style={[s.thCell, { width: 120 }]} />
+            <Text style={[s.thCell, { width: 150 }]}>{t('فاکتور')}</Text>
+            <Text style={[s.thCell, { width: 100 }]}>{t('نوع')}</Text>
+            <Text style={[s.thCell, { width: 150 }]}>{t('نام')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('تلفن')}</Text>
+            <Text style={[s.thCell, { width: 130 }]}>{t('تاریخ')}</Text>
+            <Text style={[s.thCell, { width: 70 }]}>{t('ردیف')}</Text>
+            <Text style={[s.thCell, { width: 130 }]}>{t('مبلغ')}</Text>
+            <Text style={[s.thCell, { width: 130 }]}>{t('پرداخت')}</Text>
+            <Text style={[s.thCell, { width: 130 }]}>{t('مانده')}</Text>
+            <Text style={[s.thCell, { width: 130 }]}>{t('وضعیت')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('عملیات')}</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.slice(0, 200).map((r: any, i: number) => (
             <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
@@ -2686,7 +2686,7 @@ function SearchSection({ showToast }: any) {
           ))}
         </View>
       </ScrollView>
-      {!loading && !filtered.length && (<View style={s.emptyState}><Text style={{ fontSize: 48, opacity: 0.5 }}>🔍</Text><EL textKey="نتیجه‌ای یافت نشد" style={s.emptyStateTxt} /></View>)}
+      {!loading && !filtered.length && (<View style={s.emptyState}><Text style={{ fontSize: 48, opacity: 0.5 }}>🔍</Text><Text style={s.emptyStateTxt}>{t('نتیجه‌ای یافت نشد')}</Text></View>)}
     </View>
   );
 }
@@ -3026,14 +3026,14 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         <EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} />
         <Switch value={autoDelEnabled} onValueChange={setAutoDelEnabled} />
       </View>
-      <EL textKey="حذف بعد از (ساعت)" style={[s.lblS, { color: C.textMut }]} />
+      <Text style={[s.lblS, { color: C.textMut }]}>حذف بعد از (ساعت)</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={autoDelHours} onChangeText={setAutoDelHours} keyboardType="numeric" />
 
       <EL text="{t('📊 گزارش روزانه')}" style={s.secT} />
       <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedDailyEnabled} onValueChange={setSchedDailyEnabled} /></View>
-      <EL textKey="ساعت ارسال" style={[s.lblS, { color: C.textMut }]} />
+      <Text style={[s.lblS, { color: C.textMut }]}>{t('ساعت ارسال')}</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={schedDailyHour} onChangeText={setSchedDailyHour} keyboardType="numeric" />
-      <EL textKey="روزها" style={[s.lblS, { color: C.textMut }]} />
+      <Text style={[s.lblS, { color: C.textMut }]}>{t('روزها')}</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
           <TouchableOpacity key={i} onPress={() => toggleDay(String(i))} style={[s.chip, schedDailyDays.includes(String(i)) && s.chipActive]}>
@@ -3044,7 +3044,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
 
       <EL text="{t('📅 گزارش هفتگی')}" style={s.secT} />
       <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedWeeklyEnabled} onValueChange={setSchedWeeklyEnabled} /></View>
-      <EL textKey="روز هفته" style={[s.lblS, { color: C.textMut }]} />
+      <Text style={[s.lblS, { color: C.textMut }]}>{t('روز هفته')}</Text>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
         {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
           <TouchableOpacity key={i} onPress={() => setSchedWeeklyDay(String(i))} style={[s.chip, schedWeeklyDay === String(i) && s.chipActive]}>
@@ -3057,7 +3057,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('💾 ذخیره همه تنظیمات')}</Text>}
       </TouchableOpacity>
       <EL text="{t('🔐 رمز عبور تب‌ها')}" style={s.secT} />
-      <EL textKey="خالی بگذاری = بدون رمز. مقدار پیش‌فرض: 4242" style={[s.lblS, { color: C.textMut, marginBottom: 8 }]} />
+      <Text style={[s.lblS, { color: C.textMut, marginBottom: 8 }]}>خالی بگذاری = بدون رمز. مقدار پیش‌فرض: 4242</Text>
       {[
         { k: 'purchase', l: '🛍️ خرید' },
         { k: 'print', l: '🖨️ پرینت' },
@@ -3188,14 +3188,14 @@ function SourcesSection({ showToast }: any) {
         <View>
           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
             <Text style={[s.thCell, { width: 40 }]}>#</Text>
-            <EL textKey="کد" style={[s.thCell, { width: 100 }]} />
-            <EL textKey="نام" style={[s.thCell, { width: 180 }]} />
-            <EL textKey="قیمت" style={[s.thCell, { width: 120 }]} />
-            <EL textKey="قفسه" style={[s.thCell, { width: 100 }]} />
-            <EL textKey="تأمین‌کننده" style={[s.thCell, { width: 160 }]} />
-            <EL textKey="تلفن" style={[s.thCell, { width: 120 }]} />
-            <EL textKey="باربری" style={[s.thCell, { width: 120 }]} />
-            <EL textKey="عملیات" style={[s.thCell, { width: 120 }]} />
+            <Text style={[s.thCell, { width: 100 }]}>{t('کد')}</Text>
+            <Text style={[s.thCell, { width: 180 }]}>{t('نام')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('قیمت')}</Text>
+            <Text style={[s.thCell, { width: 100 }]}>{t('قفسه')}</Text>
+            <Text style={[s.thCell, { width: 160 }]}>{t('تأمین‌کننده')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('تلفن')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('باربری')}</Text>
+            <Text style={[s.thCell, { width: 120 }]}>{t('عملیات')}</Text>
           </View>
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((p, i) => (
             <View key={p.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, p.id && dirtyRows.has(p.id) && { backgroundColor: C.isDark ? '#2e1065' : '#f5f3ff' }]}>
@@ -3281,8 +3281,8 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={{ fontSize: 20 }}>⚖️</Text>
             <View>
-              <EL textKey="میزان" style={s.invBrand} />
-                       <EL textKey="حساب‌ها دقیق، معاملات امن، ذهن آسوده." style={s.invSlogan} />
+              <Text style={s.invBrand}>{t('میزان')}</Text>
+                       <Text style={s.invSlogan}>{t('حساب‌ها دقیق، معاملات امن، ذهن آسوده.')}</Text>
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
@@ -3291,29 +3291,29 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
           </View>
         </View>
 
-        <EL textKey="پیش فروش کفش تاج" style={s.invTitle} />
+        <Text style={s.invTitle}>{t('پیش فروش کفش تاج')}</Text>
         <Text style={s.invDateTxt}>📅 {invoice.timeString}</Text>
 
         <View style={s.invSection}>
-          <EL textKey="👤 اطلاعات مشتری" style={s.invSectionTitle} />
+          <Text style={s.invSectionTitle}>{t('👤 اطلاعات مشتری')}</Text>
           <View style={s.invCGrid}>
-            <View style={s.invCell}><EL textKey="نام" style={s.invCellL} /><Text style={s.invCellV}>{c.name}</Text></View>
-            <View style={s.invCell}><EL textKey="تلفن" style={s.invCellL} /><Text style={s.invCellV}>{c.phone}</Text></View>
-            <View style={s.invCell}><EL textKey="کد مشتری" style={s.invCellL} /><Text style={s.invCellV}>{c.code}</Text></View>
-            <View style={s.invCell}><EL textKey="شماره فاکتور" style={s.invCellL} /><Text style={s.invCellV}>{cur.invoiceNumber}</Text></View>
-            {c.address ? <View style={[s.invCell, { width: '100%' }]}><EL textKey="📍 آدرس" style={s.invCellL} /><Text style={s.invCellV}>{c.address}</Text></View> : null}
-            {c.shipping ? <View style={s.invCell}><EL textKey="🚚 باربری" style={s.invCellL} /><Text style={s.invCellV}>{c.shipping}</Text></View> : null}
+            <View style={s.invCell}><Text style={s.invCellL}>{t('نام')}</Text><Text style={s.invCellV}>{c.name}</Text></View>
+            <View style={s.invCell}><Text style={s.invCellL}>{t('تلفن')}</Text><Text style={s.invCellV}>{c.phone}</Text></View>
+            <View style={s.invCell}><Text style={s.invCellL}>{t('کد مشتری')}</Text><Text style={s.invCellV}>{c.code}</Text></View>
+            <View style={s.invCell}><Text style={s.invCellL}>{t('شماره فاکتور')}</Text><Text style={s.invCellV}>{cur.invoiceNumber}</Text></View>
+            {c.address ? <View style={[s.invCell, { width: '100%' }]}><Text style={s.invCellL}>{t('📍 آدرس')}</Text><Text style={s.invCellV}>{c.address}</Text></View> : null}
+            {c.shipping ? <View style={s.invCell}><Text style={s.invCellL}>{t('🚚 باربری')}</Text><Text style={s.invCellV}>{c.shipping}</Text></View> : null}
           </View>
         </View>
 
         <View style={s.invSection}>
-          <EL textKey="📦 اقلام" style={s.invSectionTitle} />
+          <Text style={s.invSectionTitle}>{t('📦 اقلام')}</Text>
           <View style={s.invTableHead}>
             <Text style={[s.invTh, { flex: 0.4 }]}>#</Text>
-            <EL textKey="نام مدل" style={[s.invTh, { flex: 2.5 }]} />
-            <EL textKey="تعداد" style={[s.invTh, { flex: 0.8 }]} />
-            <EL textKey="قیمت" style={[s.invTh, { flex: 1 }]} />
-            <EL textKey="مبلغ" style={[s.invTh, { flex: 1.2 }]} />
+            <Text style={[s.invTh, { flex: 2.5 }]}>{t('نام مدل')}</Text>
+            <Text style={[s.invTh, { flex: 0.8 }]}>{t('تعداد')}</Text>
+            <Text style={[s.invTh, { flex: 1 }]}>{t('قیمت')}</Text>
+            <Text style={[s.invTh, { flex: 1.2 }]}>{t('مبلغ')}</Text>
           </View>
           {cur.items.map((it: any, i: number) => (
             <View key={i} style={[s.invRow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
@@ -3327,7 +3327,7 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
         </View>
 
               <View style={s.invSection}>
-          <EL textKey="💰 خلاصه مالی" style={s.invSectionTitle} />
+          <Text style={s.invSectionTitle}>{t('💰 خلاصه مالی')}</Text>
 
           {/* این سفارش */}
           <SumRow l="🛍️ مبلغ این سفارش" v={fmt(cur.sales) + ' تومان'} />
@@ -3356,8 +3356,8 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
         </View>
 
         <View style={s.invFooter}>
-          <EL textKey="📞 کفش تاج: ________________" style={s.invFooterTxt} />
-          <EL textKey="با تشکر از اعتماد شما 🙏" style={s.invFooterThanks} />
+          <Text style={s.invFooterTxt}>{t('📞 کفش تاج: ________________')}</Text>
+          <Text style={s.invFooterThanks}>{t('با تشکر از اعتماد شما 🙏')}</Text>
         </View>
       </View>
 
@@ -3419,7 +3419,7 @@ function EL({ text, style, showIcon = true, children }: any) {
         <Modal visible transparent animationType="fade" onRequestClose={() => setShowEdit(false)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 }}>
             <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16 }}>
-              <EL textKey="✏️ ویرایش برچسب" style={{ fontWeight: 'bold', textAlign: 'right', marginBottom: 12, color: '#0f2438', fontSize: 15 }} />
+              <Text style={{ fontWeight: 'bold', textAlign: 'right', marginBottom: 12, color: '#0f2438', fontSize: 15 }}>✏️ ویرایش برچسب</Text>
               <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 6 }}>متن پیش‌فرض: {text}</Text>
               <TextInput
                 value={tmp}
@@ -3433,13 +3433,13 @@ function EL({ text, style, showIcon = true, children }: any) {
                   onPress={async () => { await resetCustomLabel(text); setShowEdit(false); }}
                   style={{ flex: 1, padding: 12, backgroundColor: '#64748b', borderRadius: 10, alignItems: 'center' }}
                 >
-                  <EL textKey="↩️ پیش‌فرض" style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }} />
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>↩️ پیش‌فرض</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={async () => { await setCustomLabel(text, tmp); setShowEdit(false); }}
                   style={{ flex: 2, padding: 12, backgroundColor: '#059669', borderRadius: 10, alignItems: 'center' }}
                 >
-                  <EL textKey="💾 ذخیره" style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }} />
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>💾 ذخیره</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -3483,7 +3483,7 @@ function LoginScreen({ showToast }: any) {
         <TouchableOpacity style={[s.btn, { backgroundColor: '#1e3a8a', marginTop: 6 }]} onPress={submit} disabled={loading}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('ورود / ثبت‌نام')}</Text>}
         </TouchableOpacity>
-        <EL textKey="اگر حساب ندارید، خودکار ساخته می‌شود" style={s.loginNote} />
+        <Text style={s.loginNote}>{t('اگر حساب ندارید، خودکار ساخته می‌شود')}</Text>
       </View>
     </KeyboardAvoidingView>
   );

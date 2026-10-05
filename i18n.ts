@@ -1,5 +1,6 @@
 // i18n.ts — سیستم چندزبانه با دیکشنری کامل
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clRaw } from './customLabels';
 
 export type Lang = 'fa' | 'ps' | 'prs' | 'ur' | 'ar' | 'en';
 
@@ -412,7 +413,10 @@ const D: Record<string, Record<string, string>> = {
 D.fa = {};
 
 export function t(text: string): string {
-  if (!text || CURRENT === 'fa') return text;
+  if (!text) return text;
+  const custom = clRaw(text);
+  if (custom !== undefined && custom !== '') return custom;
+  if (CURRENT === 'fa') return text;
   const dict = D[CURRENT] || {};
   return dict[text] || text;
 }

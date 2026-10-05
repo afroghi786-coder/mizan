@@ -629,7 +629,7 @@ function CellAutocomplete({ value, onChange, onSelect, options, placeholder }: a
                 style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, marginBottom: 8 }]}
                 value={query}
                 onChangeText={setQuery}
-                placeholder={t('🔍 جستجو...')}
+                placeholder="🔍 جستجو..."
                 placeholderTextColor={C.textMut}
                 autoFocus
               />
@@ -922,7 +922,7 @@ function SalesScreen({ showToast }: any) {
             style={S.input}
             value={reprintInv}
             onChangeText={setReprintInv}
-            placeholder={t('مثلاً 14050612-1001')}
+            placeholder="مثلاً 14050612-1001"
             placeholderTextColor="#94a3b8"
           />
           <TouchableOpacity style={[S.btnPrimary, { marginTop: 10 }]} onPress={doReprint}>
@@ -969,7 +969,7 @@ function SalesScreen({ showToast }: any) {
               style={S.input}
               value={name}
               onChangeText={setName}
-              placeholder={t('نام مشتری')}
+              placeholder="نام مشتری"
               placeholderTextColor="#94a3b8"
             />
 
@@ -978,7 +978,7 @@ function SalesScreen({ showToast }: any) {
               style={S.input}
               value={address}
               onChangeText={setAddress}
-              placeholder={t('اختیاری')}
+              placeholder="اختیاری"
               placeholderTextColor="#94a3b8"
             />
 
@@ -987,7 +987,7 @@ function SalesScreen({ showToast }: any) {
               value={shipping}
               onChange={setShipping}
               options={[...new Set([...SHIPPINGS, ...prods.map(p => p.shipping_name || '').filter(Boolean)])]}
-              placeholder={t('تایپ یا انتخاب...')}
+              placeholder="تایپ یا انتخاب..."
             />
           </View>
         </View>
@@ -1019,7 +1019,7 @@ function SalesScreen({ showToast }: any) {
                     onChange={(v) => updItem(i, 'modelName', v)}
                     onSelect={(v) => setModel(i, v)}
                     options={prods.map(p => p.name)}
-                    placeholder={t('نام مدل...')}
+                    placeholder="نام مدل..."
                   />
 
                   {/* ردیف ۳ ستونه */}
@@ -1452,13 +1452,13 @@ function PurchaseScreen({ showToast }: any) {
 
         <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border }]}>
           <Text style={[s.customerCardTitle, { color: C.text }]}>{t('🏭 اطلاعات تأمین‌کننده')}</Text>
-          <Autocomplete label={t('🏭 نام تأمین‌کننده *')} value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...prods.map(p => p.supplier_name || '').filter(Boolean)])]} placeholder={t('تایپ یا انتخاب...')} />
+          <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...prods.map(p => p.supplier_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
           <Text style={[s.lbl, { color: C.textMut }]}>{t('🆔 کد تأمین‌کننده')}</Text>
-          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sCode} onChangeText={setSCode} placeholder={t('خودکار')} placeholderTextColor={C.textMut} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sCode} onChangeText={setSCode} placeholder="خودکار" placeholderTextColor={C.textMut} />
           <Text style={[s.lbl, { color: C.textMut }]}>{t('📞 تلفن')}</Text>
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={sPhone} onChangeText={setSPhone} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor={C.textMut} />
           <Text style={[s.lbl, { color: C.textMut }]}>{t('🧾 شماره فاکتور دستی *')}</Text>
-          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={manualInv} onChangeText={setManualInv} placeholder={t('شماره روی فاکتور')} placeholderTextColor={C.textMut} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={manualInv} onChangeText={setManualInv} placeholder="شماره روی فاکتور" placeholderTextColor={C.textMut} />
         </View>
 
         <Text style={s.secT}>📦 اقلام خرید ({toFaNum(items.length)})</Text>
@@ -1474,7 +1474,7 @@ function PurchaseScreen({ showToast }: any) {
                 </TouchableOpacity>
               </View>
               <View style={{ padding: 10 }}>
-                <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={t('نام مدل...')} />
+                <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="نام مدل..." />
                 <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={[s.miniLbl, { color: C.textMut }]}>{t('کد مدل')}</Text>
@@ -1500,7 +1500,7 @@ function PurchaseScreen({ showToast }: any) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[s.miniLbl, { color: C.textMut }]}>{t('شرح')}</Text>
-                    <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder={t('اختیاری')} placeholderTextColor={C.textMut} />
+                    <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={it.description} onChangeText={(v) => updItem(i, 'description', v)} placeholder="اختیاری" placeholderTextColor={C.textMut} />
                   </View>
                 </View>
               </View>
@@ -1527,7 +1527,7 @@ function PurchaseScreen({ showToast }: any) {
         <Text style={[s.lbl, { color: C.textMut }]}>{t('📅 تاریخ پرداخت')}</Text>
         <DateField value={payDate} onChange={setPayDate} compact defaultToToday />
         <Autocomplete
-          label={t('👤 نام پرداخت‌کننده')}
+          label="👤 نام پرداخت‌کننده"
           value={payerName}
           onChange={setPayerName}
           onSelect={async (v: string) => {
@@ -1538,16 +1538,16 @@ function PurchaseScreen({ showToast }: any) {
             ...prods.map((p: any) => p.payer_name || '').filter(Boolean),
             ...prods.map((p: any) => p.supplier_name || '').filter(Boolean),
           ]))}
-          placeholder={t('کلیک...')}
+          placeholder="کلیک..."
         />
         <Text style={[s.lbl, { color: C.textMut }]}>{t('🆔 کد پرداخت‌کننده')}</Text>
-        <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={payerCode} editable={false} placeholder={t('خودکار')} placeholderTextColor={C.textMut} />
+        <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={payerCode} editable={false} placeholder="خودکار" placeholderTextColor={C.textMut} />
         <Text style={[s.lbl, { color: C.textMut }]}>🏦 حساب پرداخت‌کننده (بانک)</Text>
-        <Autocomplete value={bankAcc} onChange={setBankAcc} options={BANKS} placeholder={t('انتخاب بانک...')} />
+        <Autocomplete value={bankAcc} onChange={setBankAcc} options={BANKS} placeholder="انتخاب بانک..." />
         <Text style={[s.lbl, { color: C.textMut }]}>{t('🏦 حساب دریافت‌کننده')}</Text>
-        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAcc} onChangeText={setReceiverAcc} placeholder={t('اختیاری')} placeholderTextColor={C.textMut} />
+        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAcc} onChangeText={setReceiverAcc} placeholder="اختیاری" placeholderTextColor={C.textMut} />
         <Text style={[s.lbl, { color: C.textMut }]}>{t('📝 شرح')}</Text>
-        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder={t('توضیحات...')} placeholderTextColor={C.textMut} />
+        <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder="توضیحات..." placeholderTextColor={C.textMut} />
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
           <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setView('list')}><Text style={s.btnTxt}>{t('↩️ برگشت')}</Text></TouchableOpacity>
@@ -2076,7 +2076,7 @@ function InventoryScreen({ showToast }: any) {
       </View>
 
       {/* جستجو و فیلتر */}
-      <TextInput style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder={t('🔍 جستجو: کد، نام، قفسه...')} placeholderTextColor={C.textMut} />
+      <TextInput style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو: کد، نام، قفسه..." placeholderTextColor={C.textMut} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
         {[{ k: 'all', l: '📋 همه' }, { k: 'negative', l: '⚫ منفی' }, { k: 'out', l: '🔴 ناموجود' }, { k: 'low', l: '⚠️ کمبود' }, { k: 'ok', l: '✅ سالم' }].map((f) => (
           <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
@@ -2136,7 +2136,7 @@ function InventoryScreen({ showToast }: any) {
             <Text style={[s.modalLbl, { color: C.textMut }]}>{t('کد:')} <Text style={[s.modalVal, { color: C.text }]}>{editItem?.code}</Text></Text>
             <Text style={[s.modalLbl, { color: C.textMut }]}>{t('موجودی:')} <Text style={[s.modalVal, { color: C.text }]}>{fmt(editItem?.currentQty || 0)} عدد</Text></Text>
             <Text style={[s.modalLbl, { color: C.textMut }]}>{t('موقعیت قفسه:')}</Text>
-            <TextInput style={[s.modalInp, { color: C.text, borderColor: '#a78bfa' }]} value={shelfVal} onChangeText={setShelfVal} placeholder={t('مثلاً A-12')} placeholderTextColor={C.textMut} />
+            <TextInput style={[s.modalInp, { color: C.text, borderColor: '#a78bfa' }]} value={shelfVal} onChangeText={setShelfVal} placeholder="مثلاً A-12" placeholderTextColor={C.textMut} />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
               <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditItem(null)}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
               <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={saveShelf}><Text style={s.btnTxt}>{t('💾 ذخیره')}</Text></TouchableOpacity>
@@ -2330,10 +2330,10 @@ function NewOrderSection({ showToast }: any) {
       <Text style={[s.lbl, { color: C.textMut }]}>📞 تلفن {status}</Text>
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={phone} onChangeText={onPhone} keyboardType="phone-pad" maxLength={11} placeholder="09121234567" placeholderTextColor={C.textMut} />
       <Text style={[s.lbl, { color: C.textMut }]}>{t('👤 نام')}</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText={setName} placeholder={t('نام مشتری')} placeholderTextColor={C.textMut} />
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText={setName} placeholder="نام مشتری" placeholderTextColor={C.textMut} />
       <Text style={[s.lbl, { color: C.textMut }]}>{t('📍 آدرس')}</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={address} onChangeText={setAddress} placeholder={t('اختیاری')} placeholderTextColor={C.textMut} />
-      <Autocomplete label={t('🚚 باربری')} value={shipping} onChange={setShipping} options={SHIPPINGS} placeholder={t('تایپ...')} />
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={address} onChangeText={setAddress} placeholder="اختیاری" placeholderTextColor={C.textMut} />
+      <Autocomplete label="🚚 باربری" value={shipping} onChange={setShipping} options={SHIPPINGS} placeholder="تایپ..." />
       <Text style={[s.lbl, { color: C.textMut }]}>🧾 شماره فاکتور (خودکار)</Text>
       <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={invoice} editable={false} />
 
@@ -2349,7 +2349,7 @@ function NewOrderSection({ showToast }: any) {
               <TouchableOpacity onPress={() => del(i)} style={s.delBtnRound}><Text style={{ fontSize: 13, color: '#fff', fontWeight: 'bold' }}>🗑</Text></TouchableOpacity>
             </View>
             <View style={{ padding: 10 }}>
-              <Autocomplete value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={t('نام مدل...')} />
+              <Autocomplete value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder="نام مدل..." />
               <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                 <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('کد')}</Text><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text></View></View>
                 <View style={{ flex: 1 }}><Text style={[s.miniLbl, { color: C.textMut }]}>{t('تعداد')}</Text><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
@@ -2539,7 +2539,7 @@ function SearchSection({ showToast }: any) {
                         }
                       }}
                       options={prods.map(p => p.name).filter(Boolean)}
-                      placeholder={t('نام مدل...')}
+                      placeholder="نام مدل..."
                     />
                   </View>
                   <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.quantity || '')} onChangeText={(v) => updRow(i, 'quantity', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
@@ -2553,7 +2553,7 @@ function SearchSection({ showToast }: any) {
                       value={r.bankName}
                       onChange={(v: string) => updRow(i, 'bankName', v)}
                       options={BANKS}
-                      placeholder={t('بانک...')}
+                      placeholder="بانک..."
                     />
                   </View>
                                   <View style={{ width: 130, paddingHorizontal: 3 }}>
@@ -2565,7 +2565,7 @@ function SearchSection({ showToast }: any) {
                         updRow(i, 'accountHolderCode', code);
                       }}
                       options={Array.from(new Set(prods.map((p: any) => p.supplier_name || '').filter(Boolean)))}
-                      placeholder={t('صاحب حساب...')}
+                      placeholder="صاحب حساب..."
                     />
                   </View>
                   <View style={{ width: 110, paddingHorizontal: 3 }}>
@@ -2573,7 +2573,7 @@ function SearchSection({ showToast }: any) {
                       style={[s.tdInput, { backgroundColor: C.cardAlt, color: '#059669', borderColor: C.border, fontWeight: 'bold' }]}
                       value={r.accountHolderCode || ''}
                       editable={false}
-                      placeholder={t('خودکار')}
+                      placeholder="خودکار"
                     />
                   </View>
                   <View style={{ width: 140, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.description} onChangeText={(v) => updRow(i, 'description', v)} editable={!r._deleted} /></View>
@@ -2583,7 +2583,7 @@ function SearchSection({ showToast }: any) {
                         value={r.shipping}
                         onChange={(v: string) => updRow(i, 'shipping', v)}
                         options={SHIPPINGS}
-                        placeholder={t('باربری...')}
+                        placeholder="باربری..."
                       />
                     </View>
                   )}
@@ -2610,7 +2610,7 @@ function SearchSection({ showToast }: any) {
 
   return (
     <View>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder={t('🔍 فاکتور، نام، تلفن...')} placeholderTextColor={C.textMut} />
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 فاکتور، نام، تلفن..." placeholderTextColor={C.textMut} />
       <View style={{ flexDirection: 'row', gap: 6, marginVertical: 8, flexWrap: 'wrap' }}>
         {[{ k: 'all', l: '📋 همه' }, { k: 'sales', l: '🛒 فروش' }, { k: 'purchases', l: '🛍️ خرید' }].map((f) => (
           <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
@@ -2931,7 +2931,7 @@ function SettingsSection({ showToast, settings, setSettings, reload }: any) {
         </View>
       ))}
       <View style={{ flexDirection: 'row', gap: 6 }}>
-        <TextInput style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={emailInput} onChangeText={setEmailInput} placeholder={t('ایمیل جدید...')} placeholderTextColor={C.textMut} keyboardType="email-address" autoCapitalize="none" />
+        <TextInput style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={emailInput} onChangeText={setEmailInput} placeholder="ایمیل جدید..." placeholderTextColor={C.textMut} keyboardType="email-address" autoCapitalize="none" />
         <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#7c3aed' }]} onPress={addEmail}><Text style={s.btnTxt}>➕</Text></TouchableOpacity>
       </View>
 
@@ -3095,7 +3095,7 @@ function SourcesSection({ showToast }: any) {
         </TouchableOpacity>
       )}
 
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder={t('🔍 جستجو در کالاها...')} placeholderTextColor={C.textMut} />
+      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در کالاها..." placeholderTextColor={C.textMut} />
       <Text style={s.secT}>📦 کالاها ({toFaNum(filtered.length)})</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
@@ -3339,7 +3339,7 @@ function LoginScreen({ showToast }: any) {
         <Text style={s.loginLogo}>⚖️</Text>
         <Text style={s.loginTitle}>{t('میزان')}</Text>
         <Text style={s.loginSub}>{t('ورود یا ثبت‌نام')}</Text>
-        <TextInput style={s.loginInp} value={email} onChangeText={setEmail} placeholder={t('ایمیل')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
+        <TextInput style={s.loginInp} value={email} onChangeText={setEmail} placeholder="ایمیل" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
         <TextInput style={s.loginInp} value={pass} onChangeText={setPass} placeholder="رمز (حداقل ۶ کاراکتر)" placeholderTextColor="#94a3b8" secureTextEntry />
         <TouchableOpacity style={[s.btn, { backgroundColor: '#1e3a8a', marginTop: 6 }]} onPress={submit} disabled={loading}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('ورود / ثبت‌نام')}</Text>}

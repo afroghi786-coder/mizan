@@ -101,13 +101,26 @@ export default function ExchangeScreen({ showToast }: any) {
 
   const reload = useCallback(async () => {
     try {
-      const [t, c, p, h, b, tr, ck] = await Promise.all([
-        getFxTrades(), getFxCustomers(), getFxPartners(),
-        getHawalas(), getBoxes(), getTransfers(), getChecks(),
+      const [t, h, b, tr, ck, p, allCust] = await Promise.all([
+        getFxTrades(),
+        getHawalas(),
+        getBoxes(),
+        getTransfers(),
+        getChecks(),
+        getFxPartners(),
+        getFxCustomers(),
       ]);
-      setTrades(t); setCustomers(c); setPartners(p);
-      setHawalas(h); setBoxes(b); setTransfers(tr); setChecks(ck);
-    } catch {}
+      setTrades(t);
+      setHawalas(h);
+      setBoxes(b);
+      setTransfers(tr);
+      setChecks(ck);
+      setPartners(p);
+      setFxCustomers((allCust || []).filter((x: any) => (x.type || 'customer') === 'customer'));
+      setFxBuyers((allCust || []).filter((x: any) => x.type === 'buyer'));
+    } catch (e) {
+      console.log('reload error:', e);
+    }
   }, []);
 
   useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, [reload]);
@@ -1306,18 +1319,26 @@ function PartyList({ type, list, reload, showToast }: any) {
         return;
       }
       setSaving(true);
+      console.log('=== SUBMIT START ===');
+      console.log('form:', form);
+      console.log('type:', type);
       const payload = {
         ...form,
         name: String(form.name).trim(),
         phone,
         type,
       };
+      console.log('payload:', payload);
+      let result;
       if (editId) {
-        await updateFxCustomer(editId, payload);
+        result = await updateFxCustomer(editId, payload);
+        console.log('updated:', result);
       } else {
-        await createFxCustomer(payload);
+        result = await createFxCustomer(payload);
+        console.log('created:', result);
       }
       await reload();
+      console.log('=== SUBMIT DONE ===');
       setModal(false);
       setSaving(false);
       showToast(editId ? 'ویرایش شد' : 'ثبت شد');
@@ -1409,12 +1430,18 @@ function PartyList({ type, list, reload, showToast }: any) {
               <Text style={[ptStyles.td, { width: 130, color: '#475569', fontFamily: 'monospace' }]}>{x.account_number || '—'}</Text>
               <Text style={[ptStyles.td, { width: 140, color: '#0f172a', textAlign: 'right' }]} numberOfLines={1}>{x.holder_name || '—'}</Text>
               <Text style={[ptStyles.td, { width: 180, color: '#64748b', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{x.address || '—'}</Text>
-              <View style={[ptStyles.td, { width: 100, flexDirection: 'row', justifyContent: 'center', gap: 6 }]}>
-                <TouchableOpacity onPress={() => openEdit(x)} style={ptStyles.iconBtn}>
-                  <Text style={{ fontSize: 14 }}>✏️</Text>
+              <View style={[ptStyles.td, { width: 100, flexDirection: 'row', justifyContent: 'center', gap: 4 }]}>
+                <TouchableOpacity
+                  onPress={() => openEdit(x)}
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 6 }}
+                >
+                  <Text style={{ fontSize: 12, color: '#1e40af', fontWeight: 'bold' }}>✏️ ویرایش</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => remove(x.local_id || x.id)} style={[ptStyles.iconBtn, { backgroundColor: '#fee2e2' }]}>
-                  <Text style={{ fontSize: 14 }}>🗑</Text>
+                <TouchableOpacity
+                  onPress={() => remove(x.local_id || x.id)}
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fee2e2', borderRadius: 6 }}
+                >
+                  <Text style={{ fontSize: 12, color: '#dc2626', fontWeight: 'bold' }}>🗑</Text>
                 </TouchableOpacity>
               </View>
             </View>

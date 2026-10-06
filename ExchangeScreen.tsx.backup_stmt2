@@ -1,4 +1,3 @@
-import { getBoxTxsByCounterparty, getBoxSummaryForPerson } from './lib.boxes';
 import { applyTradeToBoxes } from './lib.box-auto';
 import BoxesScreen from './BoxesScreen';
 // ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی
@@ -411,108 +410,64 @@ export default function ExchangeScreen({ showToast }: any) {
     setPartnerForm({ name: '', phone: '', notes: '' });
   };
 
-  const buildStatement = async (q: string) => {
-    const key = String(q || '').trim().toLowerCase();
-    if (!key) return;
-
-    // ═══ جستجو در مشتریان + خریداران + fxCustomers ═══
-    const allPeople = [
-      ...(customers || []),
-      ...(fxCustomers || []),
-      ...(fxBuyers || []),
-    ];
-    const seen = new Set();
-    const uniquePeople: any[] = [];
-    allPeople.forEach((p: any) => {
-      const k = p.code || p.id || p.phone;
-      if (k && !seen.has(k)) { seen.add(k); uniquePeople.push(p); }
-    });
-
-    const cust = uniquePeople.find((c: any) =>
-      String(c.code || '').toLowerCase() === key ||
-      String(c.phone || '').replace(/[^\d]/g, '') === key.replace(/[^\d]/g, '') ||
-      String(c.name || '').toLowerCase().includes(key)
+  const buildStatement = (q: string) => {
+    const s = String(q || '').trim().toLowerCase();
+    if (!s) return;
+    // جستجو در مشتریان + خریداران
+    const allPeople = [...customers, ...(fxBuyers || [])];
+    const cust = allPeople.find((c: any) =>
+      String(c.code || '').toLowerCase() === s ||
+      String(c.phone || '').replace(/[^\d]/g, '') === s.replace(/[^\d]/g, '') ||
+      String(c.name || '').toLowerCase().includes(s)
     );
-
     if (!cust) {
-      showToast('❌ طرف حساب پیدا نشد — کد یا تلفن یا نام را چک کن', true);
+      showToast('❌ مشتری پیدا نشد', true);
       setStmtCustomer(null);
       setStmtData(null);
       return;
     }
     setStmtCustomer(cust);
 
-    // ═══ معاملات (خریدار یا مشتری) ═══
-    const myTrades = trades.filter((t: any) =>
-      t.customer_code === cust.code ||
-      t.buyer_code === cust.code ||
-      t.partner_code === cust.code
-    );
-
-    // ═══ حواله‌جات (ذی‌نفع یا شریک) ═══
+    // ═══ معاملات این مشتری ═══
+    const myTrades = trades.filter((t: any) => t.customer_code === cust.code || t.buyer_code === cust.code || t.partner_code === cust.code);
+        // ═══ حواله‌جات این مشتری (به‌عنوان ذی‌نفع یا فرستنده) ═══
     const myHawalas = hawalas.filter((h: any) =>
       String(h.beneficiary_name || '').includes(cust.name) ||
-      String(h.beneficiary_phone || '').replace(/[^\d]/g, '') === String(cust.phone || '').replace(/[^\d]/g, '') ||
-      h.partner_code === cust.code
+      String(h.beneficiary_phone || '').replace(/[^\d]/g, '') === String(cust.phone || '').replace(/[^\d]/g, '')
     );
-
     // ═══ چک‌ها ═══
-    const myChecks = checks.filter((c2: any) =>
-      c2.partner_name === cust.name || c2.partner_code === cust.code
-    );
-
-    // ═══ تراکنش‌های صندوق ═══
-    let myBoxTxs: any[] = [];
-    let boxSummary: any = { given: {}, received: {}, txCount: 0 };
-    try {
-      myBoxTxs = await getBoxTxsByCounterparty(cust.code);
-      boxSummary = await getBoxSummaryForPerson(cust.code);
-    } catch (e) { console.log('box fetch error:', e); }
+    const myChecks = checks.filter((c2: any) => c2.partner_name === cust.name || c2.partner_code === cust.code);
 
     // ═══ محاسبه پوزیشن ارزی ═══
     const pos: Record<string, { bought: number; sold: number; net: number }> = {};
     myTrades.forEach((t: any) => {
       const f = t.from_currency, to = t.to_currency;
-      const fq = Number(t.from_qty) || 0, tq = Number(t.to_qty) || 0;
-      if (f) {
-        if (!pos[f]) pos[f] = { bought: 0, sold: 0, net: 0 };
-        pos[f].sold += fq;
-        pos[f].net -= fq;
-      }
-      if (to) {
-        if (!pos[to]) pos[to] = { bought: 0, sold: 0, net: 0 };
-        pos[to].bought += tq;
-        pos[to].net += tq;
-      }
+      if (!pos[f]) pos[f] = { bought: 0, sold: 0, net: 0 };
+      if (!pos[to]) pos[to] = { bought: 0, sold: 0, net: 0 };
+      pos[f].sold += Number(t.from_qty) || 0;
+      pos[f].net -= Number(t.from_qty) || 0;
+      pos[to].bought += Number(t.to_qty) || 0;
+      pos[to].net += Number(t.to_qty) || 0;
     });
 
-    // ═══ جمع‌ها ═══
+    // ═══ سود کل ═══
     const totalProfit = myTrades.reduce((a: number, t: any) => a + (Number(t.profit) || 0), 0);
     const totalHawalaFees = myHawalas.reduce((a: number, h: any) => a + (Number(h.commission) || 0), 0);
-    const totalTradeFrom = myTrades.reduce((a: number, t: any) => a + (Number(t.from_qty) || 0), 0);
-    const totalTradeTo = myTrades.reduce((a: number, t: any) => a + (Number(t.to_qty) || 0), 0);
-    const boxGivenTotal = Object.values(boxSummary.given || {}).reduce((a: number, v: any) => a + Number(v || 0), 0);
-    const boxReceivedTotal = Object.values(boxSummary.received || {}).reduce((a: number, v: any) => a + Number(v || 0), 0);
+    const totalChecks = myChecks.reduce((a: number, c2: any) => a + (Number(c2.amount) || 0), 0);
 
     setStmtData({
       trades: myTrades,
       hawalas: myHawalas,
       checks: myChecks,
-      boxTxs: myBoxTxs,
-      boxSummary,
-      tradeCount: myTrades.length,
-      hawalaCount: myHawalas.length,
-      checkCount: myChecks.length,
-      boxTxCount: myBoxTxs.length,
       positions: pos,
       totalProfit,
       totalHawalaFees,
-      totalTradeFrom,
-      totalTradeTo,
-      boxGivenTotal,
-      boxReceivedTotal,
-    });
-  };;
+      totalChecks,
+      tradeCount: myTrades.length,
+      hawalaCount: myHawalas.length,
+      checkCount: myChecks.length,
+      });
+  };
 
   if (load) return <View style={s.center}><ActivityIndicator color="#d4af37" /></View>;
 

@@ -183,8 +183,6 @@ export default function ExchangeScreen({ showToast }: any) {
   // Modals
   const [showFromCur, setShowFromCur] = useState(false);
   const [showCkCur, setShowCkCur] = useState(false);
-  const [showHawCur, setShowHawCur] = useState(false);
-  const [hawCurSearch, setHawCurSearch] = useState('');
   const [ckCurSearch, setCkCurSearch] = useState('');
   const [curSearch, setCurSearch] = useState('');
   const [showToCur, setShowToCur] = useState(false);
@@ -1498,12 +1496,14 @@ export default function ExchangeScreen({ showToast }: any) {
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={s.lbl}>💱 ارز</Text>
-            <TouchableOpacity style={s.inp} onPress={() => { setHawformCurSearch(''); setShowHawformCur(true); }}>
-              <Text style={{ color: hawForm.currency ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
-                {hawForm.currency ? `${CUR[hawForm.currency]?.flag} ${hawForm.currency} — ${CUR[hawForm.currency]?.name}` : '🔍 انتخاب ارز...'}
-              </Text>
-            </TouchableOpacity>
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['USD', 'EUR', 'AFN', 'PKR', 'AED', 'IRR'].map(c => (
+                <TouchableOpacity key={c} style={[s.curPick, hawForm.currency === c && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, currency: c })}>
+                  <Text style={[s.curPickTxt, hawForm.currency === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <Text style={s.lbl}>مبلغ *</Text>
             <TextInput style={s.inp} value={String(hawForm.amount)} onChangeText={v => setHawForm({ ...hawForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
             <Text style={s.lbl}>کارمزد</Text>
@@ -1685,12 +1685,14 @@ export default function ExchangeScreen({ showToast }: any) {
             <TextInput style={s.inp} value={ckForm.partner_name} onChangeText={v => setCkForm({ ...ckForm, partner_name: v })} />
             <Text style={s.lbl}>مبلغ *</Text>
             <TextInput style={s.inp} value={String(ckForm.amount)} onChangeText={v => setCkForm({ ...ckForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
-            <Text style={s.lbl}>💱 ارز</Text>
-            <TouchableOpacity style={s.inp} onPress={() => { setCkformCurSearch(''); setShowCkformCur(true); }}>
-              <Text style={{ color: ckForm.currency ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
-                {ckForm.currency ? `${CUR[ckForm.currency]?.flag} ${ckForm.currency} — ${CUR[ckForm.currency]?.name}` : '🔍 انتخاب ارز...'}
-              </Text>
-            </TouchableOpacity>
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['AFN', 'USD', 'EUR', 'PKR'].map(c => (
+                <TouchableOpacity key={c} style={[s.curPick, ckForm.currency === c && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setCkForm({ ...ckForm, currency: c })}>
+                  <Text style={[s.curPickTxt, ckForm.currency === c && { color: '#fff' }]}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <Text style={s.lbl}>تاریخ سرسید</Text>
             <DateField value={ckForm.due_date} onChange={(v: string) => setCkForm({ ...ckForm, due_date: v })} compact defaultToToday />
             <Text style={s.lbl}>وضعیت</Text>
@@ -1930,47 +1932,6 @@ function PartyList({ type, showToast }: any) {
           </View>
         </View>
       </Modal>
-
-      {/* HAW_CUR_MODAL */}
-      <Modal visible={showHawCur} transparent animationType="fade" onRequestClose={() => setShowHawCur(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(15,36,56,0.95)', justifyContent: 'center', padding: 14, zIndex: 999999, elevation: 999999 }}>
-          <View style={{ backgroundColor: '#0f2438', borderRadius: 14, maxHeight: '90%', overflow: 'hidden' }}>
-            <View style={{ backgroundColor: '#065f46', padding: 14, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' }}>💱 انتخاب ارز ({Object.keys(CUR).length})</Text>
-              <TouchableOpacity onPress={() => setShowHawCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
-            </View>
-            <View style={{ padding: 10 }}>
-              <TextInput
-                style={{ backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 10, textAlign: 'right' }}
-                value={hawCurSearch}
-                onChangeText={setHawCurSearch}
-                placeholder="🔍 جستجو: USD یا دالر..."
-                placeholderTextColor="#94a3b8"
-                autoFocus
-              />
-            </View>
-            <ScrollView style={{ maxHeight: 400, padding: 10 }} keyboardShouldPersistTaps="handled">
-              {Object.keys(CUR)
-                .filter(k => {
-                  const q = hawCurSearch.toLowerCase().trim();
-                  if (!q) return true;
-                  return k.toLowerCase().includes(q) || CUR[k].name.includes(hawCurSearch);
-                })
-                .map(k => (
-                  <TouchableOpacity
-                    key={k}
-                    style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}
-                    onPress={() => { setHawForm({ ...hawForm, currency: k }); setShowHawCur(false); }}
-                  >
-                    <Text style={{ color: '#fff', fontSize: 14, textAlign: 'right' }}>{CUR[k].flag} {CUR[k].name} ({k})</Text>
-                  </TouchableOpacity>
-                ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-
 
 
     </View>

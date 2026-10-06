@@ -1338,31 +1338,7 @@ export default function ExchangeScreen({ showToast }: any) {
         </View></View>
       </Modal>
 
-      
-      {/* ═══ Modal انتخاب صاحب صندوق ═══ */}
-      <Modal visible={showOwnerPick} transparent animationType="fade" onRequestClose={() => setShowOwnerPick(false)}>
-        <View style={s.mBg}><View style={s.mBox}>
-          <View style={[s.mHead, { backgroundColor: '#0891b2' }]}>
-            <Text style={s.mTitle}>👤 انتخاب صاحب صندوق ({(fxBuyers || []).length})</Text>
-            <TouchableOpacity onPress={() => setShowOwnerPick(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
-          </View>
-          <ScrollView style={{ maxHeight: 400, padding: 10 }}>
-            {(fxBuyers || []).length === 0 ? <Text style={s.empty}>هنوز خریداری ثبت نشده — اول از تب خریداران اضافه کن</Text> : (fxBuyers || []).map((b: any) => (
-              <TouchableOpacity key={b.id || b.code} onPress={() => {
-                setBoxForm((f: any) => ({ ...f, owner_code: b.code, owner_name: b.name, name: f.name || ('صندوق ' + (CUR[f.currency]?.name || '') + ' — ' + b.name) }));
-                setShowOwnerPick(false);
-              }} style={s.pickRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.pickName}>👤 {b.name}</Text>
-                  <Text style={s.pickSub}>🆔 {b.code} | 📞 {b.phone || '—'}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View></View>
-      </Modal>
-
-<Modal visible={boxModal} transparent animationType="slide">
+      <Modal visible={boxModal} transparent animationType="slide">
         <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
           <View style={s.mHead}><Text style={s.mTitle}>{boxEditId ? '✏️ ویرایش صندوق' : '➕ صندوق جدید'}</Text><TouchableOpacity onPress={() => setBoxModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 16 }}>
@@ -1376,11 +1352,11 @@ export default function ExchangeScreen({ showToast }: any) {
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={s.lbl}>صاحب صندوق مالک (اختیاری)</Text>
+            <Text style={s.lbl}>شریک مالک (اختیاری)</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
-              {fxBuyers.map((b: any) => (
-                <TouchableOpacity key={b.code} style={[s.curPick, boxForm.owner_code === b.code && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setBoxForm({ ...boxForm, owner_code: b.code })}>
-                  <Text style={[s.curPickTxt, boxForm.owner_code === b.code && { color: '#fff' }]}>{b.name}</Text>
+              {partners.map((p: any) => (
+                <TouchableOpacity key={p.code} style={[s.curPick, boxForm.partner_code === p.code && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setBoxForm({ ...boxForm, partner_code: p.code })}>
+                  <Text style={[s.curPickTxt, boxForm.partner_code === p.code && { color: '#fff' }]}>{p.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>

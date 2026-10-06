@@ -238,32 +238,6 @@ export default function ExchangeScreen({ showToast }: any) {
   };
 
   // ═══ ثبت معامله ═══
-  const buildAndShowInvoice = async (data: any) => {
-    try {
-      const allTrades = await getFxTrades();
-      const bc = data.buyer_code || data.partner_code || '';
-      const cc = data.customer_code || '';
-      const buyerTrades = allTrades.filter((t: any) => (t.buyer_code || t.partner_code) === bc);
-      const customerTrades = allTrades.filter((t: any) => t.customer_code === cc);
-      const calc = (list: any[]) => {
-        let totalFrom = 0, totalTo = 0, profit = 0;
-        list.forEach((t: any) => {
-          totalFrom += Number(t.from_qty) || 0;
-          totalTo += Number(t.to_qty) || 0;
-          profit += Number(t.profit) || 0;
-        });
-        return { count: list.length, totalFrom, totalTo, profit };
-      };
-      setShowInvoice({
-        trade: data,
-        buyer: { code: bc, name: data.buyer_name || data.partner_name || '', phone: data.buyer_phone || '' },
-        customer: { code: cc, name: data.customer_name || '', phone: data.customer_phone || '' },
-        buyerSummary: calc(buyerTrades),
-        customerSummary: calc(customerTrades),
-      });
-    } catch (e) { console.log('buildAndShowInvoice error:', e); }
-  };
-
   const submit = async () => {
     const buyerPhone = fBuyerPhone.replace(/[^\d]/g, '');
     const custPhone = fPhone.replace(/[^\d]/g, '');

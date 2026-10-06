@@ -491,7 +491,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
               <Text style={{ fontSize: 24, color: '#f4d47a' }}>⚖️</Text>
               <Text style={s.hTitle}>{t('میزان')}</Text>
             </View>
-            <Text style={s.hSub}>{t('حساب‌ها دقیق، معاملات امن، ذهن آسوده')}</Text>
+            <Text style={s.hSub}>{t('حساب‌ها دقیق، معاملات امن، ذهن آسوده')} [v3]</Text>
           </View>
         </View>
       </View>

@@ -124,10 +124,6 @@ function DateField({ value, onChange, compact, defaultToToday }: any) {
 export default function ExchangeScreen({ showToast }: any) {
   const [showInvoice, setShowInvoice] = useState<any>(null);
   const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger' | 'statement'>('list');
-  const [showHawCur, setShowHawCur] = useState(false);
-  const [hawCurSearch, setHawCurSearch] = useState('');
-  const [showCkCur, setShowCkCur] = useState(false);
-  const [ckCurSearch, setCkCurSearch] = useState('');
   const [trades, setTrades] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
@@ -186,6 +182,10 @@ export default function ExchangeScreen({ showToast }: any) {
 
   // Modals
   const [showFromCur, setShowFromCur] = useState(false);
+  const [showCkCur, setShowCkCur] = useState(false);
+  const [showHawCur, setShowHawCur] = useState(false);
+  const [hawCurSearch, setHawCurSearch] = useState('');
+  const [ckCurSearch, setCkCurSearch] = useState('');
   const [curSearch, setCurSearch] = useState('');
   const [showToCur, setShowToCur] = useState(false);
   const [showPartnerPick, setShowPartnerPick] = useState(false);

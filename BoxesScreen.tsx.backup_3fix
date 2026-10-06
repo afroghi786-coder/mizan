@@ -68,8 +68,6 @@ export default function BoxesScreen({ showToast, buyers }: any) {
   const [transferModal, setTransferModal] = useState(false);
   const [transferForm, setTransferForm] = useState<any>({});
   const [showOwnerPick, setShowOwnerPick] = useState(false);
-  const [showBoxCur, setShowBoxCur] = useState(false);
-  const [boxCurSearch, setBoxCurSearch] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -335,40 +333,6 @@ export default function BoxesScreen({ showToast, buyers }: any) {
         </ScrollView>
       )}
 
-
-      {/* BOX_CUR_MODAL */}
-      <Modal visible={showBoxCur} transparent animationType="fade" onRequestClose={() => setShowBoxCur(false)}>
-        <View style={s.mBg}><View style={s.mBox}>
-          <View style={[s.mHead, { backgroundColor: '#7c3aed' }]}>
-            <Text style={s.mTitle}>💱 انتخاب ارز ({Object.keys(CUR).length})</Text>
-            <TouchableOpacity onPress={() => setShowBoxCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
-          </View>
-          <View style={{ padding: 10 }}>
-            <TextInput
-              style={[s.inp, { textAlign: 'right' }]}
-              value={boxCurSearch}
-              onChangeText={setBoxCurSearch}
-              placeholder="🔍 جستجو: USD یا دالر یا افغانی..."
-              placeholderTextColor="#94a3b8"
-              autoFocus
-            />
-          </View>
-          <ScrollView style={{ maxHeight: 400, padding: 10 }}>
-            {Object.keys(CUR)
-              .filter(k => {
-                const q = boxCurSearch.toLowerCase().trim();
-                if (!q) return true;
-                return k.toLowerCase().includes(q) || CUR[k].name.includes(boxCurSearch);
-              })
-              .map(k => (
-                <TouchableOpacity key={k} style={s.pickRow} onPress={() => { setBoxForm((f: any) => ({ ...f, currency: k })); setShowBoxCur(false); }}>
-                  <Text style={s.pickName}>{CUR[k].flag} {CUR[k].name} ({k})</Text>
-                </TouchableOpacity>
-              ))}
-          </ScrollView>
-        </View></View>
-      </Modal>
-
       {/* Modal صندوق جدید/ویرایش */}
       <Modal visible={boxModal} transparent animationType="slide" onRequestClose={() => setBoxModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>
@@ -384,14 +348,13 @@ export default function BoxesScreen({ showToast, buyers }: any) {
             <Text style={s.lbl}>نام صندوق *</Text>
             <TextInput style={s.inp} value={boxForm.name || ''} onChangeText={v => setBoxForm((f: any) => ({ ...f, name: v }))} placeholder="صندوق دلار" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>ارز *</Text>
-            <TouchableOpacity
-              style={s.inp}
-              onPress={() => { setBoxCurSearch(''); setShowBoxCur(true); }}
-            >
-              <Text style={{ color: boxForm.currency ? '#fff' : '#94a3b8', textAlign: 'right' }}>
-                {boxForm.currency ? `${CUR[boxForm.currency]?.flag} ${boxForm.currency} — ${CUR[boxForm.currency]?.name}` : '🔍 انتخاب ارز...'}
-              </Text>
-            </TouchableOpacity>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
+              {Object.keys(CUR).map(c => (
+                <TouchableOpacity key={c} onPress={() => setBoxForm((f: any) => ({ ...f, currency: c }))} style={[s.curPick, boxForm.currency === c && s.curPickActive]}>
+                  <Text style={[s.curPickTxt, boxForm.currency === c && { color: '#fff' }]}>{CUR[c].flag} {c}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
             <Text style={s.lbl}>موجودی افتتاحیه</Text>
             <TextInput style={s.inp} value={String(boxForm.opening || '')} onChangeText={v => setBoxForm((f: any) => ({ ...f, opening: v.replace(/[^\d.-]/g, '') }))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>📅 تاریخ افتتاحیه</Text>

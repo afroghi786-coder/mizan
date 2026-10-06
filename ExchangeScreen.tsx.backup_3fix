@@ -182,7 +182,6 @@ export default function ExchangeScreen({ showToast }: any) {
 
   // Modals
   const [showFromCur, setShowFromCur] = useState(false);
-  const [curSearch, setCurSearch] = useState('');
   const [showToCur, setShowToCur] = useState(false);
   const [showPartnerPick, setShowPartnerPick] = useState(false);
   const [showOwnerPick, setShowOwnerPick] = useState(false);
@@ -1376,18 +1375,8 @@ export default function ExchangeScreen({ showToast }: any) {
       <Modal visible={showFromCur} transparent animationType="fade">
         <View style={s.mBg}><View style={s.mBox}>
           <View style={s.mHead}><Text style={s.mTitle}>📤 ارز مبدأ</Text><TouchableOpacity onPress={() => setShowFromCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
-          <View style={{ padding: 10 }}>
-          <TextInput
-            style={[s.inp, { textAlign: 'right' }]}
-            value={curSearch}
-            onChangeText={setCurSearch}
-            placeholder="🔍 جستجو: USD یا دالر یا افغانی..."
-            placeholderTextColor="#94a3b8"
-            autoFocus
-          />
-        </View>
-        <ScrollView style={{ maxHeight: 400, padding: 12 }}>
-            {Object.keys(CUR).filter(k => { const q = curSearch.toLowerCase().trim(); if (!q) return true; return k.toLowerCase().includes(q) || CUR[k].name.includes(curSearch); }).map(k => (
+          <ScrollView style={{ maxHeight: 400, padding: 12 }}>
+            {Object.keys(CUR).map(k => (
               <TouchableOpacity key={k} style={s.pickRow} onPress={() => { setFFrom(k); setShowFromCur(false); }}>
                 <Text style={s.pickName}>{CUR[k].flag} {CUR[k].name}</Text><Text style={s.badge}>{k}</Text>
               </TouchableOpacity>
@@ -1400,18 +1389,8 @@ export default function ExchangeScreen({ showToast }: any) {
       <Modal visible={showToCur} transparent animationType="fade">
         <View style={s.mBg}><View style={s.mBox}>
           <View style={s.mHead}><Text style={s.mTitle}>📥 ارز مقصد</Text><TouchableOpacity onPress={() => setShowToCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
-          <View style={{ padding: 10 }}>
-          <TextInput
-            style={[s.inp, { textAlign: 'right' }]}
-            value={curSearch}
-            onChangeText={setCurSearch}
-            placeholder="🔍 جستجو: USD یا دالر یا افغانی..."
-            placeholderTextColor="#94a3b8"
-            autoFocus
-          />
-        </View>
-        <ScrollView style={{ maxHeight: 400, padding: 12 }}>
-            {Object.keys(CUR).filter(k => { const q = curSearch.toLowerCase().trim(); if (!q) return true; return k.toLowerCase().includes(q) || CUR[k].name.includes(curSearch); }).map(k => (
+          <ScrollView style={{ maxHeight: 400, padding: 12 }}>
+            {Object.keys(CUR).map(k => (
               <TouchableOpacity key={k} style={s.pickRow} onPress={() => { setFTo(k); setShowToCur(false); }}>
                 <Text style={s.pickName}>{CUR[k].flag} {CUR[k].name}</Text><Text style={s.badge}>{k}</Text>
               </TouchableOpacity>

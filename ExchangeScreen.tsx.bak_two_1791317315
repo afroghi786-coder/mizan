@@ -1501,7 +1501,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
               {Object.keys(CUR).filter(k => { const q = hawCurSearch.toLowerCase().trim(); if (!q) return true; return k.toLowerCase().includes(q) || CUR[k].name.includes(hawCurSearch); }).map(k => (
                 <TouchableOpacity key={k} style={[s.curPick, hawForm.currency === k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, currency: k })}>
-                  <Text style={[s.curPickTxt, hawForm.currency === k && { color: '#fff' }]}>{CUR[k].flag} {CUR[k].name} ({k})</Text>
+                  <Text style={[s.curPickTxt, hawForm.currency === k && { color: '#fff' }]}>{CUR[k].flag} {k}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -1691,7 +1691,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
               {Object.keys(CUR).filter(k => { const q = ckCurSearch.toLowerCase().trim(); if (!q) return true; return k.toLowerCase().includes(q) || CUR[k].name.includes(ckCurSearch); }).map(k => (
                 <TouchableOpacity key={k} style={[s.curPick, ckForm.currency === k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setCkForm({ ...ckForm, currency: k })}>
-                  <Text style={[s.curPickTxt, ckForm.currency === k && { color: '#fff' }]}>{CUR[k].flag} {CUR[k].name} ({k})</Text>
+                  <Text style={[s.curPickTxt, ckForm.currency === k && { color: '#fff' }]}>{CUR[k].flag} {k}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>

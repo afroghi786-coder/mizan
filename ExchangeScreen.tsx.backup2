@@ -333,9 +333,7 @@ export default function ExchangeScreen({ showToast }: any) {
       showToast('❌ ' + (e?.message || 'خطا در ذخیره'), true);
       console.log('submit error:', e);
     }
-    // ⭐ فقط در حالت ویرایش به لیست برگرد
-    // در حالت معامله جدید، فاکتور خودکار باز می‌شه
-    if (editId) setSub('list');
+    setSub('list');
   };
 
   const resetForm = () => {

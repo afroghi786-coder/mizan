@@ -183,14 +183,46 @@ export async function migrateOldTransfers(): Promise<void> {
 // ═══ تراکنش‌های مرتبط با یک کد طرف حساب ═══
 export async function getBoxTxsByCounterparty(code: string): Promise<any[]> {
   if (!code) return [];
-  const txs = await getBoxTransactions();
   const k = String(code).toLowerCase();
-  return txs.filter((t: any) =>
-    String(t.counterparty_code || '').toLowerCase() === k ||
-    String(t.owner_code || '').toLowerCase() === k ||
-    String(t.box_code || '').toLowerCase() === k
-  );
+  const txs = await getBoxTransactions();
+  const boxes = await getBoxes();
+  const boxMap: Record<string, any> = {};
+  boxes.forEach((b: any) => { boxMap[String(b.id || b.local_id)] = b; });
+  return txs.filter((t: any) => {
+    // ۱. مستقیم
+    if (String(t.counterparty_code || '').toLowerCase() === k) return true;
+    if (String(t.owner_code || '').toLowerCase() === k) return true;
+    if (String(t.box_code || '').toLowerCase() === k) return true;
+    // ۲. از طریق صندوق (fallback برای تراکنش‌های قدیمی)
+    const box = boxMap[String(t.box_id || '')];
+    if (box && String(box.owner_code || '').toLowerCase() === k) return true;
+    return false;
+  });
 }
+
+// ═══ auto-backfill: هر بار که getBoxTxsByCounterparty صدا زده شد، قدیمی‌ها رو اصلاح کن ═══
+async function backfillBoxTxs(): Promise<void> {
+  try {
+    const boxes = await getBoxes();
+    const txs = await getBoxTransactions();
+    const boxMap: Record<string, any> = {};
+    boxes.forEach((b: any) => { boxMap[String(b.id || b.local_id)] = b; });
+    let changed = false;
+    const next = txs.map((t: any) => {
+      const box = boxMap[String(t.box_id || '')];
+      if (box && box.owner_code && !t.counterparty_code) {
+        changed = true;
+        return { ...t, counterparty_code: box.owner_code, counterparty_name: box.owner_name, owner_code: box.owner_code, owner_name: box.owner_name };
+      }
+      return t;
+    });
+    if (changed) {
+      await AsyncStorage.setItem(TX_KEY, JSON.stringify(next));
+      console.log('[backfillBoxTxs] ✅ اصلاح شد');
+    }
+  } catch (e) { console.log('backfill error:', e); }
+}
+export { backfillBoxTxs };
 
 // ═══ خلاصه صندوق برای یک شخص ═══
 export async function getBoxSummaryForPerson(code: string): Promise<{ given: Record<string, number>; received: Record<string, number>; txCount: number }> {

@@ -1,4 +1,4 @@
-import { getBoxTxsByCounterparty, getBoxSummaryForPerson } from './lib.boxes';
+import { getBoxTxsByCounterparty, getBoxSummaryForPerson, backfillBoxTxs } from './lib.boxes';
 import { applyTradeToBoxes } from './lib.box-auto';
 import BoxesScreen from './BoxesScreen';
 // ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی

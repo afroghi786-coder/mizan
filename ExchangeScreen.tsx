@@ -121,7 +121,7 @@ export default function ExchangeScreen({ showToast }: any) {
       setFxCustomers((allCust || []).filter((x: any) => (x.type || 'customer') === 'customer'));
       setFxBuyers((allCust || []).filter((x: any) => x.type === 'buyer'));
     } catch (e) { console.log('cust reload:', e); }
-    try { setTrades(await getFxTrades()); } catch (e) { console.log('trades:', e); }
+    try { setTrades(await getAllTrades()); } catch (e) { console.log('trades:', e); }
     try { setHawalas(await getHawalas()); } catch (e) { console.log('haw:', e); }
     try { setBoxes(await getBoxes()); } catch (e) { console.log('box:', e); }
     try { setTransfers(await getTransfers()); } catch (e) { console.log('tr:', e); }

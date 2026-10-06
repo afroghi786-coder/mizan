@@ -117,7 +117,7 @@ export default function ExchangeScreen({ showToast }: any) {
 
   const reload = useCallback(async () => {
     try {
-      const allCust = await getFxCustomers();
+      const allCust = await getAllCust();
       setFxCustomers((allCust || []).filter((x: any) => (x.type || 'customer') === 'customer'));
       setFxBuyers((allCust || []).filter((x: any) => x.type === 'buyer'));
     } catch (e) { console.log('cust reload:', e); }
@@ -529,6 +529,8 @@ export default function ExchangeScreen({ showToast }: any) {
                   <Text style={[s.th, { width: 110 }]}>کد خریدار</Text>
                   <Text style={[s.th, { width: 110 }]}>نام خریدار</Text>
                   <Text style={[s.th, { width: 100 }]}>تلفن خریدار</Text>
+                  <Text style={[s.th, { width: 100 }]}>بانک خریدار</Text>
+                  <Text style={[s.th, { width: 110 }]}>صاحب حساب خریدار</Text>
                   <Text style={[s.th, { width: 110 }]}>کد مشتری</Text>
                   <Text style={[s.th, { width: 120 }]}>نام مشتری</Text>
                   <Text style={[s.th, { width: 100 }]}>تلفن مشتری</Text>
@@ -553,6 +555,8 @@ export default function ExchangeScreen({ showToast }: any) {
                       <Text style={[s.td, { width: 110, color: '#10b981', fontFamily: 'monospace', fontSize: 10 }]}>{t.buyer_code || t.partner_code || '—'}</Text>
                       <Text style={[s.td, { width: 110, color: '#e2e8f0' }]}>{t.buyer_name || t.partner_name || '—'}</Text>
                       <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }]}>{t.buyer_phone || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#cbd5e1', fontSize: 10 }]}>{t.buyer_bank || '—'}</Text>
+                      <Text style={[s.td, { width: 110, color: '#cbd5e1', fontSize: 10 }]}>{t.buyer_holder || '—'}</Text>
                       <Text style={[s.td, { width: 110, color: '#60a5fa', fontFamily: 'monospace', fontSize: 10 }]}>{t.customer_code || '—'}</Text>
                       <Text style={[s.td, { width: 120, color: '#ffffff', fontWeight: 'bold' }]}>{t.customer_name || '—'}</Text>
                       <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }]}>{t.customer_phone || '—'}</Text>

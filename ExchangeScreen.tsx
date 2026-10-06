@@ -101,26 +101,16 @@ export default function ExchangeScreen({ showToast }: any) {
 
   const reload = useCallback(async () => {
     try {
-      const [t, h, b, tr, ck, p, allCust] = await Promise.all([
-        getFxTrades(),
-        getHawalas(),
-        getBoxes(),
-        getTransfers(),
-        getChecks(),
-        getFxPartners(),
-        getFxCustomers(),
-      ]);
-      setTrades(t);
-      setHawalas(h);
-      setBoxes(b);
-      setTransfers(tr);
-      setChecks(ck);
-      setPartners(p);
+      const allCust = await getFxCustomers();
       setFxCustomers((allCust || []).filter((x: any) => (x.type || 'customer') === 'customer'));
       setFxBuyers((allCust || []).filter((x: any) => x.type === 'buyer'));
-    } catch (e) {
-      console.log('reload error:', e);
-    }
+    } catch (e) { console.log('cust reload:', e); }
+    try { setTrades(await getFxTrades()); } catch (e) { console.log('trades:', e); }
+    try { setHawalas(await getHawalas()); } catch (e) { console.log('haw:', e); }
+    try { setBoxes(await getBoxes()); } catch (e) { console.log('box:', e); }
+    try { setTransfers(await getTransfers()); } catch (e) { console.log('tr:', e); }
+    try { setChecks(await getChecks()); } catch (e) { console.log('ck:', e); }
+    try { setPartners(await getFxPartners()); } catch (e) { console.log('part:', e); }
   }, []);
 
   useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, [reload]);

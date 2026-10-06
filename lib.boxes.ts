@@ -236,3 +236,32 @@ export async function getBoxSummaryForPerson(code: string): Promise<{ given: Rec
   });
   return { given, received, txCount: txs.length };
 }
+
+
+// ═══ صندوق‌های یک شخص + موجودی هر کدام ═══
+export async function getBoxesForPerson(code: string): Promise<any[]> {
+  if (!code) return [];
+  const k = String(code).toLowerCase();
+  const boxes = await getBoxes();
+  const txs = await getBoxTransactions();
+  const mine = boxes.filter((b: any) => String(b.owner_code || '').toLowerCase() === k);
+  return mine.map((b: any) => {
+    const id = String(b.id || b.local_id || '');
+    let bal = Number(b.opening) || 0;
+    let totalIn = 0, totalOut = 0;
+    txs.filter((t: any) => String(t.box_id || '') === id).forEach((t: any) => {
+      const inAmt = Number(t.in) || 0;
+      const outAmt = Number(t.out) || 0;
+      bal += inAmt - outAmt;
+      totalIn += inAmt;
+      totalOut += outAmt;
+    });
+    return {
+      ...b,
+      current_balance: bal,
+      total_in: totalIn,
+      total_out: totalOut,
+      opening: Number(b.opening) || 0,
+    };
+  });
+}

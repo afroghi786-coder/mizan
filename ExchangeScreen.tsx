@@ -1,4 +1,4 @@
-import { getBoxTxsByCounterparty, getBoxSummaryForPerson, backfillBoxTxs } from './lib.boxes';
+import { getBoxTxsByCounterparty, getBoxSummaryForPerson, backfillBoxTxs, getBoxesForPerson } from './lib.boxes';
 import { applyTradeToBoxes } from './lib.box-auto';
 import BoxesScreen from './BoxesScreen';
 // ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی
@@ -1043,6 +1043,64 @@ export default function ExchangeScreen({ showToast }: any) {
                         })}
                       </View>
                     </ScrollView>
+                  </>
+                )}
+
+                {/* BOXES_FOR_PERSON_SECTION */}
+                {(stmtData.boxes_for_person || []).length > 0 && (
+                  <>
+                    <Text style={[s.secT, { marginTop: 16 }]}>📦 صندوق‌های طرف حساب ({stmtData.boxes_for_person.length})</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator>
+                      <View>
+                        <View style={s.tblHeader}>
+                          <Text style={[s.th, { width: 36 }]}>#</Text>
+                          <Text style={[s.th, { width: 100 }]}>کد صندوق</Text>
+                          <Text style={[s.th, { width: 180 }]}>نام صندوق</Text>
+                          <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                          <Text style={[s.th, { width: 130 }]}>موجودی اولیه</Text>
+                          <Text style={[s.th, { width: 130 }]}>جمع ورودی</Text>
+                          <Text style={[s.th, { width: 130 }]}>جمع خروجی</Text>
+                          <Text style={[s.th, { width: 130 }]}>موجودی فعلی</Text>
+                        </View>
+                        {(stmtData.boxes_for_person || []).map((b: any, i: number) => {
+                          const dec = CUR[b.currency]?.dec || 0;
+                          const bal = Number(b.current_balance) || 0;
+                          const col = bal > 0 ? '#00ff88' : bal < 0 ? '#ff3355' : '#94a3b8';
+                          return (
+                            <View key={b.id || b.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                              <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                              <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }]}>{b.code || '—'}</Text>
+                              <Text style={[s.td, { width: 180, color: '#fff', fontWeight: 'bold', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{b.name || '—'}</Text>
+                              <Text style={[s.td, { width: 80, color: '#60a5fa', fontSize: 11 }]}>{CUR[b.currency]?.flag} {b.currency}</Text>
+                              <Text style={[s.td, { width: 130, color: '#cbd5e1', fontSize: 11 }]}>{fmt(b.opening, dec)}</Text>
+                              <Text style={[s.td, { width: 130, color: '#00ff88', fontWeight: 'bold', fontSize: 11 }]}>{fmt(b.total_in, dec)}</Text>
+                              <Text style={[s.td, { width: 130, color: '#ff3355', fontWeight: 'bold', fontSize: 11 }]}>{fmt(b.total_out, dec)}</Text>
+                              <Text style={[s.td, { width: 130, color: col, fontWeight: 'bold', fontSize: 13 }]}>{fmt(bal, dec)}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+
+                    {/* جمع کل صندوق‌های طرف بر اساس ارز */}
+                    <View style={{ marginTop: 8, padding: 10, backgroundColor: '#0f2438', borderRadius: 8, borderWidth: 1, borderColor: '#334155' }}>
+                      <Text style={{ color: '#d4af37', fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>💰 جمع کل موجودی صندوق‌های {stmtCustomer.name} بر اساس ارز</Text>
+                      {(() => {
+                        const totals: Record<string, number> = {};
+                        (stmtData.boxes_for_person || []).forEach((b: any) => {
+                          const cur = b.currency || '';
+                          totals[cur] = (totals[cur] || 0) + (Number(b.current_balance) || 0);
+                        });
+                        const entries = Object.entries(totals);
+                        if (entries.length === 0) return <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'right' }}>—</Text>;
+                        return entries.map(([cur, v]) => (
+                          <View key={cur} style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}>
+                            <Text style={{ color: '#e2e8f0', fontSize: 12 }}>{CUR[cur]?.flag || '💱'} {cur}</Text>
+                            <Text style={{ color: v > 0 ? '#00ff88' : v < 0 ? '#ff3355' : '#94a3b8', fontWeight: 'bold', fontSize: 13, fontFamily: 'monospace' }}>{fmt(v, CUR[cur]?.dec || 0)}</Text>
+                          </View>
+                        ));
+                      })()}
+                    </View>
                   </>
                 )}
 

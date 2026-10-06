@@ -88,6 +88,18 @@ export default function ExchangeScreen({ showToast }: any) {
   const [fRate, setFRate] = useState('');
   const [fDesc, setFDesc] = useState('');
   const [fDate, setFDate] = useState(new Date().toLocaleDateString('fa-IR'));
+  const [fBuyerPhone, setFBuyerPhone] = useState('');
+  const [fBuyerName, setFBuyerName] = useState('');
+  const [fBuyerBank, setFBuyerBank] = useState('');
+  const [fBuyerAccount, setFBuyerAccount] = useState('');
+  const [fBuyerHolder, setFBuyerHolder] = useState('');
+  const [fBuyerAddress, setFBuyerAddress] = useState('');
+  const [fBuyerStatus, setFBuyerStatus] = useState('');
+  const [fCustBank, setFCustBank] = useState('');
+  const [fCustAccount, setFCustAccount] = useState('');
+  const [fCustHolder, setFCustHolder] = useState('');
+  const [fCustAddress, setFCustAddress] = useState('');
+  const [fCustStatus, setFCustStatus] = useState('');
 
   // Modals
   const [showFromCur, setShowFromCur] = useState(false);
@@ -141,16 +153,55 @@ export default function ExchangeScreen({ showToast }: any) {
   const lookupCustomer = (phone: string) => {
     const p = String(phone).replace(/[^\d]/g, '');
     if (p.length < 5) return;
-    const found = customers.find(c => String(c.phone || '').replace(/[^\d]/g, '') === p);
+    const found = fxCustomers.find((cc: any) => String(cc.phone || '').replace(/[^\d]/g, '') === p);
     if (found) {
       setFCustName(found.name || '');
       setFCustCode(found.code || '');
-      if (found.bank) setFBank(found.bank);
-      if (found.holder_name) setFHolder(found.holder_name);
+      setFCustBank(found.bank || '');
+      setFCustAccount(found.account_number || '');
+      setFCustHolder(found.holder_name || '');
+      setFCustAddress(found.address || '');
+      setFCustStatus('✅ قبلی');
       showToast('✅ مشتری قبلی: ' + found.name);
     } else if (p.length === 11) {
       setFCustCode('');
+      setFCustStatus('🆕 جدید');
       showToast('🆕 مشتری جدید — هنگام ثبت، کد ساخته می‌شود');
+    }
+  };
+
+  // ═══ انتخاب خریدار از لیست ═══
+  const pickPartner = (b: any) => {
+    setFPartner(b.code || '');
+    setFBuyerName(b.name || '');
+    setFBuyerPhone(b.phone || '');
+    setFBuyerBank(b.bank || '');
+    setFBuyerAccount(b.account_number || '');
+    setFBuyerHolder(b.holder_name || '');
+    setFBuyerAddress(b.address || '');
+    setFBuyerStatus('✅ قبلی');
+    setShowPartnerPick(false);
+  };
+
+  // ═══ تلفن خریدار → جستجو ═══
+  const onBuyerPhoneChange = (v: string) => {
+    const p = v.replace(/[^\d]/g, '').slice(0, 11);
+    setFBuyerPhone(p);
+    setFBuyerStatus('');
+    if (p.length === 11) {
+      const found = fxBuyers.find((b: any) => String(b.phone || '').replace(/[^\d]/g, '') === p);
+      if (found) {
+        setFPartner(found.code || '');
+        setFBuyerName(found.name || '');
+        setFBuyerBank(found.bank || '');
+        setFBuyerAccount(found.account_number || '');
+        setFBuyerHolder(found.holder_name || '');
+        setFBuyerAddress(found.address || '');
+        setFBuyerStatus('✅ قبلی');
+      } else {
+        setFPartner('');
+        setFBuyerStatus('🆕 جدید');
+      }
     }
   };
 
@@ -188,52 +239,74 @@ export default function ExchangeScreen({ showToast }: any) {
 
   // ═══ ثبت معامله ═══
   const submit = async () => {
-    if (!fPartner) return showToast('شریک را انتخاب کن', true);
-    if (!fPhone || fPhone.length < 10) return showToast('شماره تماس الزامی', true);
+    const buyerPhone = fBuyerPhone.replace(/[^\d]/g, '');
+    const custPhone = fPhone.replace(/[^\d]/g, '');
+    if (buyerPhone.length < 10) return showToast('تلفن خریدار الزامی (۱۱ رقم)', true);
+    if (!fBuyerName && !fPartner) return showToast('نام خریدار الزامی', true);
+    if (custPhone.length < 10) return showToast('شماره تماس مشتری الزامی', true);
     if (!fCustName) return showToast('نام مشتری الزامی', true);
     const fq = parse(fFromQty), tq = parse(fToQty), r = parse(fRate);
     if (fq <= 0 || tq <= 0) return showToast('مقدارها را وارد کن', true);
     if (fFrom === fTo) return showToast('ارزها یکسانند', true);
 
-    const partner = partners.find(p => p.code === fPartner);
-    const partnerName = partner?.name || '';
-
-    // مشتری: اگه جدید بود بساز
-    let custCode = fCustCode;
-    if (!custCode) {
-      const newC = await createFxCustomer({ name: fCustName, phone: fPhone, bank: fBank, holder_name: fHolder });
-      custCode = newC.code;
-    } else {
-      const existing = customers.find(c => c.code === custCode);
-      if (existing) {
-        await updateFxCustomer(existing.local_id || existing.id, { bank: fBank, holder_name: fHolder });
-      }
-    }
-
+    const buyerName = fBuyerName || (partners.find((p: any) => p.code === fPartner)?.name || '');
     const profit = calcProfit();
 
-    const data: any = {
+    const payload: any = {
       invoice_number: fInvoice,
       trade_type: fType,
-      partner_code: fPartner, partner_name: partnerName,
-      customer_code: custCode, customer_name: fCustName, customer_phone: fPhone,
-      bank: fBank, holder_name: fHolder, holder_code: fHolder || '',
+      // خریدار
+      buyer_code: fPartner || ('B_' + buyerPhone),
+      buyer_name: buyerName,
+      buyer_phone: buyerPhone,
+      buyer_bank: fBuyerBank,
+      buyer_account: fBuyerAccount,
+      buyer_holder: fBuyerHolder,
+      buyer_address: fBuyerAddress,
+      // مشتری
+      customer_code: fCustCode || ('X_' + custPhone),
+      customer_name: fCustName,
+      customer_phone: custPhone,
+      customer_bank: fCustBank,
+      customer_account: fCustAccount,
+      customer_holder: fCustHolder,
+      customer_address: fCustAddress,
+      // سازگاری با کد قدیم
+      partner_code: fPartner,
+      partner_name: buyerName,
+      bank: fCustBank,
+      holder_name: fCustHolder,
+      // معامله
       from_currency: fFrom, to_currency: fTo,
       from_qty: fq, to_qty: tq,
       rate: r || (fq > 0 ? tq / fq : 0),
-      profit: profit,
-      description: fDesc, date: fDate,
+      profit, description: fDesc, date: fDate,
     };
 
-    if (editId) {
-      await updateFxTrade(editId, data);
-      showToast('✅ ویرایش شد');
-    } else {
-      await createFxTrade(data);
-      showToast('✅ ثبت شد');
+    try {
+      let created;
+      if (editId) {
+        const all = await getAllTrades();
+        const existing = all.find((x: any) => x.id === editId);
+        created = await saveTrade({ ...existing, ...payload, id: editId });
+        showToast('✅ ویرایش شد');
+      } else {
+        created = await saveTrade(payload);
+        showToast('✅ معامله ثبت شد');
+      }
+      await reload();
+      setShowInvoice({
+        trade: created,
+        buyer: { code: created.buyer_code, name: created.buyer_name, phone: created.buyer_phone },
+        customer: { code: created.customer_code, name: created.customer_name, phone: created.customer_phone },
+        buyerSummary: { count: 1, totalFrom: created.from_qty, totalTo: created.to_qty, profit: created.profit || 0 },
+        customerSummary: { count: 1, totalFrom: created.from_qty, totalTo: created.to_qty, profit: created.profit || 0 },
+      });
+      resetForm();
+    } catch (e: any) {
+      showToast('❌ ' + (e?.message || 'خطا در ذخیره'), true);
+      console.log('submit error:', e);
     }
-    await reload();
-    resetForm();
     setSub('list');
   };
 
@@ -243,6 +316,9 @@ export default function ExchangeScreen({ showToast }: any) {
     setFBank(''); setFHolder(''); setFFrom('AFN'); setFTo('USD');
     setFFromQty(''); setFToQty(''); setFRate(''); setFDesc('');
     setFDate(new Date().toLocaleDateString('fa-IR'));
+    setFBuyerPhone(''); setFBuyerName(''); setFBuyerBank('');
+    setFBuyerAccount(''); setFBuyerHolder(''); setFBuyerAddress(''); setFBuyerStatus('');
+    setFCustBank(''); setFCustAccount(''); setFCustHolder(''); setFCustAddress(''); setFCustStatus('');
   };
 
   const openNew = () => {
@@ -252,22 +328,32 @@ export default function ExchangeScreen({ showToast }: any) {
   };
 
   const openEdit = (t: any) => {
-    setEditId(t.local_id || t.id);
+    setEditId(t.id || t.local_id);
     setFInvoice(t.invoice_number || '');
     setFType(t.trade_type || 'buy');
-    setFPartner(t.partner_code || '');
+    setFPartner(t.buyer_code || t.partner_code || '');
+    setFBuyerName(t.buyer_name || t.partner_name || '');
+    setFBuyerPhone(t.buyer_phone || '');
+    setFBuyerBank(t.buyer_bank || '');
+    setFBuyerAccount(t.buyer_account || '');
+    setFBuyerHolder(t.buyer_holder || '');
+    setFBuyerAddress(t.buyer_address || '');
+    setFBuyerStatus('✅ قبلی');
     setFPhone(t.customer_phone || '');
     setFCustName(t.customer_name || '');
     setFCustCode(t.customer_code || '');
-    setFBank(t.bank || '');
-    setFHolder(t.holder_name || '');
+    setFCustBank(t.customer_bank || t.bank || '');
+    setFCustAccount(t.customer_account || '');
+    setFCustHolder(t.customer_holder || t.holder_name || '');
+    setFCustAddress(t.customer_address || '');
+    setFCustStatus('✅ قبلی');
     setFFrom(t.from_currency || 'AFN');
     setFTo(t.to_currency || 'USD');
     setFFromQty(String(t.from_qty || ''));
     setFToQty(String(t.to_qty || ''));
     setFRate(String(t.rate || ''));
     setFDesc(t.description || '');
-    setFDate(t.date || '');
+    setFDate(t.date || new Date().toLocaleDateString('fa-IR'));
     setSub('form');
   };
 
@@ -489,26 +575,55 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>📅 تاریخ</Text>
             <TextInput style={s.inp} value={fDate} onChangeText={setFDate} />
 
-            <Text style={s.lbl}>💼 شریک معامله‌کننده *</Text>
-            <TouchableOpacity style={s.inp} onPress={() => setShowPartnerPick(true)}>
-              <Text style={{ color: fPartner ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
-                {fPartner ? (partners.find(p => p.code === fPartner)?.name + ' (' + fPartner + ')') : 'انتخاب شریک...'}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ backgroundColor: '#ecfdf5', borderRadius: 10, padding: 10, marginTop: 12, marginBottom: 12, borderWidth: 1, borderColor: '#a7f3d0' }}>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#065f46' }}>🏢 اطلاعات خریدار</Text>
+                {fBuyerStatus ? <Text style={{ fontSize: 11, fontWeight: 'bold', color: fBuyerStatus.indexOf('قبلی') >= 0 ? '#059669' : '#ea580c' }}>{fBuyerStatus}</Text> : null}
+              </View>
 
-            <Text style={s.lbl}>📞 شماره تماس مشتری *</Text>
-            <TextInput style={s.inp} value={fPhone} onChangeText={v => { const d = v.replace(/[^\d]/g, '').slice(0, 11); setFPhone(d); if (d.length === 11) lookupCustomer(d); }} keyboardType="phone-pad" maxLength={11} placeholder="09..." />
+              <Text style={s.lbl}>👤 نام خریدار (کلیک = انتخاب از لیست)</Text>
+              <TouchableOpacity style={s.inp} onPress={() => setShowPartnerPick(true)}>
+                <Text style={{ color: fBuyerName ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>{fBuyerName || '🔍 انتخاب از لیست خریداران...'}</Text>
+              </TouchableOpacity>
 
-            <Text style={s.lbl}>👤 نام مشتری * {fCustCode ? <Text style={s.badge}>{fCustCode}</Text> : null}</Text>
-            <TextInput style={s.inp} value={fCustName} onChangeText={setFCustName} placeholder="نام و نام خانوادگی" />
+              <Text style={s.lbl}>📞 تلفن خریدار *</Text>
+              <TextInput style={s.inp} value={fBuyerPhone} onChangeText={onBuyerPhoneChange} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor="#94a3b8" />
 
-            <Text style={s.lbl}>🏦 بانک</Text>
-            <TextInput style={s.inp} value={fBank} onChangeText={setFBank} />
+              {fPartner ? <View style={{ backgroundColor: '#d1fae5', padding: 6, borderRadius: 6, marginTop: 4 }}><Text style={{ color: '#065f46', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>🆔 {fPartner}</Text></View> : null}
 
-            <Text style={s.lbl}>👤 صاحب حساب</Text>
-            <TextInput style={s.inp} value={fHolder} onChangeText={setFHolder} />
+              <Text style={s.lbl}>🏦 بانک</Text>
+              <TextInput style={s.inp} value={fBuyerBank} onChangeText={setFBuyerBank} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>💳 شماره حساب</Text>
+              <TextInput style={s.inp} value={fBuyerAccount} onChangeText={setFBuyerAccount} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>👤 صاحب حساب</Text>
+              <TextInput style={s.inp} value={fBuyerHolder} onChangeText={setFBuyerHolder} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>📍 آدرس</Text>
+              <TextInput style={[s.inp, { minHeight: 40 }]} value={fBuyerAddress} onChangeText={setFBuyerAddress} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
+            </View>
 
-            {/* نوع معامله */}
+            <View style={{ backgroundColor: '#eff6ff', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: '#bfdbfe' }}>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#1e3a8a' }}>👤 اطلاعات مشتری</Text>
+                {fCustStatus ? <Text style={{ fontSize: 11, fontWeight: 'bold', color: fCustStatus.indexOf('قبلی') >= 0 ? '#059669' : '#ea580c' }}>{fCustStatus}</Text> : null}
+              </View>
+
+              <Text style={s.lbl}>📞 تلفن مشتری * (اول تلفن بزن)</Text>
+              <TextInput style={s.inp} value={fPhone} onChangeText={v => { const d = v.replace(/[^\d]/g, '').slice(0, 11); setFPhone(d); if (d.length === 11) lookupCustomer(d); }} keyboardType="phone-pad" maxLength={11} placeholder="09123456789" placeholderTextColor="#94a3b8" />
+
+              {fCustCode ? <View style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6, marginTop: 4 }}><Text style={{ color: '#1e40af', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>🆔 {fCustCode}</Text></View> : null}
+
+              <Text style={s.lbl}>👤 نام و نام خانوادگی *</Text>
+              <TextInput style={s.inp} value={fCustName} onChangeText={setFCustName} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>🏦 بانک</Text>
+              <TextInput style={s.inp} value={fCustBank} onChangeText={setFCustBank} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>💳 شماره حساب</Text>
+              <TextInput style={s.inp} value={fCustAccount} onChangeText={setFCustAccount} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>👤 صاحب حساب</Text>
+              <TextInput style={s.inp} value={fCustHolder} onChangeText={setFCustHolder} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>📍 آدرس</Text>
+              <TextInput style={[s.inp, { minHeight: 40 }]} value={fCustAddress} onChangeText={setFCustAddress} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
+            </View>
+
             <Text style={s.lbl}>🔀 نوع معامله</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
               <TouchableOpacity onPress={() => { setFType('buy'); setFFrom('AFN'); setFTo('USD'); }} style={[s.typeBtn, fType === 'buy' && s.typeBtnBuy]}>
@@ -524,22 +639,22 @@ export default function ExchangeScreen({ showToast }: any) {
               <TouchableOpacity style={s.curPick} onPress={() => setShowFromCur(true)}>
                 <Text style={s.curPickTxt}>{CUR[fFrom]?.flag} {fFrom}</Text>
               </TouchableOpacity>
-              <TextInput style={[s.inp, { flex: 1 }]} value={fFromQty} onChangeText={v => { setFFromQty(v); recalc('from', v); }} keyboardType="numeric" placeholder="مقدار" />
+              <TextInput style={[s.inp, { flex: 1 }]} value={fFromQty} onChangeText={v => { setFFromQty(v); recalc('from', v); }} keyboardType="numeric" placeholder="مقدار" placeholderTextColor="#94a3b8" />
             </View>
 
             <Text style={s.lbl}>💹 نرخ تبدیل</Text>
-            <TextInput style={s.inp} value={fRate} onChangeText={v => { setFRate(v); recalc('rate', v); }} keyboardType="numeric" placeholder="مثلاً 70500" />
+            <TextInput style={s.inp} value={fRate} onChangeText={v => { setFRate(v); recalc('rate', v); }} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
 
             <Text style={s.lbl}>📥 به ارز (می‌گیرم) *</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
               <TouchableOpacity style={s.curPick} onPress={() => setShowToCur(true)}>
                 <Text style={s.curPickTxt}>{CUR[fTo]?.flag} {fTo}</Text>
               </TouchableOpacity>
-              <TextInput style={[s.inp, { flex: 1 }]} value={fToQty} onChangeText={v => { setFToQty(v); recalc('to', v); }} keyboardType="numeric" placeholder="مقدار" />
+              <TextInput style={[s.inp, { flex: 1 }]} value={fToQty} onChangeText={v => { setFToQty(v); recalc('to', v); }} keyboardType="numeric" placeholder="مقدار" placeholderTextColor="#94a3b8" />
             </View>
 
             <Text style={s.lbl}>📝 توضیحات</Text>
-            <TextInput style={[s.inp, { minHeight: 60, textAlignVertical: 'top' }]} value={fDesc} onChangeText={setFDesc} multiline />
+            <TextInput style={[s.inp, { minHeight: 60, textAlignVertical: 'top' }]} value={fDesc} onChangeText={setFDesc} multiline placeholderTextColor="#94a3b8" />
 
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => { resetForm(); setSub('list'); }}>
@@ -1023,7 +1138,7 @@ export default function ExchangeScreen({ showToast }: any) {
           <View style={s.mHead}><Text style={s.mTitle}>💼 انتخاب شریک</Text><TouchableOpacity onPress={() => setShowPartnerPick(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <ScrollView style={{ maxHeight: 400, padding: 12 }}>
             {partners.length === 0 ? <Text style={s.empty}>هنوز شریکی نیست</Text> : partners.map((p: any) => (
-              <TouchableOpacity key={p.code} style={s.pickRow} onPress={() => { setFPartner(p.code); setShowPartnerPick(false); }}>
+              <TouchableOpacity key={p.code} style={s.pickRow} onPress={() => pickPartner(p)}>
                 <Text style={s.pickName}>{p.name}</Text><Text style={s.badge}>{p.code}</Text>
               </TouchableOpacity>
             ))}

@@ -526,11 +526,16 @@ export default function ExchangeScreen({ showToast }: any) {
                   <Text style={[s.th, { width: 36 }]}>#</Text>
                   <Text style={[s.th, { width: 100 }]}>فاکتور</Text>
                   <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
-                  <Text style={[s.th, { width: 100 }]}>شریک</Text>
-                  <Text style={[s.th, { width: 130 }]}>مشتری</Text>
-                  <Text style={[s.th, { width: 100 }]}>تلفن</Text>
-                  <Text style={[s.th, { width: 90 }]}>از</Text>
-                  <Text style={[s.th, { width: 100 }]}>به</Text>
+                  <Text style={[s.th, { width: 110 }]}>کد خریدار</Text>
+                  <Text style={[s.th, { width: 110 }]}>نام خریدار</Text>
+                  <Text style={[s.th, { width: 100 }]}>تلفن خریدار</Text>
+                  <Text style={[s.th, { width: 110 }]}>کد مشتری</Text>
+                  <Text style={[s.th, { width: 120 }]}>نام مشتری</Text>
+                  <Text style={[s.th, { width: 100 }]}>تلفن مشتری</Text>
+                  <Text style={[s.th, { width: 100 }]}>بانک</Text>
+                  <Text style={[s.th, { width: 100 }]}>صاحب حساب</Text>
+                  <Text style={[s.th, { width: 90 }]}>از ارز</Text>
+                  <Text style={[s.th, { width: 100 }]}>به ارز</Text>
                   <Text style={[s.th, { width: 90 }]}>نرخ</Text>
                   <Text style={[s.th, { width: 100 }]}>سود</Text>
                   <Text style={[s.th, { width: 100 }]}>عملیات</Text>
@@ -541,20 +546,25 @@ export default function ExchangeScreen({ showToast }: any) {
                 ) : trades.map((t: any, i: number) => {
                   const profitCol = (Number(t.profit) || 0) > 0 ? '#00ff88' : (Number(t.profit) || 0) < 0 ? '#ff3355' : '#64748b';
                   return (
-                    <View key={t.local_id || t.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                    <View key={t.id || t.local_id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
                       <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
                       <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{t.invoice_number || '—'}</Text>
                       <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{t.date || '—'}</Text>
-                      <Text style={[s.td, { width: 100, color: '#e2e8f0' }]}>{t.partner_name || '—'}</Text>
-                      <Text style={[s.td, { width: 130, color: '#ffffff', fontWeight: 'bold' }]}>{t.customer_name || '—'}</Text>
-                      <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10 }]}>{t.customer_phone || '—'}</Text>
+                      <Text style={[s.td, { width: 110, color: '#10b981', fontFamily: 'monospace', fontSize: 10 }]}>{t.buyer_code || t.partner_code || '—'}</Text>
+                      <Text style={[s.td, { width: 110, color: '#e2e8f0' }]}>{t.buyer_name || t.partner_name || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }]}>{t.buyer_phone || '—'}</Text>
+                      <Text style={[s.td, { width: 110, color: '#60a5fa', fontFamily: 'monospace', fontSize: 10 }]}>{t.customer_code || '—'}</Text>
+                      <Text style={[s.td, { width: 120, color: '#ffffff', fontWeight: 'bold' }]}>{t.customer_name || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }]}>{t.customer_phone || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#cbd5e1', fontSize: 10 }]}>{t.customer_bank || t.bank || '—'}</Text>
+                      <Text style={[s.td, { width: 100, color: '#cbd5e1', fontSize: 10 }]}>{t.customer_holder || t.holder_name || '—'}</Text>
                       <Text style={[s.td, { width: 90, color: '#fb923c' }]}>{CUR[t.from_currency]?.flag}{fmt(t.from_qty, CUR[t.from_currency]?.dec)}</Text>
                       <Text style={[s.td, { width: 100, color: '#34d399' }]}>{CUR[t.to_currency]?.flag}{fmt(t.to_qty, CUR[t.to_currency]?.dec)}</Text>
                       <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 10 }]}>{fmt(t.rate, 4)}</Text>
                       <Text style={[s.td, { width: 100, color: profitCol, fontWeight: 'bold' }]}>{fmt(t.profit, 0)}</Text>
                       <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
                         <TouchableOpacity onPress={() => openEdit(t)} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
-                        <TouchableOpacity onPress={async () => { await deleteFxTrade(t.local_id || t.id); await reload(); showToast('🗑 حذف شد'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={async () => { await deleteTrade(t.id || t.local_id); await reload(); showToast('🗑 حذف شد'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
                       </View>
                     </View>
                   );
@@ -1137,7 +1147,7 @@ export default function ExchangeScreen({ showToast }: any) {
         <View style={s.mBg}><View style={s.mBox}>
           <View style={s.mHead}><Text style={s.mTitle}>💼 انتخاب شریک</Text><TouchableOpacity onPress={() => setShowPartnerPick(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <ScrollView style={{ maxHeight: 400, padding: 12 }}>
-            {partners.length === 0 ? <Text style={s.empty}>هنوز شریکی نیست</Text> : partners.map((p: any) => (
+            {fxBuyers.length === 0 ? <Text style={s.empty}>هنوز شریکی نیست</Text> : fxBuyers.map((p: any) => (
               <TouchableOpacity key={p.code} style={s.pickRow} onPress={() => pickPartner(p)}>
                 <Text style={s.pickName}>{p.name}</Text><Text style={s.badge}>{p.code}</Text>
               </TouchableOpacity>

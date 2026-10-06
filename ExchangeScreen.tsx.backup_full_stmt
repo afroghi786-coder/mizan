@@ -941,26 +941,26 @@ export default function ExchangeScreen({ showToast }: any) {
         {/* ═══════ پرینت حساب مشتری ═══════ */}
         {sub === 'statement' && (
           <View>
-            <Text style={s.secT}>🖨️ پرینت حساب جامع</Text>
+            <Text style={s.secT}>🖨️ پرینت حساب مشتری صرافی</Text>
 
             <View style={[s.formCard, { marginBottom: 12 }]}>
-              <Text style={s.lbl}>🔍 جستجو (کد / تلفن / نام)</Text>
+              <Text style={s.lbl}>🔍 جستجو (کد، تلفن، یا نام مشتری)</Text>
               <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                 <TextInput
                   style={[s.inp, { flex: 1 }]}
                   value={stmtSearch}
                   onChangeText={setStmtSearch}
-                  placeholder="B_1001 یا X_1001 یا 0912... یا احمد"
+                  placeholder="X_1001 یا 0912... یا احمد"
                   placeholderTextColor="#94a3b8"
                 />
                 <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', paddingHorizontal: 16 }]} onPress={() => buildStatement(stmtSearch)}>
                   <Text style={s.btnTxt}>🔍 نمایش</Text>
                 </TouchableOpacity>
               </View>
-              {(fxBuyers.length > 0 || fxCustomers.length > 0) && (
+              {customers.length > 0 && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-                  {[...fxBuyers, ...fxCustomers].slice(0, 30).map((c: any) => (
-                    <TouchableOpacity key={c.code} style={[s.curPick, { marginLeft: 4 }]} onPress={() => { setStmtSearch(c.code); buildStatement(c.code); }}>
+                  {customers.slice(0, 20).map((c: any) => (
+                    <TouchableOpacity key={c.code} style={[s.curPick, { marginLeft: 4 }]} onPress={() => { setStmtSearch(c.phone); buildStatement(c.phone); }}>
                       <Text style={s.curPickTxt}>{c.name} ({c.code})</Text>
                     </TouchableOpacity>
                   ))}
@@ -970,7 +970,7 @@ export default function ExchangeScreen({ showToast }: any) {
 
             {stmtCustomer && stmtData && (
               <View>
-                {/* هدر طرف حساب */}
+                {/* هدر مشتری */}
                 <View style={[s.dash, { backgroundColor: '#065f46', borderColor: '#10b981' }]}>
                   <View style={{ alignItems: 'center', paddingVertical: 8 }}>
                     <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>👤 {stmtCustomer.name}</Text>
@@ -982,12 +982,6 @@ export default function ExchangeScreen({ showToast }: any) {
                         🏦 {stmtCustomer.bank}  |  👤 {stmtCustomer.holder_name || '—'}
                       </Text>
                     ) : null}
-                    {stmtCustomer.address ? (
-                      <Text style={{ color: '#a7f3d0', fontSize: 11, marginTop: 2 }}>📍 {stmtCustomer.address}</Text>
-                    ) : null}
-                    {stmtCustomer.note ? (
-                      <Text style={{ color: '#fde047', fontSize: 11, marginTop: 4 }}>📝 {stmtCustomer.note}</Text>
-                    ) : null}
                   </View>
                 </View>
 
@@ -995,213 +989,42 @@ export default function ExchangeScreen({ showToast }: any) {
                 <View style={s.dash}>
                   <View style={s.grid}>
                     <View style={s.dItem}>
-                      <Text style={s.dLbl}>💰 سود کل</Text>
-                      <Text style={[s.dVal, { color: stmtData.totalProfit >= 0 ? '#00ff88' : '#ff3355' }]}>{fmt(stmtData.totalProfit, 0)}</Text>
+                      <Text style={s.dLbl}>💰 سود از این مشتری</Text>
+                      <Text style={[s.dVal, { color: stmtData.totalProfit >= 0 ? '#00ff88' : '#ff3355', textShadowColor: stmtData.totalProfit >= 0 ? '#00ff88' : '#ff3355' }]}>{fmt(stmtData.totalProfit, 0)}</Text>
                     </View>
                     <View style={s.dItem}>
                       <Text style={s.dLbl}>📊 معاملات</Text>
-                      <Text style={[s.dVal, { color: '#60a5fa' }]}>{stmtData.tradeCount}</Text>
+                      <Text style={[s.dVal, { color: '#60a5fa', textShadowColor: '#60a5fa' }]}>{stmtData.tradeCount}</Text>
                     </View>
                     <View style={s.dItem}>
                       <Text style={s.dLbl}>💸 حوالات</Text>
-                      <Text style={[s.dVal, { color: '#fbbf24' }]}>{stmtData.hawalaCount}</Text>
-                    </View>
-                    <View style={s.dItem}>
-                      <Text style={s.dLbl}>📄 چک‌ها</Text>
-                      <Text style={[s.dVal, { color: '#a78bfa' }]}>{stmtData.checkCount}</Text>
-                    </View>
-                    <View style={s.dItem}>
-                      <Text style={s.dLbl}>📦 صندوق</Text>
-                      <Text style={[s.dVal, { color: '#34d399' }]}>{stmtData.boxTxCount}</Text>
+                      <Text style={[s.dVal, { color: '#fbbf24', textShadowColor: '#fbbf24' }]}>{stmtData.hawalaCount}</Text>
                     </View>
                   </View>
                 </View>
 
-                {/* ═══ پوزیشن ارزی ═══ */}
-                {Object.keys(stmtData.positions || {}).length > 0 && (
-                  <>
-                    <Text style={s.secT}>💱 پوزیشن ارزی</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator>
-                      <View>
-                        <View style={s.tblHeader}>
-                          <Text style={[s.th, { width: 80 }]}>ارز</Text>
-                          <Text style={[s.th, { width: 120 }]}>گرفتیم</Text>
-                          <Text style={[s.th, { width: 120 }]}>دادیم</Text>
-                          <Text style={[s.th, { width: 120 }]}>مانده</Text>
-                        </View>
-                        {Object.keys(stmtData.positions).map((cur: string, i: number) => {
-                          const p = stmtData.positions[cur];
-                          const col = p.net > 0 ? '#00ff88' : p.net < 0 ? '#ff3355' : '#94a3b8';
-                          return (
-                            <View key={cur} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
-                              <Text style={[s.td, { width: 80, color: '#d4af37', fontWeight: 'bold' }]}>{CUR[cur]?.flag} {cur}</Text>
-                              <Text style={[s.td, { width: 120, color: '#fb923c', fontWeight: 'bold' }]}>{fmt(p.bought, 0)}</Text>
-                              <Text style={[s.td, { width: 120, color: '#34d399', fontWeight: 'bold' }]}>{fmt(p.sold, 0)}</Text>
-                              <Text style={[s.td, { width: 120, color: col, fontWeight: 'bold', fontSize: 13 }]}>{p.net > 0 ? '+' : ''}{fmt(p.net, 0)}</Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    </ScrollView>
-                  </>
-                )}
-
-                {/* ═══ معاملات کامل ═══ */}
-                <Text style={[s.secT, { marginTop: 16 }]}>📋 معاملات ({stmtData.tradeCount})</Text>
-                {stmtData.tradeCount === 0 ? (
-                  <Text style={s.empty}>معامله‌ای ثبت نشده</Text>
+                {/* پوزیشن ارزی با این مشتری */}
+                <Text style={s.secT}>💱 پوزیشن ارزی با این مشتری</Text>
+                {Object.keys(stmtData.positions).length === 0 ? (
+                  <Text style={s.empty}>معامله‌ای با این مشتری ثبت نشده</Text>
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator>
                     <View>
                       <View style={s.tblHeader}>
-                        <Text style={[s.th, { width: 36 }]}>#</Text>
-                        <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
-                        <Text style={[s.th, { width: 100 }]}>فاکتور</Text>
-                        <Text style={[s.th, { width: 100 }]}>خریدار</Text>
-                        <Text style={[s.th, { width: 120 }]}>مشتری</Text>
-                        <Text style={[s.th, { width: 110 }]}>از ارز</Text>
-                        <Text style={[s.th, { width: 110 }]}>مقدار</Text>
-                        <Text style={[s.th, { width: 110 }]}>به ارز</Text>
-                        <Text style={[s.th, { width: 110 }]}>مقدار</Text>
-                        <Text style={[s.th, { width: 90 }]}>نرخ</Text>
-                        <Text style={[s.th, { width: 100 }]}>سود</Text>
-                        <Text style={[s.th, { width: 150 }]}>توضیحات</Text>
+                        <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                        <Text style={[s.th, { width: 120 }]}>گرفتیم (خرید)</Text>
+                        <Text style={[s.th, { width: 120 }]}>دادیم (فروش)</Text>
+                        <Text style={[s.th, { width: 120 }]}>مانده خالص</Text>
                       </View>
-                      {stmtData.trades.map((t: any, i: number) => (
-                        <View key={t.id || t.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
-                          <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-                          <Text style={[s.td, { width: 90, color: '#94a3b8', fontSize: 10 }]}>{t.date || '—'}</Text>
-                          <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{t.invoice_number || '—'}</Text>
-                          <Text style={[s.td, { width: 100, color: '#10b981', fontSize: 10 }]}>{t.buyer_name || t.partner_name || '—'}</Text>
-                          <Text style={[s.td, { width: 120, color: '#60a5fa', fontSize: 10 }]}>{t.customer_name || '—'}</Text>
-                          <Text style={[s.td, { width: 110, color: '#fb923c', fontSize: 10 }]}>{CUR[t.from_currency]?.flag} {t.from_currency || '—'}</Text>
-                          <Text style={[s.td, { width: 110, color: '#fb923c', fontWeight: 'bold', fontSize: 11 }]}>{fmt(t.from_qty, 0)}</Text>
-                          <Text style={[s.td, { width: 110, color: '#34d399', fontSize: 10 }]}>{CUR[t.to_currency]?.flag} {t.to_currency || '—'}</Text>
-                          <Text style={[s.td, { width: 110, color: '#34d399', fontWeight: 'bold', fontSize: 11 }]}>{fmt(t.to_qty, 0)}</Text>
-                          <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 11 }]}>{fmt(t.rate, 4)}</Text>
-                          <Text style={[s.td, { width: 100, color: (Number(t.profit) || 0) > 0 ? '#00ff88' : '#94a3b8', fontWeight: 'bold', fontSize: 11 }]}>{fmt(t.profit, 0)}</Text>
-                          <Text style={[s.td, { width: 150, color: '#cbd5e1', fontSize: 10, textAlign: 'right' }]} numberOfLines={2}>{t.description || t.desc || '—'}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </ScrollView>
-                )}
-
-                {/* ═══ حوالات کامل ═══ */}
-                <Text style={[s.secT, { marginTop: 16 }]}>💸 حوالات ({stmtData.hawalaCount})</Text>
-                {stmtData.hawalaCount === 0 ? (
-                  <Text style={s.empty}>حواله‌ای ثبت نشده</Text>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator>
-                    <View>
-                      <View style={s.tblHeader}>
-                        <Text style={[s.th, { width: 36 }]}>#</Text>
-                        <Text style={[s.th, { width: 100 }]}>کد</Text>
-                        <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
-                        <Text style={[s.th, { width: 90 }]}>نوع</Text>
-                        <Text style={[s.th, { width: 140 }]}>ذی‌نفع</Text>
-                        <Text style={[s.th, { width: 120 }]}>تلفن</Text>
-                        <Text style={[s.th, { width: 100 }]}>شهر</Text>
-                        <Text style={[s.th, { width: 120 }]}>مبلغ</Text>
-                        <Text style={[s.th, { width: 70 }]}>ارز</Text>
-                        <Text style={[s.th, { width: 100 }]}>کارمزد</Text>
-                        <Text style={[s.th, { width: 100 }]}>شریک</Text>
-                        <Text style={[s.th, { width: 100 }]}>وضعیت</Text>
-                        <Text style={[s.th, { width: 150 }]}>یادداشت</Text>
-                      </View>
-                      {stmtData.hawalas.map((h: any, i: number) => (
-                        <View key={h.id || h.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
-                          <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-                          <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{h.code || '—'}</Text>
-                          <Text style={[s.td, { width: 90, color: '#94a3b8', fontSize: 10 }]}>{h.date || '—'}</Text>
-                          <Text style={[s.td, { width: 90, color: h.direction === 'send' ? '#fb923c' : '#34d399', fontSize: 10 }]}>{h.direction === 'send' ? '📤 ارسال' : '📥 دریافت'}</Text>
-                          <Text style={[s.td, { width: 140, color: '#fff', fontWeight: 'bold', fontSize: 11 }]}>{h.beneficiary_name || '—'}</Text>
-                          <Text style={[s.td, { width: 120, color: '#94a3b8', fontSize: 10 }]}>{h.beneficiary_phone || '—'}</Text>
-                          <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10 }]}>{h.beneficiary_city || '—'}</Text>
-                          <Text style={[s.td, { width: 120, color: '#fbbf24', fontWeight: 'bold', fontSize: 11 }]}>{fmt(h.amount, 0)}</Text>
-                          <Text style={[s.td, { width: 70, color: '#60a5fa', fontSize: 10 }]}>{h.currency || '—'}</Text>
-                          <Text style={[s.td, { width: 100, color: '#00ff88', fontSize: 10 }]}>{fmt(h.commission, 0)}</Text>
-                          <Text style={[s.td, { width: 100, color: '#e2e8f0', fontSize: 10 }]}>{h.partner_name || '—'}</Text>
-                          <Text style={[s.td, { width: 100, color: h.status === 'done' ? '#00ff88' : h.status === 'cancelled' ? '#ff3355' : '#fbbf24', fontSize: 10 }]}>{h.status === 'done' ? '✅ انجام' : h.status === 'cancelled' ? '❌ لغو' : '⏳'}</Text>
-                          <Text style={[s.td, { width: 150, color: '#cbd5e1', fontSize: 10, textAlign: 'right' }]} numberOfLines={2}>{h.note || h.description || '—'}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </ScrollView>
-                )}
-
-                {/* ═══ چک‌ها کامل ═══ */}
-                <Text style={[s.secT, { marginTop: 16 }]}>📄 چک‌ها ({stmtData.checkCount})</Text>
-                {stmtData.checkCount === 0 ? (
-                  <Text style={s.empty}>چکی ثبت نشده</Text>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator>
-                    <View>
-                      <View style={s.tblHeader}>
-                        <Text style={[s.th, { width: 36 }]}>#</Text>
-                        <Text style={[s.th, { width: 100 }]}>تاریخ</Text>
-                        <Text style={[s.th, { width: 120 }]}>شماره چک</Text>
-                        <Text style={[s.th, { width: 100 }]}>بانک</Text>
-                        <Text style={[s.th, { width: 100 }]}>نوع</Text>
-                        <Text style={[s.th, { width: 130 }]}>مبلغ</Text>
-                        <Text style={[s.th, { width: 70 }]}>ارز</Text>
-                        <Text style={[s.th, { width: 110 }]}>سررسید</Text>
-                        <Text style={[s.th, { width: 100 }]}>وضعیت</Text>
-                        <Text style={[s.th, { width: 150 }]}>یادداشت</Text>
-                      </View>
-                      {stmtData.checks.map((k: any, i: number) => (
-                        <View key={k.id || k.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
-                          <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-                          <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 10 }]}>{k.date || '—'}</Text>
-                          <Text style={[s.td, { width: 120, color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }]}>{k.check_number || '—'}</Text>
-                          <Text style={[s.td, { width: 100, color: '#e2e8f0', fontSize: 10 }]}>{k.bank || '—'}</Text>
-                          <Text style={[s.td, { width: 100, color: k.direction === 'in' ? '#34d399' : '#fb923c', fontSize: 10 }]}>{k.direction === 'in' ? '📥 ورودی' : '📤 خروجی'}</Text>
-                          <Text style={[s.td, { width: 130, color: '#fbbf24', fontWeight: 'bold', fontSize: 11 }]}>{fmt(k.amount, 0)}</Text>
-                          <Text style={[s.td, { width: 70, color: '#60a5fa', fontSize: 10 }]}>{k.currency || '—'}</Text>
-                          <Text style={[s.td, { width: 110, color: '#94a3b8', fontSize: 10 }]}>{k.due_date || '—'}</Text>
-                          <Text style={[s.td, { width: 100, color: k.status === 'done' ? '#00ff88' : '#fbbf24', fontSize: 10 }]}>{k.status === 'done' ? '✅' : k.status === 'cancelled' ? '❌' : '⏳'}</Text>
-                          <Text style={[s.td, { width: 150, color: '#cbd5e1', fontSize: 10, textAlign: 'right' }]} numberOfLines={2}>{k.note || '—'}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </ScrollView>
-                )}
-
-                {/* ═══ صندوق‌ها کامل ═══ */}
-                <Text style={[s.secT, { marginTop: 16 }]}>📦 صندوق‌ها ({stmtData.boxTxCount})</Text>
-                {stmtData.boxTxCount === 0 ? (
-                  <Text style={s.empty}>تراکنش صندوقی ثبت نشده</Text>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator>
-                    <View>
-                      <View style={s.tblHeader}>
-                        <Text style={[s.th, { width: 36 }]}>#</Text>
-                        <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
-                        <Text style={[s.th, { width: 100 }]}>سند</Text>
-                        <Text style={[s.th, { width: 130 }]}>صندوق</Text>
-                        <Text style={[s.th, { width: 120 }]}>نوع</Text>
-                        <Text style={[s.th, { width: 140 }]}>طرف حساب</Text>
-                        <Text style={[s.th, { width: 70 }]}>ارز</Text>
-                        <Text style={[s.th, { width: 110 }]}>ورودی</Text>
-                        <Text style={[s.th, { width: 110 }]}>خروجی</Text>
-                        <Text style={[s.th, { width: 90 }]}>نرخ</Text>
-                        <Text style={[s.th, { width: 180 }]}>شرح</Text>
-                      </View>
-                      {stmtData.boxTxs.map((b: any, i: number) => {
-                        const box = boxes.find((x: any) => (x.id || x.local_id) === b.box_id);
+                      {Object.keys(stmtData.positions).map((cur: string, i: number) => {
+                        const p = stmtData.positions[cur];
+                        const col = p.net > 0 ? '#00ff88' : p.net < 0 ? '#ff3355' : '#94a3b8';
                         return (
-                          <View key={b.id || b.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
-                            <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-                            <Text style={[s.td, { width: 90, color: '#94a3b8', fontSize: 10 }]}>{b.date || '—'}</Text>
-                            <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{b.code || '—'}</Text>
-                            <Text style={[s.td, { width: 130, color: '#e2e8f0', fontSize: 10 }]}>{box?.name || b.box_code || '—'}</Text>
-                            <Text style={[s.td, { width: 120, color: '#60a5fa', fontSize: 10 }]}>{b.type === 'transfer_in' ? '📥 ورودی' : b.type === 'transfer_out' ? '📤 خروجی' : b.type === 'trade_in' ? '🛒 از معامله' : b.type === 'trade_out' ? '💸 به معامله' : b.type === 'deposit' ? '➕ واریز' : b.type === 'withdraw' ? '➖ برداشت' : (b.type || '—')}</Text>
-                            <Text style={[s.td, { width: 140, color: '#00ff88', fontSize: 10 }]}>{b.counterparty_code || '—'}</Text>
-                            <Text style={[s.td, { width: 70, color: '#fbbf24', fontSize: 10, fontWeight: 'bold' }]}>{b.currency || '—'}</Text>
-                            <Text style={[s.td, { width: 110, color: '#00ff88', fontWeight: 'bold', fontSize: 11 }]}>{b.in ? fmt(b.in, 0) : '—'}</Text>
-                            <Text style={[s.td, { width: 110, color: '#ff3355', fontWeight: 'bold', fontSize: 11 }]}>{b.out ? fmt(b.out, 0) : '—'}</Text>
-                            <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 10 }]}>{b.rate ? fmt(b.rate, 4) : '—'}</Text>
-                            <Text style={[s.td, { width: 180, color: '#cbd5e1', fontSize: 10, textAlign: 'right' }]} numberOfLines={2}>{b.description || '—'}</Text>
+                          <View key={cur} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 80, color: '#d4af37', fontWeight: 'bold' }]}>{CUR[cur]?.flag} {cur}</Text>
+                            <Text style={[s.td, { width: 120, color: '#fb923c', fontWeight: 'bold' }]}>{fmt(p.bought, 0)}</Text>
+                            <Text style={[s.td, { width: 120, color: '#34d399', fontWeight: 'bold' }]}>{fmt(p.sold, 0)}</Text>
+                            <Text style={[s.td, { width: 120, color: col, fontWeight: 'bold', fontSize: 13 }]}>{p.net > 0 ? '+' : ''}{fmt(p.net, 0)}</Text>
                           </View>
                         );
                       })}
@@ -1209,35 +1032,149 @@ export default function ExchangeScreen({ showToast }: any) {
                   </ScrollView>
                 )}
 
-                {/* ═══ خلاصه نهایی ═══ */}
-                <View style={{ marginTop: 16, padding: 12, backgroundColor: '#0f2438', borderRadius: 10, borderWidth: 2, borderColor: '#d4af37' }}>
+                {/* جدول معاملات */}
+                <Text style={[s.secT, { marginTop: 16 }]}>📋 معاملات ({stmtData.tradeCount})</Text>
+                {stmtData.tradeCount === 0 ? (
+                  <Text style={s.empty}>معامله‌ای نیست</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={s.tblHeader}>
+                        <Text style={[s.th, { width: 36 }]}>#</Text>
+                        <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                        <Text style={[s.th, { width: 100 }]}>فاکتور</Text>
+                        <Text style={[s.th, { width: 100 }]}>شریک</Text>
+                        <Text style={[s.th, { width: 90 }]}>از</Text>
+                        <Text style={[s.th, { width: 100 }]}>به</Text>
+                        <Text style={[s.th, { width: 90 }]}>نرخ</Text>
+                        <Text style={[s.th, { width: 100 }]}>سود</Text>
+                      </View>
+                      {stmtData.trades.map((t: any, i: number) => {
+                        const pcol = (Number(t.profit) || 0) > 0 ? '#00ff88' : (Number(t.profit) || 0) < 0 ? '#ff3355' : '#64748b';
+                        return (
+                          <View key={t.local_id || t.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                            <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{t.date || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#7c3aed', fontSize: 10, fontWeight: 'bold' }]}>{t.invoice_number || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#e2e8f0' }]}>{t.partner_name || '—'}</Text>
+                            <Text style={[s.td, { width: 90, color: '#fb923c' }]}>{CUR[t.from_currency]?.flag}{fmt(t.from_qty, CUR[t.from_currency]?.dec)}</Text>
+                            <Text style={[s.td, { width: 100, color: '#34d399' }]}>{CUR[t.to_currency]?.flag}{fmt(t.to_qty, CUR[t.to_currency]?.dec)}</Text>
+                            <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 10 }]}>{fmt(t.rate, 4)}</Text>
+                            <Text style={[s.td, { width: 100, color: pcol, fontWeight: 'bold' }]}>{fmt(t.profit, 0)}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* جدول حوالات */}
+                <Text style={[s.secT, { marginTop: 16 }]}>💸 حوالات ({stmtData.hawalaCount})</Text>
+                {stmtData.hawalaCount === 0 ? (
+                  <Text style={s.empty}>حواله‌ای نیست</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={s.tblHeader}>
+                        <Text style={[s.th, { width: 36 }]}>#</Text>
+                        <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                        <Text style={[s.th, { width: 90 }]}>کد</Text>
+                        <Text style={[s.th, { width: 80 }]}>نوع</Text>
+                        <Text style={[s.th, { width: 130 }]}>ذی‌نفع</Text>
+                        <Text style={[s.th, { width: 100 }]}>مبلغ</Text>
+                        <Text style={[s.th, { width: 80 }]}>ارز</Text>
+                        <Text style={[s.th, { width: 90 }]}>کارمزد</Text>
+                        <Text style={[s.th, { width: 100 }]}>وضعیت</Text>
+                      </View>
+                      {stmtData.hawalas.map((h: any, i: number) => {
+                        const stCol = h.status === 'done' ? '#00ff88' : h.status === 'cancelled' ? '#ff3355' : '#fbbf24';
+                        return (
+                          <View key={h.local_id || h.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                            <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                            <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{h.date || '—'}</Text>
+                            <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{h.code || '—'}</Text>
+                            <Text style={[s.td, { width: 80, color: h.direction === 'send' ? '#fb923c' : '#34d399' }]}>{h.direction === 'send' ? '📤 ارسال' : '📥 دریافت'}</Text>
+                            <Text style={[s.td, { width: 130, color: '#fff', fontWeight: 'bold' }]}>{h.beneficiary_name || '—'}</Text>
+                            <Text style={[s.td, { width: 100, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(h.amount, 0)}</Text>
+                            <Text style={[s.td, { width: 80, color: '#60a5fa' }]}>{h.currency}</Text>
+                            <Text style={[s.td, { width: 90, color: '#00ff88' }]}>{fmt(h.commission, 0)}</Text>
+                            <Text style={[s.td, { width: 100, color: stCol, fontSize: 10, fontWeight: 'bold' }]}>{h.status === 'done' ? '✅ انجام' : h.status === 'cancelled' ? '❌ لغو' : '⏳ در انتظار'}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* خلاصه نهایی */}
+                {/* BOX_TXS_SECTION */}
+                {stmtData.boxTxCount > 0 && (
+                  <>
+                    <Text style={[s.secT, { marginTop: 16 }]}>📦 صندوق‌ها ({stmtData.boxTxCount})</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator>
+                      <View>
+                        <View style={s.tblHeader}>
+                          <Text style={[s.th, { width: 36 }]}>#</Text>
+                          <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
+                          <Text style={[s.th, { width: 90 }]}>سند</Text>
+                          <Text style={[s.th, { width: 110 }]}>صندوق</Text>
+                          <Text style={[s.th, { width: 110 }]}>نوع</Text>
+                          <Text style={[s.th, { width: 160 }]}>طرف حساب</Text>
+                          <Text style={[s.th, { width: 100 }]}>ارز</Text>
+                          <Text style={[s.th, { width: 100 }]}>ورودی</Text>
+                          <Text style={[s.th, { width: 100 }]}>خروجی</Text>
+                          <Text style={[s.th, { width: 180 }]}>شرح</Text>
+                        </View>
+                        {stmtData.boxTxs.map((b: any, i: number) => {
+                          const box = boxes.find((x: any) => (x.id || x.local_id) === b.box_id);
+                          return (
+                            <View key={b.id || b.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+                              <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+                              <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{b.date || '—'}</Text>
+                              <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{b.code || '—'}</Text>
+                              <Text style={[s.td, { width: 110, color: '#e2e8f0', fontSize: 10 }]}>{box?.name || b.box_code || '—'}</Text>
+                              <Text style={[s.td, { width: 110, color: '#60a5fa', fontSize: 10 }]}>{b.type === 'transfer_in' ? '📥 ورودی' : b.type === 'transfer_out' ? '📤 خروجی' : b.type === 'trade_in' ? '🛒 از معامله' : b.type === 'trade_out' ? '💸 به معامله' : (b.type || '—')}</Text>
+                              <Text style={[s.td, { width: 160, color: '#00ff88', fontSize: 10 }]}>{b.counterparty_code ? '🆔 ' + b.counterparty_code : '—'}</Text>
+                              <Text style={[s.td, { width: 100, color: '#fbbf24', fontSize: 11, fontWeight: 'bold' }]}>{b.currency || '—'}</Text>
+                              <Text style={[s.td, { width: 100, color: '#00ff88', fontWeight: 'bold', fontSize: 11 }]}>{b.in ? fmt(b.in, 0) : '—'}</Text>
+                              <Text style={[s.td, { width: 100, color: '#ff3355', fontWeight: 'bold', fontSize: 11 }]}>{b.out ? fmt(b.out, 0) : '—'}</Text>
+                              <Text style={[s.td, { width: 180, color: '#cbd5e1', fontSize: 10 }]} numberOfLines={2}>{b.description || '—'}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+                    {Object.keys(stmtData.boxSummary.given || {}).length > 0 && (
+                      <View style={{ marginTop: 8, padding: 8, backgroundColor: '#0f2438', borderRadius: 8 }}>
+                        <Text style={{ color: '#d4af37', fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 4 }}>💰 خلاصه ارزی صندوق</Text>
+                        {Object.entries(stmtData.boxSummary.given || {}).map(([cur, v]: any) => (
+                          <Text key={'g'+cur} style={{ color: '#ff3355', fontSize: 11, textAlign: 'right' }}>📤 دادیم: {fmt(v, 0)} {cur}</Text>
+                        ))}
+                        {Object.entries(stmtData.boxSummary.received || {}).map(([cur, v]: any) => (
+                          <Text key={'r'+cur} style={{ color: '#00ff88', fontSize: 11, textAlign: 'right' }}>📥 گرفتیم: {fmt(v, 0)} {cur}</Text>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
+                <View style={[s.dash, { marginTop: 16, backgroundColor: '#1e1b4b', borderColor: '#7c3aed' }]}>
                   <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>📊 خلاصه نهایی با {stmtCustomer.name}</Text>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>🆔 کد طرف حساب</Text><Text style={[s.sumVal, { color: '#00ff88' }]}>{stmtCustomer.code}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>👤 نام</Text><Text style={s.sumVal}>{stmtCustomer.name}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>📞 تلفن</Text><Text style={s.sumVal}>{stmtCustomer.phone || '—'}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>🏦 بانک</Text><Text style={s.sumVal}>{stmtCustomer.bank || '—'}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>👤 صاحب حساب</Text><Text style={s.sumVal}>{stmtCustomer.holder_name || '—'}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>📍 آدرس</Text><Text style={[s.sumVal, { fontSize: 11 }]} numberOfLines={2}>{stmtCustomer.address || '—'}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>📝 یادداشت</Text><Text style={[s.sumVal, { fontSize: 11 }]} numberOfLines={2}>{stmtCustomer.note || '—'}</Text></View>
-                  <View style={{ height: 1, backgroundColor: '#334155', marginVertical: 8 }} />
-                  <View style={s.sumRow}><Text style={s.sumLbl}>📊 تعداد معاملات</Text><Text style={s.sumVal}>{stmtData.tradeCount}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>💸 تعداد حوالات</Text><Text style={s.sumVal}>{stmtData.hawalaCount}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>📄 تعداد چک‌ها</Text><Text style={s.sumVal}>{stmtData.checkCount}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>📦 تراکنش‌های صندوق</Text><Text style={s.sumVal}>{stmtData.boxTxCount}</Text></View>
-                  <View style={{ height: 1, backgroundColor: '#334155', marginVertical: 8 }} />
-                  <View style={s.sumRow}><Text style={s.sumLbl}>💰 سود از معاملات</Text><Text style={[s.sumVal, { color: '#00ff88' }]}>{fmt(stmtData.totalProfit, 0)}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>💵 کارمزد حوالات</Text><Text style={[s.sumVal, { color: '#fbbf24' }]}>{fmt(stmtData.totalHawalaFees, 0)}</Text></View>
-                  <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 2, borderTopColor: '#d4af37' }}>
-                    <Text style={{ color: '#d4af37', fontSize: 11, textAlign: 'center', marginBottom: 4 }}>🎯 مجموع سود</Text>
-                    <Text style={{ color: '#00ff88', fontSize: 22, fontWeight: 'bold', textAlign: 'center', fontFamily: 'monospace' }}>{fmt(stmtData.totalProfit + stmtData.totalHawalaFees, 0)}</Text>
+                  <View style={{ paddingHorizontal: 10 }}>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>📊 تعداد معاملات ارزی</Text><Text style={s.sumVal}>{stmtData.tradeCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💸 تعداد حوالات</Text><Text style={s.sumVal}>{stmtData.hawalaCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>📄 تعداد چک‌ها</Text><Text style={s.sumVal}>{stmtData.checkCount}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💰 سود از معاملات</Text><Text style={[s.sumVal, { color: '#00ff88' }]}>{fmt(stmtData.totalProfit, 0)}</Text></View>
+                    <View style={s.sumRow}><Text style={s.sumLbl}>💵 کارمزد حوالات</Text><Text style={[s.sumVal, { color: '#fbbf24' }]}>{fmt(stmtData.totalHawalaFees, 0)}</Text></View>
+                    <View style={[s.sumRow, { backgroundColor: 'rgba(0,255,136,0.1)', marginTop: 8, paddingVertical: 10, borderRadius: 8 }]}>
+                      <Text style={[s.sumLbl, { fontWeight: 'bold', fontSize: 14, color: '#fff' }]}>🎯 مجموع درآمد</Text>
+                      <Text style={[s.sumVal, { color: '#00ff88', fontSize: 16, fontWeight: 'bold' }]}>{fmt(stmtData.totalProfit + stmtData.totalHawalaFees, 0)}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
             )}
           </View>
         )}
-
-        }
 
       </ScrollView>
 

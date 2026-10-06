@@ -105,7 +105,6 @@ export default function ExchangeScreen({ showToast }: any) {
   const [showFromCur, setShowFromCur] = useState(false);
   const [showToCur, setShowToCur] = useState(false);
   const [showPartnerPick, setShowPartnerPick] = useState(false);
-  const [showOwnerPick, setShowOwnerPick] = useState(false);
   const [custModal, setCustModal] = useState(false);
   const [partnerModal, setPartnerModal] = useState(false);
   const [custForm, setCustForm] = useState<any>({ name: '', phone: '', bank: '', holder_name: '', holder_code: '', notes: '' });
@@ -407,11 +406,10 @@ export default function ExchangeScreen({ showToast }: any) {
   const buildStatement = (q: string) => {
     const s = String(q || '').trim().toLowerCase();
     if (!s) return;
-    // جستجو در مشتریان + خریداران
-    const allPeople = [...customers, ...(fxBuyers || [])];
-    const cust = allPeople.find((c: any) =>
+    // جستجو در مشتری‌ها
+    const cust = customers.find((c: any) =>
       String(c.code || '').toLowerCase() === s ||
-      String(c.phone || '').replace(/[^\d]/g, '') === s.replace(/[^\d]/g, '') ||
+      String(c.phone || '').replace(/[^\d]/g, '') === s.replace(/[^\d]/g, '') || String(c.code || '').toLowerCase() === s ||
       String(c.name || '').toLowerCase().includes(s)
     );
     if (!cust) {
@@ -423,7 +421,7 @@ export default function ExchangeScreen({ showToast }: any) {
     setStmtCustomer(cust);
 
     // ═══ معاملات این مشتری ═══
-    const myTrades = trades.filter((t: any) => t.customer_code === cust.code || t.buyer_code === cust.code || t.partner_code === cust.code);
+    const myTrades = trades.filter((t: any) => t.customer_code === cust.code);
     // ═══ حواله‌جات این مشتری (به‌عنوان ذی‌نفع یا فرستنده) ═══
     const myHawalas = hawalas.filter((h: any) =>
       String(h.beneficiary_name || '').includes(cust.name) ||
@@ -784,7 +782,7 @@ export default function ExchangeScreen({ showToast }: any) {
                 <TouchableOpacity style={[s.addSmBtn, { backgroundColor: '#059669' }]} onPress={() => setTrModal(true)}>
                   <Text style={s.addSmBtnTxt}>🔄 انتقال</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.addSmBtn} onPress={() => { setBoxEditId(null); setBoxForm({ name: '', currency: 'USD', partner_code: '', owner_code: '', owner_name: '', opening: '0' }); setBoxModal(true); }}>
+                <TouchableOpacity style={s.addSmBtn} onPress={() => { setBoxEditId(null); setBoxForm({ name: '', currency: 'USD', partner_code: '', opening: '0' }); setBoxModal(true); }}>
                   <Text style={s.addSmBtnTxt}>➕ جدید</Text>
                 </TouchableOpacity>
               </View>
@@ -811,7 +809,7 @@ export default function ExchangeScreen({ showToast }: any) {
                       <Text style={[s.th, { width: 150 }]}>نام صندوق</Text>
                       <Text style={[s.th, { width: 100 }]}>ارز</Text>
                       <Text style={[s.th, { width: 130 }]}>موجودی</Text>
-                      <Text style={[s.th, { width: 140 }]}>👤 صاحب صندوق</Text>
+                      <Text style={[s.th, { width: 140 }]}>شریک</Text>
                       <Text style={[s.th, { width: 100 }]}>عملیات</Text>
                     </View>
                     {boxes.map((b: any, i: number) => {
@@ -825,7 +823,7 @@ export default function ExchangeScreen({ showToast }: any) {
                           <Text style={[s.td, { width: 150, color: '#fff', fontWeight: 'bold' }]}>{b.name}</Text>
                           <Text style={[s.td, { width: 100, color: '#60a5fa' }]}>{CUR[b.currency]?.flag} {b.currency}</Text>
                           <Text style={[s.td, { width: 130, color: col, fontWeight: 'bold', fontSize: 13 }]}>{bal > 0 ? '+' : ''}{fmt(bal, CUR[b.currency]?.dec || 2)}</Text>
-                          <Text style={[s.td, { width: 140, color: '#00ff88', fontWeight: 'bold', fontSize: 11 }]}>{b.owner_name ? `👤 ${b.owner_name}` : (partner?.name || '—')}</Text>
+                          <Text style={[s.td, { width: 140, color: '#e2e8f0', fontSize: 11 }]}>{partner?.name || '—'}</Text>
                           <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
                             <TouchableOpacity onPress={() => { setBoxEditId(b.local_id || b.id); setBoxForm({ ...b }); setBoxModal(true); }} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
                             <TouchableOpacity onPress={async () => { await deleteBox(b.local_id || b.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
@@ -846,8 +844,8 @@ export default function ExchangeScreen({ showToast }: any) {
                     <View style={s.tblHeader}>
                       <Text style={[s.th, { width: 36 }]}>#</Text>
                       <Text style={[s.th, { width: 100 }]}>کد</Text>
-                      <Text style={[s.th, { width: 130 }]}>از (صاحب)</Text>
-                      <Text style={[s.th, { width: 130 }]}>به (صاحب)</Text>
+                      <Text style={[s.th, { width: 130 }]}>از صندوق</Text>
+                      <Text style={[s.th, { width: 130 }]}>به صندوق</Text>
                       <Text style={[s.th, { width: 130 }]}>مبلغ</Text>
                       <Text style={[s.th, { width: 100 }]}>تاریخ</Text>
                       <Text style={[s.th, { width: 100 }]}>عملیات</Text>
@@ -856,8 +854,8 @@ export default function ExchangeScreen({ showToast }: any) {
                       <View key={t.local_id || t.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
                         <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
                         <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }]}>{t.code}</Text>
-                        <Text style={[s.td, { width: 130, color: '#fb923c', fontWeight: 'bold', fontSize: 11 }]}>{t.from_box}{boxes.find((b: any) => b.code === t.from_box)?.owner_name ? `\n👤 ${boxes.find((b: any) => b.code === t.from_box)?.owner_name}` : ''}</Text>
-                        <Text style={[s.td, { width: 130, color: '#34d399', fontWeight: 'bold', fontSize: 11 }]}>{t.to_box}{boxes.find((b: any) => b.code === t.to_box)?.owner_name ? `\n👤 ${boxes.find((b: any) => b.code === t.to_box)?.owner_name}` : ''}</Text>
+                        <Text style={[s.td, { width: 130, color: '#fb923c', fontWeight: 'bold' }]}>{t.from_box}</Text>
+                        <Text style={[s.td, { width: 130, color: '#34d399', fontWeight: 'bold' }]}>{t.to_box}</Text>
                         <Text style={[s.td, { width: 130, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(t.amount, 0)}</Text>
                         <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 11 }]}>{t.date || '—'}</Text>
                         <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
@@ -1314,30 +1312,6 @@ export default function ExchangeScreen({ showToast }: any) {
       </Modal>
 
       {/* ═══ Modal صندوق ═══ */}
-
-      {/* ═══ Modal انتخاب صاحب صندوق ═══ */}
-      <Modal visible={showOwnerPick} transparent animationType="fade" onRequestClose={() => setShowOwnerPick(false)}>
-        <View style={s.mBg}><View style={s.mBox}>
-          <View style={[s.mHead, { backgroundColor: '#0891b2' }]}>
-            <Text style={s.mTitle}>👤 انتخاب صاحب صندوق ({(fxBuyers || []).length})</Text>
-            <TouchableOpacity onPress={() => setShowOwnerPick(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
-          </View>
-          <ScrollView style={{ maxHeight: 400, padding: 10 }}>
-            {(fxBuyers || []).length === 0 ? <Text style={s.empty}>هنوز خریداری ثبت نشده — اول از تب خریداران اضافه کن</Text> : (fxBuyers || []).map((b: any) => (
-              <TouchableOpacity key={b.id || b.code} onPress={() => {
-                setBoxForm((f: any) => ({ ...f, owner_code: b.code, owner_name: b.name, name: f.name || ('صندوق ' + (CUR[f.currency]?.name || '') + ' — ' + b.name) }));
-                setShowOwnerPick(false);
-              }} style={s.pickRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.pickName}>👤 {b.name}</Text>
-                  <Text style={s.pickSub}>🆔 {b.code} | 📞 {b.phone || '—'}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View></View>
-      </Modal>
-
       <Modal visible={boxModal} transparent animationType="slide">
         <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
           <View style={s.mHead}><Text style={s.mTitle}>{boxEditId ? '✏️ ویرایش صندوق' : '➕ صندوق جدید'}</Text><TouchableOpacity onPress={() => setBoxModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>

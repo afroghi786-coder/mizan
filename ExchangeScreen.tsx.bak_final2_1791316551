@@ -135,7 +135,6 @@ export default function ExchangeScreen({ showToast }: any) {
   const [transfers, setTransfers] = useState<any[]>([]);
   const [checks, setChecks] = useState<any[]>([]);
   const [hawModal, setHawModal] = useState(false);
-  const [hawCurSearch, setHawCurSearch] = useState('');
   const [hawForm, setHawForm] = useState<any>({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: toStorageDateFull(new Date()), note: '' });
   const [hawEditId, setHawEditId] = useState<string | null>(null);
   const [boxModal, setBoxModal] = useState(false);
@@ -144,7 +143,6 @@ export default function ExchangeScreen({ showToast }: any) {
   const [trModal, setTrModal] = useState(false);
   const [trForm, setTrForm] = useState<any>({ from_box: '', to_box: '', amount: '', rate: '1', date: toStorageDateFull(new Date()), note: '' });
   const [ckModal, setCkModal] = useState(false);
-  const [ckCurSearch, setCkCurSearch] = useState('');
   const [ckForm, setCkForm] = useState<any>({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: toStorageDateFull(new Date()), status: 'pending', note: '' });
   const [ckEditId, setCkEditId] = useState<string | null>(null);
   const [stmtSearch, setStmtSearch] = useState('');

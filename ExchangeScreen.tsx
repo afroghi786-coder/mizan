@@ -1,4 +1,5 @@
 // ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی
+import { getAllCust, saveCust, deleteCust } from './lib.fx.cust';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import {
@@ -1272,7 +1273,6 @@ export default function ExchangeScreen({ showToast }: any) {
 // ═══════════════════════════════════════════
 function PartyList({ type, showToast }: any) {
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
@@ -1284,153 +1284,71 @@ function PartyList({ type, showToast }: any) {
   const color = isBuyer ? '#059669' : '#1e3a8a';
   const prefix = isBuyer ? 'B_' : 'X_';
 
-  // ⭐ لود مستقیم از AsyncStorage
   const loadData = useCallback(async () => {
-    try {
-      const all = await getFxCustomers();
-      const filtered = (all || []).filter((x: any) => {
-        const t = x.type || 'customer';
-        return isBuyer ? t === 'buyer' : t === 'customer';
-      });
-      setData(filtered);
-      console.log('[PartyList ' + type + '] loaded:', filtered.length);
-    } catch (e) {
-      console.log('[PartyList ' + type + '] load error:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [type, isBuyer]);
+    const all = await getAllCust();
+    const f = (all || []).filter((x: any) => (x.type || 'customer') === type);
+    setData(f);
+    console.log('[PartyList ' + type + '] loaded:', f.length);
+  }, [type]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const openNew = () => {
     setEditId(null);
-    setForm({
-      type, code: '', name: '', phone: '', bank: '',
-      account_number: '', holder_name: '', address: '', note: '',
-    });
+    setForm({ type, code: '', name: '', phone: '', bank: '', account_number: '', holder_name: '', address: '', note: '' });
     setModal(true);
   };
 
   const openEdit = (x: any) => {
-    setEditId(x.local_id || x.id);
+    setEditId(x.id || x.code);
     setForm({ ...x, type });
     setModal(true);
   };
 
   const submit = async () => {
     try {
-      if (!form.name || String(form.name).trim().length < 2) {
-        showToast('نام الزامی است', true);
-        return;
-      }
+      if (!form.name || String(form.name).trim().length < 2) return showToast('نام الزامی', true);
       const phone = String(form.phone || '').replace(/[^\d]/g, '');
-      if (phone.length < 10) {
-        showToast('شماره تلفن معتبر وارد کن', true);
-        return;
-      }
+      if (phone.length < 10) return showToast('شماره تلفن معتبر وارد کن', true);
       setSaving(true);
-
-      const payload = {
-        ...form,
-        name: String(form.name).trim(),
-        phone,
-        type,
-      };
-      console.log('[PartyList submit] payload:', payload);
-
-      if (editId) {
-        await updateFxCustomer(editId, payload);
-      } else {
-        await createFxCustomer(payload);
-      }
-
-      // ⭐ مستقیم از AsyncStorage بخون (نه از parent)
-      const all = await getFxCustomers();
-      const filtered = (all || []).filter((x: any) => {
-        const t = x.type || 'customer';
-        return isBuyer ? t === 'buyer' : t === 'customer';
-      });
-      setData(filtered);
-      console.log('[PartyList submit] after save, count:', filtered.length);
-
+      const payload = { ...form, name: String(form.name).trim(), phone, type };
+      console.log('[submit] payload:', payload);
+      await saveCust(payload);
+      console.log('[submit] saved!');
+      await loadData();
       setModal(false);
       setSaving(false);
       showToast(editId ? 'ویرایش شد' : 'ثبت شد');
     } catch (e: any) {
       setSaving(false);
-      showToast('خطا: ' + (e?.message || 'مشکل در ذخیره'), true);
-      console.log('[PartyList submit] error:', e);
+      showToast('خطا: ' + (e?.message || ''), true);
+      console.log('[submit] error:', e);
     }
   };
 
   const remove = async (id: string) => {
-    if (typeof window !== 'undefined' && window.confirm) {
-      if (!window.confirm('حذف شود؟')) return;
-    }
-    try {
-      await deleteFxCustomer(id);
-      // مستقیم reload
-      const all = await getFxCustomers();
-      const filtered = (all || []).filter((x: any) => {
-        const t = x.type || 'customer';
-        return isBuyer ? t === 'buyer' : t === 'customer';
-      });
-      setData(filtered);
-      showToast('حذف شد');
-    } catch (e: any) {
-      showToast('خطا در حذف: ' + (e?.message || ''), true);
-    }
+    if (typeof window !== 'undefined' && window.confirm && !window.confirm('حذف شود؟')) return;
+    await deleteCust(id);
+    await loadData();
+    showToast('حذف شد');
   };
 
   const filtered = q ? data.filter((x: any) => {
-    const h = `${x.code || ''} ${x.name || ''} ${x.phone || ''} ${x.bank || ''}`.toLowerCase();
+    const h = `${x.code} ${x.name} ${x.phone} ${x.bank}`.toLowerCase();
     return h.includes(q.toLowerCase());
   }) : data;
 
-  if (loading) {
-    return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
-  }
-
   return (
     <View>
-      {/* دکمه افزودن */}
-      <TouchableOpacity
-        onPress={openNew}
-        activeOpacity={0.7}
-        style={{
-          backgroundColor: color,
-          paddingVertical: 14,
-          paddingHorizontal: 16,
-          borderRadius: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: 10,
-          marginBottom: 12,
-          flexDirection: 'row-reverse',
-          gap: 8,
-        }}
-      >
+      <TouchableOpacity onPress={openNew} style={{ backgroundColor: color, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 10, marginBottom: 12, flexDirection: 'row-reverse', justifyContent: 'center', gap: 8 }}>
         <Text style={{ color: '#fff', fontSize: 15 }}>➕</Text>
-        <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>
-          {`افزودن ${isBuyer ? 'خریدار' : 'مشتری'} جدید`}
-        </Text>
+        <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{`افزودن ${isBuyer ? 'خریدار' : 'مشتری'} جدید`}</Text>
       </TouchableOpacity>
 
-      {/* جستجو */}
-      <TextInput
-        style={s.inp}
-        value={q}
-        onChangeText={setQ}
-        placeholder="جستجو: کد، نام، تلفن، بانک..."
-        placeholderTextColor="#94a3b8"
-      />
+      <TextInput style={s.inp} value={q} onChangeText={setQ} placeholder="جستجو: کد، نام، تلفن، بانک..." placeholderTextColor="#94a3b8" />
 
       <Text style={s.secT}>{`${title} (${filtered.length})`}</Text>
 
-      {/* جدول */}
       <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true}>
         <View style={{ minWidth: 1300 }}>
           <View style={ptStyles.head}>
@@ -1442,17 +1360,15 @@ function PartyList({ type, showToast }: any) {
             <Text style={[ptStyles.th, { width: 130 }]}>شماره حساب</Text>
             <Text style={[ptStyles.th, { width: 140 }]}>صاحب حساب</Text>
             <Text style={[ptStyles.th, { width: 180 }]}>آدرس</Text>
-            <Text style={[ptStyles.th, { width: 130 }]}>عملیات</Text>
+            <Text style={[ptStyles.th, { width: 140 }]}>عملیات</Text>
           </View>
 
           {filtered.length === 0 ? (
             <View style={{ padding: 40, alignItems: 'center', backgroundColor: '#fff' }}>
-              <Text style={{ color: '#94a3b8', fontSize: 13 }}>
-                {`هنوز ${isBuyer ? 'خریداری' : 'مشتری‌ای'} ثبت نشده`}
-              </Text>
+              <Text style={{ color: '#94a3b8', fontSize: 13 }}>{`هنوز ${isBuyer ? 'خریداری' : 'مشتری‌ای'} ثبت نشده`}</Text>
             </View>
           ) : filtered.map((x: any, i: number) => (
-            <View key={x.local_id || x.id || i} style={[ptStyles.row, i % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
+            <View key={x.id || i} style={[ptStyles.row, i % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
               <Text style={[ptStyles.td, { width: 40, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
               <Text style={[ptStyles.td, { width: 150, color: '#1e40af', fontWeight: 'bold', fontFamily: 'monospace' }]}>{x.code}</Text>
               <Text style={[ptStyles.td, { width: 180, color: '#0f172a', fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{x.name}</Text>
@@ -1461,11 +1377,11 @@ function PartyList({ type, showToast }: any) {
               <Text style={[ptStyles.td, { width: 130, color: '#475569', fontFamily: 'monospace' }]}>{x.account_number || '—'}</Text>
               <Text style={[ptStyles.td, { width: 140, color: '#0f172a', textAlign: 'right' }]} numberOfLines={1}>{x.holder_name || '—'}</Text>
               <Text style={[ptStyles.td, { width: 180, color: '#64748b', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{x.address || '—'}</Text>
-              <View style={[ptStyles.td, { width: 130, flexDirection: 'row', justifyContent: 'center', gap: 4 }]}>
+              <View style={[ptStyles.td, { width: 140, flexDirection: 'row', justifyContent: 'center', gap: 4 }]}>
                 <TouchableOpacity onPress={() => openEdit(x)} style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 6 }}>
                   <Text style={{ fontSize: 12, color: '#1e40af', fontWeight: 'bold' }}>✏️ ویرایش</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => remove(x.local_id || x.id)} style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fee2e2', borderRadius: 6 }}>
+                <TouchableOpacity onPress={() => remove(x.id)} style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fee2e2', borderRadius: 6 }}>
                   <Text style={{ fontSize: 12, color: '#dc2626', fontWeight: 'bold' }}>🗑</Text>
                 </TouchableOpacity>
               </View>
@@ -1474,42 +1390,23 @@ function PartyList({ type, showToast }: any) {
         </View>
       </ScrollView>
 
-      {/* Modal فرم */}
       <Modal visible={modal} transparent animationType="slide" onRequestClose={() => setModal(false)}>
         <View style={s.mBg}>
           <ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
             <View style={[s.mHead, { backgroundColor: color }]}>
               <Text style={s.mTitle}>{`${editId ? 'ویرایش' : 'افزودن'} ${isBuyer ? 'خریدار' : 'مشتری'}`}</Text>
-              <TouchableOpacity onPress={() => setModal(false)}>
-                <Text style={{ color: '#fff', fontSize: 26 }}>×</Text>
-              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setModal(false)}><Text style={{ color: '#fff', fontSize: 26 }}>×</Text></TouchableOpacity>
             </View>
             <View style={{ padding: 16 }}>
               <Text style={s.lbl}>نام و نام خانوادگی *</Text>
-              <TextInput
-                style={s.inp}
-                value={form.name || ''}
-                onChangeText={v => setForm({ ...form, name: v })}
-                placeholder="نام کامل"
-                placeholderTextColor="#94a3b8"
-              />
+              <TextInput style={s.inp} value={form.name || ''} onChangeText={v => setForm({ ...form, name: v })} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
 
               <Text style={s.lbl}>تلفن همراه *</Text>
-              <TextInput
-                style={s.inp}
-                value={form.phone || ''}
-                onChangeText={v => setForm({ ...form, phone: v.replace(/[^\d]/g, '').slice(0, 11) })}
-                keyboardType="phone-pad"
-                maxLength={11}
-                placeholder="09123456789"
-                placeholderTextColor="#94a3b8"
-              />
+              <TextInput style={s.inp} value={form.phone || ''} onChangeText={v => setForm({ ...form, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} placeholder="09123456789" placeholderTextColor="#94a3b8" />
 
               {form.phone && String(form.phone).length >= 10 ? (
-                <View style={{ backgroundColor: '#d1fae5', padding: 10, borderRadius: 8, marginTop: 8, borderWidth: 1, borderColor: '#a7f3d0' }}>
-                  <Text style={{ color: '#065f46', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
-                    {`کد خودکار: ${form.code || (prefix + form.phone)}`}
-                  </Text>
+                <View style={{ backgroundColor: '#d1fae5', padding: 10, borderRadius: 8, marginTop: 8 }}>
+                  <Text style={{ color: '#065f46', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>{`کد: ${form.code || (prefix + form.phone)}`}</Text>
                 </View>
               ) : null}
 

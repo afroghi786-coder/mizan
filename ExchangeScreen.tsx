@@ -1,6 +1,7 @@
 // ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی
 import { getAllCust, saveCust, deleteCust } from './lib.fx.cust';
 import ExchangeInvoice from './ExchangeInvoice';
+import { getAllTrades, saveTrade, deleteTrade } from './lib.fx.trade';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import {

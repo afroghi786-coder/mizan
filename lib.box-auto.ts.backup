@@ -102,10 +102,6 @@ async function ensureBoxAndTx(p: {
     box_id: boxId, box_code: box.code, type: p.type,
     in: p.inAmt, out: p.outAmt, currency: p.currency,
     related_box_code: p.related,
-    counterparty_code: p.ownerCode,
-    counterparty_name: p.ownerName,
-    owner_code: p.ownerCode,
-    owner_name: p.ownerName,
     description: p.description, date: p.date,
   });
 }

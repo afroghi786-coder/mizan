@@ -184,11 +184,10 @@ export async function migrateOldTransfers(): Promise<void> {
 export async function getBoxTxsByCounterparty(code: string): Promise<any[]> {
   if (!code) return [];
   const txs = await getBoxTransactions();
-  const k = String(code).toLowerCase();
   return txs.filter((t: any) =>
-    String(t.counterparty_code || '').toLowerCase() === k ||
-    String(t.owner_code || '').toLowerCase() === k ||
-    String(t.box_code || '').toLowerCase() === k
+    t.counterparty_code === code ||
+    t.owner_code === code ||
+    t.box_code === code
   );
 }
 

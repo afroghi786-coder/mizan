@@ -97,34 +97,23 @@ export async function getBoxKardex(boxId: string): Promise<any[]> {
   return rows;
 }
 
-export async function doTransfer(p: { from_box_code: string; to_box_code: string; amount: number; to_amount?: number; rate?: number; from_currency?: string; to_currency?: string; date: string; description?: string }): Promise<void> {
+export async function doTransfer(p: { from_box_code: string; to_box_code: string; amount: number; date: string; description?: string }): Promise<void> {
   const boxes = await getBoxes();
   const from = boxes.find((b: any) => b.code === p.from_box_code);
   const to = boxes.find((b: any) => b.code === p.to_box_code);
   if (!from || !to) throw new Error('صندوق پیدا نشد');
+  if ((from.currency || '') !== (to.currency || '')) throw new Error('ارز دو صندوق یکسان نیست');
   const amt = Number(p.amount) || 0;
-  const sameCur = (from.currency || '') === (to.currency || '');
-  const rate = sameCur ? 1 : (Number(p.rate) || 0);
-  const toAmt = sameCur ? amt : (Number(p.to_amount) || (amt * rate));
-  if (!sameCur && rate <= 0) throw new Error('نرخ تبدیل الزامی');
-  const ts = Date.now();
-  const codeBase = 'TX-' + ts;
-  const typeLabel = sameCur ? 'انتقال' : 'تبدیل';
-  // خروج از مبدأ
+  const code = 'TX-' + Date.now();
   await addBoxTransaction({
     box_id: from.id || from.local_id, box_code: from.code, type: 'transfer_out',
     out: amt, in: 0, currency: from.currency, related_box_code: to.code,
-    rate: sameCur ? 0 : rate,
-    description: p.description || (typeLabel + ' به ' + to.name + (sameCur ? '' : ' — نرخ ' + rate)),
-    date: p.date, code: codeBase + '-1',
+    description: p.description || ('انتقال به ' + to.name), date: p.date, code: code + '-1',
   });
-  // ورود به مقصد
   await addBoxTransaction({
     box_id: to.id || to.local_id, box_code: to.code, type: 'transfer_in',
-    in: toAmt, out: 0, currency: to.currency, related_box_code: from.code,
-    rate: sameCur ? 0 : rate,
-    description: p.description || (typeLabel + ' از ' + from.name + (sameCur ? '' : ' — نرخ ' + rate)),
-    date: p.date, code: codeBase + '-2',
+    in: amt, out: 0, currency: to.currency, related_box_code: from.code,
+    description: p.description || ('دریافت از ' + from.name), date: p.date, code: code + '-2',
   });
 }
 

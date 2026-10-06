@@ -85,26 +85,10 @@ export default function BoxesScreen({ showToast, buyers }: any) {
     if (transferForm.from_box_code === transferForm.to_box_code) return showToast?.('صندوق‌ها یکسانند', true);
     const amt = Number(transferForm.amount) || 0;
     if (amt <= 0) return showToast?.('مبلغ الزامی', true);
-    const fromBox = boxes.find((b: any) => b.code === transferForm.from_box_code);
-    const toBox = boxes.find((b: any) => b.code === transferForm.to_box_code);
-    const sameCur = (fromBox?.currency || '') === (toBox?.currency || '');
-    const rate = sameCur ? 1 : (Number(transferForm.rate) || 0);
-    const result = sameCur ? amt : amt * rate;
-    if (!sameCur && rate <= 0) return showToast?.('نرخ تبدیل الزامی', true);
     setSaving(true);
     try {
-      await doTransfer({
-        from_box_code: transferForm.from_box_code,
-        to_box_code: transferForm.to_box_code,
-        amount: amt,
-        to_amount: result,
-        rate: rate,
-        from_currency: fromBox?.currency || '',
-        to_currency: toBox?.currency || '',
-        date: transferForm.date || new Date().toLocaleDateString('fa-IR'),
-        description: transferForm.description || '',
-      });
-      showToast?.('✅ ' + (sameCur ? 'انتقال' : 'تبدیل') + ' ثبت شد');
+      await doTransfer({ from_box_code: transferForm.from_box_code, to_box_code: transferForm.to_box_code, amount: amt, date: transferForm.date || new Date().toLocaleDateString('fa-IR'), description: transferForm.description || '' });
+      showToast?.('✅ انتقال ثبت شد');
       setTransferModal(false); setTransferForm({});
       await load();
     } catch (e: any) { showToast?.('خطا: ' + e.message, true); }
@@ -372,37 +356,8 @@ export default function BoxesScreen({ showToast, buyers }: any) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            <Text style={s.lbl}>مبلغ ارسال *</Text>
+            <Text style={s.lbl}>مبلغ *</Text>
             <TextInput style={s.inp} value={String(transferForm.amount || '')} onChangeText={v => setTransferForm((f: any) => ({ ...f, amount: v.replace(/[^\d.-]/g, '') }))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
-            {(() => {
-              const fb = boxes.find((b: any) => b.code === transferForm.from_box_code);
-              const tb = boxes.find((b: any) => b.code === transferForm.to_box_code);
-              if (!fb || !tb) return null;
-              const sameCur = (fb.currency || '') === (tb.currency || '');
-              if (sameCur) return (
-                <View style={{ backgroundColor: '#065f46', padding: 8, borderRadius: 6, marginTop: 8 }}>
-                  <Text style={{ color: '#a7f3d0', fontSize: 11, textAlign: 'center', fontWeight: 'bold' }}>✅ ارزها یکسان — انتقال ساده</Text>
-                </View>
-              );
-              const amt = Number(transferForm.amount) || 0;
-              const rate = Number(transferForm.rate) || 0;
-              const result = amt * rate;
-              return (
-                <>
-                  <View style={{ backgroundColor: '#7c2d12', padding: 8, borderRadius: 6, marginTop: 8 }}>
-                    <Text style={{ color: '#fed7aa', fontSize: 11, textAlign: 'center', fontWeight: 'bold' }}>⚠️ ارزها متفاوت — تبدیل لازم است</Text>
-                  </View>
-                  <Text style={s.lbl}>💹 نرخ تبدیل ({fb.currency} → {tb.currency}) *</Text>
-                  <TextInput style={s.inp} value={String(transferForm.rate || '')} onChangeText={v => setTransferForm((f: any) => ({ ...f, rate: v.replace(/[^\d.-]/g, '') }))} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
-                  {amt > 0 && rate > 0 && (
-                    <View style={{ backgroundColor: '#0f2438', padding: 10, borderRadius: 8, marginTop: 8, borderWidth: 2, borderColor: '#10b981' }}>
-                      <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'center', marginBottom: 4 }}>مبلغ دریافتی</Text>
-                      <Text style={{ color: '#00ff88', fontSize: 18, fontWeight: 'bold', textAlign: 'center', fontFamily: 'monospace' }}>{fmt(result, CUR[tb.currency]?.dec || 2)} {tb.currency}</Text>
-                    </View>
-                  )}
-                </>
-              );
-            })()}
             <Text style={s.lbl}>تاریخ</Text>
             <TextInput style={s.inp} value={transferForm.date || ''} onChangeText={v => setTransferForm((f: any) => ({ ...f, date: v }))} placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>شرح</Text>

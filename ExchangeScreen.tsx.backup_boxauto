@@ -1,4 +1,3 @@
-import { applyTradeToBoxes } from './lib.box-auto';
 import BoxesScreen from './BoxesScreen';
 // ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی
 import { getAllCust, saveCust, deleteCust } from './lib.fx.cust';
@@ -323,10 +322,6 @@ export default function ExchangeScreen({ showToast }: any) {
         created = await saveTrade(payload);
         showToast('✅ معامله ثبت شد');
       }
-      // ⭐ اعمال خودکار روی صندوق‌ها
-      try { await applyTradeToBoxes(created, created.invoice_number || created.code || '—'); }
-      catch (e) { console.log('box auto-apply error:', e); }
-
       await reload();
       setShowInvoice({
         trade: created,

@@ -1499,7 +1499,7 @@ export default function ExchangeScreen({ showToast }: any) {
               ))}
             </View>
             <Text style={s.lbl}>💱 ارز</Text>
-            <TouchableOpacity style={s.inp} onPress={() => { setHawCurSearch(''); setShowHawCur(true); }}>
+            <TouchableOpacity style={s.inp} onPress={() => { setHawformCurSearch(''); setShowHawformCur(true); }}>
               <Text style={{ color: hawForm.currency ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
                 {hawForm.currency ? `${CUR[hawForm.currency]?.flag} ${hawForm.currency} — ${CUR[hawForm.currency]?.name}` : '🔍 انتخاب ارز...'}
               </Text>
@@ -1686,7 +1686,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>مبلغ *</Text>
             <TextInput style={s.inp} value={String(ckForm.amount)} onChangeText={v => setCkForm({ ...ckForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
             <Text style={s.lbl}>💱 ارز</Text>
-            <TouchableOpacity style={s.inp} onPress={() => { setCkCurSearch(''); setShowCkCur(true); }}>
+            <TouchableOpacity style={s.inp} onPress={() => { setCkformCurSearch(''); setShowCkformCur(true); }}>
               <Text style={{ color: ckForm.currency ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
                 {ckForm.currency ? `${CUR[ckForm.currency]?.flag} ${ckForm.currency} — ${CUR[ckForm.currency]?.name}` : '🔍 انتخاب ارز...'}
               </Text>

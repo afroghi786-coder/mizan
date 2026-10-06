@@ -161,8 +161,8 @@ export default function BoxesScreen({ showToast, buyers }: any) {
         <ScrollView horizontal showsHorizontalScrollIndicator>
           <View>
             <View style={s.tblHeader}>
-              {['#','تاریخ','سند','نوع','👤 طرف حساب','شرح','ورودی','خروجی','مانده','حذف'].map((h,i) => (
-                <Text key={i} style={[s.th, { width: [36,90,90,120,160,180,100,100,110,60][i] }]}>{h}</Text>
+              {['#','تاریخ','سند','نوع','شرح','ورودی','خروجی','مانده','حذف'].map((h,i) => (
+                <Text key={i} style={[s.th, { width: [36,90,90,120,180,100,100,110,60][i] }]}>{h}</Text>
               ))}
             </View>
             {kardex.map((r: any, i: number) => (
@@ -171,7 +171,6 @@ export default function BoxesScreen({ showToast, buyers }: any) {
                 <Text style={[s.td, { width: 90, color: '#94a3b8', fontSize: 10 }]}>{r.date || '—'}</Text>
                 <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{r.code || '—'}</Text>
                 <Text style={[s.td, { width: 120, color: '#e2e8f0', fontSize: 10 }]}>{r.type_label || '—'}</Text>
-                <Text style={[s.td, { width: 160, color: '#00ff88', fontSize: 10, fontWeight: 'bold' }]} numberOfLines={2}>{r.counterparty_code ? '🆔 ' + r.counterparty_code : (r.owner_code ? '👤 ' + r.owner_code : '—')}{r.counterparty_name ? '\n' + r.counterparty_name : ''}</Text>
                 <Text style={[s.td, { width: 180, color: '#cbd5e1', fontSize: 10 }]} numberOfLines={2}>{r.description || '—'}</Text>
                 <Text style={[s.td, { width: 100, color: '#00ff88', fontWeight: 'bold', fontSize: 11 }]}>{r.in ? fmt(r.in, CUR[selectedBox.currency]?.dec || 2) : '—'}</Text>
                 <Text style={[s.td, { width: 100, color: '#ff3355', fontWeight: 'bold', fontSize: 11 }]}>{r.out ? fmt(r.out, CUR[selectedBox.currency]?.dec || 2) : '—'}</Text>
@@ -360,20 +359,16 @@ export default function BoxesScreen({ showToast, buyers }: any) {
             <Text style={s.lbl}>از صندوق *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
               {boxes.map((b: any) => (
-                <TouchableOpacity key={b.code} onPress={() => setTransferForm((f: any) => ({ ...f, from_box_code: b.code }))} style={[s.curPick, transferForm.from_box_code === b.code && s.curPickActive, { flexDirection: 'column', alignItems: 'center', paddingVertical: 8 }]}>
+                <TouchableOpacity key={b.code} onPress={() => setTransferForm((f: any) => ({ ...f, from_box_code: b.code }))} style={[s.curPick, transferForm.from_box_code === b.code && s.curPickActive]}>
                   <Text style={[s.curPickTxt, transferForm.from_box_code === b.code && { color: '#fff' }]}>{b.name}</Text>
-                  {b.owner_code ? <Text style={{ fontSize: 9, color: transferForm.from_box_code === b.code ? '#a7f3d0' : '#94a3b8', marginTop: 3 }}>🆔 {b.owner_code}</Text> : null}
-                  {b.owner_name ? <Text style={{ fontSize: 9, color: transferForm.from_box_code === b.code ? '#a7f3d0' : '#94a3b8' }}>👤 {b.owner_name}</Text> : null}
                 </TouchableOpacity>
               ))}
             </ScrollView>
             <Text style={s.lbl}>به صندوق *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
               {boxes.map((b: any) => (
-                <TouchableOpacity key={b.code} onPress={() => setTransferForm((f: any) => ({ ...f, to_box_code: b.code }))} style={[s.curPick, transferForm.to_box_code === b.code && s.curPickActive, { flexDirection: 'column', alignItems: 'center', paddingVertical: 8 }]}>
+                <TouchableOpacity key={b.code} onPress={() => setTransferForm((f: any) => ({ ...f, to_box_code: b.code }))} style={[s.curPick, transferForm.to_box_code === b.code && s.curPickActive]}>
                   <Text style={[s.curPickTxt, transferForm.to_box_code === b.code && { color: '#fff' }]}>{b.name}</Text>
-                  {b.owner_code ? <Text style={{ fontSize: 9, color: transferForm.to_box_code === b.code ? '#a7f3d0' : '#94a3b8', marginTop: 3 }}>🆔 {b.owner_code}</Text> : null}
-                  {b.owner_name ? <Text style={{ fontSize: 9, color: transferForm.to_box_code === b.code ? '#a7f3d0' : '#94a3b8' }}>👤 {b.owner_name}</Text> : null}
                 </TouchableOpacity>
               ))}
             </ScrollView>

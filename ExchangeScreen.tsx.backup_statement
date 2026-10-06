@@ -430,7 +430,7 @@ export default function ExchangeScreen({ showToast }: any) {
 
     // ═══ معاملات این مشتری ═══
     const myTrades = trades.filter((t: any) => t.customer_code === cust.code || t.buyer_code === cust.code || t.partner_code === cust.code);
-        // ═══ حواله‌جات این مشتری (به‌عنوان ذی‌نفع یا فرستنده) ═══
+    // ═══ حواله‌جات این مشتری (به‌عنوان ذی‌نفع یا فرستنده) ═══
     const myHawalas = hawalas.filter((h: any) =>
       String(h.beneficiary_name || '').includes(cust.name) ||
       String(h.beneficiary_phone || '').replace(/[^\d]/g, '') === String(cust.phone || '').replace(/[^\d]/g, '')
@@ -466,7 +466,7 @@ export default function ExchangeScreen({ showToast }: any) {
       tradeCount: myTrades.length,
       hawalaCount: myHawalas.length,
       checkCount: myChecks.length,
-      });
+    });
   };
 
   if (load) return <View style={s.center}><ActivityIndicator color="#d4af37" /></View>;

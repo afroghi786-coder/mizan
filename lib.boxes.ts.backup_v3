@@ -97,7 +97,7 @@ export async function getBoxKardex(boxId: string): Promise<any[]> {
   return rows;
 }
 
-export async function doTransfer(p: { from_box_code: string; to_box_code: string; amount: number; to_amount?: number; rate?: number; from_currency?: string; to_currency?: string; date: string; description?: string; counterparty_code?: string; counterparty_name?: string }): Promise<void> {
+export async function doTransfer(p: { from_box_code: string; to_box_code: string; amount: number; to_amount?: number; rate?: number; from_currency?: string; to_currency?: string; date: string; description?: string }): Promise<void> {
   const boxes = await getBoxes();
   const from = boxes.find((b: any) => b.code === p.from_box_code);
   const to = boxes.find((b: any) => b.code === p.to_box_code);
@@ -107,41 +107,25 @@ export async function doTransfer(p: { from_box_code: string; to_box_code: string
   const rate = sameCur ? 1 : (Number(p.rate) || 0);
   const toAmt = sameCur ? amt : (Number(p.to_amount) || (amt * rate));
   if (!sameCur && rate <= 0) throw new Error('نرخ تبدیل الزامی');
-  if (amt <= 0) throw new Error('مبلغ نامعتبر');
   const ts = Date.now();
   const codeBase = 'TX-' + ts;
   const typeLabel = sameCur ? 'انتقال' : 'تبدیل';
-
-  // ⭐ طرف حساب: از پارامتر یا از صاحب صندوق مبدأ/مقصد
-  const fromOwnerCode = from.owner_code || '';
-  const fromOwnerName = from.owner_name || '';
-  const toOwnerCode = to.owner_code || '';
-  const toOwnerName = to.owner_name || '';
-
-  // ═══ تراکنش خروج از مبدأ: طرف حساب = صاحب مقصد ═══
+  // خروج از مبدأ
   await addBoxTransaction({
     box_id: from.id || from.local_id, box_code: from.code, type: 'transfer_out',
     out: amt, in: 0, currency: from.currency, related_box_code: to.code,
     rate: sameCur ? 0 : rate,
-    counterparty_code: p.counterparty_code || toOwnerCode,
-    counterparty_name: p.counterparty_name || toOwnerName,
-    owner_code: fromOwnerCode, owner_name: fromOwnerName,
     description: p.description || (typeLabel + ' به ' + to.name + (sameCur ? '' : ' — نرخ ' + rate)),
     date: p.date, code: codeBase + '-1',
   });
-
-  // ═══ تراکنش ورود به مقصد: طرف حساب = صاحب مبدأ ═══
+  // ورود به مقصد
   await addBoxTransaction({
     box_id: to.id || to.local_id, box_code: to.code, type: 'transfer_in',
     in: toAmt, out: 0, currency: to.currency, related_box_code: from.code,
     rate: sameCur ? 0 : rate,
-    counterparty_code: p.counterparty_code || fromOwnerCode,
-    counterparty_name: p.counterparty_name || fromOwnerName,
-    owner_code: toOwnerCode, owner_name: toOwnerName,
     description: p.description || (typeLabel + ' از ' + from.name + (sameCur ? '' : ' — نرخ ' + rate)),
     date: p.date, code: codeBase + '-2',
   });
-  console.log('[doTransfer] DONE — from owner:', fromOwnerCode, 'to owner:', toOwnerCode);
 }
 
 export async function migrateOldTransfers(): Promise<void> {
@@ -177,29 +161,4 @@ export async function migrateOldTransfers(): Promise<void> {
     await AsyncStorage.removeItem(OLD_TRANSFER_KEY);
     console.log('✅ Migration: ' + old.length + ' انتقال قدیمی منتقل شد');
   } catch (e) { console.log('migrate error:', e); }
-}
-
-
-// ═══ تراکنش‌های مرتبط با یک کد طرف حساب ═══
-export async function getBoxTxsByCounterparty(code: string): Promise<any[]> {
-  if (!code) return [];
-  const txs = await getBoxTransactions();
-  return txs.filter((t: any) =>
-    t.counterparty_code === code ||
-    t.owner_code === code ||
-    t.box_code === code
-  );
-}
-
-// ═══ خلاصه صندوق برای یک شخص ═══
-export async function getBoxSummaryForPerson(code: string): Promise<{ given: Record<string, number>; received: Record<string, number>; txCount: number }> {
-  const txs = await getBoxTxsByCounterparty(code);
-  const given: Record<string, number> = {};
-  const received: Record<string, number> = {};
-  txs.forEach((t: any) => {
-    const cur = t.currency || '';
-    if (Number(t.out) > 0) given[cur] = (given[cur] || 0) + Number(t.out);
-    if (Number(t.in) > 0) received[cur] = (received[cur] || 0) + Number(t.in);
-  });
-  return { given, received, txCount: txs.length };
 }

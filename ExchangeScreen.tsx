@@ -550,12 +550,12 @@ export default function ExchangeScreen({ showToast }: any) {
 
         {/* ═══════ مشتریان ═══════ */}
         {sub === 'customers' && (
-          <PartyList type="customer" list={fxCustomers} reload={reload} showToast={showToast} />
+          <PartyList type="customer" showToast={showToast} />
         )}
 
         {/* ═══════ شرکا ═══════ */}
         {sub === 'partners' && (
-          <PartyList type="buyer" list={fxBuyers} reload={reload} showToast={showToast} />
+          <PartyList type="buyer" showToast={showToast} />
         )}
 
         {/* ═══════ حواله‌جات ═══════ */}
@@ -1270,7 +1270,9 @@ export default function ExchangeScreen({ showToast }: any) {
 // ═══════════════════════════════════════════
 //  PartyList — جدول ردیفی مشتریان/خریداران
 // ═══════════════════════════════════════════
-function PartyList({ type, list, reload, showToast }: any) {
+function PartyList({ type, showToast }: any) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
@@ -1281,6 +1283,27 @@ function PartyList({ type, list, reload, showToast }: any) {
   const title = isBuyer ? 'خریداران' : 'مشتریان';
   const color = isBuyer ? '#059669' : '#1e3a8a';
   const prefix = isBuyer ? 'B_' : 'X_';
+
+  // ⭐ لود مستقیم از AsyncStorage
+  const loadData = useCallback(async () => {
+    try {
+      const all = await getFxCustomers();
+      const filtered = (all || []).filter((x: any) => {
+        const t = x.type || 'customer';
+        return isBuyer ? t === 'buyer' : t === 'customer';
+      });
+      setData(filtered);
+      console.log('[PartyList ' + type + '] loaded:', filtered.length);
+    } catch (e) {
+      console.log('[PartyList ' + type + '] load error:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [type, isBuyer]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const openNew = () => {
     setEditId(null);
@@ -1309,33 +1332,37 @@ function PartyList({ type, list, reload, showToast }: any) {
         return;
       }
       setSaving(true);
-      console.log('=== SUBMIT START ===');
-      console.log('form:', form);
-      console.log('type:', type);
+
       const payload = {
         ...form,
         name: String(form.name).trim(),
         phone,
         type,
       };
-      console.log('payload:', payload);
-      let result;
+      console.log('[PartyList submit] payload:', payload);
+
       if (editId) {
-        result = await updateFxCustomer(editId, payload);
-        console.log('updated:', result);
+        await updateFxCustomer(editId, payload);
       } else {
-        result = await createFxCustomer(payload);
-        console.log('created:', result);
+        await createFxCustomer(payload);
       }
-      await reload();
-      console.log('=== SUBMIT DONE ===');
+
+      // ⭐ مستقیم از AsyncStorage بخون (نه از parent)
+      const all = await getFxCustomers();
+      const filtered = (all || []).filter((x: any) => {
+        const t = x.type || 'customer';
+        return isBuyer ? t === 'buyer' : t === 'customer';
+      });
+      setData(filtered);
+      console.log('[PartyList submit] after save, count:', filtered.length);
+
       setModal(false);
       setSaving(false);
       showToast(editId ? 'ویرایش شد' : 'ثبت شد');
     } catch (e: any) {
       setSaving(false);
       showToast('خطا: ' + (e?.message || 'مشکل در ذخیره'), true);
-      console.log('submit error:', e);
+      console.log('[PartyList submit] error:', e);
     }
   };
 
@@ -1343,15 +1370,29 @@ function PartyList({ type, list, reload, showToast }: any) {
     if (typeof window !== 'undefined' && window.confirm) {
       if (!window.confirm('حذف شود؟')) return;
     }
-    await deleteFxCustomer(id);
-    await reload();
-    showToast('حذف شد');
+    try {
+      await deleteFxCustomer(id);
+      // مستقیم reload
+      const all = await getFxCustomers();
+      const filtered = (all || []).filter((x: any) => {
+        const t = x.type || 'customer';
+        return isBuyer ? t === 'buyer' : t === 'customer';
+      });
+      setData(filtered);
+      showToast('حذف شد');
+    } catch (e: any) {
+      showToast('خطا در حذف: ' + (e?.message || ''), true);
+    }
   };
 
-  const filtered = q ? list.filter((x: any) => {
+  const filtered = q ? data.filter((x: any) => {
     const h = `${x.code || ''} ${x.name || ''} ${x.phone || ''} ${x.bank || ''}`.toLowerCase();
     return h.includes(q.toLowerCase());
-  }) : list;
+  }) : data;
+
+  if (loading) {
+    return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
+  }
 
   return (
     <View>
@@ -1401,7 +1442,7 @@ function PartyList({ type, list, reload, showToast }: any) {
             <Text style={[ptStyles.th, { width: 130 }]}>شماره حساب</Text>
             <Text style={[ptStyles.th, { width: 140 }]}>صاحب حساب</Text>
             <Text style={[ptStyles.th, { width: 180 }]}>آدرس</Text>
-            <Text style={[ptStyles.th, { width: 100 }]}>عملیات</Text>
+            <Text style={[ptStyles.th, { width: 130 }]}>عملیات</Text>
           </View>
 
           {filtered.length === 0 ? (
@@ -1411,7 +1452,7 @@ function PartyList({ type, list, reload, showToast }: any) {
               </Text>
             </View>
           ) : filtered.map((x: any, i: number) => (
-            <View key={x.local_id || x.id} style={[ptStyles.row, i % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
+            <View key={x.local_id || x.id || i} style={[ptStyles.row, i % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
               <Text style={[ptStyles.td, { width: 40, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
               <Text style={[ptStyles.td, { width: 150, color: '#1e40af', fontWeight: 'bold', fontFamily: 'monospace' }]}>{x.code}</Text>
               <Text style={[ptStyles.td, { width: 180, color: '#0f172a', fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{x.name}</Text>
@@ -1420,17 +1461,11 @@ function PartyList({ type, list, reload, showToast }: any) {
               <Text style={[ptStyles.td, { width: 130, color: '#475569', fontFamily: 'monospace' }]}>{x.account_number || '—'}</Text>
               <Text style={[ptStyles.td, { width: 140, color: '#0f172a', textAlign: 'right' }]} numberOfLines={1}>{x.holder_name || '—'}</Text>
               <Text style={[ptStyles.td, { width: 180, color: '#64748b', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{x.address || '—'}</Text>
-              <View style={[ptStyles.td, { width: 100, flexDirection: 'row', justifyContent: 'center', gap: 4 }]}>
-                <TouchableOpacity
-                  onPress={() => openEdit(x)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 6 }}
-                >
+              <View style={[ptStyles.td, { width: 130, flexDirection: 'row', justifyContent: 'center', gap: 4 }]}>
+                <TouchableOpacity onPress={() => openEdit(x)} style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 6 }}>
                   <Text style={{ fontSize: 12, color: '#1e40af', fontWeight: 'bold' }}>✏️ ویرایش</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => remove(x.local_id || x.id)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fee2e2', borderRadius: 6 }}
-                >
+                <TouchableOpacity onPress={() => remove(x.local_id || x.id)} style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fee2e2', borderRadius: 6 }}>
                   <Text style={{ fontSize: 12, color: '#dc2626', fontWeight: 'bold' }}>🗑</Text>
                 </TouchableOpacity>
               </View>
@@ -1509,13 +1544,11 @@ function PartyList({ type, list, reload, showToast }: any) {
   );
 }
 
-// ─── استایل جدول خریداران/مشتریان ───
 const ptStyles = StyleSheet.create({
   head: { flexDirection: 'row-reverse', backgroundColor: '#0f172a', paddingVertical: 14, borderTopLeftRadius: 10, borderTopRightRadius: 10 },
   th: { color: '#fbbf24', fontSize: 11, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 6 },
   row: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 12, backgroundColor: '#ffffff', alignItems: 'center', minHeight: 48 },
   td: { fontSize: 12, textAlign: 'center', paddingHorizontal: 6, color: '#334155' },
-  iconBtn: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, backgroundColor: '#dbeafe' },
 });
 
 const s = StyleSheet.create({

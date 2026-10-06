@@ -1107,56 +1107,6 @@ export default function ExchangeScreen({ showToast }: any) {
                 )}
 
                 {/* خلاصه نهایی */}
-                {/* BOX_TXS_SECTION */}
-                {stmtData.boxTxCount > 0 && (
-                  <>
-                    <Text style={[s.secT, { marginTop: 16 }]}>📦 صندوق‌ها ({stmtData.boxTxCount})</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator>
-                      <View>
-                        <View style={s.tblHeader}>
-                          <Text style={[s.th, { width: 36 }]}>#</Text>
-                          <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
-                          <Text style={[s.th, { width: 90 }]}>سند</Text>
-                          <Text style={[s.th, { width: 110 }]}>صندوق</Text>
-                          <Text style={[s.th, { width: 110 }]}>نوع</Text>
-                          <Text style={[s.th, { width: 160 }]}>طرف حساب</Text>
-                          <Text style={[s.th, { width: 100 }]}>ارز</Text>
-                          <Text style={[s.th, { width: 100 }]}>ورودی</Text>
-                          <Text style={[s.th, { width: 100 }]}>خروجی</Text>
-                          <Text style={[s.th, { width: 180 }]}>شرح</Text>
-                        </View>
-                        {stmtData.boxTxs.map((b: any, i: number) => {
-                          const box = boxes.find((x: any) => (x.id || x.local_id) === b.box_id);
-                          return (
-                            <View key={b.id || b.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
-                              <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-                              <Text style={[s.td, { width: 85, color: '#94a3b8', fontSize: 10 }]}>{b.date || '—'}</Text>
-                              <Text style={[s.td, { width: 90, color: '#7c3aed', fontWeight: 'bold', fontSize: 10 }]}>{b.code || '—'}</Text>
-                              <Text style={[s.td, { width: 110, color: '#e2e8f0', fontSize: 10 }]}>{box?.name || b.box_code || '—'}</Text>
-                              <Text style={[s.td, { width: 110, color: '#60a5fa', fontSize: 10 }]}>{b.type === 'transfer_in' ? '📥 ورودی' : b.type === 'transfer_out' ? '📤 خروجی' : b.type === 'trade_in' ? '🛒 از معامله' : b.type === 'trade_out' ? '💸 به معامله' : (b.type || '—')}</Text>
-                              <Text style={[s.td, { width: 160, color: '#00ff88', fontSize: 10 }]}>{b.counterparty_code ? '🆔 ' + b.counterparty_code : '—'}</Text>
-                              <Text style={[s.td, { width: 100, color: '#fbbf24', fontSize: 11, fontWeight: 'bold' }]}>{b.currency || '—'}</Text>
-                              <Text style={[s.td, { width: 100, color: '#00ff88', fontWeight: 'bold', fontSize: 11 }]}>{b.in ? fmt(b.in, 0) : '—'}</Text>
-                              <Text style={[s.td, { width: 100, color: '#ff3355', fontWeight: 'bold', fontSize: 11 }]}>{b.out ? fmt(b.out, 0) : '—'}</Text>
-                              <Text style={[s.td, { width: 180, color: '#cbd5e1', fontSize: 10 }]} numberOfLines={2}>{b.description || '—'}</Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    </ScrollView>
-                    {Object.keys(stmtData.boxSummary.given || {}).length > 0 && (
-                      <View style={{ marginTop: 8, padding: 8, backgroundColor: '#0f2438', borderRadius: 8 }}>
-                        <Text style={{ color: '#d4af37', fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 4 }}>💰 خلاصه ارزی صندوق</Text>
-                        {Object.entries(stmtData.boxSummary.given || {}).map(([cur, v]: any) => (
-                          <Text key={'g'+cur} style={{ color: '#ff3355', fontSize: 11, textAlign: 'right' }}>📤 دادیم: {fmt(v, 0)} {cur}</Text>
-                        ))}
-                        {Object.entries(stmtData.boxSummary.received || {}).map(([cur, v]: any) => (
-                          <Text key={'r'+cur} style={{ color: '#00ff88', fontSize: 11, textAlign: 'right' }}>📥 گرفتیم: {fmt(v, 0)} {cur}</Text>
-                        ))}
-                      </View>
-                    )}
-                  </>
-                )}
                 <View style={[s.dash, { marginTop: 16, backgroundColor: '#1e1b4b', borderColor: '#7c3aed' }]}>
                   <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>📊 خلاصه نهایی با {stmtCustomer.name}</Text>
                   <View style={{ paddingHorizontal: 10 }}>

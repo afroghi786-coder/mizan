@@ -787,89 +787,65 @@ export default function ExchangeScreen({ showToast }: any) {
                 </TouchableOpacity>
               </View>
             </View>
-
+            {/* محاسبه موجودی هر صندوق */}
             {(() => {
               const balances: Record<string, number> = {};
-              boxes.forEach((b: any) => { balances[b.local_id || b.id] = Number(b.opening) || 0; });
+              boxes.forEach(b => { balances[b.local_id || b.id] = Number(b.opening) || 0; });
               transfers.forEach((t: any) => {
                 const fb = boxes.find((b: any) => b.code === t.from_box);
                 const tb = boxes.find((b: any) => b.code === t.to_box);
                 if (fb) balances[fb.local_id || fb.id] -= Number(t.amount) || 0;
                 if (tb) balances[tb.local_id || tb.id] += Number(t.amount) || 0;
               });
-
-              if (boxes.length === 0) return <Text style={s.empty}>هنوز صندوقی نیست</Text>;
-
-              return (
-                <ScrollView horizontal showsHorizontalScrollIndicator>
-                  <View>
-                    <View style={s.tblHeader}>
-                      <Text style={[s.th, { width: 36 }]}>#</Text>
-                      <Text style={[s.th, { width: 100 }]}>کد</Text>
-                      <Text style={[s.th, { width: 150 }]}>نام صندوق</Text>
-                      <Text style={[s.th, { width: 100 }]}>ارز</Text>
-                      <Text style={[s.th, { width: 130 }]}>موجودی</Text>
-                      <Text style={[s.th, { width: 140 }]}>شریک</Text>
-                      <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+              return boxes.length === 0 ? (
+                <Text style={s.empty}>هنوز صندوقی نیست</Text>
+              ) : boxes.map((b: any) => {
+                const bal = balances[b.local_id || b.id] || 0;
+                const col = bal > 0 ? '#059669' : bal < 0 ? '#dc2626' : '#94a3b8';
+                const partner = partners.find((p: any) => p.code === b.partner_code);
+                return (
+                  <View key={b.local_id || b.id} style={s.card}>
+                    <View style={s.cardHead}>
+                      <Text style={s.cardTitle}>📦 {b.name}</Text>
+                      <Text style={s.badge}>{b.code}</Text>
                     </View>
-                    {boxes.map((b: any, i: number) => {
-                      const bal = balances[b.local_id || b.id] || 0;
-                      const col = bal > 0 ? '#00ff88' : bal < 0 ? '#ff3355' : '#94a3b8';
-                      const partner = partners.find((p: any) => p.code === b.partner_code);
-                      return (
-                        <View key={b.local_id || b.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
-                          <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-                          <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }]}>{b.code}</Text>
-                          <Text style={[s.td, { width: 150, color: '#fff', fontWeight: 'bold' }]}>{b.name}</Text>
-                          <Text style={[s.td, { width: 100, color: '#60a5fa' }]}>{CUR[b.currency]?.flag} {b.currency}</Text>
-                          <Text style={[s.td, { width: 130, color: col, fontWeight: 'bold', fontSize: 13 }]}>{bal > 0 ? '+' : ''}{fmt(bal, CUR[b.currency]?.dec || 2)}</Text>
-                          <Text style={[s.td, { width: 140, color: '#e2e8f0', fontSize: 11 }]}>{partner?.name || '—'}</Text>
-                          <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
-                            <TouchableOpacity onPress={() => { setBoxEditId(b.local_id || b.id); setBoxForm({ ...b }); setBoxModal(true); }} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
-                            <TouchableOpacity onPress={async () => { await deleteBox(b.local_id || b.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
-                          </View>
-                        </View>
-                      );
-                    })}
+                    <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 8 }}>
+                      <Text style={s.cardSub}>💱 {CUR[b.currency]?.flag} {b.currency}</Text>
+                      {partner ? <Text style={s.cardSub}>💼 {partner.name}</Text> : null}
+                    </View>
+                    <Text style={[s.cardTitle, { color: col, fontSize: 18, textAlign: 'left', marginTop: 8, fontFamily: 'monospace' }]}>
+                      {bal > 0 ? '+' : ''}{fmt(bal, CUR[b.currency]?.dec || 2)}
+                    </Text>
+                    <View style={s.actions}>
+                      <TouchableOpacity style={s.smBtn} onPress={() => { setBoxEditId(b.local_id || b.id); setBoxForm({ ...b }); setBoxModal(true); }}><Text style={s.smBtnTxt}>✏️</Text></TouchableOpacity>
+                      <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteBox(b.local_id || b.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                    </View>
                   </View>
-                </ScrollView>
-              );
+                );
+              });
             })()}
-
+            {/* لیست انتقالات */}
             {transfers.length > 0 && (
               <>
                 <Text style={[s.secT, { marginTop: 16 }]}>🔄 انتقالات اخیر ({transfers.length})</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator>
-                  <View>
-                    <View style={s.tblHeader}>
-                      <Text style={[s.th, { width: 36 }]}>#</Text>
-                      <Text style={[s.th, { width: 100 }]}>کد</Text>
-                      <Text style={[s.th, { width: 130 }]}>از صندوق</Text>
-                      <Text style={[s.th, { width: 130 }]}>به صندوق</Text>
-                      <Text style={[s.th, { width: 130 }]}>مبلغ</Text>
-                      <Text style={[s.th, { width: 100 }]}>تاریخ</Text>
-                      <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+                {transfers.slice(0, 20).map((t: any) => (
+                  <View key={t.local_id || t.id} style={s.card}>
+                    <View style={s.cardHead}>
+                      <Text style={s.cardTitle}>{t.from_box} → {t.to_box}</Text>
+                      <Text style={s.badge}>{t.code}</Text>
                     </View>
-                    {transfers.map((t: any, i: number) => (
-                      <View key={t.local_id || t.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
-                        <Text style={[s.td, { width: 36, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-                        <Text style={[s.td, { width: 100, color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }]}>{t.code}</Text>
-                        <Text style={[s.td, { width: 130, color: '#fb923c', fontWeight: 'bold' }]}>{t.from_box}</Text>
-                        <Text style={[s.td, { width: 130, color: '#34d399', fontWeight: 'bold' }]}>{t.to_box}</Text>
-                        <Text style={[s.td, { width: 130, color: '#fbbf24', fontWeight: 'bold' }]}>{fmt(t.amount, 0)}</Text>
-                        <Text style={[s.td, { width: 100, color: '#94a3b8', fontSize: 11 }]}>{t.date || '—'}</Text>
-                        <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
-                          <TouchableOpacity onPress={async () => { await deleteTransfer(t.local_id || t.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
+                    <Text style={s.cardSub}>💰 {fmt(t.amount, 0)} | 📅 {t.date}</Text>
+                    <View style={s.actions}>
+                      <TouchableOpacity style={[s.smBtn, { backgroundColor: '#fee2e2' }]} onPress={async () => { await deleteTransfer(t.local_id || t.id); await reload(); showToast('🗑'); }}><Text style={[s.smBtnTxt, { color: '#dc2626' }]}>🗑</Text></TouchableOpacity>
+                    </View>
                   </View>
-                </ScrollView>
+                ))}
               </>
             )}
           </View>
         )}
 
+        {/* ═══════ چک‌ها ═══════ */}
         {sub === 'checks' && (
           <View>
             <View style={s.headRow}>

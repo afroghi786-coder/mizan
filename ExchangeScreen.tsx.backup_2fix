@@ -182,8 +182,6 @@ export default function ExchangeScreen({ showToast }: any) {
 
   // Modals
   const [showFromCur, setShowFromCur] = useState(false);
-  const [showCkCur, setShowCkCur] = useState(false);
-  const [ckCurSearch, setCkCurSearch] = useState('');
   const [curSearch, setCurSearch] = useState('');
   const [showToCur, setShowToCur] = useState(false);
   const [showPartnerPick, setShowPartnerPick] = useState(false);
@@ -1893,47 +1891,6 @@ function PartyList({ type, showToast }: any) {
           </ScrollView>
         </View>
       </Modal>
-
-      {/* CK_CUR_MODAL */}
-      <Modal visible={showCkCur} transparent animationType="fade" onRequestClose={() => setShowCkCur(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(15,36,56,0.9)', justifyContent: 'center', padding: 14, zIndex: 99999, elevation: 99999 }}>
-          <View style={{ backgroundColor: '#0f2438', borderRadius: 14, maxHeight: '90%', overflow: 'hidden' }}>
-            <View style={{ backgroundColor: '#7c3aed', padding: 14, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' }}>💱 انتخاب ارز ({Object.keys(CUR).length})</Text>
-              <TouchableOpacity onPress={() => setShowCkCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
-            </View>
-            <View style={{ padding: 10 }}>
-              <TextInput
-                style={[s.inp, { textAlign: 'right', backgroundColor: '#1a2332', color: '#fff', borderColor: '#334155', borderWidth: 1, borderRadius: 8, padding: 10 }]}
-                value={ckCurSearch}
-                onChangeText={setCkCurSearch}
-                placeholder="🔍 جستجو: USD یا دالر یا افغانی..."
-                placeholderTextColor="#94a3b8"
-                autoFocus
-              />
-            </View>
-            <ScrollView style={{ maxHeight: 400, padding: 10 }} keyboardShouldPersistTaps="handled">
-              {Object.keys(CUR)
-                .filter(k => {
-                  const q = ckCurSearch.toLowerCase().trim();
-                  if (!q) return true;
-                  return k.toLowerCase().includes(q) || CUR[k].name.includes(ckCurSearch);
-                })
-                .map(k => (
-                  <TouchableOpacity
-                    key={k}
-                    style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}
-                    onPress={() => { setCkForm({ ...ckForm, currency: k }); setShowCkCur(false); }}
-                  >
-                    <Text style={{ color: '#fff', fontSize: 14, textAlign: 'right' }}>{CUR[k].flag} {CUR[k].name} ({k})</Text>
-                  </TouchableOpacity>
-                ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-
     </View>
   );
 }

@@ -676,7 +676,7 @@ function CellAutocomplete({ value, onChange, onSelect, options, placeholder }: a
 // ══════════════════════════════════════════════════════════
 //  DATE FIELD
 // ══════════════════════════════════════════════════════════
-export function DateField({ value, onChange, compact, defaultToToday }: any) {
+function DateField({ value, onChange, compact, defaultToToday }: any) {
   const [type, setType] = useState<CalType>(getCalType());
   const [g, setG] = useState<Date | null>(value ? parseDateAny(value) : (defaultToToday ? new Date() : null));
   const [fields, setFields] = useState({ y: '', m: '', d: '', h: '00', n: '00', s: '00' });

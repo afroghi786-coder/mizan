@@ -7,12 +7,17 @@ import ExchangeInvoice from './ExchangeInvoice';
 import { getAllTrades, saveTrade, deleteTrade } from './lib.fx.trade';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
-import {getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade, getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer, getFxPartners, createFxPartner, updateFxPartner, deleteFxPartner, getCalType, parseDateAny, g2j, g2h, j2g, h2g, toStorageDateFull} from './lib.offline';
+import {
+  getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade,
+  getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer,
+  getFxPartners, createFxPartner, updateFxPartner, deleteFxPartner,
+} from './lib.offline';
 import {
   getHawalas, createHawala, updateHawala, deleteHawala,
   getBoxes, createBox, updateBox, deleteBox,
   getTransfers, createTransfer, deleteTransfer,
-  getChecks, createCheck, updateCheck, deleteCheck } from './lib.fx';
+  getChecks, createCheck, updateCheck, deleteCheck,
+} from './lib.fx';
 
 // ═══ ارزها ═══
 const CUR: Record<string, { name: string; flag: string; dec: number }> = {
@@ -20,7 +25,8 @@ const CUR: Record<string, { name: string; flag: string; dec: number }> = {
   EUR:{name:'یورو',flag:'🇪🇺',dec:2}, GBP:{name:'پوند',flag:'🇬🇧',dec:2},
   PKR:{name:'کلدار',flag:'🇵🇰',dec:0}, IRR:{name:'ریال ایران',flag:'🇮🇷',dec:0},
   TOM:{name:'تومان',flag:'🇮🇷',dec:0}, AED:{name:'درهم',flag:'🇦🇪',dec:2},
-  SAR:{name:'ریال سعودی',flag:'🇸🇦',dec:2}, TRY:{name:'لیر',flag:'🇹🇷',dec:2} };
+  SAR:{name:'ریال سعودی',flag:'🇸🇦',dec:2}, TRY:{name:'لیر',flag:'🇹🇷',dec:2},
+};
 const MAIN_CURS = ['USD', 'EUR', 'AFN', 'PKR', 'AED'];
 
 const fmt = (n: number, d = 2) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 });
@@ -39,48 +45,6 @@ function genInvoiceNumber(trades: any[]): string {
   return 'FX-' + ds + '-' + (maxN + 1);
 }
 
-function DateField({ value, onChange, compact, defaultToToday }: any) {
-  const [type, setType] = useState<any>(getCalType());
-  const [g, setG] = useState<Date | null>(value ? parseDateAny(value) : (defaultToToday ? new Date() : null));
-  const [fields, setFields] = useState({ y: '', m: '', d: '', h: '00', n: '00', s: '00' });
-  useEffect(() => {
-    if (!g) { setFields({ y: '', m: '', d: '', h: '00', n: '00', s: '00' }); return; }
-    let y = 0, mo = 0, d = 0;
-    if (type === 'jalali') { [y, mo, d] = g2j(g.getFullYear(), g.getMonth() + 1, g.getDate()); }
-    else if (type === 'hijri') { const h = g2h(g); y = h.y; mo = h.m; d = h.d; }
-    else { y = g.getFullYear(); mo = g.getMonth() + 1; d = g.getDate(); }
-    setFields({ y: String(y), m: pad2(mo), d: pad2(d), h: pad2(g.getHours()), n: pad2(g.getMinutes()), s: pad2(g.getSeconds()) });
-  }, [g, type]);
-  const apply = (f: any) => {
-    setFields(f);
-    const y = parseInt(f.y, 10), m = parseInt(f.m, 10), d = parseInt(f.d, 10);
-    if (!y || !m || !d) { setG(null); onChange(''); return; }
-    const h = parseInt(f.h, 10) || 0, n = parseInt(f.n, 10) || 0, sec = parseInt(f.s, 10) || 0;
-    let gg: Date;
-    if (type === 'jalali') { const r = j2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
-    else if (type === 'hijri') { const r = h2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
-    else { gg = new Date(y, m - 1, d, h, n, sec); }
-    setG(gg); onChange(toStorageDateFull(gg));
-  };
-  const F = ({ v, k, w, ph }: any) => (
-    <TextInput style={[s.dateInp, { width: w || 44 }, compact && { fontSize: 11 }]} value={v} onChangeText={(t) => apply({ ...fields, [k]: t.replace(/\D/g, '').slice(0, k === 'y' ? 4 : 2) })} keyboardType="numeric" placeholder={ph} placeholderTextColor="#94a3b8" />
-  );
-  return (
-    <View style={[s.dateBox, compact && { paddingVertical: 3 }]}>
-      <F v={fields.y} k="y" w={compact ? 52 : 60} ph="YYYY" />
-      <Text style={s.dateSep}>/</Text><F v={fields.m} k="m" ph="MM" />
-      <Text style={s.dateSep}>/</Text><F v={fields.d} k="d" ph="DD" />
-      <Text style={[s.dateSep, { width: 8 }]}> </Text>
-      <F v={fields.h} k="h" ph="HH" />
-      <Text style={s.dateSep}>:</Text><F v={fields.n} k="n" ph="MM" />
-      <Text style={s.dateSep}>:</Text><F v={fields.s} k="s" ph="SS" />
-      <TouchableOpacity style={s.typeBtn} onPress={() => { const next = type === 'jalali' ? 'gregorian' : type === 'gregorian' ? 'hijri' : 'jalali'; setType(next); }}>
-        <Text style={s.typeBtnTxt}>{type === 'jalali' ? 'شمسی' : type === 'gregorian' ? 'میلادی' : 'قمری'}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 export default function ExchangeScreen({ showToast }: any) {
   const [showInvoice, setShowInvoice] = useState<any>(null);
   const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger' | 'statement'>('list');
@@ -95,13 +59,13 @@ export default function ExchangeScreen({ showToast }: any) {
   const [transfers, setTransfers] = useState<any[]>([]);
   const [checks, setChecks] = useState<any[]>([]);
   const [hawModal, setHawModal] = useState(false);
-  const [hawForm, setHawForm] = useState<any>({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: toStorageDateFull(new Date()), note: '' });
+  const [hawForm, setHawForm] = useState<any>({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: new Date().toLocaleDateString('fa-IR'), note: '' });
   const [hawEditId, setHawEditId] = useState<string | null>(null);
   const [boxModal, setBoxModal] = useState(false);
   const [boxForm, setBoxForm] = useState<any>({ name: '', currency: 'USD', partner_code: '', opening: '0' });
   const [boxEditId, setBoxEditId] = useState<string | null>(null);
   const [trModal, setTrModal] = useState(false);
-  const [trForm, setTrForm] = useState<any>({ from_box: '', to_box: '', amount: '', rate: '1', date: toStorageDateFull(new Date()), note: '' });
+  const [trForm, setTrForm] = useState<any>({ from_box: '', to_box: '', amount: '', rate: '1', date: new Date().toLocaleDateString('fa-IR'), note: '' });
   const [ckModal, setCkModal] = useState(false);
   const [ckForm, setCkForm] = useState<any>({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: '', status: 'pending', note: '' });
   const [ckEditId, setCkEditId] = useState<string | null>(null);
@@ -126,7 +90,7 @@ export default function ExchangeScreen({ showToast }: any) {
   const [fToQty, setFToQty] = useState('');
   const [fRate, setFRate] = useState('');
   const [fDesc, setFDesc] = useState('');
-  const [fDate, setFDate] = useState(toStorageDateFull(new Date()));
+  const [fDate, setFDate] = useState(new Date().toLocaleDateString('fa-IR'));
   const [fBuyerPhone, setFBuyerPhone] = useState('');
   const [fBuyerName, setFBuyerName] = useState('');
   const [fBuyerBank, setFBuyerBank] = useState('');
@@ -299,7 +263,8 @@ export default function ExchangeScreen({ showToast }: any) {
         buyer: { code: bc, name: data.buyer_name || data.partner_name || '', phone: data.buyer_phone || '' },
         customer: { code: cc, name: data.customer_name || '', phone: data.customer_phone || '' },
         buyerSummary: calc(buyerTrades),
-        customerSummary: calc(customerTrades) });
+        customerSummary: calc(customerTrades),
+      });
     } catch (e) { console.log('buildAndShowInvoice error:', e); }
   };
 
@@ -345,7 +310,8 @@ export default function ExchangeScreen({ showToast }: any) {
       from_currency: fFrom, to_currency: fTo,
       from_qty: fq, to_qty: tq,
       rate: r || (fq > 0 ? tq / fq : 0),
-      profit, description: fDesc, date: fDate };
+      profit, description: fDesc, date: fDate,
+    };
 
     try {
       let created;
@@ -368,7 +334,8 @@ export default function ExchangeScreen({ showToast }: any) {
         buyer: { code: created.buyer_code, name: created.buyer_name, phone: created.buyer_phone },
         customer: { code: created.customer_code, name: created.customer_name, phone: created.customer_phone },
         buyerSummary: { count: 1, totalFrom: created.from_qty, totalTo: created.to_qty, profit: created.profit || 0 },
-        customerSummary: { count: 1, totalFrom: created.from_qty, totalTo: created.to_qty, profit: created.profit || 0 } });
+        customerSummary: { count: 1, totalFrom: created.from_qty, totalTo: created.to_qty, profit: created.profit || 0 },
+      });
       resetForm();
     } catch (e: any) {
       showToast('❌ ' + (e?.message || 'خطا در ذخیره'), true);
@@ -384,7 +351,7 @@ export default function ExchangeScreen({ showToast }: any) {
     setFPartner(''); setFPhone(''); setFCustName(''); setFCustCode('');
     setFBank(''); setFHolder(''); setFFrom('AFN'); setFTo('USD');
     setFFromQty(''); setFToQty(''); setFRate(''); setFDesc('');
-    setFDate(toStorageDateFull(new Date()));
+    setFDate(new Date().toLocaleDateString('fa-IR'));
     setFBuyerPhone(''); setFBuyerName(''); setFBuyerBank('');
     setFBuyerAccount(''); setFBuyerHolder(''); setFBuyerAddress(''); setFBuyerStatus('');
     setFCustBank(''); setFCustAccount(''); setFCustHolder(''); setFCustAddress(''); setFCustStatus('');
@@ -422,7 +389,7 @@ export default function ExchangeScreen({ showToast }: any) {
     setFToQty(String(t.to_qty || ''));
     setFRate(String(t.rate || ''));
     setFDesc(t.description || '');
-    setFDate(t.date || toStorageDateFull(new Date()));
+    setFDate(t.date || new Date().toLocaleDateString('fa-IR'));
     setSub('form');
   };
 
@@ -543,7 +510,8 @@ export default function ExchangeScreen({ showToast }: any) {
       totalTradeFrom,
       totalTradeTo,
       boxGivenTotal,
-      boxReceivedTotal });
+      boxReceivedTotal,
+    });
   };;
 
   if (load) return <View style={s.center}><ActivityIndicator color="#d4af37" /></View>;
@@ -570,7 +538,8 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.profitLbl}>💰 سود خالص صرافی</Text>
             <Text style={[s.profitVal, {
               color: dash.totalProfit < 0 ? '#ff3355' : dash.totalProfit === 0 ? '#fbbf24' : '#00ff88',
-              textShadowColor: dash.totalProfit < 0 ? '#ff3355' : dash.totalProfit === 0 ? '#fbbf24' : '#00ff88' }]}>
+              textShadowColor: dash.totalProfit < 0 ? '#ff3355' : dash.totalProfit === 0 ? '#fbbf24' : '#00ff88',
+            }]}>
               {fmt(dash.totalProfit, 0)}
             </Text>
             <Text style={s.profitUnit}>AFN</Text>
@@ -699,7 +668,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <TextInput style={s.inp} value={fInvoice} onChangeText={setFInvoice} editable={!editId} />
 
             <Text style={s.lbl}>📅 تاریخ</Text>
-            <DateField value={fDate} onChange={setFDate} defaultToToday />
+            <TextInput style={s.inp} value={fDate} onChangeText={setFDate} />
 
             <View style={{ backgroundColor: '#ecfdf5', borderRadius: 10, padding: 10, marginTop: 12, marginBottom: 12, borderWidth: 1, borderColor: '#a7f3d0' }}>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -808,7 +777,7 @@ export default function ExchangeScreen({ showToast }: any) {
           <View>
             <View style={s.headRow}>
               <Text style={s.secT}>💸 حواله‌جات ({hawalas.length})</Text>
-              <TouchableOpacity style={s.addSmBtn} onPress={() => { setHawEditId(null); setHawForm({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: toStorageDateFull(new Date()), note: '' }); setHawModal(true); }}>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setHawEditId(null); setHawForm({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: new Date().toLocaleDateString('fa-IR'), note: '' }); setHawModal(true); }}>
                 <Text style={s.addSmBtnTxt}>➕ جدید</Text>
               </TouchableOpacity>
             </View>
@@ -1446,7 +1415,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>کارمزد</Text>
             <TextInput style={s.inp} value={String(hawForm.commission)} onChangeText={v => setHawForm({ ...hawForm, commission: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
             <Text style={s.lbl}>تاریخ</Text>
-            <DateField value={hawForm.date} onChange={(v: string) => setHawForm({ ...hawForm, date: v })} compact defaultToToday />
+            <TextInput style={s.inp} value={hawForm.date} onChangeText={v => setHawForm({ ...hawForm, date: v })} />
             <Text style={s.lbl}>وضعیت</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
               {[{ k: 'pending', l: '⏳ در انتظار' }, { k: 'done', l: '✅ انجام' }, { k: 'cancelled', l: '❌ لغو' }].map(st => (
@@ -1585,7 +1554,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>نرخ تبدیل</Text>
             <TextInput style={s.inp} value={String(trForm.rate)} onChangeText={v => setTrForm({ ...trForm, rate: v })} keyboardType="numeric" />
             <Text style={s.lbl}>تاریخ</Text>
-            <DateField value={trForm.date} onChange={(v: string) => setTrForm({ ...trForm, date: v })} compact defaultToToday />
+            <TextInput style={s.inp} value={trForm.date} onChangeText={v => setTrForm({ ...trForm, date: v })} />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTrModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
@@ -1631,7 +1600,7 @@ export default function ExchangeScreen({ showToast }: any) {
               ))}
             </View>
             <Text style={s.lbl}>تاریخ سرسید</Text>
-            <DateField value={ckForm.due_date} onChange={(v: string) => setCkForm({ ...ckForm, due_date: v })} compact />
+            <TextInput style={s.inp} value={ckForm.due_date} onChangeText={v => setCkForm({ ...ckForm, due_date: v })} placeholder="1405/09/15" />
             <Text style={s.lbl}>وضعیت</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
               {[{ k: 'pending', l: '⏳ در جریان' }, { k: 'cleared', l: '✅ پاس' }, { k: 'bounced', l: '❌ برگشتی' }].map(st => (
@@ -1838,14 +1807,10 @@ const ptStyles = StyleSheet.create({
   head: { flexDirection: 'row-reverse', backgroundColor: '#0f172a', paddingVertical: 14, borderTopLeftRadius: 10, borderTopRightRadius: 10 },
   th: { color: '#fbbf24', fontSize: 11, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 6 },
   row: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 12, backgroundColor: '#ffffff', alignItems: 'center', minHeight: 48 },
-  td: { fontSize: 12, textAlign: 'center', paddingHorizontal: 6, color: '#334155' } });
+  td: { fontSize: 12, textAlign: 'center', paddingHorizontal: 6, color: '#334155' },
+});
 
 const s = StyleSheet.create({
-  dateBox: { flexDirection: 'row', alignItems: 'center', padding: 6, borderWidth: 2, borderRadius: 8, gap: 1, backgroundColor: '#1a2332', borderColor: '#334155' },
-  dateInp: { padding: 4, textAlign: 'center', fontSize: 13, color: '#fff', backgroundColor: 'transparent' },
-  dateSep: { fontSize: 13, fontWeight: 'bold', color: '#64748b' },
-  typeBtn: { marginLeft: 'auto', padding: 4, borderRadius: 6, backgroundColor: '#334155' },
-  typeBtnTxt: { fontSize: 10, fontWeight: 'bold', color: '#fff' },
   page: { flex: 1, backgroundColor: '#f5f7fa' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
@@ -1923,4 +1888,5 @@ const s = StyleSheet.create({
   pickName: { fontSize: 14, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' },
   sumRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   sumLbl: { color: '#94a3b8', fontSize: 12 },
-  sumVal: { color: '#e2e8f0', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' } });
+  sumVal: { color: '#e2e8f0', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' },
+});

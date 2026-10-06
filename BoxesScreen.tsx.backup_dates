@@ -1,5 +1,3 @@
-import { toStorageDateFull } from './lib.offline';
-import { DateField } from './App';
 // BoxesScreen.tsx — صندوق استاندارد با کاردکس و تراکنش
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
@@ -145,7 +143,7 @@ export default function BoxesScreen({ showToast, buyers }: any) {
         </View>
         <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
           {[['➕ واریز','deposit','#059669'],['➖ برداشت','withdraw','#dc2626'],['💰 کارمزد','fee_out','#d97706'],['⚖️ تعدیل','adjust_in','#7c3aed']].map(([lbl,ty,bg]) => (
-            <TouchableOpacity key={ty as string} onPress={() => { setTxForm({ type: ty as string, amount: '', date: toStorageDateFull(new Date()) }); setTxModal(true); }}
+            <TouchableOpacity key={ty as string} onPress={() => { setTxForm({ type: ty as string, amount: '', date: new Date().toLocaleDateString('fa-IR') }); setTxModal(true); }}
               style={{ backgroundColor: bg as string, paddingVertical: 10, borderRadius: 8, flex: 1, minWidth: 90 }}>
               <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center', fontSize: 12 }}>{lbl as string}</Text>
             </TouchableOpacity>
@@ -246,7 +244,7 @@ export default function BoxesScreen({ showToast, buyers }: any) {
       <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <Text style={{ color: '#d4af37', fontSize: 14, fontWeight: 'bold' }}>📦 صندوق‌ها ({boxes.length})</Text>
         <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-          <TouchableOpacity onPress={() => { setTransferForm({ from_box_code: '', to_box_code: '', amount: '', date: toStorageDateFull(new Date()) }); setTransferModal(true); }} style={{ backgroundColor: '#059669', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}>
+          <TouchableOpacity onPress={() => { setTransferForm({ from_box_code: '', to_box_code: '', amount: '', date: new Date().toLocaleDateString('fa-IR') }); setTransferModal(true); }} style={{ backgroundColor: '#059669', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}>
             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>🔄 انتقال</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { setBoxForm({ name: '', currency: 'USD', owner_code: '', owner_name: '', opening: '0' }); setBoxModal(true); }} style={{ backgroundColor: '#7c3aed', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}>
@@ -318,8 +316,6 @@ export default function BoxesScreen({ showToast, buyers }: any) {
             </ScrollView>
             <Text style={s.lbl}>موجودی افتتاحیه</Text>
             <TextInput style={s.inp} value={String(boxForm.opening || '')} onChangeText={v => setBoxForm((f: any) => ({ ...f, opening: v.replace(/[^\d.-]/g, '') }))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
-            <Text style={s.lbl}>📅 تاریخ افتتاحیه</Text>
-            <DateField value={boxForm.opening_date || toStorageDateFull(new Date())} onChange={(v: string) => setBoxForm((f: any) => ({ ...f, opening_date: v }))} compact defaultToToday />
             <Text style={s.lbl}>یادداشت</Text>
             <TextInput style={[s.inp, { minHeight: 60 }]} value={boxForm.notes || ''} onChangeText={v => setBoxForm((f: any) => ({ ...f, notes: v }))} multiline placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
@@ -412,8 +408,8 @@ export default function BoxesScreen({ showToast, buyers }: any) {
                 </>
               );
             })()}
-            <Text style={s.lbl}>📅 تاریخ</Text>
-            <DateField value={transferForm.date || toStorageDateFull(new Date())} onChange={(v: string) => setTransferForm((f: any) => ({ ...f, date: v }))} compact defaultToToday />
+            <Text style={s.lbl}>تاریخ</Text>
+            <TextInput style={s.inp} value={transferForm.date || ''} onChangeText={v => setTransferForm((f: any) => ({ ...f, date: v }))} placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>شرح</Text>
             <TextInput style={[s.inp, { minHeight: 60 }]} value={transferForm.description || ''} onChangeText={v => setTransferForm((f: any) => ({ ...f, description: v }))} multiline placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
@@ -430,11 +426,6 @@ export default function BoxesScreen({ showToast, buyers }: any) {
 }
 
 const s = StyleSheet.create({
-  dateBox: { flexDirection: 'row', alignItems: 'center', padding: 6, borderWidth: 2, borderRadius: 8, gap: 1, backgroundColor: '#1a2332', borderColor: '#334155' },
-  dateInp: { padding: 4, textAlign: 'center', fontSize: 13, color: '#fff', backgroundColor: 'transparent' },
-  dateSep: { fontSize: 13, fontWeight: 'bold', color: '#64748b' },
-  typeBtn: { marginLeft: 'auto', padding: 4, borderRadius: 6, backgroundColor: '#334155' },
-  typeBtnTxt: { fontSize: 10, fontWeight: 'bold', color: '#fff' },
   tblHeader: { flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 10, borderRadius: 8, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
   tblRow: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#1e293b', paddingVertical: 8, alignItems: 'center', minHeight: 44 },
   th: { color: '#d4af37', fontSize: 11, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 4 },

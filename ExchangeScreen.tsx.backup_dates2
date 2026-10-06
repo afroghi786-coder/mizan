@@ -864,7 +864,7 @@ export default function ExchangeScreen({ showToast }: any) {
           <View>
             <View style={s.headRow}>
               <Text style={s.secT}>📄 چک‌ها ({checks.length})</Text>
-              <TouchableOpacity style={s.addSmBtn} onPress={() => { setCkEditId(null); setCkForm({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: toStorageDateFull(new Date()), status: 'pending', note: '' }); setCkModal(true); }}>
+              <TouchableOpacity style={s.addSmBtn} onPress={() => { setCkEditId(null); setCkForm({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: '', status: 'pending', note: '' }); setCkModal(true); }}>
                 <Text style={s.addSmBtnTxt}>➕ جدید</Text>
               </TouchableOpacity>
             </View>
@@ -1631,7 +1631,7 @@ export default function ExchangeScreen({ showToast }: any) {
               ))}
             </View>
             <Text style={s.lbl}>تاریخ سرسید</Text>
-            <DateField value={ckForm.due_date} onChange={(v: string) => setCkForm({ ...ckForm, due_date: v })} compact defaultToToday />
+            <DateField value={ckForm.due_date} onChange={(v: string) => setCkForm({ ...ckForm, due_date: v })} compact />
             <Text style={s.lbl}>وضعیت</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
               {[{ k: 'pending', l: '⏳ در جریان' }, { k: 'cleared', l: '✅ پاس' }, { k: 'bounced', l: '❌ برگشتی' }].map(st => (

@@ -83,9 +83,6 @@ export async function initNetwork(): Promise<boolean> {
       const was = _connected;
       _connected = !!snap.val();
       if (_connected && !was && _myEmail) { _registerAgent(); _registerPresence(); }
-      console.log('[NET] connected:', _connected);
-    }, (err: any) => {
-      console.log('[NET] connection error:', err);
     });
     if (_myEmail) await _registerAgent();
     return true;
@@ -470,23 +467,4 @@ export function stopListener(key: string): void {
 
 export function stopAllListeners(): void {
   Object.keys(_listeners).forEach(stopListener);
-}
-
-
-// ═══ تست اتصال Firebase ═══
-export async function testFirebaseConnection(): Promise<{ ok: boolean; message: string }> {
-  try {
-    const url = FIREBASE_CONFIG.databaseURL + '/.info/connected.json';
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-    if (res.status === 401 || res.status === 403) {
-      return { ok: false, message: 'Rules مشکل داره' };
-    }
-    return { ok: true, message: 'Firebase در دسترس' };
-  } catch (e: any) {
-    if (e?.name === 'AbortError') return { ok: false, message: 'Timeout — Firebase پاسخ نداد' };
-    return { ok: false, message: 'اتصال برقرار نشد — احتمالاً VPN لازمه' };
-  }
 }

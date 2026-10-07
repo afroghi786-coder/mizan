@@ -73,7 +73,6 @@ export default function LiveMarketScreen({ showToast }: any) {
   };
 
   const submitHawala = async () => {
-    if (!net.connected) return showToast?.('❌ Firebase وصل نیست — VPN روشن کن', true);
     if (!hawalaForm.amount || !hawalaForm.beneficiaryName) return showToast?.('مبلغ و نام الزامی', true);
     setSaving(true);
     try {
@@ -92,7 +91,6 @@ export default function LiveMarketScreen({ showToast }: any) {
   };
 
   const submitFX = async () => {
-    if (!net.connected) return showToast?.('❌ Firebase وصل نیست — VPN روشن کن', true);
     if (!fxForm.amount) return showToast?.('مقدار الزامی', true);
     if (fxForm.rateType === 'fixed' && !fxForm.rate) return showToast?.('نرخ الزامی', true);
     setSaving(true);
@@ -107,7 +105,6 @@ export default function LiveMarketScreen({ showToast }: any) {
   };
 
   const submitDirect = async () => {
-    if (!net.connected) return showToast?.('❌ Firebase وصل نیست — VPN روشن کن', true);
     if (!directForm.toEmail) return showToast?.('صراف مقصد انتخاب کن', true);
     if (!directForm.amount || !directForm.beneficiaryName) return showToast?.('مبلغ و نام الزامی', true);
     setSaving(true);
@@ -154,24 +151,14 @@ export default function LiveMarketScreen({ showToast }: any) {
             {net.connected && net.name ? `🟢 ${net.name}` : '🔴 پروفایل شبکه را کامل کنید'}
           </Text>
           <Text style={s.statusSub}>{net.email || '—'} {net.city ? `| ${NET_CITIES[net.city] || net.city}` : ''}</Text>
-          {!net.connected && net.name ? (
-            <Text style={{ color: '#fbbf24', fontSize: 10, marginTop: 4, textAlign: 'right' }}>
-              ⚠️ Firebase وصل نیست — برای فعال‌سازی شبکه، VPN روشن کن
-            </Text>
-          ) : null}
         </View>
         <TouchableOpacity style={s.smBtn} onPress={() => { setSettingsForm({ name: net.name || '', city: net.city || 'KBL', phone: net.phone || '' }); setSettingsModal(true); }}>
           <Text style={s.smBtnTxt}>⚙️</Text>
         </TouchableOpacity>
-        {!net.connected && net.name ? (
-          <TouchableOpacity style={[s.smBtn, { backgroundColor: 'rgba(255,255,255,0.3)' }]} onPress={refresh}>
-            <Text style={s.smBtnTxt}>🔄</Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
 
       {/* دکمه‌های عملیات */}
-      {(net.name && net.city) ? (
+      {net.connected && net.name ? (
         <View style={{ flexDirection: 'row-reverse', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
           <TouchableOpacity style={[s.actBtn, { backgroundColor: '#f59e0b' }]} onPress={() => setHawalaModal(true)}>
             <Text style={s.actBtnTxt}>📤 حواله عمومی</Text>

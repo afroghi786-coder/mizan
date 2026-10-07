@@ -33,22 +33,6 @@ const ALL_CURS = ['AFN', 'USD', 'EUR', 'GBP', 'PKR', 'AED', 'SAR', 'TRY', 'IRR',
 
 const curLabel = (c: string) => (CUR_NAME[c] ? CUR_NAME[c] + ' (' + c + ')' : c);
 
-// ═══ ذخیره/بازیابی ارزهای داشبورد ═══
-const DASH_CURS_KEY = 'mz_dash_currencies';
-function loadMyDashCurs(): string[] {
-  try {
-    const r = localStorage.getItem(DASH_CURS_KEY);
-    if (r) {
-      const arr = JSON.parse(r);
-      if (Array.isArray(arr) && arr.length) return arr;
-    }
-  } catch {}
-  return ['USD', 'EUR', 'PKR', 'AED', 'GBP'];
-}
-function saveMyDashCurs(arr: string[]) {
-  try { localStorage.setItem(DASH_CURS_KEY, JSON.stringify(arr)); } catch {}
-}
-
 // محاسبه آماری هر ارز
 function calcRateStats(ratesArr: any[], cur: string) {
   const items = ratesArr.filter((r: any) => r.currency === cur);
@@ -95,8 +79,6 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [activities, setActivities] = useState<any[]>([]);
   const [prevRates, setPrevRates] = useState<Record<string, number>>({});
   const [now, setNow] = useState(new Date());
-  const [myDashCurs, setMyDashCurs] = useState<string[]>(['USD', 'EUR', 'PKR', 'AED', 'GBP']);
-  const [dashCursModal, setDashCursModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
@@ -157,11 +139,6 @@ export default function LiveMarketScreen({ showToast }: any) {
     feed.sort((a, b) => b.ts - a.ts);
     setActivities(feed.slice(0, 8));
   }, [rates, hawalas, fxOffers, directInbox]);
-
-  // 📌 بارگذاری ارزهای داشبورد از localStorage
-  useEffect(() => {
-    setMyDashCurs(loadMyDashCurs());
-  }, []);
 
   // ⏰ تایمر ۱ ثانیه — برای ساعت
   useEffect(() => {
@@ -355,14 +332,9 @@ export default function LiveMarketScreen({ showToast }: any) {
         {/* 📊 میانگین / سقف / کف */}
         {rates.length > 0 && (
           <View style={s.statsBox}>
-            <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={s.statsBoxTitle}>📊 آمار لحظه‌ای</Text>
-              <TouchableOpacity onPress={() => setDashCursModal(true)} style={{ backgroundColor: '#7c3aed', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>⚙️ تنظیم ارزها</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={s.statsBoxTitle}>📊 آمار لحظه‌ای ارزهای اصلی</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {myDashCurs.filter(cur => rates.some((r: any) => r.currency === cur)).map(cur => {
+              {['USD', 'EUR', 'GBP', 'PKR', 'AED'].filter(cur => rates.some((r: any) => r.currency === cur)).map(cur => {
                 const stats = calcRateStats(rates, cur);
                 if (!stats) return null;
                 return (
@@ -385,11 +357,6 @@ export default function LiveMarketScreen({ showToast }: any) {
                 );
               })}
             </ScrollView>
-            {myDashCurs.filter(cur => rates.some((r: any) => r.currency === cur)).length === 0 ? (
-              <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', paddingVertical: 10 }}>
-                ارزی برای نمایش انتخاب نشده — روی «تنظیم ارزها» بزنید
-              </Text>
-            ) : null}
           </View>
         )}
 
@@ -895,61 +862,6 @@ export default function LiveMarketScreen({ showToast }: any) {
           </ScrollView>
         </View></View>
       </Modal>
-
-      {/* مودال انتخاب ارزها برای داشبورد */}
-      <Modal visible={dashCursModal} transparent animationType="slide" onRequestClose={() => setDashCursModal(false)}>
-        <View style={s.mBg}><View style={s.mBox}>
-          <View style={[s.mHead, { backgroundColor: '#7c3aed' }]}>
-            <Text style={s.mTitle}>⚙️ ارزهای داشبورد</Text>
-            <TouchableOpacity onPress={() => setDashCursModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
-          </View>
-          <ScrollView style={{ padding: 14, maxHeight: 500 }}>
-            <Text style={{ color: '#cbd5e1', fontSize: 12, marginBottom: 10, textAlign: 'right' }}>
-              ارزهایی که می‌خواهید در داشبورد نمایش داده شود را انتخاب کنید:
-            </Text>
-            {ALL_CURS.map(cur => {
-              const selected = myDashCurs.includes(cur);
-              return (
-                <TouchableOpacity
-                  key={cur}
-                  onPress={() => {
-                    const next = selected ? myDashCurs.filter((x: string) => x !== cur) : [...myDashCurs, cur];
-                    setMyDashCurs(next);
-                    saveMyDashCurs(next);
-                  }}
-                  style={[s.curPickRow, selected && { backgroundColor: '#7c3aed', borderColor: '#a78bfa' }]}
-                >
-                  <Text style={[s.curPickName, selected && { color: '#fff', fontWeight: 'bold' }]}>
-                    {FLAG[cur] || '💱'} {curLabel(cur)}
-                  </Text>
-                  <Text style={{ fontSize: 18 }}>{selected ? '✅' : '⬜'}</Text>
-                </TouchableOpacity>
-              );
-            })}
-            <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 14 }}>
-              <TouchableOpacity
-                onPress={() => { setMyDashCurs([]); saveMyDashCurs([]); }}
-                style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]}
-              >
-                <Text style={s.btnTxt}>پاک همه</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => { setMyDashCurs(['USD', 'EUR', 'PKR', 'AED', 'GBP']); saveMyDashCurs(['USD', 'EUR', 'PKR', 'AED', 'GBP']); }}
-                style={[s.btn, { backgroundColor: '#0891b2', flex: 1 }]}
-              >
-                <Text style={s.btnTxt}>پیش‌فرض</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setDashCursModal(false)}
-                style={[s.btn, { backgroundColor: '#059669', flex: 2 }]}
-              >
-                <Text style={s.btnTxt}>✅ تمام</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View></View>
-      </Modal>
-
     </View>
   );
 }
@@ -988,8 +900,6 @@ const s = StyleSheet.create({
   myStatusItem: { flex: 1, alignItems: 'center' },
   myStatusLbl: { color: '#94a3b8', fontSize: 9, marginBottom: 2 },
   myStatusVal: { color: '#a78bfa', fontSize: 14, fontWeight: 'bold' },
-  curPickRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#1a2332', borderRadius: 8, marginBottom: 6, borderWidth: 1, borderColor: '#334155' },
-  curPickName: { color: '#e2e8f0', fontSize: 13, textAlign: 'right', flex: 1 },
   activityBox: { backgroundColor: '#0f2438', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#1f3a5f' },
   activityTitle: { color: '#d4af37', fontSize: 12, fontWeight: 'bold', marginBottom: 8, textAlign: 'right' },
   activityRow: { flexDirection: 'row-reverse', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#1e293b' },

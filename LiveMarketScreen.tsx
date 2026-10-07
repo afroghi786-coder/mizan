@@ -1,5 +1,5 @@
 // LiveMarketScreen.tsx — بازار عمومی صرافان
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import {
   initNetwork, loadNetSettings, saveNetSettings, getMyNetInfo,

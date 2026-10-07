@@ -38,7 +38,6 @@ export default function GroupsScreen({ showToast }: any) {
   }, [net.connected, net.email]);
 
   const submitCreate = async () => {
-    if (!net.connected) return showToast?.('❌ Firebase وصل نیست — VPN روشن کن', true);
     if (!createForm.name || createForm.name.length < 3) return showToast?.('نام حداقل ۳ کاراکتر', true);
     setSaving(true);
     try {
@@ -102,12 +101,11 @@ export default function GroupsScreen({ showToast }: any) {
 
   if (loading) return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
 
-  if (!net.name || !net.name) {
+  if (!net.connected || !net.name) {
     return (
       <View style={s.empty}>
         <Text style={s.emptyIcon}>🌐</Text>
         <Text style={s.emptyTxt}>ابتدا در بازار زنده پروفایل خود را کامل کنید</Text>
-        <Text style={s.emptySub}>⚙️ روی آیکون تنظیمات در بازار زنده بزنید → نام و شهر را وارد کنید</Text>
       </View>
     );
   }
@@ -123,13 +121,6 @@ export default function GroupsScreen({ showToast }: any) {
         </TouchableOpacity>
       </View>
 
-      {!net.connected ? (
-        <View style={{ backgroundColor: '#78350f', padding: 10, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: '#f59e0b' }}>
-          <Text style={{ color: '#fbbf24', fontSize: 11, textAlign: 'right' }}>
-            ⚠️ Firebase وصل نیست — برای فعال‌سازی گروه‌ها، VPN روشن کن
-          </Text>
-        </View>
-      ) : null}
       <Text style={s.secT}>📋 گروه‌های من ({groups.length})</Text>
       {groups.length === 0 ? (
         <Text style={s.empty2}>هنوز در گروهی نیستید</Text>
@@ -313,7 +304,6 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 60, marginBottom: 12 },
   emptyTxt: { color: '#d4af37', fontSize: 14, fontWeight: 'bold', marginBottom: 6, textAlign: 'center' },
   empty2: { color: '#94a3b8', textAlign: 'center', padding: 30, fontSize: 13 },
-  emptySub: { color: '#64748b', fontSize: 11, textAlign: 'center', marginTop: 8, paddingHorizontal: 20 },
   mBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 14 },
   mBox: { backgroundColor: '#0f2438', borderRadius: 14, maxHeight: '90%', overflow: 'hidden' },
   mHead: { padding: 14, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },

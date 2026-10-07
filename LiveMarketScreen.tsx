@@ -1,93 +1,90 @@
-// LiveMarketScreen.tsx — بازار زنده صرافی
+// LiveMarketScreen.tsx — بازار عمومی صرافان
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import {
-  initNetwork, loadNetSettings, saveNetSettings, getMyNetInfo, isNetReady,
+  initNetwork, loadNetSettings, saveNetSettings, getMyNetInfo,
   sendBroadcastHawala, claimHawala, sendFXOffer, claimFXOffer,
-  sendDirectHawala, acceptDirectHawala, deliverDirectHawala, listenDirectInbox, listenDirectOutbox, getAgents,
-  listenOpenHawalas, listenFXOffers, listenMyHawalas, stopAllListeners,
-  NET_CITIES,
+  sendDirectHawala, acceptDirectHawala, deliverDirectHawala,
+  listenOpenHawalas, listenFXOffers, listenMyHawalas,
+  listenDirectInbox, listenMyGroups,
+  saveDailyRate, listenDailyRates,
+  stopAllListeners, getAgents, NET_CITIES,
 } from './lib.network';
 
 const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
-const CUR_FLAG: Record<string, string> = { AFN: '🇦🇫', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', PKR: '🇵🇰', AED: '🇦🇪', SAR: '🇸🇦', TRY: '🇹🇷', IRR: '🇮🇷', TOM: '🇮🇷' };
+const FLAG: Record<string, string> = { AFN: '🇦🇫', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', PKR: '🇵🇰', AED: '🇦🇪', SAR: '🇸🇦', TRY: '🇹🇷', IRR: '🇮🇷', TOM: '🇮🇷' };
 
 export default function LiveMarketScreen({ showToast }: any) {
-  const [net, setNet] = useState<any>({ connected: false, code: '', name: '', city: '' });
-  const [ready, setReady] = useState(false);
+  const [net, setNet] = useState<any>({ connected: false, email: '', name: '', city: '' });
   const [loading, setLoading] = useState(true);
   const [hawalas, setHawalas] = useState<any[]>([]);
   const [fxOffers, setFxOffers] = useState<any[]>([]);
   const [myHawalas, setMyHawalas] = useState<any[]>([]);
+  const [directInbox, setDirectInbox] = useState<any[]>([]);
+  const [myGroups, setMyGroups] = useState<any[]>([]);
+  const [rates, setRates] = useState<any>({});
+  const [agents, setAgents] = useState<any[]>([]);
   const [settingsModal, setSettingsModal] = useState(false);
   const [hawalaModal, setHawalaModal] = useState(false);
   const [fxModal, setFxModal] = useState(false);
+  const [directModal, setDirectModal] = useState(false);
+  const [rateModal, setRateModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ code: '', name: '', city: 'KBL', phone: '' });
+  const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
-  const [directInbox, setDirectInbox] = useState<any[]>([]);
-  const [directOutbox, setDirectOutbox] = useState<any[]>([]);
-  const [agents, setAgents] = useState<any[]>([]);
-  const [directModal, setDirectModal] = useState(false);
-  const [directForm, setDirectForm] = useState<any>({ toAgent: '', toAgentName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
+  const [directForm, setDirectForm] = useState<any>({ toEmail: '', toName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
+  const [rateForm, setRateForm] = useState<any>({ USD: '', EUR: '', AFN: '', PKR: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
     await loadNetSettings();
     const ok = await initNetwork();
-    setReady(ok);
     setNet(getMyNetInfo());
     setLoading(false);
+    return ok;
   }, []);
 
-  useEffect(() => { refresh(); return () => { stopAllListeners(); }; }, [refresh]);
+  useEffect(() => { refresh(); return () => stopAllListeners(); }, [refresh]);
 
   useEffect(() => {
-    if (!net.connected) return;
+    if (!net.connected || !net.email) return;
     listenDirectInbox(setDirectInbox);
-    listenDirectOutbox(setDirectOutbox);
-    (async () => { const list = await getAgents(); setAgents(list); })();
-    return () => { stopAllListeners(); };
-  }, [net.connected, net.code]);
+    listenMyGroups(setMyGroups);
+    listenDailyRates(setRates);
+    (async () => { setAgents(await getAgents()); })();
+  }, [net.connected, net.email]);
 
   useEffect(() => {
     if (!net.connected || !net.city) return;
     listenOpenHawalas(net.city, setHawalas);
     listenFXOffers(setFxOffers);
     listenMyHawalas(setMyHawalas);
-    return () => {};
-  }, [net.connected, net.city, net.code]);
+  }, [net.connected, net.city, net.email]);
 
   const saveSettings = async () => {
-    if (!settingsForm.code || !settingsForm.name) return showToast?.('کد و نام الزامی', true);
-    if (!/^[A-Z]{2}-[A-Z]{3}-\d{3}$/.test(settingsForm.code.toUpperCase())) {
-      return showToast?.('کد باید AF-KBL-001 باشد', true);
-    }
+    if (!settingsForm.name || !settingsForm.city) return showToast?.('نام و شهر الزامی', true);
     setSaving(true);
-    await saveNetSettings(settingsForm.code.toUpperCase(), settingsForm.name, settingsForm.city, settingsForm.phone);
+    await saveNetSettings(settingsForm.name, settingsForm.city, settingsForm.phone);
     await refresh();
     setSaving(false);
     setSettingsModal(false);
-    showToast?.('✅ تنظیمات ذخیره شد');
+    showToast?.('✅ ذخیره شد');
   };
 
   const submitHawala = async () => {
-    if (!hawalaForm.amount || !hawalaForm.beneficiaryName) return showToast?.('مبلغ و نام ذی‌نفع الزامی', true);
+    if (!hawalaForm.amount || !hawalaForm.beneficiaryName) return showToast?.('مبلغ و نام الزامی', true);
     setSaving(true);
     try {
-      const id = 'TASK-H-' + Date.now().toString(36).toUpperCase();
+      const id = 'H-' + Date.now().toString(36).toUpperCase();
       await sendBroadcastHawala({
-        id, targetCity: hawalaForm.targetCity,
-        currency: hawalaForm.currency, amount: Number(hawalaForm.amount),
-        beneficiaryName: hawalaForm.beneficiaryName,
-        beneficiaryPhone: hawalaForm.beneficiaryPhone,
-        maxFee: Number(hawalaForm.maxFee) || 2,
-        expiresAt: Date.now() + (Number(hawalaForm.expires) || 15) * 60000,
-        note: hawalaForm.note,
+        id, targetCity: hawalaForm.targetCity, currency: hawalaForm.currency,
+        amount: Number(hawalaForm.amount), beneficiaryName: hawalaForm.beneficiaryName,
+        beneficiaryPhone: hawalaForm.beneficiaryPhone, maxFee: Number(hawalaForm.maxFee) || 2,
+        expiresAt: Date.now() + (Number(hawalaForm.expires) || 15) * 60000, note: hawalaForm.note,
       });
       setHawalaModal(false);
-      showToast?.('✅ حواله به شبکه ارسال شد');
+      showToast?.('✅ حواله ارسال شد');
       setHawalaForm({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
@@ -99,200 +96,182 @@ export default function LiveMarketScreen({ showToast }: any) {
     setSaving(true);
     try {
       const id = 'FX-' + Date.now().toString(36).toUpperCase();
-      await sendFXOffer({
-        id, currency: fxForm.currency, amount: Number(fxForm.amount),
-        rateType: fxForm.rateType, rate: Number(fxForm.rate) || 0,
-        expiresAt: Date.now() + (Number(fxForm.expires) || 10) * 60000,
-        note: fxForm.note,
-      });
+      await sendFXOffer({ id, currency: fxForm.currency, amount: Number(fxForm.amount), rateType: fxForm.rateType, rate: Number(fxForm.rate) || 0, expiresAt: Date.now() + (Number(fxForm.expires) || 10) * 60000, note: fxForm.note });
       setFxModal(false);
-      showToast?.('✅ پیشنهاد فروش ثبت شد');
+      showToast?.('✅ آگهی ثبت شد');
       setFxForm({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
   };
 
   const submitDirect = async () => {
-    if (!directForm.toAgent) return showToast?.('صراف مقصد را انتخاب کن', true);
-    if (!directForm.amount || !directForm.beneficiaryName) return showToast?.('مبلغ و نام ذی‌نفع الزامی', true);
+    if (!directForm.toEmail) return showToast?.('صراف مقصد انتخاب کن', true);
+    if (!directForm.amount || !directForm.beneficiaryName) return showToast?.('مبلغ و نام الزامی', true);
     setSaving(true);
     try {
       const id = 'DH-' + Date.now().toString(36).toUpperCase();
-      await sendDirectHawala({
-        id, toAgent: directForm.toAgent,
-        currency: directForm.currency, amount: Number(directForm.amount),
-        beneficiaryName: directForm.beneficiaryName,
-        beneficiaryPhone: directForm.beneficiaryPhone,
-        commission: Number(directForm.commission) || 0,
-        note: directForm.note,
-      });
+      await sendDirectHawala({ id, toEmail: directForm.toEmail, currency: directForm.currency, amount: Number(directForm.amount), beneficiaryName: directForm.beneficiaryName, beneficiaryPhone: directForm.beneficiaryPhone, commission: Number(directForm.commission) || 0, note: directForm.note });
       setDirectModal(false);
       showToast?.('✅ حواله خصوصی ارسال شد');
-      setDirectForm({ toAgent: '', toAgentName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
+      setDirectForm({ toEmail: '', toName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
   };
 
-  const doAcceptDirect = async (id: string, from: string) => {
+  const submitRates = async () => {
+    setSaving(true);
     try {
-      await acceptDirectHawala(id, from);
-      showToast?.('✅ قبول شد');
+      for (const cur of ['USD', 'EUR', 'AFN', 'PKR']) {
+        const v = Number(rateForm[cur]);
+        if (v > 0) await saveDailyRate(cur, v);
+      }
+      setRateModal(false);
+      showToast?.('✅ نرخ‌ها ثبت شد');
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+    setSaving(false);
   };
 
-  const doDeliverDirect = async (id: string, toAgent: string) => {
-    try {
-      await deliverDirectHawala(id, toAgent);
-      showToast?.('✅ تحویل شد');
-    } catch (e: any) { showToast?.('❌ ' + e.message, true); }
-  };
-
-  const doClaimHawala = async (id: string) => {
-    const r = await claimHawala(id);
-    if (r.success) showToast?.('✅ گرفتی'); else showToast?.('⚠️ ' + r.message, true);
-  };
-
-  const doClaimFX = async (id: string) => {
-    const r = await claimFXOffer(id);
-    if (r.success) showToast?.('✅ گرفتی'); else showToast?.('⚠️ ' + r.message, true);
-  };
+  const doClaimH = async (id: string) => { const r = await claimHawala(id); showToast?.(r.success ? '✅ گرفتی' : '⚠️ ' + r.message, !r.success); };
+  const doClaimF = async (id: string) => { const r = await claimFXOffer(id); showToast?.(r.success ? '✅ گرفتی' : '⚠️ ' + r.message, !r.success); };
+  const doAcceptD = async (id: string) => { try { await acceptDirectHawala(id); showToast?.('✅ قبول شد'); } catch (e: any) { showToast?.('❌ ' + e.message, true); } };
+  const doDeliverD = async (id: string, toEmail: string) => { try { await deliverDirectHawala(id, toEmail); showToast?.('✅ تحویل شد'); } catch (e: any) { showToast?.('❌ ' + e.message, true); } };
 
   if (loading) return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
 
+  const pendingDirect = directInbox.filter((h: any) => h.status === 'pending');
+  const acceptedDirect = directInbox.filter((h: any) => h.status === 'accepted');
+
   return (
     <View>
-      {/* وضعیت شبکه */}
-      <View style={[s.statusBox, net.connected ? s.statusOn : s.statusOff]}>
+      {/* وضعیت */}
+      <View style={[s.statusBox, net.connected && net.name ? s.statusOn : s.statusOff]}>
         <View style={s.statusDot} />
         <View style={{ flex: 1 }}>
           <Text style={s.statusTitle}>
-            {net.connected ? `🟢 متصل به شبکه — ${net.name}` : '🔴 به شبکه متصل نیستید'}
+            {net.connected && net.name ? `🟢 ${net.name}` : '🔴 پروفایل شبکه را کامل کنید'}
           </Text>
-          <Text style={s.statusSub}>
-            {net.code ? `کد شما: ${net.code} | شهر: ${NET_CITIES[net.city] || net.city || '—'}` : 'برای شروع، تنظیمات شبکه را وارد کنید'}
-          </Text>
+          <Text style={s.statusSub}>{net.email || '—'} {net.city ? `| ${NET_CITIES[net.city] || net.city}` : ''}</Text>
         </View>
-        <TouchableOpacity style={s.smBtn} onPress={() => { setSettingsForm({ code: net.code || '', name: net.name || '', city: net.city || 'KBL', phone: net.phone || '' }); setSettingsModal(true); }}>
+        <TouchableOpacity style={s.smBtn} onPress={() => { setSettingsForm({ name: net.name || '', city: net.city || 'KBL', phone: net.phone || '' }); setSettingsModal(true); }}>
           <Text style={s.smBtnTxt}>⚙️</Text>
         </TouchableOpacity>
       </View>
 
       {/* دکمه‌های عملیات */}
-      {net.connected && (
-        <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 12 }}>
+      {net.connected && net.name ? (
+        <View style={{ flexDirection: 'row-reverse', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
           <TouchableOpacity style={[s.actBtn, { backgroundColor: '#f59e0b' }]} onPress={() => setHawalaModal(true)}>
-            <Text style={s.actBtnTxt}>📤 حواله جدید</Text>
+            <Text style={s.actBtnTxt}>📤 حواله عمومی</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.actBtn, { backgroundColor: '#7c3aed' }]} onPress={() => setFxModal(true)}>
             <Text style={s.actBtnTxt}>💱 فروش ارز</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={[s.actBtn, { backgroundColor: '#0891b2' }]} onPress={async () => { setAgents(await getAgents()); setDirectModal(true); }}>
+            <Text style={s.actBtnTxt}>🔒 حواله خصوصی</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.actBtn, { backgroundColor: '#059669' }]} onPress={() => setRateModal(true)}>
+            <Text style={s.actBtnTxt}>📈 نرخ روز</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {/* نرخ روز */}
+      <Text style={s.secT}>📈 نرخ روز</Text>
+      {Object.keys(rates).length === 0 ? (
+        <Text style={s.empty}>نرخی ثبت نشده</Text>
+      ) : (
+        <View style={s.rateBox}>
+          {Object.keys(rates).map((cur: string) => (
+            <View key={cur} style={s.rateItem}>
+              <Text style={s.rateLbl}>{FLAG[cur] || '💱'} {cur}</Text>
+              <Text style={s.rateVal}>{fmt(rates[cur]?.rate, 2)}</Text>
+              <Text style={s.rateBy}>{rates[cur]?.byName || '—'}</Text>
+            </View>
+          ))}
         </View>
       )}
 
-      {/* حوالات باز برای من */}
-      <Text style={s.secT}>📥 حوالات باز برای من ({hawalas.filter((h: any) => h.status === 'open').length})</Text>
+      {/* حواله‌های خصوصی */}
+      {pendingDirect.length > 0 && (
+        <>
+          <Text style={[s.secT, { color: '#0891b2' }]}>🔒 حواله خصوصی دریافتی ({pendingDirect.length})</Text>
+          {pendingDirect.map((h: any) => (
+            <View key={h.id} style={[s.card, { borderColor: '#0891b2' }]}>
+              <Text style={s.cardTitle}>🔒 {h.fromName}</Text>
+              <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
+              <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
+              <Text style={s.cardRow}>💰 کارمزد: {fmt(h.commission, 0)}</Text>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doAcceptD(h.id)}>
+                <Text style={s.btnTxt}>✅ قبول</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </>
+      )}
+
+      {acceptedDirect.length > 0 && (
+        <>
+          <Text style={[s.secT, { color: '#f59e0b' }]}>🔄 در حال انجام ({acceptedDirect.length})</Text>
+          {acceptedDirect.map((h: any) => (
+            <View key={h.id} style={[s.card, { borderColor: '#f59e0b' }]}>
+              <Text style={s.cardTitle}>🔄 {h.fromName}</Text>
+              <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
+              <Text style={s.cardRow}>👤 {h.beneficiaryName}</Text>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => doDeliverD(h.id, net.email)}>
+                <Text style={s.btnTxt}>📦 تحویل دادم</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </>
+      )}
+
+      {/* حوالات عمومی */}
+      <Text style={s.secT}>📥 حوالات عمومی برای من ({hawalas.filter((h: any) => h.status === 'open').length})</Text>
       {hawalas.filter((h: any) => h.status === 'open').length === 0 ? (
-        <Text style={s.empty}>{net.connected ? 'حواله بازی نیست' : 'ابتدا در شبکه ثبت‌نام کنید'}</Text>
+        <Text style={s.empty}>حواله‌ای نیست</Text>
       ) : hawalas.filter((h: any) => h.status === 'open').map((h: any) => {
-        const mine = h.fromCode === net.code;
+        const mine = h.fromEmail === net.email;
         return (
           <View key={h.id} style={s.card}>
-            <View style={s.cardHead}>
-              <Text style={s.cardTitle}>📤 {h.fromName}</Text>
-              <Text style={s.cardCode}>{h.id}</Text>
-            </View>
-            <Text style={s.cardAmt}>{CUR_FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
-            <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
-            <Text style={s.cardRow}>📍 {NET_CITIES[h.fromCity] || h.fromCity} → {NET_CITIES[h.targetCity] || h.targetCity}</Text>
-            <Text style={s.cardRow}>💰 کارمزد: {h.maxFee || 0}% | ⏱ {Math.max(0, Math.floor(((h.expiresAt || 0) - Date.now()) / 60000))} دقیقه</Text>
+            <Text style={s.cardTitle}>{h.fromName}</Text>
+            <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
+            <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📍 {NET_CITIES[h.targetCity] || h.targetCity}</Text>
             {!mine ? (
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimHawala(h.id)}>
-                <Text style={s.btnTxt}>⚡ قبول سریع</Text>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimH(h.id)}>
+                <Text style={s.btnTxt}>⚡ قبول</Text>
               </TouchableOpacity>
-            ) : (
-              <Text style={[s.cardRow, { color: '#f59e0b' }]}>⏳ ارسال شده — منتظر قبول</Text>
-            )}
+            ) : <Text style={[s.cardRow, { color: '#f59e0b' }]}>⏳ منتظر قبول</Text>}
           </View>
         );
       })}
 
-      {/* فروش ارز در بازار */}
+      {/* فروش ارز */}
       <Text style={s.secT}>💱 فروش ارز در بازار ({fxOffers.length})</Text>
       {fxOffers.length === 0 ? (
-        <Text style={s.empty}>{net.connected ? 'پیشنهادی نیست' : 'ابتدا در شبکه ثبت‌نام کنید'}</Text>
+        <Text style={s.empty}>آگهی نیست</Text>
       ) : fxOffers.map((f: any) => (
         <View key={f.id} style={s.card}>
-          <View style={s.cardHead}>
-            <Text style={s.cardTitle}>💱 {f.sellerName}</Text>
-            <Text style={s.cardCode}>{f.id}</Text>
-          </View>
-          <Text style={s.cardAmt}>{CUR_FLAG[f.currency] || '💱'} {fmt(f.amount)} {f.currency}</Text>
-          <Text style={s.cardRow}>💹 نرخ: {fmt(f.rate, 4)} {f.rateType === 'auction' ? '(حراج)' : ''}</Text>
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimFX(f.id)}>
-            <Text style={s.btnTxt}>💰 قبول و خرید</Text>
+          <Text style={s.cardTitle}>{f.sellerName}</Text>
+          <Text style={s.cardAmt}>{FLAG[f.currency] || '💱'} {fmt(f.amount)} {f.currency}</Text>
+          <Text style={s.cardRow}>💹 {fmt(f.rate, 4)} {f.rateType === 'auction' ? '(حراج)' : ''}</Text>
+          <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimF(f.id)}>
+            <Text style={s.btnTxt}>💰 قبول</Text>
           </TouchableOpacity>
-        </View>
-      ))}
-
-      {/* ═══ حواله‌های خصوصی (Inbox) ═══ */}
-      <Text style={s.secT}>🔒 حواله‌های خصوصی دریافتی ({directInbox.filter((h: any) => h.status === 'pending').length})</Text>
-      {directInbox.filter((h: any) => h.status === 'pending').length === 0 ? (
-        <Text style={s.empty}>حواله خصوصی جدیدی نیست</Text>
-      ) : directInbox.filter((h: any) => h.status === 'pending').map((h: any) => (
-        <View key={h.id} style={[s.card, { borderColor: '#0891b2' }]}>
-          <View style={s.cardHead}>
-            <Text style={s.cardTitle}>🔒 {h.fromName}</Text>
-            <Text style={s.cardCode}>{h.id}</Text>
-          </View>
-          <Text style={s.cardAmt}>{CUR_FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
-          <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
-          <Text style={s.cardRow}>💰 کارمزد: {fmt(h.commission, 0)} | 📍 {NET_CITIES[h.fromCity] || h.fromCity}</Text>
-          {h.note ? <Text style={s.cardRow}>📝 {h.note}</Text> : null}
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doAcceptDirect(h.id, h.fromCode)}>
-            <Text style={s.btnTxt}>✅ قبول حواله</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
-
-      {/* حواله‌های خصوصی در حال انجام */}
-      {directInbox.filter((h: any) => h.status === 'accepted').map((h: any) => (
-        <View key={h.id} style={[s.card, { borderColor: '#f59e0b' }]}>
-          <Text style={s.cardTitle}>🔄 در حال انجام — {h.fromName}</Text>
-          <Text style={s.cardAmt}>{CUR_FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
-          <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => doDeliverDirect(h.id, net.code)}>
-            <Text style={s.btnTxt}>📦 تحویل دادم</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
-
-      {/* ═══ حوالات عمومی من ═══ */}
-      <Text style={s.secT}>📋 حوالات من ({myHawalas.length})</Text>
-      {myHawalas.length === 0 ? (
-        <Text style={s.empty}>حواله‌ای ثبت نکرده‌اید</Text>
-      ) : myHawalas.map((h: any) => (
-        <View key={h.id} style={[s.card, { backgroundColor: '#0a1628' }]}>
-          <Text style={s.cardRow}>🆔 {h.id}</Text>
-          <Text style={s.cardRow}>📍 {NET_CITIES[h.targetCity] || h.targetCity} | {fmt(h.amount)} {h.currency}</Text>
-          <Text style={s.cardRow}>👤 {h.beneficiaryName}</Text>
-          <Text style={[s.cardRow, { color: h.status === 'open' ? '#f59e0b' : h.status === 'locked' ? '#059669' : '#94a3b8' }]}>
-            {h.status === 'open' ? '⏳ در انتظار' : h.status === 'locked' ? '✅ قبول شد توسط ' + (h.claimedByName || '—') : h.status}
-          </Text>
         </View>
       ))}
 
       {/* مودال تنظیمات */}
       <Modal visible={settingsModal} transparent animationType="slide" onRequestClose={() => setSettingsModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>
-          <View style={s.mHead}><Text style={s.mTitle}>⚙️ تنظیمات شبکه</Text>
+          <View style={s.mHead}><Text style={s.mTitle}>⚙️ پروفایل شبکه</Text>
             <TouchableOpacity onPress={() => setSettingsModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14 }}>
-            <Text style={s.lbl}>کد صراف (الگو: AF-KBL-001) *</Text>
-            <TextInput style={s.inp} value={settingsForm.code} onChangeText={v => setSettingsForm({ ...settingsForm, code: v.toUpperCase() })} placeholder="AF-KBL-001" placeholderTextColor="#94a3b8" autoCapitalize="characters" />
+            <Text style={s.lbl}>ایمیل (هویت شما)</Text>
+            <TextInput style={[s.inp, { backgroundColor: '#0a1628', color: '#94a3b8' }]} value={net.email} editable={false} />
             <Text style={s.lbl}>نام صرافی *</Text>
-            <TextInput style={s.inp} value={settingsForm.name} onChangeText={v => setSettingsForm({ ...settingsForm, name: v })} placeholder="نام صرافی" placeholderTextColor="#94a3b8" />
-            <Text style={s.lbl}>شهر</Text>
+            <TextInput style={s.inp} value={settingsForm.name} onChangeText={v => setSettingsForm({ ...settingsForm, name: v })} placeholder="مثلاً صرافی میزان" placeholderTextColor="#94a3b8" />
+            <Text style={s.lbl}>شهر *</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {Object.keys(NET_CITIES).map(k => (
                 <TouchableOpacity key={k} onPress={() => setSettingsForm({ ...settingsForm, city: k })} style={[s.chip, settingsForm.city === k && s.chipAct]}>
@@ -301,7 +280,7 @@ export default function LiveMarketScreen({ showToast }: any) {
               ))}
             </View>
             <Text style={s.lbl}>تلفن</Text>
-            <TextInput style={s.inp} value={settingsForm.phone} onChangeText={v => setSettingsForm({ ...settingsForm, phone: v })} keyboardType="phone-pad" placeholder="09..." placeholderTextColor="#94a3b8" />
+            <TextInput style={s.inp} value={settingsForm.phone} onChangeText={v => setSettingsForm({ ...settingsForm, phone: v })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
             <View style={s.rowBtns}>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setSettingsModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
@@ -314,10 +293,10 @@ export default function LiveMarketScreen({ showToast }: any) {
         </View></View>
       </Modal>
 
-      {/* مودال حواله جدید */}
+      {/* مودال حواله عمومی */}
       <Modal visible={hawalaModal} transparent animationType="slide" onRequestClose={() => setHawalaModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>
-          <View style={[s.mHead, { backgroundColor: '#f59e0b' }]}><Text style={s.mTitle}>📤 حواله به شبکه</Text>
+          <View style={[s.mHead, { backgroundColor: '#f59e0b' }]}><Text style={s.mTitle}>📤 حواله به شهر</Text>
             <TouchableOpacity onPress={() => setHawalaModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14 }}>
@@ -333,7 +312,7 @@ export default function LiveMarketScreen({ showToast }: any) {
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {['USD', 'AFN', 'EUR', 'PKR', 'AED'].map(c => (
                 <TouchableOpacity key={c} onPress={() => setHawalaForm({ ...hawalaForm, currency: c })} style={[s.chip, hawalaForm.currency === c && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]}>
-                  <Text style={[s.chipTxt, hawalaForm.currency === c && { color: '#fff' }]}>{CUR_FLAG[c]} {c}</Text>
+                  <Text style={[s.chipTxt, hawalaForm.currency === c && { color: '#fff' }]}>{FLAG[c]} {c}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -378,7 +357,7 @@ export default function LiveMarketScreen({ showToast }: any) {
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {['USD', 'EUR', 'PKR', 'AED', 'AFN'].map(c => (
                 <TouchableOpacity key={c} onPress={() => setFxForm({ ...fxForm, currency: c })} style={[s.chip, fxForm.currency === c && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]}>
-                  <Text style={[s.chipTxt, fxForm.currency === c && { color: '#fff' }]}>{CUR_FLAG[c]} {c}</Text>
+                  <Text style={[s.chipTxt, fxForm.currency === c && { color: '#fff' }]}>{FLAG[c]} {c}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -395,7 +374,7 @@ export default function LiveMarketScreen({ showToast }: any) {
             </View>
             {fxForm.rateType === 'fixed' && (
               <>
-                <Text style={s.lbl}>نرخ (هر واحد به افغانی) *</Text>
+                <Text style={s.lbl}>نرخ (به افغانی) *</Text>
                 <TextInput style={s.inp} value={fxForm.rate} onChangeText={v => setFxForm({ ...fxForm, rate: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="70500" placeholderTextColor="#94a3b8" />
               </>
             )}
@@ -420,16 +399,18 @@ export default function LiveMarketScreen({ showToast }: any) {
             <TouchableOpacity onPress={() => setDirectModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14 }}>
-            <Text style={s.lbl}>صراف مقصد * ({agents.length} نفر آنلاین)</Text>
+            <Text style={s.lbl}>صراف مقصد * ({agents.length} نفر)</Text>
             {agents.length === 0 ? (
-              <Text style={s.empty}>صراف دیگری در شبکه نیست</Text>
+              <Text style={s.empty}>صراف دیگری آنلاین نیست</Text>
             ) : (
-              <ScrollView style={{ maxHeight: 200, marginBottom: 8 }}>
+              <ScrollView style={{ maxHeight: 200 }}>
                 {agents.map((a: any) => (
-                  <TouchableOpacity key={a.code} onPress={() => setDirectForm({ ...directForm, toAgent: a.code, toAgentName: a.name })} style={[s.agentRow, directForm.toAgent === a.code && { backgroundColor: '#0891b2' }]}>
-                    <Text style={[s.agentName, directForm.toAgent === a.code && { color: '#fff' }]}>{a.name}</Text>
-                    <Text style={[s.agentCity, directForm.toAgent === a.code && { color: '#fff' }]}>{NET_CITIES[a.city] || a.city}</Text>
-                    <Text style={[s.agentCode, directForm.toAgent === a.code && { color: '#a7f3d0' }]}>{a.code}</Text>
+                  <TouchableOpacity key={a.email} onPress={() => setDirectForm({ ...directForm, toEmail: a.email, toName: a.name })} style={[s.agentRow, directForm.toEmail === a.email && { backgroundColor: '#0891b2' }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.agentName, directForm.toEmail === a.email && { color: '#fff' }]}>{a.name}</Text>
+                      <Text style={[s.agentEmail, directForm.toEmail === a.email && { color: '#a7f3d0' }]}>{a.email}</Text>
+                    </View>
+                    <Text style={[s.agentCity, directForm.toEmail === a.email && { color: '#fff' }]}>{NET_CITIES[a.city] || a.city}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -438,18 +419,18 @@ export default function LiveMarketScreen({ showToast }: any) {
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {['USD', 'AFN', 'EUR', 'PKR', 'AED'].map(c => (
                 <TouchableOpacity key={c} onPress={() => setDirectForm({ ...directForm, currency: c })} style={[s.chip, directForm.currency === c && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]}>
-                  <Text style={[s.chipTxt, directForm.currency === c && { color: '#fff' }]}>{CUR_FLAG[c]} {c}</Text>
+                  <Text style={[s.chipTxt, directForm.currency === c && { color: '#fff' }]}>{FLAG[c]} {c}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             <Text style={s.lbl}>مقدار *</Text>
-            <TextInput style={s.inp} value={directForm.amount} onChangeText={v => setDirectForm({ ...directForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="1000" placeholderTextColor="#94a3b8" />
+            <TextInput style={s.inp} value={directForm.amount} onChangeText={v => setDirectForm({ ...directForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>نام ذی‌نفع *</Text>
-            <TextInput style={s.inp} value={directForm.beneficiaryName} onChangeText={v => setDirectForm({ ...directForm, beneficiaryName: v })} placeholder="نام گیرنده" placeholderTextColor="#94a3b8" />
+            <TextInput style={s.inp} value={directForm.beneficiaryName} onChangeText={v => setDirectForm({ ...directForm, beneficiaryName: v })} placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>تلفن ذی‌نفع</Text>
-            <TextInput style={s.inp} value={directForm.beneficiaryPhone} onChangeText={v => setDirectForm({ ...directForm, beneficiaryPhone: v.replace(/[^\d]/g, '') })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
+            <TextInput style={s.inp} value={directForm.beneficiaryPhone} onChangeText={v => setDirectForm({ ...directForm, beneficiaryPhone: v.replace(/[^\d]/g, '') })} keyboardType="phone-pad" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>کارمزد</Text>
-            <TextInput style={s.inp} value={directForm.commission} onChangeText={v => setDirectForm({ ...directForm, commission: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="200" placeholderTextColor="#94a3b8" />
+            <TextInput style={s.inp} value={directForm.commission} onChangeText={v => setDirectForm({ ...directForm, commission: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>توضیحات</Text>
             <TextInput style={[s.inp, { minHeight: 50 }]} value={directForm.note} onChangeText={v => setDirectForm({ ...directForm, note: v })} multiline placeholderTextColor="#94a3b8" />
             <View style={s.rowBtns}>
@@ -464,35 +445,62 @@ export default function LiveMarketScreen({ showToast }: any) {
         </View></View>
       </Modal>
 
+      {/* مودال نرخ روز */}
+      <Modal visible={rateModal} transparent animationType="slide" onRequestClose={() => setRateModal(false)}>
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={[s.mHead, { backgroundColor: '#059669' }]}><Text style={s.mTitle}>📈 نرخ روز</Text>
+            <TouchableOpacity onPress={() => setRateModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 14 }}>
+            {['USD', 'EUR', 'AFN', 'PKR'].map(c => (
+              <View key={c}>
+                <Text style={s.lbl}>{FLAG[c]} {c} {rates[c]?.rate ? `(فعلی: ${fmt(rates[c].rate)})` : ''}</Text>
+                <TextInput style={s.inp} value={rateForm[c]} onChangeText={v => setRateForm({ ...rateForm, [c]: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="نرخ" placeholderTextColor="#94a3b8" />
+              </View>
+            ))}
+            <View style={s.rowBtns}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setRateModal(false)}>
+                <Text style={s.btnTxt}>انصراف</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submitRates} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>💾 ذخیره</Text>}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View></View>
+      </Modal>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  agentRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 10, borderRadius: 8, backgroundColor: '#1a2332', marginBottom: 4, borderWidth: 1, borderColor: '#334155' },
-  agentName: { color: '#fff', fontWeight: 'bold', fontSize: 12, flex: 1, textAlign: 'right' },
-  agentCity: { color: '#cbd5e1', fontSize: 11, marginLeft: 8 },
-  agentCode: { color: '#7c3aed', fontSize: 10, fontFamily: 'monospace', marginLeft: 8 },
   statusBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, marginBottom: 12, borderWidth: 1 },
   statusOn: { backgroundColor: '#065f46', borderColor: '#10b981' },
   statusOff: { backgroundColor: '#78350f', borderColor: '#f59e0b' },
   statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
   statusTitle: { color: '#fff', fontSize: 13, fontWeight: 'bold', textAlign: 'right' },
-  statusSub: { color: '#e2e8f0', fontSize: 11, marginTop: 2, textAlign: 'right' },
+  statusSub: { color: '#e2e8f0', fontSize: 10, marginTop: 2, textAlign: 'right', fontFamily: 'monospace' },
   smBtn: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 6 },
   smBtnTxt: { color: '#fff', fontSize: 14 },
-  actBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  actBtnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  actBtn: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, marginLeft: 4, marginTop: 4, flex: 1, minWidth: 100, alignItems: 'center' },
+  actBtnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
   secT: { color: '#d4af37', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginTop: 16, marginBottom: 8 },
+  rateBox: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
+  rateItem: { backgroundColor: '#0f2438', borderRadius: 8, padding: 10, minWidth: 100, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
+  rateLbl: { color: '#d4af37', fontSize: 12, fontWeight: 'bold' },
+  rateVal: { color: '#00ff88', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace', marginTop: 4 },
+  rateBy: { color: '#64748b', fontSize: 9, marginTop: 2 },
   card: { backgroundColor: '#0f2438', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
-  cardHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 },
-  cardTitle: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  cardCode: { color: '#7c3aed', fontSize: 10, fontFamily: 'monospace' },
+  cardTitle: { color: '#fff', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 4 },
   cardAmt: { color: '#00ff88', fontSize: 18, fontWeight: 'bold', textAlign: 'right', marginBottom: 6, fontFamily: 'monospace' },
   cardRow: { color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginBottom: 3 },
   empty: { color: '#94a3b8', textAlign: 'center', padding: 20, fontSize: 12 },
   btn: { paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 8 },
   btnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  agentRow: { flexDirection: 'row-reverse', alignItems: 'center', padding: 10, borderRadius: 8, backgroundColor: '#1a2332', marginBottom: 4, borderWidth: 1, borderColor: '#334155' },
+  agentName: { color: '#fff', fontWeight: 'bold', fontSize: 12, textAlign: 'right' },
+  agentEmail: { color: '#94a3b8', fontSize: 9, fontFamily: 'monospace', textAlign: 'right', marginTop: 2 },
+  agentCity: { color: '#cbd5e1', fontSize: 11, marginRight: 8 },
   mBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 14 },
   mBox: { backgroundColor: '#0f2438', borderRadius: 14, maxHeight: '90%', overflow: 'hidden' },
   mHead: { backgroundColor: '#1e3a8a', padding: 14, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },

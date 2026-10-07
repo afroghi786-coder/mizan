@@ -1,4 +1,4 @@
-// lib.network.ts — شبکه صرافی (Firebase Realtime)
+// lib.network.ts — شبکه صرافی (Firebase + ایمیل Supabase)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const FIREBASE_CONFIG = {
@@ -20,41 +20,53 @@ let _fb: any = null;
 let _db: any = null;
 let _init = false;
 let _connected = false;
-let _myCode = '';
+let _myEmail = '';
 let _myName = '';
 let _myCity = '';
 let _myPhone = '';
 let _listeners: any = {};
 
-export function getMyNetInfo() {
-  return { code: _myCode, name: _myName, city: _myCity, phone: _myPhone, connected: _connected };
+export function emailToKey(email: string): string {
+  return String(email || '').toLowerCase().trim()
+    .replace(/\./g, '_dot_')
+    .replace(/[#$\[\]]/g, '_')
+    .replace(/\//g, '_');
 }
 
-export function isNetReady() {
-  return _init && _db !== null;
+export async function getCurrentEmail(): Promise<string> {
+  try {
+    const mod: any = await import('./lib.offline');
+    const sb = mod.supabase;
+    if (sb) {
+      const { data } = await sb.auth.getSession();
+      return data?.session?.user?.email || '';
+    }
+  } catch {}
+  return '';
 }
+
+export function getMyNetInfo() {
+  return { email: _myEmail, name: _myName, city: _myCity, phone: _myPhone, connected: _connected };
+}
+export function isNetReady() { return _init && _db !== null; }
 
 export async function loadNetSettings(): Promise<void> {
   try {
-    _myCode = (await AsyncStorage.getItem('mz_net_code')) || '';
     _myName = (await AsyncStorage.getItem('mz_net_name')) || '';
     _myCity = (await AsyncStorage.getItem('mz_net_city')) || '';
     _myPhone = (await AsyncStorage.getItem('mz_net_phone')) || '';
+    _myEmail = await getCurrentEmail();
   } catch {}
 }
 
-export async function saveNetSettings(code: string, name: string, city: string, phone: string): Promise<void> {
-  _myCode = code;
-  _myName = name;
-  _myCity = city;
-  _myPhone = phone;
+export async function saveNetSettings(name: string, city: string, phone: string): Promise<void> {
+  _myName = name; _myCity = city; _myPhone = phone;
   try {
-    await AsyncStorage.setItem('mz_net_code', code);
     await AsyncStorage.setItem('mz_net_name', name);
     await AsyncStorage.setItem('mz_net_city', city);
     await AsyncStorage.setItem('mz_net_phone', phone);
   } catch {}
-  if (_db) await _registerAgent();
+  if (_db && _myEmail) await _registerAgent();
 }
 
 export async function initNetwork(): Promise<boolean> {
@@ -62,110 +74,55 @@ export async function initNetwork(): Promise<boolean> {
   try {
     const firebase = require('firebase/compat/app');
     require('firebase/compat/database');
-    if (!firebase.apps || !firebase.apps.length) {
-      firebase.initializeApp(FIREBASE_CONFIG);
-    }
+    if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     _fb = firebase;
     _db = firebase.database();
     _init = true;
-
     await loadNetSettings();
-
     _db.ref('.info/connected').on('value', (snap: any) => {
-      const wasConnected = _connected;
+      const was = _connected;
       _connected = !!snap.val();
-      if (_connected && !wasConnected) {
-        _registerAgent();
-        _registerPresence();
-      }
+      if (_connected && !was && _myEmail) { _registerAgent(); _registerPresence(); }
     });
-
-    if (_myCode) await _registerAgent();
+    if (_myEmail) await _registerAgent();
     return true;
-  } catch (e: any) {
-    console.log('[NET] init error:', e?.message);
-    return false;
-  }
+  } catch (e: any) { console.log('[NET] init:', e?.message); return false; }
 }
 
 async function _registerAgent(): Promise<void> {
-  if (!_db || !_myCode) return;
+  if (!_db || !_myEmail) return;
   try {
-    await _db.ref('agents/' + _myCode).update({
-      code: _myCode, name: _myName, city: _myCity, phone: _myPhone,
+    await _db.ref('agents/' + emailToKey(_myEmail)).update({
+      email: _myEmail, name: _myName, city: _myCity, phone: _myPhone,
       lastSeen: _fb.database.ServerValue.TIMESTAMP, online: true,
     });
   } catch {}
 }
 
 async function _registerPresence(): Promise<void> {
-  if (!_db || !_myCode) return;
+  if (!_db || !_myEmail) return;
   try {
-    const ref = _db.ref('presence/' + _myCode);
+    const ref = _db.ref('presence/' + emailToKey(_myEmail));
     await ref.onDisconnect().remove();
-    await ref.set({
-      code: _myCode, name: _myName, city: _myCity,
-      timestamp: _fb.database.ServerValue.TIMESTAMP,
-    });
+    await ref.set({ email: _myEmail, name: _myName, city: _myCity, timestamp: _fb.database.ServerValue.TIMESTAMP });
   } catch {}
 }
 
-// ═══ حواله ═══
-export async function sendBroadcastHawala(h: any): Promise<any> {
-  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
-  const ref = _db.ref('tasks/' + h.id);
-  await ref.set({
-    type: 'hawala_broadcast',
-    fromCode: _myCode, fromName: _myName, fromCity: _myCity,
-    targetCity: h.targetCity, currency: h.currency, amount: h.amount,
-    beneficiaryName: h.beneficiaryName, beneficiaryPhone: h.beneficiaryPhone || '',
-    maxFee: h.maxFee || 2, note: h.note || '',
-    status: 'open', claimedBy: null, claimedByName: null, claimedAt: null,
-    createdAt: _fb.database.ServerValue.TIMESTAMP,
-    expiresAt: h.expiresAt || Date.now() + 15 * 60 * 1000,
-  });
-  return { success: true, id: h.id };
+async function notifyAgentByEmail(targetEmail: string, notif: any): Promise<void> {
+  if (!_db || !targetEmail) return;
+  const nid = 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  try { await _db.ref('inbox/' + emailToKey(targetEmail) + '/' + nid).set({ ...notif, read: false }); } catch {}
 }
 
-export async function claimHawala(taskId: string): Promise<any> {
-  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
-  const ref = _db.ref('tasks/' + taskId);
-  return new Promise((resolve) => {
-    ref.transaction((cur: any) => {
-      if (cur === null) return;
-      if (cur.status !== 'open') return;
-      if (cur.fromCode === _myCode) return;
-      cur.status = 'locked';
-      cur.claimedBy = _myCode;
-      cur.claimedByName = _myName;
-      cur.claimedAt = Date.now();
-      return cur;
-    }, (err: any, committed: boolean, snap: any) => {
-      if (err) return resolve({ success: false, message: 'خطا: ' + err.message });
-      if (!committed) {
-        const cur = snap ? snap.val() : {};
-        return resolve({ success: false, message: 'دیر رسیدی — ' + (cur.claimedByName || 'صراف دیگری') });
-      }
-      const task = snap.val();
-      notifyAgent(task.fromCode, {
-        type: 'hawala_taken', taskId,
-        claimedBy: _myCode, claimedByName: _myName,
-        amount: task.amount, currency: task.currency, timestamp: Date.now(),
-      });
-      resolve({ success: true, task, message: '✅ حواله را گرفتی' });
-    });
-  });
-}
-
-// ═══ ارز ═══
+// ═══ بازار عمومی — فروش ارز ═══
 export async function sendFXOffer(o: any): Promise<any> {
-  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
   const ref = _db.ref('fx_offers/' + o.id);
   await ref.set({
-    sellerCode: _myCode, sellerName: _myName,
+    sellerEmail: _myEmail, sellerKey: emailToKey(_myEmail), sellerName: _myName, sellerCity: _myCity,
     currency: o.currency, amount: o.amount, rateType: o.rateType,
-    rate: o.rate || 0, bids: {}, note: o.note || '',
-    status: 'open', claimedBy: null, claimedByName: null, claimedAt: null,
+    rate: o.rate || 0, note: o.note || '',
+    status: 'open', claimedByEmail: null, claimedByName: null, claimedAt: null,
     createdAt: _fb.database.ServerValue.TIMESTAMP,
     expiresAt: o.expiresAt || Date.now() + 10 * 60 * 1000,
   });
@@ -173,37 +130,229 @@ export async function sendFXOffer(o: any): Promise<any> {
 }
 
 export async function claimFXOffer(offerId: string): Promise<any> {
-  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
   const ref = _db.ref('fx_offers/' + offerId);
   return new Promise((resolve) => {
     ref.transaction((cur: any) => {
       if (cur === null) return;
       if (cur.status !== 'open') return;
-      if (cur.sellerCode === _myCode) return;
+      if (cur.sellerEmail === _myEmail) return;
       cur.status = 'locked';
-      cur.claimedBy = _myCode;
+      cur.claimedByEmail = _myEmail;
       cur.claimedByName = _myName;
       cur.claimedAt = Date.now();
       return cur;
     }, (err: any, committed: boolean, snap: any) => {
-      if (err) return resolve({ success: false, message: 'خطا: ' + err.message });
-      if (!committed) return resolve({ success: false, message: 'دیر رسیدی' });
+      if (err) return resolve({ success: false, message: 'خطا' });
+      if (!committed) { const c = snap ? snap.val() : {}; return resolve({ success: false, message: 'دیر رسیدی — ' + (c.claimedByName || 'صراف دیگری') }); }
       const offer = snap.val();
-      notifyAgent(offer.sellerCode, {
-        type: 'fx_taken', offerId,
-        claimedBy: _myCode, claimedByName: _myName, timestamp: Date.now(),
-      });
-      resolve({ success: true, offer, message: '✅ گرفتی' });
+      notifyAgentByEmail(offer.sellerEmail, { type: 'fx_taken', offerId, claimedByName: _myName, timestamp: Date.now() });
+      resolve({ success: true, offer });
     });
   });
 }
 
-export async function notifyAgent(agentCode: string, notif: any): Promise<void> {
-  if (!_db || !agentCode) return;
-  const nid = 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  try {
-    await _db.ref('inbox/' + agentCode + '/' + nid).set({ ...notif, read: false });
-  } catch {}
+// ═══ بازار عمومی — حواله ═══
+export async function sendBroadcastHawala(h: any): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const ref = _db.ref('tasks/' + h.id);
+  await ref.set({
+    fromEmail: _myEmail, fromKey: emailToKey(_myEmail), fromName: _myName, fromCity: _myCity,
+    targetCity: h.targetCity, currency: h.currency, amount: h.amount,
+    beneficiaryName: h.beneficiaryName, beneficiaryPhone: h.beneficiaryPhone || '',
+    maxFee: h.maxFee || 2, note: h.note || '',
+    status: 'open', claimedByEmail: null, claimedByName: null, claimedAt: null,
+    createdAt: _fb.database.ServerValue.TIMESTAMP,
+    expiresAt: h.expiresAt || Date.now() + 15 * 60 * 1000,
+  });
+  return { success: true, id: h.id };
+}
+
+export async function claimHawala(taskId: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const ref = _db.ref('tasks/' + taskId);
+  return new Promise((resolve) => {
+    ref.transaction((cur: any) => {
+      if (cur === null) return;
+      if (cur.status !== 'open') return;
+      if (cur.fromEmail === _myEmail) return;
+      cur.status = 'locked';
+      cur.claimedByEmail = _myEmail;
+      cur.claimedByName = _myName;
+      cur.claimedAt = Date.now();
+      return cur;
+    }, (err: any, committed: boolean, snap: any) => {
+      if (err) return resolve({ success: false, message: 'خطا' });
+      if (!committed) { const c = snap ? snap.val() : {}; return resolve({ success: false, message: 'دیر رسیدی — ' + (c.claimedByName || 'صرافی دیگر') }); }
+      const task = snap.val();
+      notifyAgentByEmail(task.fromEmail, { type: 'hawala_taken', taskId, claimedByName: _myName, timestamp: Date.now() });
+      resolve({ success: true, task });
+    });
+  });
+}
+
+// ═══ حواله خصوصی — به ایمیل خاص ═══
+export async function sendDirectHawala(h: any): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  if (!h.toEmail) throw new Error('صراف مقصد انتخاب نشده');
+  const ref = _db.ref('direct_hawalas/' + emailToKey(h.toEmail) + '/' + h.id);
+  await ref.set({
+    fromEmail: _myEmail, fromKey: emailToKey(_myEmail), fromName: _myName, fromCity: _myCity,
+    toEmail: h.toEmail, toKey: emailToKey(h.toEmail),
+    currency: h.currency, amount: h.amount,
+    beneficiaryName: h.beneficiaryName, beneficiaryPhone: h.beneficiaryPhone || '',
+    commission: h.commission || 0, note: h.note || '',
+    status: 'pending', acceptedByName: null, acceptedAt: null, deliveredAt: null,
+    createdAt: _fb.database.ServerValue.TIMESTAMP,
+  });
+  notifyAgentByEmail(h.toEmail, { type: 'direct_hawala', hawalaId: h.id, fromEmail: _myEmail, fromName: _myName, amount: h.amount, currency: h.currency, timestamp: Date.now() });
+  return { success: true, id: h.id };
+}
+
+export async function acceptDirectHawala(hawalaId: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const ref = _db.ref('direct_hawalas/' + emailToKey(_myEmail) + '/' + hawalaId);
+  const snap = await ref.once('value');
+  const v = snap.val();
+  if (!v) throw new Error('حواله پیدا نشد');
+  if (v.status !== 'pending') throw new Error('قبلاً قبول شده');
+  await ref.update({ status: 'accepted', acceptedByName: _myName, acceptedAt: Date.now() });
+  notifyAgentByEmail(v.fromEmail, { type: 'direct_hawala_accepted', hawalaId, acceptedByName: _myName, timestamp: Date.now() });
+  return { success: true };
+}
+
+export async function deliverDirectHawala(hawalaId: string, toEmail: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const ref = _db.ref('direct_hawalas/' + emailToKey(toEmail) + '/' + hawalaId);
+  await ref.update({ status: 'delivered', deliveredAt: Date.now() });
+  const snap = await ref.once('value');
+  const v = snap.val();
+  if (v) notifyAgentByEmail(v.fromEmail, { type: 'direct_hawala_delivered', hawalaId, timestamp: Date.now() });
+  return { success: true };
+}
+
+// ═══ گروه‌های خصوصی ═══
+export async function createGroup(name: string, city: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  if (!name || name.length < 3) throw new Error('نام حداقل ۳ کاراکتر');
+  const groupId = 'grp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+  const inviteCode = 'INV-' + Array.from({ length: 8 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+  const now = Date.now();
+  const updates: any = {};
+  updates['groups/' + groupId + '/meta'] = { name, ownerEmail: _myEmail, ownerKey: emailToKey(_myEmail), ownerName: _myName, city, inviteCode, createdAt: now, memberCount: 1, status: 'active' };
+  updates['groups/' + groupId + '/members/' + emailToKey(_myEmail)] = { email: _myEmail, name: _myName, role: 'owner', joinedAt: now };
+  updates['agents/' + emailToKey(_myEmail) + '/groups/' + groupId] = { role: 'owner', joinedAt: now };
+  await _db.ref().update(updates);
+  return { success: true, groupId, inviteCode };
+}
+
+export async function inviteToGroupByEmail(groupId: string, targetEmail: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const em = String(targetEmail || '').toLowerCase().trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) throw new Error('ایمیل نامعتبر');
+  if (em === _myEmail) throw new Error('خودتان عضو هستید');
+  const metaSnap = await _db.ref('groups/' + groupId + '/meta').once('value');
+  const meta = metaSnap.val();
+  if (!meta) throw new Error('گروه پیدا نشد');
+  if (meta.ownerEmail !== _myEmail) throw new Error('فقط مالک می‌تواند دعوت کند');
+  const memberSnap = await _db.ref('groups/' + groupId + '/members/' + emailToKey(em)).once('value');
+  if (memberSnap.exists()) throw new Error('قبلاً عضو است');
+  // پیدا کردن نام از agents
+  const agentSnap = await _db.ref('agents/' + emailToKey(em)).once('value');
+  const agent = agentSnap.val() || {};
+  const name = agent.name || em.split('@')[0];
+  const now = Date.now();
+  const updates: any = {};
+  updates['groups/' + groupId + '/members/' + emailToKey(em)] = { email: em, name, role: 'member', joinedAt: now };
+  updates['agents/' + emailToKey(em) + '/groups/' + groupId] = { role: 'member', joinedAt: now };
+  updates['groups/' + groupId + '/meta/memberCount'] = (meta.memberCount || 1) + 1;
+  await _db.ref().update(updates);
+  notifyAgentByEmail(em, { type: 'group_invite', groupId, groupName: meta.name, fromEmail: _myEmail, fromName: _myName, timestamp: now });
+  return { success: true };
+}
+
+export async function joinGroupByCode(inviteCode: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const code = String(inviteCode || '').trim().toUpperCase();
+  if (!/^INV-[A-Z0-9]{8}$/.test(code)) throw new Error('کد نامعتبر');
+  const snap = await _db.ref('groups').once('value');
+  let foundId = '', found: any = null;
+  snap.forEach((c: any) => {
+    const v = c.val();
+    if (v && v.meta && v.meta.inviteCode === code && v.meta.status === 'active') { foundId = c.key; found = v; }
+  });
+  if (!foundId) throw new Error('گروهی با این کد پیدا نشد');
+  if (found.members && found.members[emailToKey(_myEmail)]) throw new Error('قبلاً عضو هستید');
+  const now = Date.now();
+  const updates: any = {};
+  updates['groups/' + foundId + '/members/' + emailToKey(_myEmail)] = { email: _myEmail, name: _myName, role: 'member', joinedAt: now };
+  updates['agents/' + emailToKey(_myEmail) + '/groups/' + foundId] = { role: 'member', joinedAt: now };
+  updates['groups/' + foundId + '/meta/memberCount'] = (found.meta.memberCount || 1) + 1;
+  await _db.ref().update(updates);
+  notifyAgentByEmail(found.meta.ownerEmail, { type: 'group_join', groupId: foundId, groupName: found.meta.name, fromName: _myName, timestamp: now });
+  return { success: true, groupId: foundId };
+}
+
+export async function leaveGroup(groupId: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const metaSnap = await _db.ref('groups/' + groupId + '/meta').once('value');
+  const meta = metaSnap.val();
+  if (!meta) throw new Error('گروه پیدا نشد');
+  if (meta.ownerEmail === _myEmail) throw new Error('مالک نمی‌تواند خارج شود');
+  const updates: any = {};
+  updates['groups/' + groupId + '/members/' + emailToKey(_myEmail)] = null;
+  updates['agents/' + emailToKey(_myEmail) + '/groups/' + groupId] = null;
+  await _db.ref().update(updates);
+  return { success: true };
+}
+
+export async function kickGroupMember(groupId: string, memberEmail: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const metaSnap = await _db.ref('groups/' + groupId + '/meta').once('value');
+  const meta = metaSnap.val();
+  if (!meta) throw new Error('گروه پیدا نشد');
+  if (meta.ownerEmail !== _myEmail) throw new Error('فقط مالک');
+  const updates: any = {};
+  updates['groups/' + groupId + '/members/' + emailToKey(memberEmail)] = null;
+  updates['agents/' + emailToKey(memberEmail) + '/groups/' + groupId] = null;
+  await _db.ref().update(updates);
+  notifyAgentByEmail(memberEmail, { type: 'group_kick', groupId, groupName: meta.name, timestamp: Date.now() });
+  return { success: true };
+}
+
+export async function deleteGroup(groupId: string): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const metaSnap = await _db.ref('groups/' + groupId + '/meta').once('value');
+  const meta = metaSnap.val();
+  if (!meta) throw new Error('گروه پیدا نشد');
+  if (meta.ownerEmail !== _myEmail) throw new Error('فقط مالک');
+  const membersSnap = await _db.ref('groups/' + groupId + '/members').once('value');
+  const updates: any = {};
+  updates['groups/' + groupId] = null;
+  membersSnap.forEach((c: any) => { updates['agents/' + c.key + '/groups/' + groupId] = null; });
+  await _db.ref().update(updates);
+  return { success: true };
+}
+
+// ═══ نرخ روزانه ═══
+export async function saveDailyRate(currency: string, rate: number): Promise<any> {
+  if (!_db || !_myEmail) throw new Error('متصل نیست');
+  const d = new Date();
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  await _db.ref('daily_rates/' + dateStr + '/' + currency).set({
+    rate, byEmail: _myEmail, byName: _myName, at: Date.now(),
+  });
+  return { success: true };
+}
+
+export function listenDailyRates(cb: (rates: any) => void): void {
+  if (!_db) return;
+  stopListener('rates');
+  const d = new Date();
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const ref = _db.ref('daily_rates/' + dateStr);
+  const cbFn = ref.on('value', (snap: any) => cb(snap.val() || {}));
+  _listeners.rates = { ref, event: 'value', cb: cbFn };
 }
 
 // ═══ Listeners ═══
@@ -215,9 +364,7 @@ export function listenOpenHawalas(city: string, cb: (list: any[]) => void): void
     const list: any[] = [];
     snap.forEach((child: any) => {
       const v = child.val();
-      if (v && (v.status === 'open' || v.claimedBy === _myCode)) {
-        list.push({ id: child.key, ...v });
-      }
+      if (v && (v.status === 'open' || v.claimedByEmail === _myEmail)) list.push({ id: child.key, ...v });
     });
     list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     cb(list);
@@ -233,7 +380,7 @@ export function listenFXOffers(cb: (list: any[]) => void): void {
     const list: any[] = [];
     snap.forEach((child: any) => {
       const v = child.val();
-      if (v && v.sellerCode !== _myCode) list.push({ id: child.key, ...v });
+      if (v && v.sellerEmail !== _myEmail) list.push({ id: child.key, ...v });
     });
     list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     cb(list);
@@ -242,19 +389,61 @@ export function listenFXOffers(cb: (list: any[]) => void): void {
 }
 
 export function listenMyHawalas(cb: (list: any[]) => void): void {
-  if (!_db || !_myCode) return;
+  if (!_db || !_myEmail) return;
   stopListener('myHawalas');
-  const ref = _db.ref('tasks').orderByChild('fromCode').equalTo(_myCode);
+  const ref = _db.ref('tasks').orderByChild('fromEmail').equalTo(_myEmail);
   const cbFn = ref.on('value', (snap: any) => {
     const list: any[] = [];
-    snap.forEach((child: any) => {
-      const v = child.val();
-      if (v) list.push({ id: child.key, ...v });
-    });
+    snap.forEach((child: any) => { const v = child.val(); if (v) list.push({ id: child.key, ...v }); });
     list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     cb(list);
   });
   _listeners.myHawalas = { ref, event: 'value', cb: cbFn };
+}
+
+export function listenDirectInbox(cb: (list: any[]) => void): void {
+  if (!_db || !_myEmail) return;
+  stopListener('directInbox');
+  const ref = _db.ref('direct_hawalas/' + emailToKey(_myEmail));
+  const cbFn = ref.on('value', (snap: any) => {
+    const list: any[] = [];
+    snap.forEach((child: any) => { const v = child.val(); if (v) list.push({ id: child.key, ...v }); });
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    cb(list);
+  });
+  _listeners.directInbox = { ref, event: 'value', cb: cbFn };
+}
+
+export function listenMyGroups(cb: (list: any[]) => void): void {
+  if (!_db || !_myEmail) return;
+  stopListener('myGroups');
+  const ref = _db.ref('agents/' + emailToKey(_myEmail) + '/groups');
+  const cbFn = ref.on('value', async (snap: any) => {
+    const ids: any[] = [];
+    snap.forEach((c: any) => ids.push({ id: c.key, ...c.val() }));
+    if (!ids.length) return cb([]);
+    const metas = await Promise.all(ids.map((i: any) => _db.ref('groups/' + i.id + '/meta').once('value')));
+    const result: any[] = [];
+    metas.forEach((m: any, i: number) => { const v = m.val(); if (v) result.push({ id: ids[i].id, role: ids[i].role, ...v }); });
+    result.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    cb(result);
+  });
+  _listeners.myGroups = { ref, event: 'value', cb: cbFn };
+}
+
+export async function getGroupDetails(groupId: string): Promise<any> {
+  if (!_db) return null;
+  try {
+    const [mS, memS] = await Promise.all([
+      _db.ref('groups/' + groupId + '/meta').once('value'),
+      _db.ref('groups/' + groupId + '/members').once('value'),
+    ]);
+    const meta = mS.val();
+    const members: any[] = [];
+    memS.forEach((c: any) => { const v = c.val(); if (v) members.push({ key: c.key, ...v }); });
+    members.sort((a: any, b: any) => (a.role === 'owner' ? -1 : (b.role === 'owner' ? 1 : (a.joinedAt || 0) - (b.joinedAt || 0))));
+    return { meta, members };
+  } catch { return null; }
 }
 
 export async function getAgents(): Promise<any[]> {
@@ -264,7 +453,7 @@ export async function getAgents(): Promise<any[]> {
     const list: any[] = [];
     snap.forEach((child: any) => {
       const v = child.val();
-      if (v && v.code && v.code !== _myCode) list.push(v);
+      if (v && v.email && v.email !== _myEmail) list.push(v);
     });
     return list.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
   } catch { return []; }
@@ -272,110 +461,10 @@ export async function getAgents(): Promise<any[]> {
 
 export function stopListener(key: string): void {
   const l = _listeners[key];
-  if (l && l.ref) {
-    try { l.ref.off(l.event, l.cb); } catch {}
-  }
+  if (l && l.ref) { try { l.ref.off(l.event, l.cb); } catch {} }
   delete _listeners[key];
 }
 
 export function stopAllListeners(): void {
   Object.keys(_listeners).forEach(stopListener);
-}
-
-
-// ═══ حواله مستقیم (خصوصی) به یک صراف ═══
-export async function sendDirectHawala(h: any): Promise<any> {
-  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
-  if (!h.toAgent) throw new Error('صراف مقصد انتخاب نشده');
-  const ref = _db.ref('direct_hawalas/' + h.toAgent + '/' + h.id);
-  await ref.set({
-    type: 'hawala_direct',
-    fromCode: _myCode, fromName: _myName, fromCity: _myCity,
-    toAgent: h.toAgent,
-    currency: h.currency, amount: h.amount,
-    beneficiaryName: h.beneficiaryName, beneficiaryPhone: h.beneficiaryPhone || '',
-    commission: h.commission || 0,
-    note: h.note || '',
-    status: 'pending',
-    acceptedBy: null, acceptedByName: null, acceptedAt: null,
-    deliveredAt: null,
-    createdAt: _fb.database.ServerValue.TIMESTAMP,
-  });
-  notifyAgent(h.toAgent, {
-    type: 'direct_hawala', hawalaId: h.id,
-    fromCode: _myCode, fromName: _myName,
-    amount: h.amount, currency: h.currency,
-    timestamp: Date.now(),
-  });
-  return { success: true, id: h.id };
-}
-
-export async function acceptDirectHawala(hawalaId: string, fromCode: string): Promise<any> {
-  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
-  const ref = _db.ref('direct_hawalas/' + _myCode + '/' + hawalaId);
-  const snap = await ref.once('value');
-  const v = snap.val();
-  if (!v) throw new Error('حواله پیدا نشد');
-  if (v.status !== 'pending') throw new Error('قبلاً قبول شده');
-  await ref.update({
-    status: 'accepted',
-    acceptedBy: _myCode, acceptedByName: _myName, acceptedAt: Date.now(),
-  });
-  // اطلاع به فرستنده
-  notifyAgent(v.fromCode, {
-    type: 'direct_hawala_accepted', hawalaId,
-    acceptedBy: _myCode, acceptedByName: _myName, timestamp: Date.now(),
-  });
-  return { success: true };
-}
-
-export async function deliverDirectHawala(hawalaId: string, toAgent: string): Promise<any> {
-  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
-  const ref = _db.ref('direct_hawalas/' + toAgent + '/' + hawalaId);
-  await ref.update({
-    status: 'delivered',
-    deliveredAt: Date.now(),
-  });
-  const snap = await ref.once('value');
-  const v = snap.val();
-  if (v) {
-    notifyAgent(v.fromCode, {
-      type: 'direct_hawala_delivered', hawalaId, timestamp: Date.now(),
-    });
-  }
-  return { success: true };
-}
-
-export function listenDirectInbox(cb: (list: any[]) => void): void {
-  if (!_db || !_myCode) return;
-  stopListener('directInbox');
-  const ref = _db.ref('direct_hawalas/' + _myCode);
-  const cbFn = ref.on('value', (snap: any) => {
-    const list: any[] = [];
-    snap.forEach((child: any) => {
-      const v = child.val();
-      if (v) list.push({ id: child.key, ...v });
-    });
-    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    cb(list);
-  });
-  _listeners.directInbox = { ref, event: 'value', cb: cbFn };
-}
-
-export function listenDirectOutbox(cb: (list: any[]) => void): void {
-  if (!_db || !_myCode) return;
-  stopListener('directOutbox');
-  const ref = _db.ref('direct_hawalas').orderByChild('fromCode').equalTo(_myCode);
-  const cbFn = ref.on('value', (snap: any) => {
-    const list: any[] = [];
-    snap.forEach((agentChild: any) => {
-      agentChild.forEach((hChild: any) => {
-        const v = hChild.val();
-        if (v && v.fromCode === _myCode) list.push({ id: hChild.key, ...v });
-      });
-    });
-    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    cb(list);
-  });
-  _listeners.directOutbox = { ref, event: 'value', cb: cbFn };
 }

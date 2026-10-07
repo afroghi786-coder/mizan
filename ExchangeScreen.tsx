@@ -667,6 +667,8 @@ export default function ExchangeScreen({ showToast }: any) {
             { k: 'partners', l: '🏢 خریداران' },
             { k: 'liveMarket', l: '📡 بازار زنده' },
             { k: 'myGroups', l: '🌐 شبکه‌های من' },
+            { k: 'liveMarket', l: '📡 بازار زنده' },
+            { k: 'myGroups', l: '🌐 شبکه‌های من' },
           ].map(x => (
             <TouchableOpacity key={x.k} onPress={() => { if (x.k === 'form' && sub !== 'form') { openNew(); return; } setSub(x.k as any); }} style={[s.sub, sub === x.k && s.subActive]}>
               <Text style={[s.subTxt, sub === x.k && s.subTxtActive]}>{x.l}</Text>

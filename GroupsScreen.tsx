@@ -1,135 +1,111 @@
-// GroupsScreen.tsx — شبکه‌های خصوصی صرافان
+// GroupsScreen.tsx — گروه‌های خصوصی صرافان
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
-import { initNetwork, loadNetSettings, getMyNetInfo, NET_CITIES } from './lib.network';
+import {
+  initNetwork, loadNetSettings, getMyNetInfo,
+  createGroup, inviteToGroupByEmail, joinGroupByCode, leaveGroup,
+  kickGroupMember, deleteGroup, getGroupDetails, listenMyGroups, NET_CITIES,
+} from './lib.network';
 
 const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
 
 export default function GroupsScreen({ showToast }: any) {
-  const [net, setNet] = useState<any>({ connected: false, code: '', name: '' });
+  const [net, setNet] = useState<any>({ connected: false, email: '', name: '' });
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<any[]>([]);
   const [createModal, setCreateModal] = useState(false);
   const [joinModal, setJoinModal] = useState(false);
   const [detailModal, setDetailModal] = useState<any>(null);
+  const [inviteModal, setInviteModal] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [createForm, setCreateForm] = useState({ name: '', city: 'KBL' });
   const [joinCode, setJoinCode] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
     await loadNetSettings();
     await initNetwork();
-    const info = getMyNetInfo();
-    setNet(info);
-    if (info.connected) await loadMyGroups();
+    setNet(getMyNetInfo());
     setLoading(false);
   }, []);
 
-  const loadMyGroups = async () => {
-    try {
-      const firebase = require('firebase/compat/app');
-      const db = firebase.database();
-      const myCode = getMyNetInfo().code;
-      const snap = await db.ref('agents/' + myCode + '/groups').once('value');
-      const links: any[] = [];
-      snap.forEach((c: any) => links.push({ id: c.key, ...c.val() }));
-      const promises = links.map((l: any) => db.ref('groups/' + l.id + '/meta').once('value'));
-      const metas = await Promise.all(promises);
-      const result: any[] = [];
-      metas.forEach((m: any, i: number) => {
-        const v = m.val();
-        if (v) result.push({ id: links[i].id, role: links[i].role, ...v });
-      });
-      result.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      setGroups(result);
-    } catch (e: any) { console.log('load groups:', e); }
-  };
-
   useEffect(() => { refresh(); }, [refresh]);
+
+  useEffect(() => {
+    if (!net.connected || !net.email) return;
+    listenMyGroups(setGroups);
+  }, [net.connected, net.email]);
 
   const submitCreate = async () => {
     if (!createForm.name || createForm.name.length < 3) return showToast?.('نام حداقل ۳ کاراکتر', true);
     setSaving(true);
     try {
-      const firebase = require('firebase/compat/app');
-      const db = firebase.database();
-      const myCode = getMyNetInfo().code;
-      const myName = getMyNetInfo().name;
-      const groupId = 'grp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-      const inviteCode = 'INV-' + Array.from({ length: 8 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
-      const now = Date.now();
-      const updates: any = {};
-      updates['groups/' + groupId + '/meta'] = {
-        name: createForm.name, ownerCode: myCode, ownerName: myName,
-        city: createForm.city, inviteCode, createdAt: now, memberCount: 1, status: 'active',
-      };
-      updates['groups/' + groupId + '/members/' + myCode] = { name: myName, joinedAt: now, role: 'owner' };
-      updates['agents/' + myCode + '/groups/' + groupId] = { role: 'owner', joinedAt: now };
-      await db.ref().update(updates);
-      showToast?.('✅ گروه ساخته شد — کد: ' + inviteCode);
+      const r = await createGroup(createForm.name, createForm.city);
+      showToast?.('✅ گروه ساخته شد — کد دعوت: ' + r.inviteCode);
       setCreateModal(false);
       setCreateForm({ name: '', city: 'KBL' });
-      await loadMyGroups();
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
   };
 
   const submitJoin = async () => {
-    const code = joinCode.trim().toUpperCase();
-    if (!/^INV-[A-Z0-9]{8}$/.test(code)) return showToast?.('کد نامعتبر', true);
     setSaving(true);
     try {
-      const firebase = require('firebase/compat/app');
-      const db = firebase.database();
-      const myCode = getMyNetInfo().code;
-      const myName = getMyNetInfo().name;
-      const snap = await db.ref('groups').once('value');
-      let foundId = '', found: any = null;
-      snap.forEach((c: any) => {
-        const v = c.val();
-        if (v && v.meta && v.meta.inviteCode === code && v.meta.status === 'active') { foundId = c.key; found = v; }
-      });
-      if (!foundId) throw new Error('گروهی با این کد یافت نشد');
-      if (found.members && found.members[myCode]) throw new Error('قبلاً عضو هستید');
-      const now = Date.now();
-      const updates: any = {};
-      updates['groups/' + foundId + '/members/' + myCode] = { name: myName, joinedAt: now, role: 'member' };
-      updates['agents/' + myCode + '/groups/' + foundId] = { role: 'member', joinedAt: now };
-      updates['groups/' + foundId + '/meta/memberCount'] = (found.meta.memberCount || 1) + 1;
-      await db.ref().update(updates);
+      await joinGroupByCode(joinCode);
       showToast?.('✅ پیوستید');
       setJoinModal(false);
       setJoinCode('');
-      await loadMyGroups();
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
   };
 
-  const viewDetail = async (groupId: string) => {
+  const submitInvite = async () => {
+    if (!inviteModal) return;
+    setSaving(true);
     try {
-      const firebase = require('firebase/compat/app');
-      const db = firebase.database();
-      const [mSnap, memSnap] = await Promise.all([
-        db.ref('groups/' + groupId + '/meta').once('value'),
-        db.ref('groups/' + groupId + '/members').once('value'),
-      ]);
-      const meta = mSnap.val();
-      const members: any[] = [];
-      memSnap.forEach((c: any) => { const v = c.val(); if (v) members.push({ code: c.key, ...v }); });
-      members.sort((a, b) => (a.role === 'owner' ? -1 : (b.role === 'owner' ? 1 : 0)));
-      setDetailModal({ id: groupId, meta, members });
+      await inviteToGroupByEmail(inviteModal.id, inviteEmail);
+      showToast?.('✅ دعوت ارسال شد');
+      setInviteModal(null);
+      setInviteEmail('');
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+    setSaving(false);
+  };
+
+  const viewDetail = async (gid: string) => {
+    try {
+      const d = await getGroupDetails(gid);
+      if (d) setDetailModal({ id: gid, ...d });
+    } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+  };
+
+  const doLeave = async (gid: string, gname: string) => {
+    if (typeof window !== 'undefined' && !window.confirm('از «' + gname + '» خارج می‌شوید؟')) return;
+    try { await leaveGroup(gid); showToast?.('✅ خارج شدید'); } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+  };
+
+  const doKick = async (gid: string, email: string, name: string) => {
+    if (typeof window !== 'undefined' && !window.confirm('اخراج «' + name + '»؟')) return;
+    try { await kickGroupMember(gid, email); showToast?.('✅ اخراج شد'); viewDetail(gid); } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+  };
+
+  const doDelete = async (gid: string) => {
+    if (typeof window !== 'undefined' && !window.confirm('حذف گروه؟ قابل بازگشت نیست.')) return;
+    try { await deleteGroup(gid); showToast?.('✅ حذف شد'); setDetailModal(null); } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+  };
+
+  const copyCode = (code: string) => {
+    try { if (navigator.clipboard) navigator.clipboard.writeText(code); } catch {}
+    showToast?.('✅ کپی شد');
   };
 
   if (loading) return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
 
-  if (!net.connected) {
+  if (!net.connected || !net.name) {
     return (
       <View style={s.empty}>
         <Text style={s.emptyIcon}>🌐</Text>
-        <Text style={s.emptyTxt}>ابتدا در شبکه صرافی ثبت‌نام کنید</Text>
-        <Text style={s.emptySub}>به تب «بازار زنده» بروید و تنظیمات شبکه را وارد کنید</Text>
+        <Text style={s.emptyTxt}>ابتدا در بازار زنده پروفایل خود را کامل کنید</Text>
       </View>
     );
   }
@@ -141,7 +117,7 @@ export default function GroupsScreen({ showToast }: any) {
           <Text style={s.actBtnTxt}>➕ ساخت گروه</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.actBtn, { backgroundColor: '#1e40af' }]} onPress={() => setJoinModal(true)}>
-          <Text style={s.actBtnTxt}>🔑 پیوستن</Text>
+          <Text style={s.actBtnTxt}>🔑 پیوستن با کد</Text>
         </TouchableOpacity>
       </View>
 
@@ -158,18 +134,30 @@ export default function GroupsScreen({ showToast }: any) {
           </View>
           <Text style={s.cardSub}>📍 {NET_CITIES[g.city] || g.city} | 👥 {g.memberCount || 1} عضو</Text>
           {g.role === 'owner' && (
-            <View style={s.inviteBox}>
-              <Text style={s.inviteLbl}>🔑 کد دعوت:</Text>
+            <TouchableOpacity style={s.inviteBox} onPress={() => copyCode(g.inviteCode)}>
+              <Text style={s.inviteLbl}>🔑 کد دعوت (لمس کن کپی)</Text>
               <Text style={s.inviteCode}>{g.inviteCode}</Text>
-            </View>
+            </TouchableOpacity>
           )}
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#1e40af' }]} onPress={() => viewDetail(g.id)}>
-            <Text style={s.btnTxt}>👁️ مشاهده جزئیات</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 8 }}>
+            <TouchableOpacity style={[s.btn, { backgroundColor: '#1e40af', flex: 1 }]} onPress={() => viewDetail(g.id)}>
+              <Text style={s.btnTxt}>👁️ مشاهده</Text>
+            </TouchableOpacity>
+            {g.role === 'owner' && (
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 1 }]} onPress={() => { setInviteModal(g); setInviteEmail(''); }}>
+                <Text style={s.btnTxt}>➕ دعوت</Text>
+              </TouchableOpacity>
+            )}
+            {g.role !== 'owner' && (
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#dc2626', flex: 1 }]} onPress={() => doLeave(g.id, g.name)}>
+                <Text style={s.btnTxt}>🚪 خروج</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       ))}
 
-      {/* Create Modal */}
+      {/* ساخت گروه */}
       <Modal visible={createModal} transparent animationType="slide" onRequestClose={() => setCreateModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>
           <View style={[s.mHead, { backgroundColor: '#059669' }]}>
@@ -199,7 +187,7 @@ export default function GroupsScreen({ showToast }: any) {
         </View></View>
       </Modal>
 
-      {/* Join Modal */}
+      {/* پیوستن */}
       <Modal visible={joinModal} transparent animationType="slide" onRequestClose={() => setJoinModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>
           <View style={[s.mHead, { backgroundColor: '#1e40af' }]}>
@@ -221,30 +209,73 @@ export default function GroupsScreen({ showToast }: any) {
         </View></View>
       </Modal>
 
-      {/* Detail Modal */}
+      {/* دعوت با ایمیل */}
+      <Modal visible={!!inviteModal} transparent animationType="slide" onRequestClose={() => setInviteModal(null)}>
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={[s.mHead, { backgroundColor: '#7c3aed' }]}>
+            <Text style={s.mTitle}>➕ دعوت به «{inviteModal?.name}»</Text>
+            <TouchableOpacity onPress={() => setInviteModal(null)}><Text style={s.x}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 14 }}>
+            <Text style={s.lbl}>ایمیل صراف مورد اعتماد</Text>
+            <TextInput style={s.inp} value={inviteEmail} onChangeText={setInviteEmail} placeholder="ahmed@gmail.com" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
+            <Text style={{ color: '#94a3b8', fontSize: 10, marginTop: 6, textAlign: 'right' }}>
+              💡 اگر صراف در شبکه نصب نکرده باشد، عضویتش بعداً ثبت می‌شود.
+            </Text>
+            <View style={s.rowBtns}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setInviteModal(null)}>
+                <Text style={s.btnTxt}>انصراف</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submitInvite} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>📧 دعوت</Text>}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View></View>
+      </Modal>
+
+      {/* جزئیات */}
       <Modal visible={!!detailModal} transparent animationType="slide" onRequestClose={() => setDetailModal(null)}>
         <View style={s.mBg}><View style={s.mBox}>
           <View style={[s.mHead, { backgroundColor: '#1e3a8a' }]}>
-            <Text style={s.mTitle}>👁️ جزئیات گروه</Text>
+            <Text style={s.mTitle}>👁️ {detailModal?.meta?.name}</Text>
             <TouchableOpacity onPress={() => setDetailModal(null)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           {detailModal && (
             <ScrollView style={{ padding: 14 }}>
-              <Text style={s.detailTitle}>{detailModal.meta?.name}</Text>
               <Text style={s.detailSub}>📍 {NET_CITIES[detailModal.meta?.city] || '—'} | 👑 {detailModal.meta?.ownerName}</Text>
-              <Text style={s.secT}>👥 اعضا ({detailModal.members.length})</Text>
-              {detailModal.members.map((m: any) => (
-                <View key={m.code} style={s.memberRow}>
-                  <Text style={s.memberName}>{m.name} {m.code === net.code ? '(شما)' : ''}</Text>
-                  <Text style={s.memberCode}>{m.code}</Text>
-                  <Text style={[s.role, m.role === 'owner' ? s.roleOwner : s.roleMember]}>
-                    {m.role === 'owner' ? '👑' : '👤'}
-                  </Text>
+              {detailModal.meta?.ownerEmail === net.email && (
+                <TouchableOpacity style={s.inviteBox} onPress={() => copyCode(detailModal.meta.inviteCode)}>
+                  <Text style={s.inviteLbl}>🔑 کد دعوت (لمس کن کپی)</Text>
+                  <Text style={s.inviteCode}>{detailModal.meta.inviteCode}</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={s.secT}>👥 اعضا ({detailModal.members?.length || 0})</Text>
+              {(detailModal.members || []).map((m: any) => (
+                <View key={m.key} style={s.memberRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.memberName}>{m.name} {m.email === net.email ? '(شما)' : ''}</Text>
+                    <Text style={s.memberEmail}>{m.email}</Text>
+                  </View>
+                  {m.role === 'owner' ? (
+                    <Text style={s.roleOwner}>👑</Text>
+                  ) : detailModal.meta?.ownerEmail === net.email ? (
+                    <TouchableOpacity onPress={() => doKick(detailModal.id, m.email, m.name)}>
+                      <Text style={{ fontSize: 16 }}>👢</Text>
+                    </TouchableOpacity>
+                  ) : <Text style={s.roleMember}>👤</Text>}
                 </View>
               ))}
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b' }]} onPress={() => setDetailModal(null)}>
-                <Text style={s.btnTxt}>بستن</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 16 }}>
+                <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setDetailModal(null)}>
+                  <Text style={s.btnTxt}>بستن</Text>
+                </TouchableOpacity>
+                {detailModal.meta?.ownerEmail === net.email && (
+                  <TouchableOpacity style={[s.btn, { backgroundColor: '#dc2626', flex: 1 }]} onPress={() => doDelete(detailModal.id)}>
+                    <Text style={s.btnTxt}>🗑 حذف</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </ScrollView>
           )}
         </View></View>
@@ -262,17 +293,16 @@ const s = StyleSheet.create({
   cardTitle: { color: '#fff', fontSize: 13, fontWeight: 'bold', flex: 1, textAlign: 'right' },
   cardSub: { color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginBottom: 6 },
   role: { fontSize: 10, fontWeight: 'bold', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  roleOwner: { backgroundColor: '#fef3c7', color: '#92400e' },
-  roleMember: { backgroundColor: '#dbeafe', color: '#1e40af' },
-  inviteBox: { backgroundColor: '#1a2332', padding: 8, borderRadius: 6, marginBottom: 8 },
+  roleOwner: { backgroundColor: '#fef3c7', color: '#92400e', fontSize: 10, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  roleMember: { backgroundColor: '#dbeafe', color: '#1e40af', fontSize: 10, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  inviteBox: { backgroundColor: '#1a2332', padding: 8, borderRadius: 6, marginTop: 6 },
   inviteLbl: { color: '#94a3b8', fontSize: 10, textAlign: 'right' },
-  inviteCode: { color: '#00ff88', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace', textAlign: 'center', marginTop: 2 },
+  inviteCode: { color: '#00ff88', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace', textAlign: 'center', marginTop: 2, letterSpacing: 2 },
   btn: { paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 8 },
-  btnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  btnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
   empty: { padding: 40, alignItems: 'center' },
   emptyIcon: { fontSize: 60, marginBottom: 12 },
-  emptyTxt: { color: '#d4af37', fontSize: 15, fontWeight: 'bold', marginBottom: 6 },
-  emptySub: { color: '#94a3b8', fontSize: 12, textAlign: 'center' },
+  emptyTxt: { color: '#d4af37', fontSize: 14, fontWeight: 'bold', marginBottom: 6, textAlign: 'center' },
   empty2: { color: '#94a3b8', textAlign: 'center', padding: 30, fontSize: 13 },
   mBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 14 },
   mBox: { backgroundColor: '#0f2438', borderRadius: 14, maxHeight: '90%', overflow: 'hidden' },
@@ -285,9 +315,9 @@ const s = StyleSheet.create({
   chipAct: { backgroundColor: '#059669', borderColor: '#059669' },
   chipTxt: { color: '#cbd5e1', fontSize: 11, fontWeight: 'bold' },
   rowBtns: { flexDirection: 'row-reverse', gap: 8, marginTop: 16 },
-  detailTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'right' },
-  detailSub: { color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginTop: 4 },
+  detailSub: { color: '#cbd5e1', fontSize: 12, textAlign: 'right', marginTop: 4 },
   memberRow: { backgroundColor: '#1a2332', padding: 10, borderRadius: 6, marginBottom: 6, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
-  memberName: { color: '#fff', fontSize: 12, fontWeight: 'bold', flex: 1, textAlign: 'right' },
-  memberCode: { color: '#7c3aed', fontSize: 10, fontFamily: 'monospace', marginLeft: 6 },
+  memberName: { color: '#fff', fontSize: 12, fontWeight: 'bold', textAlign: 'right' },
+  memberEmail: { color: '#94a3b8', fontSize: 10, fontFamily: 'monospace', textAlign: 'right', marginTop: 2 },
 });
+

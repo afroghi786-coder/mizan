@@ -3400,11 +3400,10 @@ const Row = ({ k, v, gold }: any) => (
 // ══════════════════════════════════════════════════════════
 //  EL — Editable Label (ویرایش‌پذیر)
 // ══════════════════════════════════════════════════════════
-function EL({ text, textKey, style, showIcon = true, children }: any) {
-  const _raw = text || textKey || '';
+function EL({ text, style, showIcon = true, children }: any) {
   const [showEdit, setShowEdit] = useState(false);
   const [tmp, setTmp] = useState('');
-  const lbl = cl(_raw);
+  const lbl = cl(text);
   const openEditor = () => { setTmp(lbl); setShowEdit(true); };
   return (
     <>
@@ -3421,7 +3420,7 @@ function EL({ text, textKey, style, showIcon = true, children }: any) {
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 }}>
             <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16 }}>
               <EL textKey="✏️ ویرایش برچسب" style={{ fontWeight: 'bold', textAlign: 'right', marginBottom: 12, color: '#0f2438', fontSize: 15 }} />
-              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 6 }}>متن پیش‌فرض: {_raw}</Text>
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 6 }}>متن پیش‌فرض: {text}</Text>
               <TextInput
                 value={tmp}
                 onChangeText={setTmp}
@@ -3431,13 +3430,13 @@ function EL({ text, textKey, style, showIcon = true, children }: any) {
               />
               <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
                 <TouchableOpacity
-                  onPress={async () => { await resetCustomLabel(_raw); setShowEdit(false); }}
+                  onPress={async () => { await resetCustomLabel(text); setShowEdit(false); }}
                   style={{ flex: 1, padding: 12, backgroundColor: '#64748b', borderRadius: 10, alignItems: 'center' }}
                 >
                   <EL textKey="↩️ پیش‌فرض" style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={async () => { await setCustomLabel(_raw, tmp); setShowEdit(false); }}
+                  onPress={async () => { await setCustomLabel(text, tmp); setShowEdit(false); }}
                   style={{ flex: 2, padding: 12, backgroundColor: '#059669', borderRadius: 10, alignItems: 'center' }}
                 >
                   <EL textKey="💾 ذخیره" style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }} />

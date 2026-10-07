@@ -33,32 +33,6 @@ const ALL_CURS = ['AFN', 'USD', 'EUR', 'GBP', 'PKR', 'AED', 'SAR', 'TRY', 'IRR',
 
 const curLabel = (c: string) => (CUR_NAME[c] ? CUR_NAME[c] + ' (' + c + ')' : c);
 
-// محاسبه آماری هر ارز
-function calcRateStats(ratesArr: any[], cur: string) {
-  const items = ratesArr.filter((r: any) => r.currency === cur);
-  if (!items.length) return null;
-  const nums = items.map((r: any) => Number(r.rate) || 0).filter(n => n > 0);
-  if (!nums.length) return null;
-  const sum = nums.reduce((a, b) => a + b, 0);
-  return {
-    avg: sum / nums.length,
-    high: Math.max(...nums),
-    low: Math.min(...nums),
-    count: nums.length,
-    last: nums[nums.length - 1],
-    byName: items[0]?.by_name || '',
-  };
-}
-
-// زمان نسبی
-function timeAgo(ts: number): string {
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return diff + ' ثانیه پیش';
-  if (diff < 3600) return Math.floor(diff / 60) + ' دقیقه پیش';
-  if (diff < 86400) return Math.floor(diff / 3600) + ' ساعت پیش';
-  return Math.floor(diff / 86400) + ' روز پیش';
-}
-
 export default function LiveMarketScreen({ showToast }: any) {
   const [net, setNet] = useState<any>({ connected: false, email: '', name: '', city: '' });
   const [loading, setLoading] = useState(true);
@@ -75,9 +49,6 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [directModal, setDirectModal] = useState(false);
   const [rateModal, setRateModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [marketStats, setMarketStats] = useState<any>({ trades: 0, hawalas: 0, agents: 0, myTrades: 0, myHawalasSent: 0, myHawalasRecv: 0, myDirectPending: 0 });
-  const [activities, setActivities] = useState<any[]>([]);
-  const [prevRates, setPrevRates] = useState<Record<string, number>>({});
   const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
@@ -102,42 +73,6 @@ export default function LiveMarketScreen({ showToast }: any) {
     setLoading(false);
     return ok;
   }, []);
-
-  // ═══ محاسبه آمار لحظه‌ای ═══
-  useEffect(() => {
-    const agents = net.connected ? 1 : 0;
-    const myH = myHawalas.length;
-    const inH = hawalas.filter((h: any) => h.claimed_by_email === net.email).length;
-    const dP = directInbox.filter((h: any) => h.status === 'pending').length;
-    setMarketStats({
-      trades: fxOffers.length + hawalas.length,
-      hawalas: hawalas.length,
-      agents: agents,
-      myTrades: fxOffers.filter((f: any) => f.seller_email === net.email).length,
-      myHawalasSent: myHawalas.length,
-      myHawalasRecv: inH,
-      myDirectPending: dP,
-    });
-  }, [fxOffers, hawalas, myHawalas, directInbox, net.connected, net.email]);
-
-  // ═══ ساخت Activity Feed ═══
-  useEffect(() => {
-    const feed: any[] = [];
-    rates.forEach((r: any) => {
-      feed.push({ type: 'rate', icon: '📈', text: `${r.by_name} نرخ ${r.currency} = ${fmt(r.rate, 2)} ${r.base_currency || 'AFN'} ثبت کرد`, ts: new Date(r.updated_at).getTime(), color: '#059669' });
-    });
-    hawalas.forEach((h: any) => {
-      feed.push({ type: 'hawala', icon: '📤', text: `${h.from_name} حواله ${fmt(h.amount)} ${h.currency} به ${NET_CITIES[h.target_city] || h.target_city}`, ts: new Date(h.created_at).getTime(), color: '#f59e0b' });
-    });
-    fxOffers.forEach((f: any) => {
-      feed.push({ type: 'fx', icon: '💱', text: `${f.seller_name} فروش ${fmt(f.amount)} ${f.currency} @ ${fmt(f.rate, 2)}`, ts: new Date(f.created_at).getTime(), color: '#7c3aed' });
-    });
-    directInbox.slice(0, 5).forEach((h: any) => {
-      feed.push({ type: 'direct', icon: '🔒', text: `${h.from_name} حواله خصوصی ${fmt(h.amount)} ${h.currency}`, ts: new Date(h.created_at).getTime(), color: '#0891b2' });
-    });
-    feed.sort((a, b) => b.ts - a.ts);
-    setActivities(feed.slice(0, 8));
-  }, [rates, hawalas, fxOffers, directInbox]);
 
   useEffect(() => { refresh(); return () => stopAllListeners(); }, [refresh]);
 
@@ -714,45 +649,6 @@ export default function LiveMarketScreen({ showToast }: any) {
 }
 
 const s = StyleSheet.create({
-  // ═══ داشبورد ═══
-  dash: { backgroundColor: '#0a1628', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 2, borderColor: '#1f3a5f', shadowColor: '#00ff88', shadowOpacity: 0.05, shadowRadius: 10 },
-  dashHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: '#d4af37', marginBottom: 12 },
-  dashTitle: { color: '#d4af37', fontSize: 16, fontWeight: 'bold', textAlign: 'right' },
-  dashSub: { color: '#94a3b8', fontSize: 11, marginTop: 4, textAlign: 'right' },
-  dashClock: { color: '#00ff88', fontSize: 20, fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: 2, textShadowColor: '#00ff88', textShadowRadius: 8, textShadowOffset: { width: 0, height: 0 } },
-  dashDate: { color: '#4ade80', fontSize: 10, marginTop: 2 },
-  tickerScroll: { marginBottom: 12 },
-  tickerItem: { backgroundColor: '#0f2438', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginLeft: 6, minWidth: 90, alignItems: 'center', borderWidth: 1, borderColor: '#1f3a5f' },
-  tickerCur: { color: '#d4af37', fontSize: 10, fontWeight: 'bold' },
-  tickerVal: { color: '#fff', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace', marginTop: 2 },
-  tickerDiff: { fontSize: 9, fontWeight: 'bold', marginTop: 2 },
-  statsBox: { backgroundColor: '#0f2438', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: '#1f3a5f' },
-  statsBoxTitle: { color: '#d4af37', fontSize: 12, fontWeight: 'bold', marginBottom: 8, textAlign: 'right' },
-  statCard: { backgroundColor: '#1a2332', borderRadius: 10, padding: 10, marginLeft: 8, minWidth: 130, borderWidth: 1, borderColor: '#334155' },
-  statCardCur: { color: '#d4af37', fontSize: 13, fontWeight: 'bold', textAlign: 'center', marginBottom: 6 },
-  statRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 3 },
-  statLbl: { color: '#94a3b8', fontSize: 10 },
-  statValAvg: { color: '#60a5fa', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' },
-  statValHigh: { color: '#10b981', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' },
-  statValLow: { color: '#ef4444', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' },
-  statCount: { color: '#64748b', fontSize: 9, textAlign: 'center', marginTop: 6, borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 4 },
-  marketStats: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 12 },
-  marketStatItem: { flex: 1, backgroundColor: '#0f2438', borderRadius: 8, paddingVertical: 10, marginLeft: 4, alignItems: 'center', borderWidth: 1, borderColor: '#1f3a5f' },
-  marketStatIcon: { fontSize: 16, marginBottom: 2 },
-  marketStatVal: { color: '#00ff88', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace' },
-  marketStatLbl: { color: '#94a3b8', fontSize: 9, marginTop: 2 },
-  myStatus: { backgroundColor: '#0f2438', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: '#7c3aed' },
-  myStatusTitle: { color: '#a78bfa', fontSize: 12, fontWeight: 'bold', marginBottom: 8, textAlign: 'right' },
-  myStatusGrid: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
-  myStatusItem: { flex: 1, alignItems: 'center' },
-  myStatusLbl: { color: '#94a3b8', fontSize: 9, marginBottom: 2 },
-  myStatusVal: { color: '#a78bfa', fontSize: 14, fontWeight: 'bold' },
-  activityBox: { backgroundColor: '#0f2438', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#1f3a5f' },
-  activityTitle: { color: '#d4af37', fontSize: 12, fontWeight: 'bold', marginBottom: 8, textAlign: 'right' },
-  activityRow: { flexDirection: 'row-reverse', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
-  activityIcon: { fontSize: 16, marginLeft: 8 },
-  activityText: { color: '#e2e8f0', fontSize: 11, textAlign: 'right' },
-  activityTime: { color: '#64748b', fontSize: 9, textAlign: 'right', marginTop: 2 },
   statusBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, marginBottom: 12, borderWidth: 1 },
   statusOn: { backgroundColor: '#065f46', borderColor: '#10b981' },
   statusOff: { backgroundColor: '#78350f', borderColor: '#f59e0b' },

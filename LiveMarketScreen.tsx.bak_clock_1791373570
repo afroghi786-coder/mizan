@@ -78,7 +78,6 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [marketStats, setMarketStats] = useState<any>({ trades: 0, hawalas: 0, agents: 0, myTrades: 0, myHawalasSent: 0, myHawalasRecv: 0, myDirectPending: 0 });
   const [activities, setActivities] = useState<any[]>([]);
   const [prevRates, setPrevRates] = useState<Record<string, number>>({});
-  const [now, setNow] = useState(new Date());
   const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
@@ -139,24 +138,6 @@ export default function LiveMarketScreen({ showToast }: any) {
     feed.sort((a, b) => b.ts - a.ts);
     setActivities(feed.slice(0, 8));
   }, [rates, hawalas, fxOffers, directInbox]);
-
-  // ⏰ تایمر ۱ ثانیه — برای ساعت
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  // 📸 ذخیره نرخ‌های قبلی — برای ▲▼
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (rates.length > 0) {
-        const snap: Record<string, number> = {};
-        rates.forEach((r: any) => { if (r.currency) snap[r.currency] = Number(r.rate) || 0; });
-        setPrevRates(prev => ({ ...prev, ...snap }));
-      }
-    }, 10000); // هر ۱۰ ثانیه
-    return () => clearInterval(t);
-  }, [rates]);
 
   useEffect(() => { refresh(); return () => stopAllListeners(); }, [refresh]);
 
@@ -303,8 +284,8 @@ export default function LiveMarketScreen({ showToast }: any) {
             <Text style={s.dashSub}>{net.name || '—'} | {NET_CITIES[net.city] || '—'}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={s.dashClock}>{String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}:{String(now.getSeconds()).padStart(2, '0')}</Text>
-            <Text style={s.dashDate}>{now.toLocaleDateString('fa-IR')}</Text>
+            <Text style={s.dashClock}>{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</Text>
+            <Text style={s.dashDate}>{new Date().toLocaleDateString('fa-IR')}</Text>
           </View>
         </View>
 

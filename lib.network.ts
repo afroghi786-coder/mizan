@@ -401,7 +401,7 @@ export async function getGroupDetails(groupId: string): Promise<any> {
 // ═══════════════════════════════════════════
 let _polls: any = {};
 
-function startPoll(key: string, fn: () => Promise<void>, intervalMs: number = 3000) {
+function startPoll(key: string, fn: () => Promise<void>, intervalMs: number = 2000) {
   stopPoll(key);
   fn();
   _polls[key] = setInterval(fn, intervalMs);

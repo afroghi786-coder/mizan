@@ -67,6 +67,70 @@ function calcRateStats(ratesArr: any[], cur: string) {
 }
 
 // زمان نسبی
+// ═══ صدای نوتیف ═══
+let _audioCtx: any = null;
+function playNotifSound() {
+  try {
+    if (typeof window === 'undefined') return;
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return;
+    if (!_audioCtx) _audioCtx = new AC();
+    const ctx = _audioCtx;
+    // پالس اول
+    const o1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    o1.connect(g1); g1.connect(ctx.destination);
+    o1.frequency.value = 880;
+    o1.type = 'sine';
+    g1.gain.setValueAtTime(0.25, ctx.currentTime);
+    g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    o1.start(ctx.currentTime);
+    o1.stop(ctx.currentTime + 0.3);
+    // پالس دوم
+    setTimeout(() => {
+      try {
+        const o2 = ctx.createOscillator();
+        const g2 = ctx.createGain();
+        o2.connect(g2); g2.connect(ctx.destination);
+        o2.frequency.value = 1320;
+        o2.type = 'sine';
+        g2.gain.setValueAtTime(0.25, ctx.currentTime);
+        g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+        o2.start(ctx.currentTime);
+        o2.stop(ctx.currentTime + 0.3);
+      } catch {}
+    }, 180);
+  } catch (e) { console.log('sound err:', e); }
+}
+
+function vibrateNotif() {
+  try {
+    if (typeof navigator !== 'undefined' && (navigator as any).vibrate) {
+      (navigator as any).vibrate([200, 100, 200]);
+    }
+  } catch {}
+}
+
+function requestBrowserNotifPermission() {
+  try {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'default') Notification.requestPermission();
+  } catch {}
+}
+
+function showBrowserNotif(title: string, body: string) {
+  try {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: 'data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 fill=%27%230f2438%27 rx=%2738%27/%3E%3Ctext x=%2796%27 y=%27140%27 font-size=%27130%27 font-family=%27serif%27 font-weight=%27bold%27 text-anchor=%27middle%27 fill=%27%23d4af37%27%3EM%3C/text%3E%3C/svg%3E',
+        tag: 'mizan-notif-' + Date.now(),
+      });
+    }
+  } catch {}
+}
+
 function timeAgo(ts: number): string {
   const diff = Math.floor((Date.now() - ts) / 1000);
   if (diff < 60) return diff + ' ثانیه پیش';
@@ -185,11 +249,55 @@ export default function LiveMarketScreen({ showToast }: any) {
 
   useEffect(() => {
     if (!net.connected || !net.email) return;
-    (async () => { setPrefs(await fetchPreferences()); })();
+    (async () => {
+      const p = await fetchPreferences();
+      setPrefs(p);
+      if (p.notify_browser) requestBrowserNotifPermission();
+    })();
     const t = setInterval(async () => { setNotifList(await fetchAllNotifications()); }, 5000);
     (async () => { setNotifList(await fetchAllNotifications()); })();
     return () => clearInterval(t);
   }, [net.connected, net.email]);
+
+  // ⭐ تشخیص نوتیف جدید و پخش صدا/لرزش/مرورگر
+  useEffect(() => {
+    if (!notifList || !notifList.length) return;
+    const newestId = Math.max(...notifList.map((n: any) => n.id || 0));
+    // بار اول، فقط مقدار رو ذخیره کن (نه صدا)
+    if (!_notifReady.current) {
+      _lastNotifId.current = newestId;
+      _notifReady.current = true;
+      return;
+    }
+    if (newestId > _lastNotifId.current) {
+      const newOnes = notifList.filter((n: any) => (n.id || 0) > _lastNotifId.current && !n.is_read);
+      _lastNotifId.current = newestId;
+      if (newOnes.length > 0) {
+        const n = newOnes[0];
+        const p = n.payload || {};
+        const texts: any = {
+          fx_taken: `✅ ${p.from_name} آگهی شما را قبول کرد`,
+          hawala_taken: `✅ ${p.from_name} حواله شما را قبول کرد`,
+          direct_hawala: `🔒 حواله خصوصی از ${p.from_name}`,
+          direct_accepted: `✅ ${p.from_name} حواله را قبول کرد`,
+          direct_delivered: `📦 ${p.from_name} حواله را تحویل داد`,
+          group_invite: `🌐 دعوت به گروه ${p.groupName || ''}`,
+          group_join: `👥 ${p.from_name} به گروه پیوست`,
+          fx_new: `💱 ${p.from_name} فروش ${fmt(p.amount)} ${p.currency}`,
+          hawala_new: `📤 ${p.from_name} حواله ${fmt(p.amount)} ${p.currency} به ${NET_CITIES[p.targetCity] || p.targetCity}`,
+        };
+        const msg = texts[n.type] || '🔔 اعلان جدید';
+        // ✅ صدا
+        if (prefs.notify_sound) playNotifSound();
+        // ✅ لرزش
+        if (prefs.notify_vibrate) vibrateNotif();
+        // ✅ نوتیف مرورگر
+        if (prefs.notify_browser) showBrowserNotif('میزان | MIZAN', msg);
+        // ✅ toast
+        showToast?.(msg);
+      }
+    }
+  }, [notifList, prefs.notify_sound, prefs.notify_vibrate, prefs.notify_browser]);
 
   useEffect(() => {
     if (!net.connected || !net.email) return;

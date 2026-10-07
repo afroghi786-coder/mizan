@@ -1,4 +1,4 @@
-// lib.network.ts — شبکه صرافی (Supabase + Notifications)
+// lib.network.ts — شبکه صرافی (Supabase Realtime)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const NET_CITIES: Record<string, string> = {
@@ -12,7 +12,7 @@ let _myEmail = '';
 let _myName = '';
 let _myCity = '';
 let _myPhone = '';
-let _polls: any = {};
+let _channels: any = {};
 
 export function emailToKey(email: string): string {
   return String(email || '').toLowerCase().trim();
@@ -30,12 +30,18 @@ async function getSB(): Promise<any> {
 export async function getCurrentEmail(): Promise<string> {
   try {
     const sb = await getSB();
-    if (sb) { const { data } = await sb.auth.getSession(); return data?.session?.user?.email || ''; }
+    if (sb) {
+      const { data } = await sb.auth.getSession();
+      return data?.session?.user?.email || '';
+    }
   } catch {}
   return '';
 }
 
-export function getMyNetInfo() { return { email: _myEmail, name: _myName, city: _myCity, phone: _myPhone, connected: _connected }; }
+export function getMyNetInfo() {
+  return { email: _myEmail, name: _myName, city: _myCity, phone: _myPhone, connected: _connected };
+}
+
 export function isNetReady() { return _sb !== null && _connected; }
 
 export async function loadNetSettings(): Promise<void> {
@@ -63,8 +69,14 @@ export async function initNetwork(): Promise<boolean> {
   if (!sb) return false;
   await loadNetSettings();
   if (!_myEmail) return false;
-  try { await _registerAgent(); _connected = true; return true; }
-  catch (e: any) { console.log('[NET] init:', e?.message); return false; }
+  try {
+    await _registerAgent();
+    _connected = true;
+    return true;
+  } catch (e: any) {
+    console.log('[NET] init:', e?.message);
+    return false;
+  }
 }
 
 async function _registerAgent(): Promise<void> {
@@ -75,40 +87,32 @@ async function _registerAgent(): Promise<void> {
       city: _myCity || '', phone: _myPhone || '', online: true,
       last_seen: new Date().toISOString(),
     }, { onConflict: 'email' });
-  } catch (e: any) { console.log('register:', e?.message); }
+  } catch (e: any) { console.log('register agent:', e?.message); }
 }
 
-// ═══════════════════════════════════════════════════════
-//  نوتیفیکیشن داخلی
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  نوتیفیکیشن (داخلی)
+// ═══════════════════════════════════════════
 async function notify(toEmail: string, type: string, payload: any = {}): Promise<void> {
   if (!_sb || !toEmail) return;
-  try { await _sb.from('net_notifications').insert({ to_email: toEmail, type, payload: payload || {} }); } catch {}
-}
-
-export async function fetchNotifications(): Promise<any[]> {
-  if (!_sb || !_myEmail) return [];
   try {
-    const { data } = await _sb.from('net_notifications').select('*').eq('to_email', _myEmail).eq('is_read', false).order('created_at', { ascending: false }).limit(20);
-    return data || [];
-  } catch { return []; }
+    await _sb.from('net_notifications').insert({
+      to_email: toEmail, type, payload: payload || {},
+    });
+  } catch {}
 }
 
-export async function markNotificationRead(id: number): Promise<void> {
-  if (!_sb) return;
-  try { await _sb.from('net_notifications').update({ is_read: true }).eq('id', id); } catch {}
-}
-
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  بازار آزاد — حواله عمومی
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
 export async function sendBroadcastHawala(h: any): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const { error } = await _sb.from('net_hawalas').insert({
     id: h.id, from_email: _myEmail, from_name: _myName, from_city: _myCity,
     target_city: h.targetCity, currency: h.currency, amount: h.amount,
     beneficiary_name: h.beneficiaryName, beneficiary_phone: h.beneficiaryPhone || '',
-    max_fee: h.maxFee || 2, note: h.note || '', status: 'open',
+    max_fee: h.maxFee || 2, note: h.note || '',
+    status: 'open',
     expires_at: new Date(h.expiresAt || Date.now() + 15 * 60000).toISOString(),
   });
   if (error) throw new Error(error.message);
@@ -116,29 +120,30 @@ export async function sendBroadcastHawala(h: any): Promise<any> {
 }
 
 export async function claimHawala(taskId: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
+  // خواندن + قفل کردن اتمی
   const { data: cur } = await _sb.from('net_hawalas').select('*').eq('id', taskId).single();
-  if (!cur) return { success: false, message: 'پیدا نشد' };
-  if (cur.status !== 'open') return { success: false, message: 'دیر رسیدی' };
+  if (!cur) return { success: false, message: 'حواله پیدا نشد' };
+  if (cur.status !== 'open') return { success: false, message: 'دیر رسیدی — ' + (cur.claimed_by_name || 'صراف دیگری') };
   if (cur.from_email === _myEmail) return { success: false, message: 'خودتان فرستادید' };
+  // UPDATE شرطی — فقط اگه هنوز open باشه
   const { data: upd, error } = await _sb.from('net_hawalas')
     .update({ status: 'locked', claimed_by_email: _myEmail, claimed_by_name: _myName, claimed_at: new Date().toISOString() })
     .eq('id', taskId).eq('status', 'open').select();
   if (error) return { success: false, message: error.message };
   if (!upd || !upd.length) return { success: false, message: 'دیر رسیدی' };
-  await notify(cur.from_email, 'hawala_taken', { taskId, from_name: _myName, amount: cur.amount, currency: cur.currency });
+  await notify(cur.from_email, 'hawala_taken', { taskId, claimed_by_name: _myName });
   return { success: true, task: upd[0] };
 }
 
-// ═══════════════════════════════════════════════════════
-//  آگهی فروش ارز
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  بازار آزاد — فروش ارز
+// ═══════════════════════════════════════════
 export async function sendFXOffer(o: any): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const { error } = await _sb.from('net_fx_offers').insert({
     id: o.id, seller_email: _myEmail, seller_name: _myName, seller_city: _myCity,
-    currency: o.currency, target_currency: o.targetCurrency || 'AFN',
-    amount: o.amount, rate_type: o.rateType || 'fixed',
+    currency: o.currency, amount: o.amount, rate_type: o.rateType || 'fixed',
     rate: o.rate || 0, note: o.note || '', status: 'open',
     expires_at: new Date(o.expiresAt || Date.now() + 10 * 60000).toISOString(),
   });
@@ -147,9 +152,9 @@ export async function sendFXOffer(o: any): Promise<any> {
 }
 
 export async function claimFXOffer(offerId: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const { data: cur } = await _sb.from('net_fx_offers').select('*').eq('id', offerId).single();
-  if (!cur) return { success: false, message: 'پیدا نشد' };
+  if (!cur) return { success: false, message: 'آگهی پیدا نشد' };
   if (cur.status !== 'open') return { success: false, message: 'دیر رسیدی' };
   if (cur.seller_email === _myEmail) return { success: false, message: 'خودتان فروشنده‌اید' };
   const { data: upd, error } = await _sb.from('net_fx_offers')
@@ -157,43 +162,16 @@ export async function claimFXOffer(offerId: string): Promise<any> {
     .eq('id', offerId).eq('status', 'open').select();
   if (error) return { success: false, message: error.message };
   if (!upd || !upd.length) return { success: false, message: 'دیر رسیدی' };
-  // ⭐ نوتیف به فروشنده
-  await notify(cur.seller_email, 'fx_taken', { offerId, from_name: _myName, amount: cur.amount, currency: cur.currency });
+  await notify(cur.seller_email, 'fx_taken', { offerId, claimed_by_name: _myName });
   return { success: true, offer: upd[0] };
 }
 
-export async function deleteFXOffer(offerId: string): Promise<void> {
-  if (!_sb) return;
-  try { await _sb.from('net_fx_offers').delete().eq('id', offerId).eq('seller_email', _myEmail); } catch {}
-}
-
-export async function extendFXOffer(offerId: string, newExpiresAt: number): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
-  const { data: cur } = await _sb.from('net_fx_offers').select('*').eq('id', offerId).single();
-  if (!cur) throw new Error('پیدا نشد');
-  const ext = (cur.extended_count || 0) + 1;
-  if (ext > 3) throw new Error('حداکثر ۳ بار تمدید');
-  const { error } = await _sb.from('net_fx_offers')
-    .update({ expires_at: new Date(newExpiresAt).toISOString(), extended_count: ext, status: 'open' })
-    .eq('id', offerId);
-  if (error) throw new Error(error.message);
-  return { success: true, extended: ext };
-}
-
-export async function fetchMyFXOffers(): Promise<any[]> {
-  if (!_sb || !_myEmail) return [];
-  try {
-    const { data } = await _sb.from('net_fx_offers').select('*').eq('seller_email', _myEmail).order('created_at', { ascending: false }).limit(20);
-    return data || [];
-  } catch { return []; }
-}
-
-// ═══════════════════════════════════════════════════════
-//  حواله خصوصی
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  حواله خصوصی (به یک نفر)
+// ═══════════════════════════════════════════
 export async function sendDirectHawala(h: any): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
-  if (!h.toEmail) throw new Error('مقصد انتخاب نشده');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
+  if (!h.toEmail) throw new Error('صراف مقصد انتخاب نشده');
   const { error } = await _sb.from('net_direct_hawalas').insert({
     id: h.id, from_email: _myEmail, from_name: _myName, from_city: _myCity,
     to_email: h.toEmail, currency: h.currency, amount: h.amount,
@@ -206,34 +184,34 @@ export async function sendDirectHawala(h: any): Promise<any> {
 }
 
 export async function acceptDirectHawala(hawalaId: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const { data: cur } = await _sb.from('net_direct_hawalas').select('*').eq('id', hawalaId).single();
-  if (!cur) throw new Error('پیدا نشد');
+  if (!cur) throw new Error('حواله پیدا نشد');
   if (cur.status !== 'pending') throw new Error('قبلاً قبول شده');
   const { error } = await _sb.from('net_direct_hawalas')
     .update({ status: 'accepted', accepted_by_name: _myName, accepted_at: new Date().toISOString() })
     .eq('id', hawalaId).eq('status', 'pending');
   if (error) throw new Error(error.message);
-  await notify(cur.from_email, 'direct_accepted', { hawalaId, from_name: _myName });
+  await notify(cur.from_email, 'direct_hawala_accepted', { hawalaId, accepted_by_name: _myName });
   return { success: true };
 }
 
 export async function deliverDirectHawala(hawalaId: string, toEmail: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const { data: cur } = await _sb.from('net_direct_hawalas').select('*').eq('id', hawalaId).single();
-  if (!cur) throw new Error('پیدا نشد');
+  if (!cur) throw new Error('حواله پیدا نشد');
   await _sb.from('net_direct_hawalas')
-    .update({ status: 'delivered', delivered_by_name: _myName, delivered_at: new Date().toISOString() })
+    .update({ status: 'delivered', delivered_at: new Date().toISOString() })
     .eq('id', hawalaId);
-  await notify(cur.from_email, 'direct_delivered', { hawalaId, from_name: _myName });
+  await notify(cur.from_email, 'direct_hawala_delivered', { hawalaId });
   return { success: true };
 }
 
-// ═══════════════════════════════════════════════════════
-//  گروه‌ها
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  گروه‌های خصوصی
+// ═══════════════════════════════════════════
 export async function createGroup(name: string, city: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   if (!name || name.length < 3) throw new Error('نام حداقل ۳ کاراکتر');
   const groupId = 'grp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
   const inviteCode = 'INV-' + Array.from({ length: 8 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
@@ -242,46 +220,53 @@ export async function createGroup(name: string, city: string): Promise<any> {
     city, invite_code: inviteCode, member_count: 1, status: 'active',
   });
   if (error) throw new Error(error.message);
-  await _sb.from('net_group_members').insert({ group_id: groupId, member_email: _myEmail, member_name: _myName, role: 'owner' });
+  await _sb.from('net_group_members').insert({
+    group_id: groupId, member_email: _myEmail, member_name: _myName, role: 'owner',
+  });
   return { success: true, groupId, inviteCode };
 }
 
 export async function inviteToGroupByEmail(groupId: string, targetEmail: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const em = String(targetEmail || '').toLowerCase().trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) throw new Error('ایمیل نامعتبر');
   if (em === _myEmail) throw new Error('خودتان عضو هستید');
   const { data: grp } = await _sb.from('net_groups').select('*').eq('id', groupId).single();
   if (!grp) throw new Error('گروه پیدا نشد');
-  if (grp.owner_email !== _myEmail) throw new Error('فقط مالک');
+  if (grp.owner_email !== _myEmail) throw new Error('فقط مالک می‌تواند دعوت کند');
   const { data: exist } = await _sb.from('net_group_members').select('*').eq('group_id', groupId).eq('member_email', em);
   if (exist && exist.length) throw new Error('قبلاً عضو است');
+  // پیدا کردن نام از agents
   const { data: agent } = await _sb.from('net_agents').select('*').eq('email', em).single();
   const name = agent?.name || em.split('@')[0];
-  await _sb.from('net_group_members').insert({ group_id: groupId, member_email: em, member_name: name, role: 'member' });
+  await _sb.from('net_group_members').insert({
+    group_id: groupId, member_email: em, member_name: name, role: 'member',
+  });
   await _sb.from('net_groups').update({ member_count: (grp.member_count || 1) + 1 }).eq('id', groupId);
   await notify(em, 'group_invite', { groupId, groupName: grp.name, from_name: _myName });
   return { success: true };
 }
 
 export async function joinGroupByCode(inviteCode: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const code = String(inviteCode || '').trim().toUpperCase();
   if (!/^INV-[A-Z0-9]{8}$/.test(code)) throw new Error('کد نامعتبر');
   const { data: grp } = await _sb.from('net_groups').select('*').eq('invite_code', code).eq('status', 'active').single();
-  if (!grp) throw new Error('گروهی پیدا نشد');
+  if (!grp) throw new Error('گروهی با این کد پیدا نشد');
   const { data: exist } = await _sb.from('net_group_members').select('*').eq('group_id', grp.id).eq('member_email', _myEmail);
-  if (exist && exist.length) throw new Error('قبلاً عضو');
-  await _sb.from('net_group_members').insert({ group_id: grp.id, member_email: _myEmail, member_name: _myName, role: 'member' });
+  if (exist && exist.length) throw new Error('قبلاً عضو هستید');
+  await _sb.from('net_group_members').insert({
+    group_id: grp.id, member_email: _myEmail, member_name: _myName, role: 'member',
+  });
   await _sb.from('net_groups').update({ member_count: (grp.member_count || 1) + 1 }).eq('id', grp.id);
   await notify(grp.owner_email, 'group_join', { groupId: grp.id, groupName: grp.name, from_name: _myName });
   return { success: true, groupId: grp.id };
 }
 
 export async function leaveGroup(groupId: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const { data: grp } = await _sb.from('net_groups').select('*').eq('id', groupId).single();
-  if (!grp) throw new Error('پیدا نشد');
+  if (!grp) throw new Error('گروه پیدا نشد');
   if (grp.owner_email === _myEmail) throw new Error('مالک نمی‌تواند خارج شود');
   await _sb.from('net_group_members').delete().eq('group_id', groupId).eq('member_email', _myEmail);
   await _sb.from('net_groups').update({ member_count: Math.max(1, (grp.member_count || 1) - 1) }).eq('id', groupId);
@@ -289,9 +274,9 @@ export async function leaveGroup(groupId: string): Promise<any> {
 }
 
 export async function kickGroupMember(groupId: string, memberEmail: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const { data: grp } = await _sb.from('net_groups').select('*').eq('id', groupId).single();
-  if (!grp) throw new Error('پیدا نشد');
+  if (!grp) throw new Error('گروه پیدا نشد');
   if (grp.owner_email !== _myEmail) throw new Error('فقط مالک');
   await _sb.from('net_group_members').delete().eq('group_id', groupId).eq('member_email', memberEmail);
   await _sb.from('net_groups').update({ member_count: Math.max(1, (grp.member_count || 1) - 1) }).eq('id', groupId);
@@ -300,41 +285,27 @@ export async function kickGroupMember(groupId: string, memberEmail: string): Pro
 }
 
 export async function deleteGroup(groupId: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const { data: grp } = await _sb.from('net_groups').select('*').eq('id', groupId).single();
-  if (!grp) throw new Error('پیدا نشد');
+  if (!grp) throw new Error('گروه پیدا نشد');
   if (grp.owner_email !== _myEmail) throw new Error('فقط مالک');
   await _sb.from('net_group_members').delete().eq('group_id', groupId);
   await _sb.from('net_groups').delete().eq('id', groupId);
   return { success: true };
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
 //  نرخ روزانه
-// ═══════════════════════════════════════════════════════
-export async function saveDailyRateWithBase(currency: string, rate: number, baseCurrency: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+// ═══════════════════════════════════════════
+export async function saveDailyRate(currency: string, rate: number): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
   const d = new Date();
   const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  const timeStr = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
-  await _sb.from('net_daily_rates').delete().eq('date_str', dateStr).eq('currency', currency).eq('by_email', _myEmail);
-  const { error } = await _sb.from('net_daily_rates').insert({
-    date_str: dateStr, currency, rate, base_currency: baseCurrency,
+  const { error } = await _sb.from('net_daily_rates').upsert({
+    date_str: dateStr, currency, rate, base_currency: 'AFN',
     by_email: _myEmail, by_name: _myName,
-    rate_time: timeStr,
-    valid_from: d.toISOString(),
-    valid_until: new Date(d.getTime() + 24 * 3600 * 1000).toISOString(),
-    updated_at: d.toISOString(),
-  });
-  if (error) throw new Error(error.message);
-  return { success: true };
-}
-
-export async function deleteMyRate(currency: string): Promise<any> {
-  if (!_sb || !_myEmail) throw new Error('متصل نیست');
-  const d = new Date();
-  const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  const { error } = await _sb.from('net_daily_rates').delete().eq('date_str', dateStr).eq('currency', currency).eq('by_email', _myEmail);
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'date_str,currency,by_email' });
   if (error) throw new Error(error.message);
   return { success: true };
 }
@@ -345,15 +316,16 @@ export async function fetchDailyRates(): Promise<any[]> {
     const d = new Date();
     const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const { data } = await _sb.from('net_daily_rates').select('*')
-      .eq('date_str', dateStr).gt('valid_until', d.toISOString())
+      .eq('date_str', dateStr)
+      .order('currency', { ascending: true })
       .order('updated_at', { ascending: false });
     return data || [];
   } catch { return []; }
 }
 
-// ═══════════════════════════════════════════════════════
-//  فچ‌های دیگر
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  لیست صرافان
+// ═══════════════════════════════════════════
 export async function getAgents(): Promise<any[]> {
   if (!_sb) return [];
   try {
@@ -362,6 +334,9 @@ export async function getAgents(): Promise<any[]> {
   } catch { return []; }
 }
 
+// ═══════════════════════════════════════════
+//  Fetch — خواندن داده‌ها
+// ═══════════════════════════════════════════
 export async function fetchOpenHawalas(city: string): Promise<any[]> {
   if (!_sb) return [];
   try {
@@ -373,7 +348,7 @@ export async function fetchOpenHawalas(city: string): Promise<any[]> {
 export async function fetchFXOffers(): Promise<any[]> {
   if (!_sb) return [];
   try {
-    const { data } = await _sb.from('net_fx_offers').select('*').eq('status', 'open').neq('seller_email', _myEmail).gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false });
+    const { data } = await _sb.from('net_fx_offers').select('*').eq('status', 'open').neq('seller_email', _myEmail).order('created_at', { ascending: false });
     return data || [];
   } catch { return []; }
 }
@@ -397,13 +372,13 @@ export async function fetchDirectInbox(): Promise<any[]> {
 export async function fetchMyGroups(): Promise<any[]> {
   if (!_sb || !_myEmail) return [];
   try {
-    const { data: m } = await _sb.from('net_group_members').select('group_id, role').eq('member_email', _myEmail);
-    if (!m || !m.length) return [];
-    const ids = m.map((x: any) => x.group_id);
-    const { data: g } = await _sb.from('net_groups').select('*').in('id', ids);
-    return (g || []).map((x: any) => {
-      const mem = m.find((y: any) => y.group_id === x.id);
-      return { ...x, role: mem?.role || 'member', inviteCode: x.invite_code, memberCount: x.member_count };
+    const { data: memberships } = await _sb.from('net_group_members').select('group_id, role').eq('member_email', _myEmail);
+    if (!memberships || !memberships.length) return [];
+    const ids = memberships.map((m: any) => m.group_id);
+    const { data: groups } = await _sb.from('net_groups').select('*').in('id', ids);
+    return (groups || []).map((g: any) => {
+      const mem = memberships.find((m: any) => m.group_id === g.id);
+      return { ...g, id: g.id, role: mem?.role || 'member', inviteCode: g.invite_code, memberCount: g.member_count };
     });
   } catch { return []; }
 }
@@ -411,38 +386,58 @@ export async function fetchMyGroups(): Promise<any[]> {
 export async function getGroupDetails(groupId: string): Promise<any> {
   if (!_sb) return null;
   try {
-    const [gR, mR] = await Promise.all([
+    const [gRes, mRes] = await Promise.all([
       _sb.from('net_groups').select('*').eq('id', groupId).single(),
       _sb.from('net_group_members').select('*').eq('group_id', groupId).order('joined_at'),
     ]);
-    const meta = gR.data ? { ...gR.data, inviteCode: gR.data.invite_code, ownerEmail: gR.data.owner_email, ownerName: gR.data.owner_name } : null;
-    const members = (mR.data || []).map((m: any) => ({ key: m.member_email, email: m.member_email, name: m.member_name, role: m.role, joinedAt: m.joined_at }));
+    const meta = gRes.data ? { ...gRes.data, inviteCode: gRes.data.invite_code, ownerEmail: gRes.data.owner_email, ownerName: gRes.data.owner_name } : null;
+    const members = (mRes.data || []).map((m: any) => ({ key: m.member_email, email: m.member_email, name: m.member_name, role: m.role, joinedAt: m.joined_at }));
     return { meta, members };
   } catch { return null; }
 }
 
-// ═══════════════════════════════════════════════════════
-//  Polling
-// ═══════════════════════════════════════════════════════
-function startPoll(key: string, fn: () => Promise<void>, ms: number = 2000) {
+// ═══════════════════════════════════════════
+//  Realtime Listeners (Polling-based)
+// ═══════════════════════════════════════════
+let _polls: any = {};
+
+function startPoll(key: string, fn: () => Promise<void>, intervalMs: number = 2000) {
   stopPoll(key);
   fn();
-  _polls[key] = setInterval(fn, ms);
+  _polls[key] = setInterval(fn, intervalMs);
 }
+
 export function stopPoll(key: string): void {
   if (_polls[key]) { clearInterval(_polls[key]); delete _polls[key]; }
 }
 
-export function listenOpenHawalas(city: string, cb: (l: any[]) => void): void { startPoll('h', async () => cb(await fetchOpenHawalas(city))); }
-export function listenFXOffers(cb: (l: any[]) => void): void { startPoll('fx', async () => cb(await fetchFXOffers())); }
-export function listenMyHawalas(cb: (l: any[]) => void): void { startPoll('mh', async () => cb(await fetchMyHawalas())); }
-export function listenDirectInbox(cb: (l: any[]) => void): void { startPoll('di', async () => cb(await fetchDirectInbox())); }
-export function listenMyGroups(cb: (l: any[]) => void): void { startPoll('mg', async () => cb(await fetchMyGroups())); }
-export function listenDailyRates(cb: (l: any[]) => void): void { startPoll('r', async () => cb(await fetchDailyRates())); }
-export function listenNotifications(cb: (l: any[]) => void): void { startPoll('n', async () => cb(await fetchNotifications()), 3000); }
-export function listenMyFXOffers(cb: (l: any[]) => void): void { startPoll('mfx', async () => cb(await fetchMyFXOffers())); }
+export function listenOpenHawalas(city: string, cb: (list: any[]) => void): void {
+  startPoll('hawalas', async () => { cb(await fetchOpenHawalas(city)); });
+}
 
-export function stopAllListeners(): void { Object.keys(_polls).forEach(stopPoll); }
+export function listenFXOffers(cb: (list: any[]) => void): void {
+  startPoll('fx', async () => { cb(await fetchFXOffers()); });
+}
+
+export function listenMyHawalas(cb: (list: any[]) => void): void {
+  startPoll('myHawalas', async () => { cb(await fetchMyHawalas()); });
+}
+
+export function listenDirectInbox(cb: (list: any[]) => void): void {
+  startPoll('directInbox', async () => { cb(await fetchDirectInbox()); });
+}
+
+export function listenMyGroups(cb: (list: any[]) => void): void {
+  startPoll('myGroups', async () => { cb(await fetchMyGroups()); });
+}
+
+export function listenDailyRates(cb: (rates: any[]) => void): void {
+  startPoll('rates', async () => { cb(await fetchDailyRates()); });
+}
+
+export function stopAllListeners(): void {
+  Object.keys(_polls).forEach(stopPoll);
+}
 
 export async function testFirebaseConnection(): Promise<{ ok: boolean; message: string }> {
   const sb = await getSB();
@@ -451,5 +446,22 @@ export async function testFirebaseConnection(): Promise<{ ok: boolean; message: 
     const { error } = await sb.from('net_agents').select('email').limit(1);
     if (error) return { ok: false, message: error.message };
     return { ok: true, message: 'Supabase متصل' };
-  } catch (e: any) { return { ok: false, message: e?.message || 'خطا' }; }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || 'خطا' };
+  }
+}
+
+
+// ═══ ذخیره با ارز پایه مشخص ═══
+export async function saveDailyRateWithBase(currency: string, rate: number, baseCurrency: string): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
+  const d = new Date();
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const { error } = await _sb.from('net_daily_rates').upsert({
+    date_str: dateStr, currency, rate, base_currency: baseCurrency,
+    by_email: _myEmail, by_name: _myName,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'date_str,currency,by_email' });
+  if (error) throw new Error(error.message);
+  return { success: true };
 }

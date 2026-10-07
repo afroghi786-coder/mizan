@@ -6,6 +6,7 @@ import BoxesScreen from './BoxesScreen';
 // ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی
 import { getAllCust, saveCust, deleteCust } from './lib.fx.cust';
 import ExchangeInvoice from './ExchangeInvoice';
+import CurrencyPicker, { CUR_INFO, curFlag, curLabel as curLabel2, ALL_CURS as ALL_CURS_NET } from './CurrencyPicker';
 import { getAllTrades, saveTrade, deleteTrade } from './lib.fx.trade';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
@@ -138,7 +139,32 @@ export default function ExchangeScreen({ showToast }: any) {
   const [checks, setChecks] = useState<any[]>([]);
   const [hawModal, setHawModal] = useState(false);
   const [hawCurSearch, setHawCurSearch] = useState('');
-  const [hawForm, setHawForm] = useState<any>({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: toStorageDateFull(new Date()), note: '' });
+  const [hawForm, setHawForm] = useState<any>({
+    direction: 'send',
+    // ① صراف فرستنده (از خریداران)
+    sender_exchange_code: '', sender_exchange_name: '',
+    // ② فرستنده واقعی (از مشتریان)
+    sender_code: '', sender_name: '', sender_phone: '', sender_address: '',
+    // ③ ذی‌نفع (از مشتریان)
+    beneficiary_code: '', beneficiary_name: '', beneficiary_phone: '',
+    beneficiary_city: '', beneficiary_bank: '', beneficiary_holder: '',
+    // ④ صراف اجراکننده (از خریداران)
+    executor_exchange_code: '', executor_exchange_name: '',
+    // ⑤ مالی
+    from_currency: 'AFN', to_currency: 'AFN',
+    amount: '', to_amount: '', rate: '',
+    commission_type: 'manual', commission: '0', commission_percent: '',
+    // ⑥ زمان و یادداشت
+    date: toStorageDateFull(new Date()), status: 'pending', note: '',
+    // سازگاری قدیم
+    currency: 'AFN', partner_code: '',
+  });
+  const [hawCurFrom, setHawCurFrom] = useState(false);
+  const [hawCurTo, setHawCurTo] = useState(false);
+  const [hawPick, setHawPick] = useState<'sender_ex' | 'executor' | null>(null);
+  const [hawSenderSearch, setHawSenderSearch] = useState('');
+  const [hawSenderStatus, setHawSenderStatus] = useState('');
+  const [hawBenStatus, setHawBenStatus] = useState('');
   const [hawEditId, setHawEditId] = useState<string | null>(null);
   const [boxModal, setBoxModal] = useState(false);
   const [boxForm, setBoxForm] = useState<any>({ name: '', currency: 'USD', partner_code: '', opening: '0' });
@@ -1381,8 +1407,6 @@ export default function ExchangeScreen({ showToast }: any) {
           </View>
         )}
 
-        }
-
       </ScrollView>
 
       {/* ═══ Modals ═══ */}
@@ -1483,70 +1507,318 @@ export default function ExchangeScreen({ showToast }: any) {
       {/* ═══ Modal حواله ═══ */}
       <Modal visible={hawModal} transparent animationType="slide">
         <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
-          <View style={s.mHead}><Text style={s.mTitle}>{hawEditId ? '✏️ ویرایش حواله' : '➕ حواله جدید'}</Text><TouchableOpacity onPress={() => setHawModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
-          <View style={{ padding: 16 }}>
-            <Text style={s.lbl}>نوع حواله</Text>
-            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-              <TouchableOpacity style={[s.typeBtn, hawForm.direction === 'send' && { backgroundColor: '#fb923c', borderColor: '#fb923c' }]} onPress={() => setHawForm({ ...hawForm, direction: 'send' })}>
-                <Text style={[s.typeBtnTxt, hawForm.direction === 'send' && { color: '#fff' }]}>📤 ارسال</Text>
+          <View style={s.mHead}>
+            <Text style={s.mTitle}>{hawEditId ? '✏️ ویرایش حواله' : '➕ حواله جدید'}</Text>
+            <TouchableOpacity onPress={() => setHawModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
+          </View>
+          <View style={{ padding: 14 }}>
+
+            {/* ─── ① صراف فرستنده ─── */}
+            <View style={hawSec.box}>
+              <Text style={hawSec.title}>① 🏢 صراف فرستنده (از خریداران)</Text>
+              <TouchableOpacity style={s.inp} onPress={() => { setHawSenderSearch(''); setHawPick('sender_ex'); }}>
+                <Text style={{ color: hawForm.sender_exchange_name ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
+                  {hawForm.sender_exchange_name ? `🏢 ${hawForm.sender_exchange_name}  (${hawForm.sender_exchange_code || '—'})` : '🔍 انتخاب صراف فرستنده...'}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[s.typeBtn, hawForm.direction === 'receive' && { backgroundColor: '#34d399', borderColor: '#34d399' }]} onPress={() => setHawForm({ ...hawForm, direction: 'receive' })}>
-                <Text style={[s.typeBtnTxt, hawForm.direction === 'receive' && { color: '#fff' }]}>📥 دریافت</Text>
+            </View>
+
+            {/* ─── ② فرستنده واقعی ─── */}
+            <View style={hawSec.box}>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                <Text style={hawSec.title}>② 👤 فرستنده (از مشتریان)</Text>
+                {hawSenderStatus ? <Text style={{ fontSize: 10, fontWeight: 'bold', color: hawSenderStatus.includes('قبلی') ? '#059669' : '#ea580c' }}>{hawSenderStatus}</Text> : null}
+              </View>
+              <Text style={s.lbl}>📞 تلفن فرستنده</Text>
+              <TextInput
+                style={s.inp}
+                value={hawForm.sender_phone || ''}
+                onChangeText={(v) => {
+                  const p = v.replace(/[^\d]/g, '').slice(0, 11);
+                  setHawForm((f: any) => ({ ...f, sender_phone: p }));
+                  setHawSenderStatus('');
+                  if (p.length === 11) {
+                    const found = (fxCustomers || []).find((cx: any) => String(cx.phone || '').replace(/[^\d]/g, '') === p);
+                    if (found) {
+                      setHawForm((f: any) => ({ ...f, sender_code: found.code, sender_name: found.name, sender_address: found.address || '' }));
+                      setHawSenderStatus('✅ قبلی');
+                    } else {
+                      setHawForm((f: any) => ({ ...f, sender_code: '', sender_name: '' }));
+                      setHawSenderStatus('🆕 جدید');
+                    }
+                  }
+                }}
+                keyboardType="phone-pad"
+                maxLength={11}
+                placeholder="09123456789"
+                placeholderTextColor="#94a3b8"
+              />
+              {hawForm.sender_code ? <Text style={[s.badge, { marginTop: 4, alignSelf: 'center' }]}>🆔 {hawForm.sender_code}</Text> : null}
+              <Text style={s.lbl}>👤 نام فرستنده *</Text>
+              <TextInput style={s.inp} value={hawForm.sender_name || ''} onChangeText={(v) => setHawForm({ ...hawForm, sender_name: v })} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>📍 آدرس</Text>
+              <TextInput style={s.inp} value={hawForm.sender_address || ''} onChangeText={(v) => setHawForm({ ...hawForm, sender_address: v })} placeholderTextColor="#94a3b8" />
+            </View>
+
+            {/* ─── ③ ذی‌نفع (گیرنده) ─── */}
+            <View style={hawSec.box}>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                <Text style={hawSec.title}>③ 👤 ذی‌نفع (از مشتریان)</Text>
+                {hawBenStatus ? <Text style={{ fontSize: 10, fontWeight: 'bold', color: hawBenStatus.includes('قبلی') ? '#059669' : '#ea580c' }}>{hawBenStatus}</Text> : null}
+              </View>
+              <Text style={s.lbl}>📞 تلفن ذی‌نفع</Text>
+              <TextInput
+                style={s.inp}
+                value={hawForm.beneficiary_phone || ''}
+                onChangeText={(v) => {
+                  const p = v.replace(/[^\d]/g, '').slice(0, 11);
+                  setHawForm((f: any) => ({ ...f, beneficiary_phone: p }));
+                  setHawBenStatus('');
+                  if (p.length === 11) {
+                    const found = (fxCustomers || []).find((cx: any) => String(cx.phone || '').replace(/[^\d]/g, '') === p);
+                    if (found) {
+                      setHawForm((f: any) => ({ ...f, beneficiary_code: found.code, beneficiary_name: found.name, beneficiary_city: found.address || f.beneficiary_city, beneficiary_bank: found.bank || '', beneficiary_holder: found.holder_name || '' }));
+                      setHawBenStatus('✅ قبلی');
+                    } else {
+                      setHawForm((f: any) => ({ ...f, beneficiary_code: '' }));
+                      setHawBenStatus('🆕 جدید');
+                    }
+                  }
+                }}
+                keyboardType="phone-pad"
+                maxLength={11}
+                placeholder="09123456789"
+                placeholderTextColor="#94a3b8"
+              />
+              {hawForm.beneficiary_code ? <Text style={[s.badge, { marginTop: 4, alignSelf: 'center' }]}>🆔 {hawForm.beneficiary_code}</Text> : null}
+              <Text style={s.lbl}>👤 نام ذی‌نفع *</Text>
+              <TextInput style={s.inp} value={hawForm.beneficiary_name || ''} onChangeText={(v) => setHawForm({ ...hawForm, beneficiary_name: v })} placeholderTextColor="#94a3b8" />
+              <Text style={s.lbl}>🏙️ شهر</Text>
+              <TextInput style={s.inp} value={hawForm.beneficiary_city || ''} onChangeText={(v) => setHawForm({ ...hawForm, beneficiary_city: v })} placeholderTextColor="#94a3b8" />
+              <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.lbl}>🏦 بانک</Text>
+                  <TextInput style={s.inp} value={hawForm.beneficiary_bank || ''} onChangeText={(v) => setHawForm({ ...hawForm, beneficiary_bank: v })} placeholderTextColor="#94a3b8" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.lbl}>👤 صاحب حساب</Text>
+                  <TextInput style={s.inp} value={hawForm.beneficiary_holder || ''} onChangeText={(v) => setHawForm({ ...hawForm, beneficiary_holder: v })} placeholderTextColor="#94a3b8" />
+                </View>
+              </View>
+            </View>
+
+            {/* ─── ④ صراف اجراکننده ─── */}
+            <View style={hawSec.box}>
+              <Text style={hawSec.title}>④ 🏢 صراف اجراکننده (از خریداران)</Text>
+              <TouchableOpacity style={s.inp} onPress={() => { setHawSenderSearch(''); setHawPick('executor'); }}>
+                <Text style={{ color: hawForm.executor_exchange_name ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
+                  {hawForm.executor_exchange_name ? `🏢 ${hawForm.executor_exchange_name}  (${hawForm.executor_exchange_code || '—'})` : '🔍 انتخاب صراف اجراکننده...'}
+                </Text>
               </TouchableOpacity>
             </View>
-            <Text style={s.lbl}>نام ذی‌نفع *</Text>
-            <TextInput style={s.inp} value={hawForm.beneficiary_name} onChangeText={v => setHawForm({ ...hawForm, beneficiary_name: v })} />
-            <Text style={s.lbl}>تلفن ذی‌نفع</Text>
-            <TextInput style={s.inp} value={hawForm.beneficiary_phone} onChangeText={v => setHawForm({ ...hawForm, beneficiary_phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} />
-            <Text style={s.lbl}>شهر</Text>
-            <TextInput style={s.inp} value={hawForm.beneficiary_city} onChangeText={v => setHawForm({ ...hawForm, beneficiary_city: v })} />
-            <Text style={s.lbl}>شریک</Text>
-            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
-              {partners.map((p: any) => (
-                <TouchableOpacity key={p.code} style={[s.curPick, hawForm.partner_code === p.code && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, partner_code: p.code })}>
-                  <Text style={[s.curPickTxt, hawForm.partner_code === p.code && { color: '#fff' }]}>{p.name}</Text>
+
+            {/* ─── ⑤ مالی ─── */}
+            <View style={hawSec.box}>
+              <Text style={hawSec.title}>⑤ 💰 مالی</Text>
+
+              <Text style={s.lbl}>📤 ارز مبدأ (می‌دهد)</Text>
+              <TouchableOpacity style={s.inp} onPress={() => setHawCurFrom(true)}>
+                <Text style={{ textAlign: 'right', color: '#0f2438', fontWeight: 'bold' }}>
+                  {curFlag(hawForm.from_currency)} {curLabel2(hawForm.from_currency)}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={s.lbl}>💰 مبلغ فرستنده *</Text>
+              <TextInput
+                style={s.inp}
+                value={String(hawForm.amount || '')}
+                onChangeText={(v) => {
+                  const val = v.replace(/[^\d]/g, '');
+                  setHawForm((f: any) => {
+                    const next = { ...f, amount: val };
+                    const amt = Number(val) || 0;
+                    const rate = Number(f.rate) || 0;
+                    if (rate > 0 && amt > 0) next.to_amount = String(Math.round(amt * rate * 100) / 100);
+                    return next;
+                  });
+                }}
+                keyboardType="numeric"
+                placeholderTextColor="#94a3b8"
+              />
+
+              <Text style={s.lbl}>📥 ارز مقصد (می‌گیرد)</Text>
+              <TouchableOpacity style={s.inp} onPress={() => setHawCurTo(true)}>
+                <Text style={{ textAlign: 'right', color: '#0f2438', fontWeight: 'bold' }}>
+                  {curFlag(hawForm.to_currency)} {curLabel2(hawForm.to_currency)}
+                </Text>
+              </TouchableOpacity>
+
+              {hawForm.from_currency !== hawForm.to_currency && (
+                <>
+                  <Text style={s.lbl}>💹 نرخ تبدیل (اختیاری)</Text>
+                  <TextInput
+                    style={s.inp}
+                    value={String(hawForm.rate || '')}
+                    onChangeText={(v) => {
+                      const val = v.replace(/[^\d.]/g, '');
+                      setHawForm((f: any) => {
+                        const next = { ...f, rate: val };
+                        const amt = Number(f.amount) || 0;
+                        const rate = Number(val) || 0;
+                        if (rate > 0 && amt > 0) next.to_amount = String(Math.round(amt * rate * 100) / 100);
+                        return next;
+                      });
+                    }}
+                    keyboardType="numeric"
+                    placeholder={`۱ ${hawForm.from_currency} = ? ${hawForm.to_currency}`}
+                    placeholderTextColor="#94a3b8"
+                  />
+
+                  <Text style={s.lbl}>📥 مبلغ دریافتی</Text>
+                  <TextInput
+                    style={[s.inp, { backgroundColor: '#f0fdf4', fontWeight: 'bold' }]}
+                    value={String(hawForm.to_amount || '')}
+                    onChangeText={(v) => setHawForm({ ...hawForm, to_amount: v.replace(/[^\d.]/g, '') })}
+                    keyboardType="numeric"
+                    placeholderTextColor="#94a3b8"
+                  />
+                </>
+              )}
+
+              <Text style={s.lbl}>💵 کارمزد</Text>
+              <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 6 }}>
+                <TouchableOpacity style={[s.typeBtn, hawForm.commission_type === 'manual' && { backgroundColor: '#059669', borderColor: '#059669' }]} onPress={() => setHawForm({ ...hawForm, commission_type: 'manual' })}>
+                  <Text style={[s.typeBtnTxt, hawForm.commission_type === 'manual' && { color: '#fff' }]}>✏️ دستی</Text>
                 </TouchableOpacity>
-              ))}
+                <TouchableOpacity style={[s.typeBtn, hawForm.commission_type === 'percent' && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]} onPress={() => setHawForm({ ...hawForm, commission_type: 'percent' })}>
+                  <Text style={[s.typeBtnTxt, hawForm.commission_type === 'percent' && { color: '#fff' }]}>📊 درصدی</Text>
+                </TouchableOpacity>
+              </View>
+
+              {hawForm.commission_type === 'manual' ? (
+                <TextInput
+                  style={s.inp}
+                  value={String(hawForm.commission || '')}
+                  onChangeText={(v) => setHawForm({ ...hawForm, commission: v.replace(/[^\d]/g, '') })}
+                  keyboardType="numeric"
+                  placeholder="مبلغ ثابت"
+                  placeholderTextColor="#94a3b8"
+                />
+              ) : (
+                <>
+                  <TextInput
+                    style={s.inp}
+                    value={String(hawForm.commission_percent || '')}
+                    onChangeText={(v) => {
+                      const val = v.replace(/[^\d.]/g, '');
+                      setHawForm((f: any) => {
+                        const next = { ...f, commission_percent: val };
+                        const amt = Number(f.amount) || 0;
+                        const pct = Number(val) || 0;
+                        if (pct > 0 && amt > 0) next.commission = String(Math.round(amt * pct / 100));
+                        return next;
+                      });
+                    }}
+                    keyboardType="numeric"
+                    placeholder="٪ درصد — مثلاً 0.5"
+                    placeholderTextColor="#94a3b8"
+                  />
+                  {hawForm.commission && Number(hawForm.commission) > 0 && (
+                    <Text style={{ color: '#059669', fontSize: 11, textAlign: 'center', marginTop: 4, fontWeight: 'bold' }}>
+                      💵 کارمزد = {fmt(hawForm.commission, 2)}
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
-            <Text style={s.lbl}>💱 ارز</Text>
-            <TextInput style={s.inp} value={hawCurSearch} onChangeText={setHawCurSearch} placeholder="🔍 جستجو: USD، دالر، افغانی..." placeholderTextColor="#94a3b8" />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
-              {Object.keys(CUR).filter(k => { const q = hawCurSearch.toLowerCase().trim(); if (!q) return true; return k.toLowerCase().includes(q) || CUR[k].name.includes(hawCurSearch); }).map(k => (
-                <TouchableOpacity key={k} style={[s.curPick, hawForm.currency === k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, currency: k })}>
-                  <Text style={[s.curPickTxt, hawForm.currency === k && { color: '#fff' }]}>{CUR[k].flag} {CUR[k].name} ({k})</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <Text style={s.lbl}>مبلغ *</Text>
-            <TextInput style={s.inp} value={String(hawForm.amount)} onChangeText={v => setHawForm({ ...hawForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
-            <Text style={s.lbl}>کارمزد</Text>
-            <TextInput style={s.inp} value={String(hawForm.commission)} onChangeText={v => setHawForm({ ...hawForm, commission: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
-            <Text style={s.lbl}>تاریخ</Text>
-            <DateField value={hawForm.date} onChange={(v: string) => setHawForm({ ...hawForm, date: v })} compact defaultToToday />
-            <Text style={s.lbl}>وضعیت</Text>
-            <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-              {[{ k: 'pending', l: '⏳ در انتظار' }, { k: 'done', l: '✅ انجام' }, { k: 'cancelled', l: '❌ لغو' }].map(st => (
-                <TouchableOpacity key={st.k} style={[s.curPick, hawForm.status === st.k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, status: st.k })}>
-                  <Text style={[s.curPickTxt, hawForm.status === st.k && { color: '#fff' }]}>{st.l}</Text>
-                </TouchableOpacity>
-              ))}
+
+            {/* ─── ⑥ زمان و یادداشت ─── */}
+            <View style={hawSec.box}>
+              <Text style={hawSec.title}>⑥ 📅 زمان و یادداشت</Text>
+              <Text style={s.lbl}>تاریخ و ساعت</Text>
+              <DateField value={hawForm.date} onChange={(v: string) => setHawForm({ ...hawForm, date: v })} compact defaultToToday />
+              <Text style={s.lbl}>وضعیت</Text>
+              <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+                {[{ k: 'pending', l: '⏳ در انتظار' }, { k: 'done', l: '✅ انجام' }, { k: 'cancelled', l: '❌ لغو' }].map(st => (
+                  <TouchableOpacity key={st.k} style={[s.curPick, hawForm.status === st.k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setHawForm({ ...hawForm, status: st.k })}>
+                    <Text style={[s.curPickTxt, hawForm.status === st.k && { color: '#fff' }]}>{st.l}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={s.lbl}>یادداشت</Text>
+              <TextInput style={[s.inp, { minHeight: 50 }]} value={hawForm.note || ''} onChangeText={(v) => setHawForm({ ...hawForm, note: v })} multiline placeholderTextColor="#94a3b8" />
             </View>
-            <Text style={s.lbl}>توضیحات</Text>
-            <TextInput style={[s.inp, { minHeight: 60 }]} value={hawForm.note} onChangeText={v => setHawForm({ ...hawForm, note: v })} multiline />
+
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
-                if (!hawForm.beneficiary_name) return showToast('نام ذی‌نفع الزامی', true);
-                const p = partners.find((x: any) => x.code === hawForm.partner_code);
-                const payload = { ...hawForm, partner_name: p?.name || '', amount: Number(hawForm.amount) || 0, commission: Number(hawForm.commission) || 0 };
-                if (hawEditId) await updateHawala(hawEditId, payload);
-                else await createHawala(payload);
-                await reload(); setHawModal(false); showToast('✅ ذخیره شد');
-              }}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity
+                style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]}
+                onPress={async () => {
+                  try {
+                    if (!hawForm.sender_name) return showToast('نام فرستنده الزامی', true);
+                    if (!hawForm.beneficiary_name) return showToast('نام ذی‌نفع الزامی', true);
+                    if (!hawForm.amount) return showToast('مبلغ الزامی', true);
+                    const payload = {
+                      ...hawForm,
+                      amount: Number(hawForm.amount) || 0,
+                      to_amount: Number(hawForm.to_amount) || 0,
+                      rate: Number(hawForm.rate) || 0,
+                      commission: Number(hawForm.commission) || 0,
+                      commission_percent: Number(hawForm.commission_percent) || 0,
+                      currency: hawForm.from_currency,
+                      partner_code: hawForm.executor_exchange_code || hawForm.sender_exchange_code || '',
+                      partner_name: hawForm.executor_exchange_name || hawForm.sender_exchange_name || '',
+                    };
+                    if (hawEditId) await updateHawala(hawEditId, payload);
+                    else await createHawala(payload);
+                    await reload();
+                    setHawModal(false);
+                    showToast('✅ ذخیره شد');
+                  } catch (e: any) {
+                    showToast('❌ ' + (e?.message || ''), true);
+                  }
+                }}
+              ><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
       </Modal>
+
+      {/* ═══ مودال انتخاب صراف (فرستنده یا اجراکننده) ═══ */}
+      <Modal visible={hawPick !== null} transparent animationType="fade" onRequestClose={() => setHawPick(null)}>
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={[s.mHead, { backgroundColor: hawPick === 'executor' ? '#0891b2' : '#059669' }]}>
+            <Text style={s.mTitle}>{hawPick === 'executor' ? '④ صراف اجراکننده' : '① صراف فرستنده'} ({(fxBuyers || []).length})</Text>
+            <TouchableOpacity onPress={() => setHawPick(null)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ maxHeight: 400, padding: 10 }} keyboardShouldPersistTaps="handled">
+            {(fxBuyers || []).length === 0 ? (
+              <Text style={s.empty}>هنوز خریداری در تب خریداران نیست</Text>
+            ) : (fxBuyers || []).map((b: any) => (
+              <TouchableOpacity
+                key={b.id || b.code}
+                onPress={() => {
+                  if (hawPick === 'executor') {
+                    setHawForm((f: any) => ({ ...f, executor_exchange_code: b.code, executor_exchange_name: b.name }));
+                  } else {
+                    setHawForm((f: any) => ({ ...f, sender_exchange_code: b.code, sender_exchange_name: b.name }));
+                  }
+                  setHawPick(null);
+                }}
+                style={s.pickRow}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={s.pickName}>🏢 {b.name}</Text>
+                  <Text style={s.pickSub}>🆔 {b.code} | 📞 {b.phone || '—'}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View></View>
+      </Modal>
+
+      <CurrencyPicker visible={hawCurFrom} current={hawForm.from_currency} onSelect={(c: string) => setHawForm({ ...hawForm, from_currency: c, currency: c })} onClose={() => setHawCurFrom(false)} title="📤 ارز مبدأ" />
+      <CurrencyPicker visible={hawCurTo} current={hawForm.to_currency} onSelect={(c: string) => setHawForm({ ...hawForm, to_currency: c })} onClose={() => setHawCurTo(false)} title="📥 ارز مقصد" />
 
       {/* ═══ Modal صندوق ═══ */}
 
@@ -1979,10 +2251,8 @@ const s = StyleSheet.create({
   badge: { fontSize: 10, backgroundColor: '#dbeafe', color: '#1e40af', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, fontWeight: 'bold' },
   curPick: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, borderWidth: 2, borderColor: '#059669', backgroundColor: '#f0fdf4', minWidth: 100, alignItems: 'center' },
   curPickTxt: { fontSize: 13, fontWeight: 'bold', color: '#065f46' },
-  typeBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 2, borderColor: '#e2e8f0', backgroundColor: '#f8fafc', alignItems: 'center' },
   typeBtnBuy: { backgroundColor: '#f59e0b', borderColor: '#f59e0b' },
   typeBtnSell: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
-  typeBtnTxt: { fontSize: 13, fontWeight: 'bold', color: '#475569' },
   btn: { paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   btnTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
   empty: { textAlign: 'center', color: '#94a3b8', padding: 30, fontSize: 12 },
@@ -2006,6 +2276,12 @@ const s = StyleSheet.create({
   mTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
   pickRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickName: { fontSize: 14, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' },
+  pickSub: { color: '#64748b', fontSize: 10, textAlign: 'right', marginTop: 2 },
   sumRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   sumLbl: { color: '#94a3b8', fontSize: 12 },
-  sumVal: { color: '#e2e8f0', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' } });
+  sumVal: { color: '#e2e8f0', fontSize: 13, fontWeight: 'bold', fontFamily: 'monospace' } });const hawSec = StyleSheet.create({
+  box: { backgroundColor: '#f8fafc', borderRadius: 10, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: '#cbd5e1' },
+  title: { fontSize: 12, color: '#1e3a8a', fontWeight: 'bold', marginBottom: 6, textAlign: 'right' },
+});
+
+

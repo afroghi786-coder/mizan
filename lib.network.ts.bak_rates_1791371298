@@ -302,25 +302,23 @@ export async function saveDailyRate(currency: string, rate: number): Promise<any
   const d = new Date();
   const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const { error } = await _sb.from('net_daily_rates').upsert({
-    date_str: dateStr, currency, rate, base_currency: 'AFN',
-    by_email: _myEmail, by_name: _myName,
+    date_str: dateStr, currency, rate, by_email: _myEmail, by_name: _myName,
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'date_str,currency,by_email' });
+  }, { onConflict: 'date_str,currency' });
   if (error) throw new Error(error.message);
   return { success: true };
 }
 
-export async function fetchDailyRates(): Promise<any[]> {
-  if (!_sb) return [];
+export async function fetchDailyRates(): Promise<any> {
+  if (!_sb) return {};
   try {
     const d = new Date();
     const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const { data } = await _sb.from('net_daily_rates').select('*')
-      .eq('date_str', dateStr)
-      .order('currency', { ascending: true })
-      .order('updated_at', { ascending: false });
-    return data || [];
-  } catch { return []; }
+    const { data } = await _sb.from('net_daily_rates').select('*').eq('date_str', dateStr);
+    const result: any = {};
+    (data || []).forEach((r: any) => { result[r.currency] = { rate: r.rate, byName: r.by_name, byEmail: r.by_email }; });
+    return result;
+  } catch { return {}; }
 }
 
 // ═══════════════════════════════════════════
@@ -431,7 +429,7 @@ export function listenMyGroups(cb: (list: any[]) => void): void {
   startPoll('myGroups', async () => { cb(await fetchMyGroups()); });
 }
 
-export function listenDailyRates(cb: (rates: any[]) => void): void {
+export function listenDailyRates(cb: (rates: any) => void): void {
   startPoll('rates', async () => { cb(await fetchDailyRates()); });
 }
 

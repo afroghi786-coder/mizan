@@ -22,7 +22,7 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [myHawalas, setMyHawalas] = useState<any[]>([]);
   const [directInbox, setDirectInbox] = useState<any[]>([]);
   const [myGroups, setMyGroups] = useState<any[]>([]);
-  const [rates, setRates] = useState<any[]>([]);
+  const [rates, setRates] = useState<any>({});
   const [agents, setAgents] = useState<any[]>([]);
   const [settingsModal, setSettingsModal] = useState(false);
   const [hawalaModal, setHawalaModal] = useState(false);
@@ -189,40 +189,18 @@ export default function LiveMarketScreen({ showToast }: any) {
       ) : null}
 
       {/* نرخ روز */}
-      <Text style={s.secT}>📈 نرخ روز ({rates.length} نرخ)</Text>
-      {rates.length === 0 ? (
-        <Text style={s.empty}>نرخی ثبت نشده — از دکمه «📈 نرخ روز» ثبت کنید</Text>
+      <Text style={s.secT}>📈 نرخ روز</Text>
+      {Object.keys(rates).length === 0 ? (
+        <Text style={s.empty}>نرخی ثبت نشده</Text>
       ) : (
-        <View style={{ marginBottom: 8 }}>
-          {(() => {
-            // گروه‌بندی بر اساس ارز
-            const byCur: Record<string, any[]> = {};
-            rates.forEach((r: any) => {
-              if (!byCur[r.currency]) byCur[r.currency] = [];
-              byCur[r.currency].push(r);
-            });
-            const curList = ['USD', 'EUR', 'GBP', 'PKR', 'AED', 'SAR', 'TRY', 'IRR', 'TOM', 'AFN'];
-            const others = Object.keys(byCur).filter(k => !curList.includes(k));
-            return [...curList.filter(k => byCur[k]), ...others].map((cur: string) => (
-              <View key={cur} style={s.rateCard}>
-                <View style={s.rateCardHead}>
-                  <Text style={s.rateCardTitle}>{FLAG[cur] || '💱'} {cur}</Text>
-                  <Text style={s.rateCardCount}>{byCur[cur].length} نرخ</Text>
-                </View>
-                {byCur[cur].map((r: any, i: number) => (
-                  <View key={i} style={s.rateRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.rateVal}>
-                        1 {cur} = {fmt(r.rate, 2)} {r.base_currency || 'AFN'}
-                      </Text>
-                      <Text style={s.rateBy}>👤 {r.by_name || '—'}  🕐 {new Date(r.updated_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</Text>
-                    </View>
-                    {r.by_email === net.email ? <Text style={{ fontSize: 10, color: '#fbbf24' }}>شما</Text> : null}
-                  </View>
-                ))}
-              </View>
-            ));
-          })()}
+        <View style={s.rateBox}>
+          {Object.keys(rates).map((cur: string) => (
+            <View key={cur} style={s.rateItem}>
+              <Text style={s.rateLbl}>{FLAG[cur] || '💱'} {cur}</Text>
+              <Text style={s.rateVal}>{fmt(rates[cur]?.rate, 2)}</Text>
+              <Text style={s.rateBy}>{rates[cur]?.byName || '—'}</Text>
+            </View>
+          ))}
         </View>
       )}
 
@@ -521,13 +499,6 @@ const s = StyleSheet.create({
   actBtnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
   secT: { color: '#d4af37', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginTop: 16, marginBottom: 8 },
   rateBox: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
-  rateCard: { backgroundColor: '#0f2438', borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#334155' },
-  rateCardHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, marginBottom: 6, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
-  rateCardTitle: { color: '#d4af37', fontSize: 13, fontWeight: 'bold' },
-  rateCardCount: { color: '#94a3b8', fontSize: 10, backgroundColor: '#1a2332', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  rateRow: { flexDirection: 'row-reverse', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
-  rateVal: { color: '#00ff88', fontSize: 14, fontWeight: 'bold', fontFamily: 'monospace', textAlign: 'right' },
-  rateBy: { color: '#94a3b8', fontSize: 10, marginTop: 2, textAlign: 'right' },
   rateItem: { backgroundColor: '#0f2438', borderRadius: 8, padding: 10, minWidth: 100, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
   rateLbl: { color: '#d4af37', fontSize: 12, fontWeight: 'bold' },
   rateVal: { color: '#00ff88', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace', marginTop: 4 },

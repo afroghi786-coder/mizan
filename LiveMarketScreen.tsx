@@ -185,6 +185,14 @@ export default function LiveMarketScreen({ showToast }: any) {
 
   useEffect(() => {
     if (!net.connected || !net.email) return;
+    (async () => { setPrefs(await fetchPreferences()); })();
+    const t = setInterval(async () => { setNotifList(await fetchAllNotifications()); }, 5000);
+    (async () => { setNotifList(await fetchAllNotifications()); })();
+    return () => clearInterval(t);
+  }, [net.connected, net.email]);
+
+  useEffect(() => {
+    if (!net.connected || !net.email) return;
     listenDirectInbox(setDirectInbox);
     listenMyGroups(setMyGroups);
     listenDailyRates(setRates);
@@ -988,6 +996,9 @@ const s = StyleSheet.create({
   myStatusItem: { flex: 1, alignItems: 'center' },
   myStatusLbl: { color: '#94a3b8', fontSize: 9, marginBottom: 2 },
   myStatusVal: { color: '#a78bfa', fontSize: 14, fontWeight: 'bold' },
+  prefRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#1a2332', borderRadius: 8, marginBottom: 6, borderWidth: 1, borderColor: '#334155' },
+  prefLbl: { color: '#e2e8f0', fontSize: 13, textAlign: 'right', flex: 1 },
+  prefSection: { color: '#d4af37', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginTop: 16, marginBottom: 8 },
   curPickRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#1a2332', borderRadius: 8, marginBottom: 6, borderWidth: 1, borderColor: '#334155' },
   curPickName: { color: '#e2e8f0', fontSize: 13, textAlign: 'right', flex: 1 },
   activityBox: { backgroundColor: '#0f2438', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#1f3a5f' },

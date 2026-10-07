@@ -83,13 +83,26 @@ async function _registerAgent(): Promise<void> {
 // ═══════════════════════════════════════════════════════
 async function notify(toEmail: string, type: string, payload: any = {}): Promise<void> {
   if (!_sb || !toEmail) return;
-  try { await _sb.from('net_notifications').insert({ to_email: toEmail, type, payload: payload || {} }); } catch {}
+  try {
+    // چک تنظیمات کاربر
+    const { data: pref } = await _sb.from('net_preferences').select('*').eq('email', toEmail).single();
+    if (pref) {
+      if (type === 'fx_taken' && !pref.notify_fx_claim) return;
+      if (type === 'hawala_taken' && !pref.notify_hawala_claim) return;
+      if (type === 'direct_hawala' && !pref.notify_direct) return;
+      if ((type === 'fx_new') && !pref.notify_fx_new) return;
+      if ((type === 'hawala_new') && !pref.notify_hawala_new) return;
+    }
+    const { error } = await _sb.from('net_notifications').insert({ to_email: toEmail, type, payload: payload || {} });
+    if (error) console.log('[notify] insert error:', error.message);
+    else console.log('[notify] sent', type, 'to', toEmail);
+  } catch (e: any) { console.log('[notify] error:', e?.message); }
 }
 
 export async function fetchNotifications(): Promise<any[]> {
   if (!_sb || !_myEmail) return [];
   try {
-    const { data } = await _sb.from('net_notifications').select('*').eq('to_email', _myEmail).eq('is_read', false).order('created_at', { ascending: false }).limit(20);
+    const { data } = await _sb.from('net_notifications').select('*').eq('to_email', _myEmail).order('created_at', { ascending: false }).limit(30);
     return data || [];
   } catch { return []; }
 }
@@ -112,6 +125,18 @@ export async function sendBroadcastHawala(h: any): Promise<any> {
     expires_at: new Date(h.expiresAt || Date.now() + 15 * 60000).toISOString(),
   });
   if (error) throw new Error(error.message);
+  try {
+    const { data: users } = await _sb.from('net_preferences').select('email, notify_hawala_new, watch_cities').eq('notify_hawala_new', true).neq('email', _myEmail);
+    if (users && users.length) {
+      const toNotify = users.filter((u: any) => !u.watch_cities || u.watch_cities.length === 0 || u.watch_cities.includes(h.targetCity));
+      for (const u of toNotify) {
+        await _sb.from('net_notifications').insert({
+          to_email: u.email, type: 'hawala_new',
+          payload: { hawalaId: h.id, from_name: _myName, currency: h.currency, amount: h.amount, targetCity: h.targetCity },
+        });
+      }
+    }
+  } catch (e: any) { console.log('hawala_new notify error:', e?.message); }
   return { success: true, id: h.id };
 }
 
@@ -143,6 +168,19 @@ export async function sendFXOffer(o: any): Promise<any> {
     expires_at: new Date(o.expiresAt || Date.now() + 10 * 60000).toISOString(),
   });
   if (error) throw new Error(error.message);
+  // ⭐ نوتیف به کاربران مطابق با تنظیماتشون
+  try {
+    const { data: users } = await _sb.from('net_preferences').select('email, notify_fx_new, watch_currencies').eq('notify_fx_new', true).neq('email', _myEmail);
+    if (users && users.length) {
+      const toNotify = users.filter((u: any) => !u.watch_currencies || u.watch_currencies.length === 0 || u.watch_currencies.includes(o.currency));
+      for (const u of toNotify) {
+        await _sb.from('net_notifications').insert({
+          to_email: u.email, type: 'fx_new',
+          payload: { offerId: o.id, from_name: _myName, currency: o.currency, amount: o.amount, rate: o.rate },
+        });
+      }
+    }
+  } catch (e: any) { console.log('fx_new notify error:', e?.message); }
   return { success: true, id: o.id };
 }
 
@@ -183,7 +221,7 @@ export async function extendFXOffer(offerId: string, newExpiresAt: number): Prom
 export async function fetchMyFXOffers(): Promise<any[]> {
   if (!_sb || !_myEmail) return [];
   try {
-    const { data } = await _sb.from('net_fx_offers').select('*').eq('seller_email', _myEmail).order('created_at', { ascending: false }).limit(20);
+    const { data } = await _sb.from('net_fx_offers').select('*').eq('seller_email', _myEmail).order('created_at', { ascending: false }).limit(50);
     return data || [];
   } catch { return []; }
 }
@@ -452,4 +490,64 @@ export async function testFirebaseConnection(): Promise<{ ok: boolean; message: 
     if (error) return { ok: false, message: error.message };
     return { ok: true, message: 'Supabase متصل' };
   } catch (e: any) { return { ok: false, message: e?.message || 'خطا' }; }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  تنظیمات نوتیفیکیشن کاربر
+// ═══════════════════════════════════════════════════════
+const DEFAULT_PREFS = {
+  notify_fx_claim: true,
+  notify_hawala_claim: true,
+  notify_direct: true,
+  notify_fx_new: false,
+  notify_hawala_new: false,
+  watch_cities: ['KBL', 'HRT', 'MZR', 'KDH'],
+  watch_currencies: ['USD', 'EUR'],
+};
+
+export async function fetchPreferences(): Promise<any> {
+  if (!_sb || !_myEmail) return { ...DEFAULT_PREFS };
+  try {
+    const { data } = await _sb.from('net_preferences').select('*').eq('email', _myEmail).single();
+    if (!data) return { ...DEFAULT_PREFS };
+    return { ...DEFAULT_PREFS, ...data };
+  } catch { return { ...DEFAULT_PREFS }; }
+}
+
+export async function savePreferences(prefs: any): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  const payload = {
+    email: _myEmail,
+    notify_fx_claim: !!prefs.notify_fx_claim,
+    notify_hawala_claim: !!prefs.notify_hawala_claim,
+    notify_direct: !!prefs.notify_direct,
+    notify_fx_new: !!prefs.notify_fx_new,
+    notify_hawala_new: !!prefs.notify_hawala_new,
+    watch_cities: prefs.watch_cities || DEFAULT_PREFS.watch_cities,
+    watch_currencies: prefs.watch_currencies || DEFAULT_PREFS.watch_currencies,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await _sb.from('net_preferences').upsert(payload, { onConflict: 'email' });
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+// ═══ فچ تمام نوتیف (read + unread) ═══
+export async function fetchAllNotifications(): Promise<any[]> {
+  if (!_sb || !_myEmail) return [];
+  try {
+    const { data } = await _sb.from('net_notifications').select('*').eq('to_email', _myEmail).order('created_at', { ascending: false }).limit(50);
+    return data || [];
+  } catch { return []; }
+}
+
+export async function markAllRead(): Promise<void> {
+  if (!_sb || !_myEmail) return;
+  try { await _sb.from('net_notifications').update({ is_read: true }).eq('to_email', _myEmail); } catch {}
+}
+
+export async function deleteNotification(id: number): Promise<void> {
+  if (!_sb) return;
+  try { await _sb.from('net_notifications').delete().eq('id', id); } catch {}
 }

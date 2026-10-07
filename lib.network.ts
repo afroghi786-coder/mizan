@@ -281,3 +281,101 @@ export function stopListener(key: string): void {
 export function stopAllListeners(): void {
   Object.keys(_listeners).forEach(stopListener);
 }
+
+
+// ═══ حواله مستقیم (خصوصی) به یک صراف ═══
+export async function sendDirectHawala(h: any): Promise<any> {
+  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
+  if (!h.toAgent) throw new Error('صراف مقصد انتخاب نشده');
+  const ref = _db.ref('direct_hawalas/' + h.toAgent + '/' + h.id);
+  await ref.set({
+    type: 'hawala_direct',
+    fromCode: _myCode, fromName: _myName, fromCity: _myCity,
+    toAgent: h.toAgent,
+    currency: h.currency, amount: h.amount,
+    beneficiaryName: h.beneficiaryName, beneficiaryPhone: h.beneficiaryPhone || '',
+    commission: h.commission || 0,
+    note: h.note || '',
+    status: 'pending',
+    acceptedBy: null, acceptedByName: null, acceptedAt: null,
+    deliveredAt: null,
+    createdAt: _fb.database.ServerValue.TIMESTAMP,
+  });
+  notifyAgent(h.toAgent, {
+    type: 'direct_hawala', hawalaId: h.id,
+    fromCode: _myCode, fromName: _myName,
+    amount: h.amount, currency: h.currency,
+    timestamp: Date.now(),
+  });
+  return { success: true, id: h.id };
+}
+
+export async function acceptDirectHawala(hawalaId: string, fromCode: string): Promise<any> {
+  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
+  const ref = _db.ref('direct_hawalas/' + _myCode + '/' + hawalaId);
+  const snap = await ref.once('value');
+  const v = snap.val();
+  if (!v) throw new Error('حواله پیدا نشد');
+  if (v.status !== 'pending') throw new Error('قبلاً قبول شده');
+  await ref.update({
+    status: 'accepted',
+    acceptedBy: _myCode, acceptedByName: _myName, acceptedAt: Date.now(),
+  });
+  // اطلاع به فرستنده
+  notifyAgent(v.fromCode, {
+    type: 'direct_hawala_accepted', hawalaId,
+    acceptedBy: _myCode, acceptedByName: _myName, timestamp: Date.now(),
+  });
+  return { success: true };
+}
+
+export async function deliverDirectHawala(hawalaId: string, toAgent: string): Promise<any> {
+  if (!_db || !_myCode) throw new Error('شبکه متصل نیست');
+  const ref = _db.ref('direct_hawalas/' + toAgent + '/' + hawalaId);
+  await ref.update({
+    status: 'delivered',
+    deliveredAt: Date.now(),
+  });
+  const snap = await ref.once('value');
+  const v = snap.val();
+  if (v) {
+    notifyAgent(v.fromCode, {
+      type: 'direct_hawala_delivered', hawalaId, timestamp: Date.now(),
+    });
+  }
+  return { success: true };
+}
+
+export function listenDirectInbox(cb: (list: any[]) => void): void {
+  if (!_db || !_myCode) return;
+  stopListener('directInbox');
+  const ref = _db.ref('direct_hawalas/' + _myCode);
+  const cbFn = ref.on('value', (snap: any) => {
+    const list: any[] = [];
+    snap.forEach((child: any) => {
+      const v = child.val();
+      if (v) list.push({ id: child.key, ...v });
+    });
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    cb(list);
+  });
+  _listeners.directInbox = { ref, event: 'value', cb: cbFn };
+}
+
+export function listenDirectOutbox(cb: (list: any[]) => void): void {
+  if (!_db || !_myCode) return;
+  stopListener('directOutbox');
+  const ref = _db.ref('direct_hawalas').orderByChild('fromCode').equalTo(_myCode);
+  const cbFn = ref.on('value', (snap: any) => {
+    const list: any[] = [];
+    snap.forEach((agentChild: any) => {
+      agentChild.forEach((hChild: any) => {
+        const v = hChild.val();
+        if (v && v.fromCode === _myCode) list.push({ id: hChild.key, ...v });
+      });
+    });
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    cb(list);
+  });
+  _listeners.directOutbox = { ref, event: 'value', cb: cbFn };
+}

@@ -4,6 +4,7 @@ import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet,
 import {
   initNetwork, loadNetSettings, saveNetSettings, getMyNetInfo, isNetReady,
   sendBroadcastHawala, claimHawala, sendFXOffer, claimFXOffer,
+  sendDirectHawala, acceptDirectHawala, deliverDirectHawala, listenDirectInbox, listenDirectOutbox, getAgents,
   listenOpenHawalas, listenFXOffers, listenMyHawalas, stopAllListeners,
   NET_CITIES,
 } from './lib.network';
@@ -25,6 +26,11 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [settingsForm, setSettingsForm] = useState({ code: '', name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
+  const [directInbox, setDirectInbox] = useState<any[]>([]);
+  const [directOutbox, setDirectOutbox] = useState<any[]>([]);
+  const [agents, setAgents] = useState<any[]>([]);
+  const [directModal, setDirectModal] = useState(false);
+  const [directForm, setDirectForm] = useState<any>({ toAgent: '', toAgentName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -38,11 +44,19 @@ export default function LiveMarketScreen({ showToast }: any) {
   useEffect(() => { refresh(); return () => { stopAllListeners(); }; }, [refresh]);
 
   useEffect(() => {
+    if (!net.connected) return;
+    listenDirectInbox(setDirectInbox);
+    listenDirectOutbox(setDirectOutbox);
+    (async () => { const list = await getAgents(); setAgents(list); })();
+    return () => { stopAllListeners(); };
+  }, [net.connected, net.code]);
+
+  useEffect(() => {
     if (!net.connected || !net.city) return;
     listenOpenHawalas(net.city, setHawalas);
     listenFXOffers(setFxOffers);
     listenMyHawalas(setMyHawalas);
-    return () => { stopAllListeners(); };
+    return () => {};
   }, [net.connected, net.city, net.code]);
 
   const saveSettings = async () => {
@@ -96,6 +110,41 @@ export default function LiveMarketScreen({ showToast }: any) {
       setFxForm({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
+  };
+
+  const submitDirect = async () => {
+    if (!directForm.toAgent) return showToast?.('صراف مقصد را انتخاب کن', true);
+    if (!directForm.amount || !directForm.beneficiaryName) return showToast?.('مبلغ و نام ذی‌نفع الزامی', true);
+    setSaving(true);
+    try {
+      const id = 'DH-' + Date.now().toString(36).toUpperCase();
+      await sendDirectHawala({
+        id, toAgent: directForm.toAgent,
+        currency: directForm.currency, amount: Number(directForm.amount),
+        beneficiaryName: directForm.beneficiaryName,
+        beneficiaryPhone: directForm.beneficiaryPhone,
+        commission: Number(directForm.commission) || 0,
+        note: directForm.note,
+      });
+      setDirectModal(false);
+      showToast?.('✅ حواله خصوصی ارسال شد');
+      setDirectForm({ toAgent: '', toAgentName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
+    } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+    setSaving(false);
+  };
+
+  const doAcceptDirect = async (id: string, from: string) => {
+    try {
+      await acceptDirectHawala(id, from);
+      showToast?.('✅ قبول شد');
+    } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+  };
+
+  const doDeliverDirect = async (id: string, toAgent: string) => {
+    try {
+      await deliverDirectHawala(id, toAgent);
+      showToast?.('✅ تحویل شد');
+    } catch (e: any) { showToast?.('❌ ' + e.message, true); }
   };
 
   const doClaimHawala = async (id: string) => {
@@ -185,7 +234,39 @@ export default function LiveMarketScreen({ showToast }: any) {
         </View>
       ))}
 
-      {/* حوالات من */}
+      {/* ═══ حواله‌های خصوصی (Inbox) ═══ */}
+      <Text style={s.secT}>🔒 حواله‌های خصوصی دریافتی ({directInbox.filter((h: any) => h.status === 'pending').length})</Text>
+      {directInbox.filter((h: any) => h.status === 'pending').length === 0 ? (
+        <Text style={s.empty}>حواله خصوصی جدیدی نیست</Text>
+      ) : directInbox.filter((h: any) => h.status === 'pending').map((h: any) => (
+        <View key={h.id} style={[s.card, { borderColor: '#0891b2' }]}>
+          <View style={s.cardHead}>
+            <Text style={s.cardTitle}>🔒 {h.fromName}</Text>
+            <Text style={s.cardCode}>{h.id}</Text>
+          </View>
+          <Text style={s.cardAmt}>{CUR_FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
+          <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
+          <Text style={s.cardRow}>💰 کارمزد: {fmt(h.commission, 0)} | 📍 {NET_CITIES[h.fromCity] || h.fromCity}</Text>
+          {h.note ? <Text style={s.cardRow}>📝 {h.note}</Text> : null}
+          <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doAcceptDirect(h.id, h.fromCode)}>
+            <Text style={s.btnTxt}>✅ قبول حواله</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+
+      {/* حواله‌های خصوصی در حال انجام */}
+      {directInbox.filter((h: any) => h.status === 'accepted').map((h: any) => (
+        <View key={h.id} style={[s.card, { borderColor: '#f59e0b' }]}>
+          <Text style={s.cardTitle}>🔄 در حال انجام — {h.fromName}</Text>
+          <Text style={s.cardAmt}>{CUR_FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
+          <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
+          <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => doDeliverDirect(h.id, net.code)}>
+            <Text style={s.btnTxt}>📦 تحویل دادم</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+
+      {/* ═══ حوالات عمومی من ═══ */}
       <Text style={s.secT}>📋 حوالات من ({myHawalas.length})</Text>
       {myHawalas.length === 0 ? (
         <Text style={s.empty}>حواله‌ای ثبت نکرده‌اید</Text>
@@ -331,11 +412,67 @@ export default function LiveMarketScreen({ showToast }: any) {
           </ScrollView>
         </View></View>
       </Modal>
+
+      {/* مودال حواله خصوصی */}
+      <Modal visible={directModal} transparent animationType="slide" onRequestClose={() => setDirectModal(false)}>
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={[s.mHead, { backgroundColor: '#0891b2' }]}><Text style={s.mTitle}>🔒 حواله خصوصی</Text>
+            <TouchableOpacity onPress={() => setDirectModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 14 }}>
+            <Text style={s.lbl}>صراف مقصد * ({agents.length} نفر آنلاین)</Text>
+            {agents.length === 0 ? (
+              <Text style={s.empty}>صراف دیگری در شبکه نیست</Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 200, marginBottom: 8 }}>
+                {agents.map((a: any) => (
+                  <TouchableOpacity key={a.code} onPress={() => setDirectForm({ ...directForm, toAgent: a.code, toAgentName: a.name })} style={[s.agentRow, directForm.toAgent === a.code && { backgroundColor: '#0891b2' }]}>
+                    <Text style={[s.agentName, directForm.toAgent === a.code && { color: '#fff' }]}>{a.name}</Text>
+                    <Text style={[s.agentCity, directForm.toAgent === a.code && { color: '#fff' }]}>{NET_CITIES[a.city] || a.city}</Text>
+                    <Text style={[s.agentCode, directForm.toAgent === a.code && { color: '#a7f3d0' }]}>{a.code}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+            <Text style={s.lbl}>ارز</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['USD', 'AFN', 'EUR', 'PKR', 'AED'].map(c => (
+                <TouchableOpacity key={c} onPress={() => setDirectForm({ ...directForm, currency: c })} style={[s.chip, directForm.currency === c && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]}>
+                  <Text style={[s.chipTxt, directForm.currency === c && { color: '#fff' }]}>{CUR_FLAG[c]} {c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.lbl}>مقدار *</Text>
+            <TextInput style={s.inp} value={directForm.amount} onChangeText={v => setDirectForm({ ...directForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="1000" placeholderTextColor="#94a3b8" />
+            <Text style={s.lbl}>نام ذی‌نفع *</Text>
+            <TextInput style={s.inp} value={directForm.beneficiaryName} onChangeText={v => setDirectForm({ ...directForm, beneficiaryName: v })} placeholder="نام گیرنده" placeholderTextColor="#94a3b8" />
+            <Text style={s.lbl}>تلفن ذی‌نفع</Text>
+            <TextInput style={s.inp} value={directForm.beneficiaryPhone} onChangeText={v => setDirectForm({ ...directForm, beneficiaryPhone: v.replace(/[^\d]/g, '') })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
+            <Text style={s.lbl}>کارمزد</Text>
+            <TextInput style={s.inp} value={directForm.commission} onChangeText={v => setDirectForm({ ...directForm, commission: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="200" placeholderTextColor="#94a3b8" />
+            <Text style={s.lbl}>توضیحات</Text>
+            <TextInput style={[s.inp, { minHeight: 50 }]} value={directForm.note} onChangeText={v => setDirectForm({ ...directForm, note: v })} multiline placeholderTextColor="#94a3b8" />
+            <View style={s.rowBtns}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setDirectModal(false)}>
+                <Text style={s.btnTxt}>انصراف</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#0891b2', flex: 2 }]} onPress={submitDirect} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>🔒 ارسال</Text>}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View></View>
+      </Modal>
+
     </View>
   );
 }
 
 const s = StyleSheet.create({
+  agentRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 10, borderRadius: 8, backgroundColor: '#1a2332', marginBottom: 4, borderWidth: 1, borderColor: '#334155' },
+  agentName: { color: '#fff', fontWeight: 'bold', fontSize: 12, flex: 1, textAlign: 'right' },
+  agentCity: { color: '#cbd5e1', fontSize: 11, marginLeft: 8 },
+  agentCode: { color: '#7c3aed', fontSize: 10, fontFamily: 'monospace', marginLeft: 8 },
   statusBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, marginBottom: 12, borderWidth: 1 },
   statusOn: { backgroundColor: '#065f46', borderColor: '#10b981' },
   statusOff: { backgroundColor: '#78350f', borderColor: '#f59e0b' },

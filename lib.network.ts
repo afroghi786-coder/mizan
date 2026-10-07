@@ -450,3 +450,18 @@ export async function testFirebaseConnection(): Promise<{ ok: boolean; message: 
     return { ok: false, message: e?.message || 'خطا' };
   }
 }
+
+
+// ═══ ذخیره با ارز پایه مشخص ═══
+export async function saveDailyRateWithBase(currency: string, rate: number, baseCurrency: string): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('شبکه متصل نیست');
+  const d = new Date();
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const { error } = await _sb.from('net_daily_rates').upsert({
+    date_str: dateStr, currency, rate, base_currency: baseCurrency,
+    by_email: _myEmail, by_name: _myName,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'date_str,currency,by_email' });
+  if (error) throw new Error(error.message);
+  return { success: true };
+}

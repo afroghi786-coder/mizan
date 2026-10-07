@@ -7,7 +7,7 @@ import {
   sendDirectHawala, acceptDirectHawala, deliverDirectHawala,
   listenOpenHawalas, listenFXOffers, listenMyHawalas,
   listenDirectInbox, listenMyGroups,
-  saveDailyRate, saveDailyRateWithBase, listenDailyRates,
+  saveDailyRate, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES,
 } from './lib.network';
 
@@ -35,7 +35,6 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
   const [directForm, setDirectForm] = useState<any>({ toEmail: '', toName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
   const [rateForm, setRateForm] = useState<any>({ USD: '', EUR: '', AFN: '', PKR: '' });
-  const [rateBase, setRateBase] = useState('AFN');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -123,18 +122,14 @@ export default function LiveMarketScreen({ showToast }: any) {
   };
 
   const submitRates = async () => {
-    if (!rateBase) return showToast?.('ارز پایه انتخاب کنید', true);
-    let count = 0;
     setSaving(true);
     try {
-      for (const cur of ['USD', 'EUR', 'AFN', 'PKR', 'GBP', 'AED', 'SAR', 'TRY', 'IRR', 'TOM']) {
-        if (cur === rateBase) continue;
+      for (const cur of ['USD', 'EUR', 'AFN', 'PKR']) {
         const v = Number(rateForm[cur]);
-        if (v > 0) { await saveDailyRateWithBase(cur, v, rateBase); count++; }
+        if (v > 0) await saveDailyRate(cur, v);
       }
-      if (count === 0) { setSaving(false); return showToast?.('حداقل یک نرخ وارد کنید', true); }
       setRateModal(false);
-      showToast?.('✅ ' + count + ' نرخ ثبت شد');
+      showToast?.('✅ نرخ‌ها ثبت شد');
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
   };
@@ -187,7 +182,7 @@ export default function LiveMarketScreen({ showToast }: any) {
           <TouchableOpacity style={[s.actBtn, { backgroundColor: '#0891b2' }]} onPress={async () => { setAgents(await getAgents()); setDirectModal(true); }}>
             <Text style={s.actBtnTxt}>🔒 حواله خصوصی</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.actBtn, { backgroundColor: '#059669' }]} onPress={() => { setRateForm({ USD: '', EUR: '', GBP: '', PKR: '', AED: '', SAR: '', TRY: '', IRR: '', TOM: '' }); setRateModal(true); }}>
+          <TouchableOpacity style={[s.actBtn, { backgroundColor: '#059669' }]} onPress={() => setRateModal(true)}>
             <Text style={s.actBtnTxt}>📈 نرخ روز</Text>
           </TouchableOpacity>
         </View>
@@ -492,39 +487,12 @@ export default function LiveMarketScreen({ showToast }: any) {
             <TouchableOpacity onPress={() => setRateModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14 }}>
-            {/* ارز پایه */}
-            <View style={s.baseBox}>
-              <Text style={s.baseLbl}>🎯 نرخ بر اساس:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {['AFN', 'USD', 'EUR', 'PKR', 'AED'].map(b => (
-                  <TouchableOpacity key={b} onPress={() => setRateBase(b)} style={[s.chip, rateBase === b && { backgroundColor: '#d4af37', borderColor: '#d4af37' }]}>
-                    <Text style={[s.chipTxt, rateBase === b && { color: '#000', fontWeight: 'bold' }]}>{FLAG[b]} {b}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <Text style={s.baseHint}>
-                ۱ واحد از هر ارز = ? {rateBase}
-              </Text>
-            </View>
-
-            {/* فیلدهای نرخ */}
-            {['USD', 'EUR', 'GBP', 'PKR', 'AED', 'SAR', 'TRY', 'IRR', 'TOM'].filter(x => x !== rateBase).map(c => (
+            {['USD', 'EUR', 'AFN', 'PKR'].map(c => (
               <View key={c}>
-                <Text style={s.lbl}>{FLAG[c]} {c}</Text>
-                <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }}>
-                  <TextInput
-                    style={[s.inp, { flex: 1 }]}
-                    value={rateForm[c]}
-                    onChangeText={v => setRateForm({ ...rateForm, [c]: v.replace(/[^\d.]/g, '') })}
-                    keyboardType="numeric"
-                    placeholder="مثلاً 70500"
-                    placeholderTextColor="#94a3b8"
-                  />
-                  <Text style={{ color: '#94a3b8', fontSize: 11, minWidth: 60, textAlign: 'left' }}>{rateBase}</Text>
-                </View>
+                <Text style={s.lbl}>{FLAG[c]} {c} {rates[c]?.rate ? `(فعلی: ${fmt(rates[c].rate)})` : ''}</Text>
+                <TextInput style={s.inp} value={rateForm[c]} onChangeText={v => setRateForm({ ...rateForm, [c]: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="نرخ" placeholderTextColor="#94a3b8" />
               </View>
             ))}
-
             <View style={s.rowBtns}>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setRateModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
@@ -553,9 +521,6 @@ const s = StyleSheet.create({
   actBtnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
   secT: { color: '#d4af37', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginTop: 16, marginBottom: 8 },
   rateBox: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
-  baseBox: { backgroundColor: '#1e3a5f', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: '#d4af37' },
-  baseLbl: { color: '#d4af37', fontSize: 13, fontWeight: 'bold', marginBottom: 8, textAlign: 'right' },
-  baseHint: { color: '#cbd5e1', fontSize: 11, marginTop: 8, textAlign: 'right', fontStyle: 'italic' },
   rateCard: { backgroundColor: '#0f2438', borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#334155' },
   rateCardHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, marginBottom: 6, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
   rateCardTitle: { color: '#d4af37', fontSize: 13, fontWeight: 'bold' },

@@ -1,3 +1,5 @@
+import LiveMarketScreen from './LiveMarketScreen';
+import GroupsScreen from './GroupsScreen';
 import { getBoxTxsByCounterparty, getBoxSummaryForPerson, backfillBoxTxs, getBoxesForPerson } from './lib.boxes';
 import { applyTradeToBoxes } from './lib.box-auto';
 import BoxesScreen from './BoxesScreen';
@@ -123,7 +125,7 @@ function DateField({ value, onChange, compact, defaultToToday }: any) {
 
 export default function ExchangeScreen({ showToast }: any) {
   const [showInvoice, setShowInvoice] = useState<any>(null);
-  const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger' | 'statement'>('list');
+  const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger' | 'statement' | 'liveMarket' | 'myGroups'>('list');
   const [trades, setTrades] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
@@ -663,6 +665,8 @@ export default function ExchangeScreen({ showToast }: any) {
             { k: 'statement', l: '🖨️ پرینت حساب' },
             { k: 'customers', l: '👥 مشتریان' },
             { k: 'partners', l: '🏢 خریداران' },
+            { k: 'liveMarket', l: '📡 بازار زنده' },
+            { k: 'myGroups', l: '🌐 شبکه‌های من' },
           ].map(x => (
             <TouchableOpacity key={x.k} onPress={() => { if (x.k === 'form' && sub !== 'form') { openNew(); return; } setSub(x.k as any); }} style={[s.sub, sub === x.k && s.subActive]}>
               <Text style={[s.subTxt, sub === x.k && s.subTxtActive]}>{x.l}</Text>
@@ -844,6 +848,16 @@ export default function ExchangeScreen({ showToast }: any) {
         {/* ═══════ شرکا ═══════ */}
         {sub === 'partners' && (
           <PartyList type="buyer" showToast={showToast} />
+        )}
+
+        {/* ═══════ بازار زنده ═══════ */}
+        {sub === 'liveMarket' && (
+          <LiveMarketScreen showToast={showToast} />
+        )}
+
+        {/* ═══════ شبکه‌های من ═══════ */}
+        {sub === 'myGroups' && (
+          <GroupsScreen showToast={showToast} />
         )}
 
         {/* ═══════ حواله‌جات ═══════ */}

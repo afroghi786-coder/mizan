@@ -823,6 +823,7 @@ export default function LiveMarketScreen({ showToast }: any) {
         return (
           <View key={h.id} style={s.card}>
             <Text style={s.cardTitle}>{h.fromName}</Text>
+            <Text style={[s.cardRow, { color: '#a78bfa', fontWeight: 'bold' }]}>📍 از {h.fromName || h.from_email?.split('@')[0] || '—'} در {NET_CITIES[h.fromCity || h.from_city] || h.fromCity || h.from_city || '—'}</Text>
             <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
             <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📍 {NET_CITIES[h.targetCity] || h.targetCity}</Text>
             {!mine ? (
@@ -1156,6 +1157,14 @@ export default function LiveMarketScreen({ showToast }: any) {
             <TouchableOpacity onPress={() => setHawalaModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14 }}>
+            <View style={{ backgroundColor: '#0f172a', padding: 10, borderRadius: 8, marginBottom: 8, borderRightWidth: 3, borderRightColor: '#0891b2' }}>
+              <Text style={{ color: '#0891b2', fontSize: 12, fontWeight: 'bold', textAlign: 'right' }}>
+                📍 ارسال از: {net.name || '—'} در {NET_CITIES[net.city] || net.city || '—'}
+              </Text>
+              <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'right', marginTop: 4 }}>
+                (شهر شما از پروفایل گرفته می‌شود)
+              </Text>
+            </View>
             <Text style={s.lbl}>شهر مقصد *</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {Object.keys(NET_CITIES).map(k => (

@@ -123,6 +123,7 @@ export async function sendBroadcastHawala(h: any): Promise<any> {
     target_city: h.targetCity, currency: h.currency, amount: h.amount,
     beneficiary_name: h.beneficiaryName, beneficiary_phone: h.beneficiaryPhone || '',
     max_fee: h.maxFee || 2, note: h.note || '', status: 'open',
+    target_group_id: h.targetGroupId || null,
     expires_at: expiresAtH,
   });
   if (error) { console.log('sendBroadcastHawala error:', error.message); throw new Error(error.message); }
@@ -144,17 +145,14 @@ export async function sendBroadcastHawala(h: any): Promise<any> {
 
 export async function claimHawala(taskId: string): Promise<any> {
   if (!_sb || !_myEmail) throw new Error('متصل نیست');
-  const { data: cur } = await _sb.from('net_hawalas').select('*').eq('id', taskId).single();
-  if (!cur) return { success: false, message: 'پیدا نشد' };
-  if (cur.status !== 'open') return { success: false, message: 'دیر رسیدی' };
-  if (cur.from_email === _myEmail) return { success: false, message: 'خودتان فرستادید' };
   const { data: upd, error } = await _sb.from('net_hawalas')
     .update({ status: 'locked', claimed_by_email: _myEmail, claimed_by_name: _myName, claimed_at: new Date().toISOString() })
     .eq('id', taskId).eq('status', 'open').select();
   if (error) return { success: false, message: error.message };
-  if (!upd || !upd.length) return { success: false, message: 'دیر رسیدی' };
-  await notify(cur.from_email, 'hawala_taken', { taskId, from_name: _myName, amount: cur.amount, currency: cur.currency });
-  return { success: true, task: upd[0] };
+  if (!upd || !upd.length) return { success: false, message: '⛔ دیر رسیدی — یکی دیگر قبول کرد' };
+  const cur = upd[0];
+  notify(cur.from_email, 'hawala_taken', { taskId, from_name: _myName, amount: cur.amount, currency: cur.currency }).catch(() => {});
+  return { success: true, task: cur };
 }
 
 // ═══════════════════════════════════════════════════════
@@ -165,13 +163,14 @@ export async function sendFXOffer(o: any): Promise<any> {
   const expiresAt = new Date(Date.now() + (Number(o.expires || 10) * 60000)).toISOString();
   const { error } = await _sb.from('net_fx_offers').insert({
     id: o.id, seller_email: _myEmail, seller_name: _myName, seller_city: _myCity,
+    seller_city_manual: o.sellerCityManual || null,
     currency: o.currency, target_currency: o.targetCurrency || 'AFN',
     amount: o.amount, rate_type: o.rateType || 'fixed',
     rate: o.rate || 0, note: o.note || '', status: 'open',
+    target_group_id: o.targetGroupId || null,
     expires_at: expiresAt,
   });
   if (error) { console.log('sendFXOffer error:', error.message); throw new Error(error.message); }
-  console.log('✅ FX offer inserted:', o.id, 'expires:', expiresAt);
   // ⭐ نوتیف به کاربران مطابق با تنظیماتشون
   try {
     const { data: users } = await _sb.from('net_preferences').select('email, notify_fx_new, watch_currencies').eq('notify_fx_new', true).neq('email', _myEmail);
@@ -442,15 +441,61 @@ export async function fetchFXOffers(): Promise<any[]> {
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     if (error) { console.log('fetchFXOffers error:', error.message); return []; }
-    // فیلتر expiry در JS (timezone-safe)
     const now = Date.now();
     return (data || []).filter((f: any) => {
       if (!f.expires_at) return true;
       const exp = new Date(f.expires_at).getTime();
-      // ۵ دقیقه margin برای اختلاف timezone
       return exp > (now - 5 * 60 * 1000);
     });
   } catch (e: any) { console.log('fetchFXOffers exception:', e?.message); return []; }
+}
+
+// ⚡ انقضای خودکار آگهی‌ها — هر ۳۰ ثانیه
+export async function expireOldOffers(): Promise<{ fxExpired: number; hawalaExpired: number }> {
+  if (!_sb || !_myEmail) return { fxExpired: 0, hawalaExpired: 0 };
+  try {
+    const now = new Date().toISOString();
+    // آگهی‌های خودم که منقضی شده‌اند
+    const { data: fx } = await _sb.from('net_fx_offers')
+      .select('*').eq('seller_email', _myEmail).eq('status', 'open').lt('expires_at', now);
+    let fxCount = 0;
+    for (const f of (fx || [])) {
+      await _sb.from('net_fx_offers').update({ status: 'expired' }).eq('id', f.id);
+      await _sb.from('net_notifications').insert({
+        to_email: _myEmail, type: 'fx_expired',
+        payload: { offerId: f.id, currency: f.currency, amount: f.amount },
+      });
+      fxCount++;
+    }
+    // حواله‌های خودم که منقضی شده‌اند
+    const { data: hw } = await _sb.from('net_hawalas')
+      .select('*').eq('from_email', _myEmail).eq('status', 'open').lt('expires_at', now);
+    let hwCount = 0;
+    for (const h of (hw || [])) {
+      await _sb.from('net_hawalas').update({ status: 'expired' }).eq('id', h.id);
+      await _sb.from('net_notifications').insert({
+        to_email: _myEmail, type: 'hawala_expired',
+        payload: { hawalaId: h.id, currency: h.currency, amount: h.amount },
+      });
+      hwCount++;
+    }
+    return { fxExpired: fxCount, hawalaExpired: hwCount };
+  } catch (e: any) { console.log('expireOldOffers error:', e?.message); return { fxExpired: 0, hawalaExpired: 0 }; }
+}
+
+// ⚡ فچ فعالیت‌های گروه — شبیه فید تلگرام
+export async function fetchGroupFeed(groupId: string): Promise<any[]> {
+  if (!_sb) return [];
+  try {
+    const { data: fx } = await _sb.from('net_fx_offers').select('*').eq('target_group_id', groupId).order('created_at', { ascending: false }).limit(30);
+    const { data: hw } = await _sb.from('net_hawalas').select('*').eq('target_group_id', groupId).order('created_at', { ascending: false }).limit(30);
+    const feed = [
+      ...(fx || []).map((f: any) => ({ ...f, _kind: 'fx', _when: f.created_at })),
+      ...(hw || []).map((h: any) => ({ ...h, _kind: 'hawala', _when: h.created_at })),
+    ];
+    feed.sort((a, b) => new Date(b._when).getTime() - new Date(a._when).getTime());
+    return feed;
+  } catch (e: any) { console.log('fetchGroupFeed error:', e?.message); return []; }
 }
 
 export async function fetchMyHawalas(): Promise<any[]> {

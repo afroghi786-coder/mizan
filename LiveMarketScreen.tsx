@@ -429,10 +429,34 @@ export default function LiveMarketScreen({ showToast }: any) {
     setSaving(false);
   };
 
-  const doClaimH = async (id: string) => { const r = await claimHawala(id); showToast?.(r.success ? '✅ گرفتی' : '⚠️ ' + r.message, !r.success); };
-  const doClaimF = async (id: string) => { const r = await claimFXOffer(id); showToast?.(r.success ? '✅ گرفتی' : '⚠️ ' + r.message, !r.success); };
-  const doAcceptD = async (id: string) => { try { await acceptDirectHawala(id); showToast?.('✅ قبول شد'); } catch (e: any) { showToast?.('❌ ' + e.message, true); } };
-  const doDeliverD = async (id: string, toEmail: string) => { try { await deliverDirectHawala(id, toEmail); showToast?.('✅ تحویل شد'); } catch (e: any) { showToast?.('❌ ' + e.message, true); } };
+  const doClaimH = async (id: string) => {
+    try {
+      const r = await claimHawala(id);
+      showToast?.(r.success ? '✅ قبول شد' : '⚠️ ' + r.message, !r.success);
+      if (r.success) setTimeout(() => refresh(), 300);
+    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+  };
+  const doClaimF = async (id: string) => {
+    try {
+      const r = await claimFXOffer(id);
+      showToast?.(r.success ? '✅ قبول شد' : '⚠️ ' + r.message, !r.success);
+      if (r.success) setTimeout(() => refresh(), 300);
+    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+  };
+  const doAcceptD = async (id: string) => {
+    try {
+      await acceptDirectHawala(id);
+      showToast?.('✅ قبول شد');
+      setTimeout(() => refresh(), 300);
+    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+  };
+  const doDeliverD = async (id: string, toEmail: string) => {
+    try {
+      await deliverDirectHawala(id, toEmail);
+      showToast?.('✅ تحویل شد');
+      setTimeout(() => refresh(), 300);
+    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+  };
 
   if (loading) return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
 
@@ -784,7 +808,7 @@ export default function LiveMarketScreen({ showToast }: any) {
             </View>
             <Text style={s.lbl}>ارز</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
-              {['USD', 'AFN', 'EUR', 'PKR', 'AED'].map(c => (
+              {ALL_CURS.map(c => (
                 <TouchableOpacity key={c} onPress={() => setHawalaForm({ ...hawalaForm, currency: c })} style={[s.chip, hawalaForm.currency === c && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]}>
                   <Text style={[s.chipTxt, hawalaForm.currency === c && { color: '#fff' }]}>{FLAG[c]} {c}</Text>
                 </TouchableOpacity>
@@ -829,7 +853,7 @@ export default function LiveMarketScreen({ showToast }: any) {
           <ScrollView style={{ padding: 14 }}>
             <Text style={s.lbl}>ارز</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
-              {['USD', 'EUR', 'PKR', 'AED', 'AFN'].map(c => (
+              {ALL_CURS.map(c => (
                 <TouchableOpacity key={c} onPress={() => setFxForm({ ...fxForm, currency: c })} style={[s.chip, fxForm.currency === c && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]}>
                   <Text style={[s.chipTxt, fxForm.currency === c && { color: '#fff' }]}>{FLAG[c]} {c}</Text>
                 </TouchableOpacity>

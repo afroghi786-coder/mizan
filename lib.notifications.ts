@@ -1,19 +1,34 @@
-// lib.notifications.ts — Global notification helpers (WebView-safe)
+// lib.notifications.ts — WebView-safe
+// ⚠️ هیچ API خطرناکی بدون چک اجرا نمی‌شود
+
+const _W = (typeof window !== 'undefined') ? window : null;
+const _N = (typeof navigator !== 'undefined') ? navigator : null;
+
+// تشخیص WebView (APK)
+const _isWebView = (() => {
+  try {
+    if (!_N) return false;
+    const ua = (_N.userAgent || '').toLowerCase();
+    if (ua.includes('wv') || ua.includes('webview')) return true;
+    if (typeof (_W as any)?.ReactNativeWebView !== 'undefined') return true;
+    // Android بدون Chrome Mobile معمولاً WebView است
+    if (ua.includes('android') && !ua.includes('chrome')) return true;
+    return false;
+  } catch { return false; }
+})();
+
+// در WebView: همه‌چیز غیرفعال
 let _audioCtx: any = null;
 let _unlocked = false;
-let _playingSound = false;
-
-const isWeb = typeof window !== 'undefined';
-const hasAudio = isWeb && (typeof (window as any).AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined');
-const hasNotif = isWeb && typeof Notification !== 'undefined';
+let _playing = false;
 
 export function unlockAudio() {
-  if (!hasAudio) return;
+  if (_isWebView) return;
   try {
-    if (!_audioCtx) {
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-      _audioCtx = new Ctx();
-    }
+    if (!_W) return;
+    const Ctx = (_W as any).AudioContext || (_W as any).webkitAudioContext;
+    if (!Ctx) return;
+    if (!_audioCtx) _audioCtx = new Ctx();
     if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
     if (!_unlocked && _audioCtx) {
       const o = _audioCtx.createOscillator();
@@ -23,15 +38,15 @@ export function unlockAudio() {
       o.start(); o.stop(_audioCtx.currentTime + 0.01);
       _unlocked = true;
     }
-  } catch (e) { console.log('unlockAudio err:', e); }
+  } catch (e) { /* silent */ }
 }
 
 export function playNotifSound() {
-  if (!hasAudio) return;
+  if (_isWebView) return;  // ⚠️ در WebView صدا پخش نمی‌شود
   try {
     unlockAudio();
-    if (!_audioCtx || _playingSound) return;
-    _playingSound = true;
+    if (!_audioCtx || _playing) return;
+    _playing = true;
     const t = _audioCtx.currentTime;
     const o1 = _audioCtx.createOscillator();
     const g1 = _audioCtx.createGain();
@@ -49,38 +64,40 @@ export function playNotifSound() {
     g2.gain.setValueAtTime(0.4, t + 0.2);
     g2.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
     o2.start(t + 0.2); o2.stop(t + 0.6);
-    setTimeout(() => { _playingSound = false; }, 800);
-  } catch (e) { _playingSound = false; }
+    setTimeout(() => { _playing = false; }, 800);
+  } catch (e) { _playing = false; }
 }
 
 export function vibrateNotif() {
+  if (_isWebView) return;  // ⚠️ در WebView لرزش غیرفعال
   try {
-    if (isWeb && navigator && typeof (navigator as any).vibrate === 'function') {
-      (navigator as any).vibrate([200, 100, 200]);
+    if (_N && typeof (_N as any).vibrate === 'function') {
+      (_N as any).vibrate([200, 100, 200]);
     }
-  } catch (e) {}
+  } catch (e) { /* silent */ }
 }
 
 export function showBrowserNotif(title: string, body: string) {
-  if (!hasNotif) return;
+  if (_isWebView) return;  // ⚠️ در WebView نوتیف مرورگر غیرفعال
   try {
+    if (typeof Notification === 'undefined') return;
     if (Notification.permission !== 'granted') return;
-    const n = new Notification(title, {
-      body,
-      icon: '/mizan/favicon.ico',
-      silent: false,
-      tag: 'mizan-' + Date.now(),
-    });
+    const n = new Notification(title, { body, silent: false, tag: 'mizan-' + Date.now() });
     setTimeout(() => { try { n.close(); } catch {} }, 8000);
-  } catch (e) {}
+  } catch (e) { /* silent */ }
 }
 
 export async function requestNotifPermission(): Promise<string> {
-  if (!hasNotif) return 'unsupported';
+  if (_isWebView) return 'unsupported';
   try {
+    if (typeof Notification === 'undefined') return 'unsupported';
     if (typeof Notification.requestPermission !== 'function') return 'unsupported';
     if (Notification.permission === 'granted') return 'granted';
     if (Notification.permission === 'denied') return 'denied';
     return await Notification.requestPermission();
   } catch (e) { return 'error'; }
+}
+
+export function isWebView(): boolean {
+  return _isWebView;
 }

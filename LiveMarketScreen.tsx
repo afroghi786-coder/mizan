@@ -11,6 +11,15 @@ import {
   saveDailyRateWithBase, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications, markRoomRead, listenMessages, sendMessage, fetchMessages} from './lib.network';
 
+
+const _isWebView = (() => {
+  try {
+    if (typeof navigator === 'undefined') return true;
+    const ua = navigator.userAgent || '';
+    return /wv|WebView/i.test(ua) || typeof (window as any).ReactNativeWebView !== 'undefined';
+  } catch { return false; }
+})();
+
 const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
 const FLAG: Record<string, string> = { AFN: '🇦🇫', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', PKR: '🇵🇰', AED: '🇦🇪', SAR: '🇸🇦', TRY: '🇹🇷', IRR: '🇮🇷', TOM: '🇮🇷', INR: '🇮🇳', CNY: '🇨🇳', JPY: '🇯🇵', CHF: '🇨🇭', CAD: '🇨🇦', AUD: '🇦🇺', KWD: '🇰🇼', QAR: '🇶🇦', OMR: '🇴🇲', BHD: '🇧🇭', JOD: '🇯🇴', IQD: '🇮🇶', MYR: '🇲🇾', RUB: '🇷🇺', TJS: '🇹🇯', UZS: '🇺🇿', TMT: '🇹🇲', KGS: '🇰🇬', KZT: '🇰🇿', AZN: '🇦🇿', HKD: '🇭🇰', SGD: '🇸🇬', THB: '🇹🇭', EGP: '🇪🇬', LYD: '🇱🇾', SYP: '🇸🇾', LBP: '🇱🇧', YER: '🇾🇪', ETB: '🇪🇹', NOK: '🇳🇴', SEK: '🇸🇪', DKK: '🇩🇰', NZD: '🇳🇿', ZAR: '🇿🇦' };
 
@@ -95,7 +104,30 @@ function unlockAudio() {
   } catch {}
 }
 
+
+// 🔇 امن‌سازی صدا
+const _safePlaySound = () => {
+  try {
+    if (_isWebView) return;
+    if (typeof window === 'undefined') return;
+    if (!('AudioContext' in window) && !('webkitAudioContext' in window)) return;
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    if (ctx.state === 'suspended') ctx.resume();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880;
+    o.type = 'sine';
+    g.gain.setValueAtTime(0.3, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+    o.start(); o.stop(ctx.currentTime + 0.4);
+  } catch {}
+};
+
 function playNotifSound() {
+  if (_isWebView) return;
   try {
     const ctx = _getAudioCtx();
     if (!ctx) return;
@@ -121,6 +153,7 @@ function playNotifSound() {
 }
 
 function vibrateNotif() {
+  if (_isWebView) return;
   try {
     if (typeof navigator !== 'undefined' && (navigator as any).vibrate) {
       (navigator as any).vibrate([200, 100, 200]);
@@ -136,6 +169,7 @@ function requestBrowserNotifPermission() {
 }
 
 function showBrowserNotif(title: string, body: string) {
+  if (_isWebView) return;
   try {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     if (Notification.permission === 'granted') {
@@ -186,6 +220,12 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [myDeals, setMyDeals] = useState<any[]>([]);
   const [directInbox, setDirectInbox] = useState<any[]>([]);
   const [myGroups, setMyGroups] = useState<any[]>([]);
+  const [createGroupModal, setCreateGroupModal] = useState(false);
+  const [joinGroupModal, setJoinGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupCity, setNewGroupCity] = useState('KBL');
+  const [joinGroupCode, setJoinGroupCode] = useState('');
+  const [groupSaving, setGroupSaving] = useState(false);
   const [rates, setRates] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [settingsModal, setSettingsModal] = useState(false);
@@ -310,7 +350,7 @@ export default function LiveMarketScreen({ showToast }: any) {
     (async () => {
       const p = await fetchPreferences();
       setPrefs(p);
-      if (p.notify_browser) requestBrowserNotifPermission();
+      if (!_isWebView && p.notify_browser) requestBrowserNotifPermission();
     })();
     const t = setInterval(async () => { setNotifList(await fetchAllNotifications()); }, 5000);
     (async () => { setNotifList(await fetchAllNotifications()); })();
@@ -353,7 +393,7 @@ useEffect(() => {
         // ✅ لرزش
         if (prefs.notify_vibrate) vibrateNotif();
         // ✅ نوتیف مرورگر
-        if (prefs.notify_browser) showBrowserNotif('میزان | MIZAN', msg);
+        if (!_isWebView && prefs.notify_browser) showBrowserNotif('میزان | MIZAN', msg);
         // ✅ toast
         showToast?.(msg);
       }
@@ -570,6 +610,38 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
       const feed = await m.fetchGroupFeed(g.id);
       setGroupFeed(feed);
     } catch (e: any) { console.log('openGroupFeed', e?.message); }
+  };
+
+
+  // ═══ ایجاد گروه ═══
+  const submitCreateGroup = async () => {
+    if (!newGroupName || newGroupName.length < 3) return showToast?.('نام حداقل ۳ کاراکتر', true);
+    setGroupSaving(true);
+    try {
+      const m = await import('./lib.network');
+      const r = await (m as any).createGroup(newGroupName, newGroupCity);
+      showToast?.('✅ گروه ساخته شد — کد دعوت: ' + (r.inviteCode || ''));
+      setCreateGroupModal(false);
+      setNewGroupName('');
+      setNewGroupCity('KBL');
+      refresh();
+    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+    setGroupSaving(false);
+  };
+
+  // ═══ پیوستن به گروه ═══
+  const submitJoinGroup = async () => {
+    if (!joinGroupCode || joinGroupCode.length < 5) return showToast?.('کد دعوت نامعتبر', true);
+    setGroupSaving(true);
+    try {
+      const m = await import('./lib.network');
+      await (m as any).joinGroupByCode(joinGroupCode.trim().toUpperCase());
+      showToast?.('✅ به گروه پیوستید');
+      setJoinGroupModal(false);
+      setJoinGroupCode('');
+      refresh();
+    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+    setGroupSaving(false);
   };
 
   if (loading) return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
@@ -937,7 +1009,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                   <TouchableOpacity
                     style={[s.btn, { backgroundColor: '#059669', flex: 1 }]}
                     onPress={async () => {
-                      const ok = window.confirm('آیا تحویل انجام شد؟');
+                      const ok = (typeof window !== 'undefined' && window.confirm) ? window.confirm('آیا تحویل انجام شد؟') : true;
                       if (!ok) return;
                       try {
                         const m = await import('./lib.network');

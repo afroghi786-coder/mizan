@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
 import ExchangeScreen from './ExchangeScreen';
+import PublicMarketScreen from './PublicMarketScreen';
 import { unlockAudio, playNotifSound, vibrateNotif, showBrowserNotif } from './lib.notifications';
 import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
@@ -570,7 +571,8 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     { key: 'mgr', icon: '📋', label: t('مدیریت'), color: '#c0392b' },
     { key: 'profit', icon: '💹', label: term('profit'), color: '#065f46' },
     { key: 'inventory', icon: '📦', label: term('inventory'), color: '#0f5132' },
-    { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
+    { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },{ key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
+    { key: 'publicMarket', icon: '🏛️', label: 'بازار', color: '#0891b2' },
     { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
     { key: 'employees', icon: '💼', label: t('کارمندان'), color: '#7c3aed' },
   ];
@@ -640,6 +642,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
+      {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}
       </View>

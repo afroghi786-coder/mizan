@@ -761,3 +761,52 @@ export async function deliverHawalaByUser(hawalaId: string): Promise<any> {
   if (error) throw new Error(error.message);
   return { success: true };
 }
+
+// ═══════════════════════════════════════════════════════════
+//  بازار عمومی (دیوار میزان)
+// ═══════════════════════════════════════════════════════════
+
+export async function fetchPublicAds(opts: any): Promise<any[]> {
+  if (!_sb) return [];
+  try {
+    let q = _sb.from('public_general_ads').select('*').eq('status', 'active').eq('category', opts.category);
+    if (opts.city) q = q.eq('city', opts.city);
+    if (opts.subcategory) q = q.eq('subcategory', opts.subcategory);
+    q = q.order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await q;
+    if (error) { console.log('fetchPublicAds:', error.message); return []; }
+    let list = data || [];
+    if (opts.search) {
+      const s = String(opts.search).toLowerCase();
+      list = list.filter((a: any) => (a.title || '').toLowerCase().includes(s) || (a.description || '').toLowerCase().includes(s));
+    }
+    return list;
+  } catch (e: any) { console.log('fetchPublicAds ex:', e?.message); return []; }
+}
+
+export async function createPublicAd(ad: any): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  const { error } = await _sb.from('public_general_ads').insert({
+    user_email: _myEmail,
+    user_name: _myName || _myEmail.split('@')[0],
+    category: ad.category,
+    subcategory: ad.subcategory || '',
+    job_type: ad.job_type || null,
+    title: ad.title,
+    description: ad.description || '',
+    price: Number(ad.price) || 0,
+    currency: ad.currency || 'AFN',
+    city: ad.city,
+    condition: ad.condition || null,
+    phone: ad.phone || '',
+  });
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+export async function deletePublicAd(id: any): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  const { error } = await _sb.from('public_general_ads').delete().eq('id', id).eq('user_email', _myEmail);
+  if (error) throw new Error(error.message);
+  return { success: true };
+}

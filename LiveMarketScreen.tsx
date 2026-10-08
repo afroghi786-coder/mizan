@@ -203,7 +203,9 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', targetCurrency: 'AFN', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
-  const [directForm, setDirectForm] = useState<any>({ toEmail: '', toName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
+  const [directForm, setDirectForm] = useState<any>({ toEmail: '', toName: '', currency: 'USD', targetCurrency: 'AFN', rateMode: 'same', rate: '', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
+  const [dirSearchFrom, setDirSearchFrom] = useState('');
+  const [dirSearchTo, setDirSearchTo] = useState('');
   const [rateForm, setRateForm] = useState<any>(() => {
     const obj: any = {};
     ['AFN', 'USD', 'EUR', 'GBP', 'PKR', 'AED', 'SAR', 'TRY', 'IRR', 'TOM', 'INR', 'CNY', 'JPY', 'CHF', 'CAD', 'AUD', 'KWD', 'QAR', 'OMR', 'BHD', 'JOD', 'IQD', 'MYR', 'RUB', 'TJS', 'UZS', 'TMT', 'KGS', 'KZT', 'AZN', 'HKD', 'SGD', 'THB', 'EGP', 'LYD', 'SYP', 'LBP', 'YER', 'ETB', 'NOK', 'SEK', 'DKK', 'NZD', 'ZAR'].forEach(k => obj[k] = '');
@@ -473,6 +475,18 @@ export default function LiveMarketScreen({ showToast }: any) {
       setTimeout(() => refresh(), 300);
     } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
   };
+
+  // ═══ auto-read وقتی مودال باز شد ═══
+  useEffect(() => {
+    if (!notifModal) return;
+    (async () => {
+      try {
+        const { markAllRead } = await import('./lib.network');
+        await markAllRead();
+        setNotifList((prev: any[]) => prev.map((n: any) => ({ ...n, is_read: true })));
+      } catch (e) {}
+    })();
+  }, [notifModal]);
 
   if (loading) return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
 
@@ -832,19 +846,36 @@ export default function LiveMarketScreen({ showToast }: any) {
           </ScrollView>
           {notifList.length > 0 ? (
             <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: '#334155' }}>
-              <TouchableOpacity
-                onPress={async () => {
-                  try {
-                    const { markAllRead } = await import('./lib.network');
-                    await markAllRead();
-                    setNotifList(notifList.map((n: any) => ({ ...n, is_read: true })));
-                    showToast?.('✅ همه خوانده شد');
-                  } catch (e: any) { showToast?.('❌ ' + e.message, true); }
-                }}
-                style={{ backgroundColor: '#059669', padding: 10, borderRadius: 8, alignItems: 'center' }}
-              >
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✅ خواندن همه</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      const { markAllRead } = await import('./lib.network');
+                      await markAllRead();
+                      setNotifList(notifList.map((n: any) => ({ ...n, is_read: true })));
+                      showToast?.('✅ همه خوانده شد');
+                    } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+                  }}
+                  style={{ backgroundColor: '#059669', padding: 10, borderRadius: 8, alignItems: 'center', flex: 1 }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✅ خواندن همه</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      const { deleteNotification } = await import('./lib.network');
+                      for (const n of notifList) {
+                        if (n.id) await deleteNotification(n.id);
+                      }
+                      setNotifList([]);
+                      showToast?.('🗑 همه پاک شد');
+                    } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+                  }}
+                  style={{ backgroundColor: '#dc2626', padding: 10, borderRadius: 8, alignItems: 'center', flex: 1 }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>🗑 پاک کردن همه</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null}
         </View></View>
@@ -1072,7 +1103,33 @@ export default function LiveMarketScreen({ showToast }: any) {
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={s.lbl}>مقدار *</Text>
+            
+            {/* نوع تبدیل */}
+            <Text style={s.lbl}>نوع تبدیل</Text>
+            <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 4 }}>
+              <TouchableOpacity style={[s.chip, directForm.rateMode === 'same' && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]} onPress={() => setDirectForm({ ...directForm, rateMode: 'same' })}>
+                <Text style={[s.chipTxt, directForm.rateMode === 'same' && { color: '#fff' }]}>🔄 ارز به ارز</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.chip, directForm.rateMode === 'different' && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]} onPress={() => setDirectForm({ ...directForm, rateMode: 'different' })}>
+                <Text style={[s.chipTxt, directForm.rateMode === 'different' && { color: '#fff' }]}>💱 ارز متفاوت</Text>
+              </TouchableOpacity>
+            </View>
+            {directForm.rateMode === 'different' ? (
+              <>
+                <Text style={s.lbl}>ارز مقصد (گیرنده می‌گیرد) *</Text>
+                <TextInput style={s.inp} value={dirSearchTo} onChangeText={setDirSearchTo} placeholder="🔍 جستجو: AFN یا افغانی یا دالر..." placeholderTextColor="#94a3b8" />
+                <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                  {ALL_CURS.filter(c => c !== directForm.currency).filter(c => !dirSearchTo || c.toLowerCase().includes(dirSearchTo.toLowerCase()) || (CUR_NAME[c] || '').includes(dirSearchTo)).map(c => (
+                    <TouchableOpacity key={c} onPress={() => setDirectForm({ ...directForm, targetCurrency: c })} style={[s.chip, directForm.targetCurrency === c && { backgroundColor: '#10b981', borderColor: '#10b981' }]}>
+                      <Text style={[s.chipTxt, directForm.targetCurrency === c && { color: '#fff' }]}>{FLAG[c] || '💱'} {c} - {CUR_NAME[c] || c}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={s.lbl}>نرخ تبدیل (۱ {directForm.currency} = ? {directForm.targetCurrency}) *</Text>
+                <TextInput style={s.inp} value={directForm.rate} onChangeText={(v: string) => setDirectForm({ ...directForm, rate: v.replace(/[^0-9.]/g, '') })} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
+              </>
+            ) : null}
+<Text style={s.lbl}>مقدار *</Text>
             <TextInput style={s.inp} value={directForm.amount} onChangeText={v => setDirectForm({ ...directForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>نام ذی‌نفع *</Text>
             <TextInput style={s.inp} value={directForm.beneficiaryName} onChangeText={v => setDirectForm({ ...directForm, beneficiaryName: v })} placeholderTextColor="#94a3b8" />

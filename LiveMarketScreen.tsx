@@ -786,6 +786,68 @@ export default function LiveMarketScreen({ showToast }: any) {
           </TouchableOpacity>
         </View>
       ))}
+      {/* ═══ مودال نوتیفیکیشن ═══ */}
+      <Modal visible={notifModal} transparent animationType="slide" onRequestClose={() => setNotifModal(false)}>
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={[s.mHead, { backgroundColor: '#f59e0b' }]}>
+            <Text style={s.mTitle}>🔔 اعلان‌ها ({notifList.length})</Text>
+            <TouchableOpacity onPress={() => setNotifModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 14, maxHeight: 500 }}>
+            {notifList.length === 0 ? (
+              <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 30 }}>📭 اعلانی نیست</Text>
+            ) : notifList.map((n: any, i: number) => {
+              const p = n.payload || {};
+              const texts: any = {
+                fx_taken: `✅ ${p.from_name} آگهی شما را قبول کرد`,
+                hawala_taken: `✅ ${p.from_name} حواله شما را قبول کرد`,
+                direct_hawala: `🔒 حواله خصوصی از ${p.from_name}`,
+                direct_accepted: `✅ ${p.from_name} حواله را قبول کرد`,
+                direct_delivered: `📦 ${p.from_name} حواله را تحویل داد`,
+                group_invite: `🌐 دعوت به گروه ${p.groupName || ''}`,
+                group_join: `👥 ${p.from_name} به گروه پیوست`,
+                fx_new: `💱 ${p.from_name} فروش ${fmt(p.amount)} ${p.currency}`,
+                hawala_new: `📤 ${p.from_name} حواله ${fmt(p.amount)} ${p.currency}`,
+              };
+              const msg = texts[n.type] || '🔔 اعلان جدید';
+              const isUnread = !n.is_read;
+              return (
+                <View key={n.id || i} style={{
+                  backgroundColor: isUnread ? '#1e3a5f' : '#0f172a',
+                  padding: 12, borderRadius: 8, marginBottom: 8,
+                  borderRightWidth: 4,
+                  borderRightColor: isUnread ? '#f59e0b' : '#334155',
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 12, textAlign: 'right', fontWeight: isUnread ? 'bold' : 'normal' }}>
+                    {msg}
+                  </Text>
+                  <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'right', marginTop: 4 }}>
+                    {n.created_at ? new Date(n.created_at).toLocaleString('fa-IR') : ''}
+                  </Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+          {notifList.length > 0 ? (
+            <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: '#334155' }}>
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    const { markAllRead } = await import('./lib.network');
+                    await markAllRead();
+                    setNotifList(notifList.map((n: any) => ({ ...n, is_read: true })));
+                    showToast?.('✅ همه خوانده شد');
+                  } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+                }}
+                style={{ backgroundColor: '#059669', padding: 10, borderRadius: 8, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✅ خواندن همه</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View></View>
+      </Modal>
+
 
       {/* مودال تنظیمات */}
       <Modal visible={settingsModal} transparent animationType="slide" onRequestClose={() => setSettingsModal(false)}>

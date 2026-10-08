@@ -174,6 +174,7 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [notifList, setNotifList] = useState<any[]>([]);
   const _notifReady = useRef<boolean>(false);
   const _lastNotifId = useRef<number>(0);
+  const _notifPlaying = useRef<boolean>(false);
 
   const [net, setNet] = useState<any>({ connected: false, email: '', name: '', city: '' });
   const [loading, setLoading] = useState(true);
@@ -196,6 +197,7 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [now, setNow] = useState(new Date());
   const [myDashCurs, setMyDashCurs] = useState<string[]>(['USD', 'EUR', 'PKR', 'AED', 'GBP']);
   const [dashCursModal, setDashCursModal] = useState(false);
+  const [notifModal, setNotifModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', targetCurrency: 'AFN', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
@@ -308,9 +310,11 @@ export default function LiveMarketScreen({ showToast }: any) {
       _notifReady.current = true;
       return;
     }
-    if (newestId > _lastNotifId.current) {
+    if (newestId > _lastNotifId.current && !_notifPlaying.current) {
+      _notifPlaying.current = true;
       const newOnes = notifList.filter((n: any) => (n.id || 0) > _lastNotifId.current && !n.is_read);
       _lastNotifId.current = newestId;
+      setTimeout(() => { _notifPlaying.current = false; }, 1500);
       if (newOnes.length > 0) {
         const n = newOnes[0];
         const p = n.payload || {};
@@ -509,6 +513,21 @@ export default function LiveMarketScreen({ showToast }: any) {
           <View>
             <Text style={s.dashTitle}>📡 بازار زنده</Text>
             <Text style={s.dashSub}>{net.name || '—'} | {NET_CITIES[net.city] || '—'}</Text>
+          </View>
+          <View style={{ flexDirection: 'row-reverse', gap: 6, marginLeft: 8 }}>
+            <TouchableOpacity onPress={() => setSettingsModal(true)} style={{ backgroundColor: '#1e3a5f', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#7c3aed' }}>
+              <Text style={{ fontSize: 16 }}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setNotifModal(true)} style={{ backgroundColor: '#1e3a5f', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#f59e0b', position: 'relative' }}>
+              <Text style={{ fontSize: 16 }}>🔔</Text>
+              {notifList.filter((n: any) => !n.is_read).length > 0 ? (
+                <View style={{ position: 'absolute', top: -4, right: -4, backgroundColor: '#ef4444', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>
+                    {notifList.filter((n: any) => !n.is_read).length}
+                  </Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.dashClock}>{String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}:{String(now.getSeconds()).padStart(2, '0')}</Text>

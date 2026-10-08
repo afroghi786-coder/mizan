@@ -117,14 +117,16 @@ export async function markNotificationRead(id: number): Promise<void> {
 // ═══════════════════════════════════════════════════════
 export async function sendBroadcastHawala(h: any): Promise<any> {
   if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  const expiresAtH = new Date(Date.now() + (Number(h.expires || 15) * 60000)).toISOString();
   const { error } = await _sb.from('net_hawalas').insert({
     id: h.id, from_email: _myEmail, from_name: _myName, from_city: _myCity,
     target_city: h.targetCity, currency: h.currency, amount: h.amount,
     beneficiary_name: h.beneficiaryName, beneficiary_phone: h.beneficiaryPhone || '',
     max_fee: h.maxFee || 2, note: h.note || '', status: 'open',
-    expires_at: new Date(h.expiresAt || Date.now() + 15 * 60000).toISOString(),
+    expires_at: expiresAtH,
   });
-  if (error) throw new Error(error.message);
+  if (error) { console.log('sendBroadcastHawala error:', error.message); throw new Error(error.message); }
+  console.log('✅ Hawala inserted:', h.id, 'expires:', expiresAtH);
   try {
     const { data: users } = await _sb.from('net_preferences').select('email, notify_hawala_new, watch_cities').eq('notify_hawala_new', true).neq('email', _myEmail);
     if (users && users.length) {
@@ -160,14 +162,16 @@ export async function claimHawala(taskId: string): Promise<any> {
 // ═══════════════════════════════════════════════════════
 export async function sendFXOffer(o: any): Promise<any> {
   if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  const expiresAt = new Date(Date.now() + (Number(o.expires || 10) * 60000)).toISOString();
   const { error } = await _sb.from('net_fx_offers').insert({
     id: o.id, seller_email: _myEmail, seller_name: _myName, seller_city: _myCity,
     currency: o.currency, target_currency: o.targetCurrency || 'AFN',
     amount: o.amount, rate_type: o.rateType || 'fixed',
     rate: o.rate || 0, note: o.note || '', status: 'open',
-    expires_at: new Date(o.expiresAt || Date.now() + 10 * 60000).toISOString(),
+    expires_at: expiresAt,
   });
-  if (error) throw new Error(error.message);
+  if (error) { console.log('sendFXOffer error:', error.message); throw new Error(error.message); }
+  console.log('✅ FX offer inserted:', o.id, 'expires:', expiresAt);
   // ⭐ نوتیف به کاربران مطابق با تنظیماتشون
   try {
     const { data: users } = await _sb.from('net_preferences').select('email, notify_fx_new, watch_currencies').eq('notify_fx_new', true).neq('email', _myEmail);
@@ -403,26 +407,50 @@ export async function getAgents(): Promise<any[]> {
 export async function fetchOpenHawalas(city: string): Promise<any[]> {
   if (!_sb) return [];
   try {
-    // همه حواله‌های باز + حواله‌های من (چه به شهر من، چه از من)
-    const { data: toCity } = await _sb.from('net_hawalas').select('*').eq('target_city', city).order('created_at', { ascending: false });
-    const { data: mine } = await _sb.from('net_hawalas').select('*').eq('from_email', _myEmail).order('created_at', { ascending: false });
+    const { data: toCity, error: e1 } = await _sb
+      .from('net_hawalas').select('*').eq('target_city', city)
+      .order('created_at', { ascending: false });
+    if (e1) console.log('fetchOpenHawalas toCity error:', e1.message);
+    
+    const { data: mine, error: e2 } = await _sb
+      .from('net_hawalas').select('*').eq('from_email', _myEmail)
+      .order('created_at', { ascending: false });
+    if (e2) console.log('fetchOpenHawalas mine error:', e2.message);
+    
     const all = [...(toCity || []), ...(mine || [])];
-    // حذف تکراری
     const seen = new Set();
+    const now = Date.now();
     return all.filter((h: any) => {
       if (seen.has(h.id)) return false;
       seen.add(h.id);
+      // فیلتر expiry در JS
+      if (h.expires_at) {
+        const exp = new Date(h.expires_at).getTime();
+        if (exp <= (now - 5 * 60 * 1000)) return false;
+      }
       return h.status === 'open' || h.claimed_by_email === _myEmail || h.from_email === _myEmail;
     });
-  } catch { return []; }
+  } catch (e: any) { console.log('fetchOpenHawalas exception:', e?.message); return []; }
 }
 
 export async function fetchFXOffers(): Promise<any[]> {
   if (!_sb) return [];
   try {
-    const { data } = await _sb.from('net_fx_offers').select('*').eq('status', 'open').gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false });
-    return data || [];
-  } catch { return []; }
+    const { data, error } = await _sb
+      .from('net_fx_offers')
+      .select('*')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false });
+    if (error) { console.log('fetchFXOffers error:', error.message); return []; }
+    // فیلتر expiry در JS (timezone-safe)
+    const now = Date.now();
+    return (data || []).filter((f: any) => {
+      if (!f.expires_at) return true;
+      const exp = new Date(f.expires_at).getTime();
+      // ۵ دقیقه margin برای اختلاف timezone
+      return exp > (now - 5 * 60 * 1000);
+    });
+  } catch (e: any) { console.log('fetchFXOffers exception:', e?.message); return []; }
 }
 
 export async function fetchMyHawalas(): Promise<any[]> {

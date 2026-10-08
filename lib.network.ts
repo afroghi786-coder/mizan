@@ -403,15 +403,24 @@ export async function getAgents(): Promise<any[]> {
 export async function fetchOpenHawalas(city: string): Promise<any[]> {
   if (!_sb) return [];
   try {
-    const { data } = await _sb.from('net_hawalas').select('*').eq('target_city', city).order('created_at', { ascending: false });
-    return (data || []).filter((h: any) => h.status === 'open' || h.claimed_by_email === _myEmail);
+    // همه حواله‌های باز + حواله‌های من (چه به شهر من، چه از من)
+    const { data: toCity } = await _sb.from('net_hawalas').select('*').eq('target_city', city).order('created_at', { ascending: false });
+    const { data: mine } = await _sb.from('net_hawalas').select('*').eq('from_email', _myEmail).order('created_at', { ascending: false });
+    const all = [...(toCity || []), ...(mine || [])];
+    // حذف تکراری
+    const seen = new Set();
+    return all.filter((h: any) => {
+      if (seen.has(h.id)) return false;
+      seen.add(h.id);
+      return h.status === 'open' || h.claimed_by_email === _myEmail || h.from_email === _myEmail;
+    });
   } catch { return []; }
 }
 
 export async function fetchFXOffers(): Promise<any[]> {
   if (!_sb) return [];
   try {
-    const { data } = await _sb.from('net_fx_offers').select('*').eq('status', 'open').neq('seller_email', _myEmail).gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false });
+    const { data } = await _sb.from('net_fx_offers').select('*').eq('status', 'open').gt('expires_at', new Date().toISOString()).order('created_at', { ascending: false });
     return data || [];
   } catch { return []; }
 }

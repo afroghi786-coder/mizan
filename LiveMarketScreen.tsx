@@ -318,7 +318,8 @@ export default function LiveMarketScreen({ showToast }: any) {
   }, [net.connected, net.email]);
 
   // ⭐ تشخیص نوتیف جدید و پخش صدا/لرزش/مرورگر
-  useEffect(() => {
+  /* ⚠️ غیرفعال — polling در App.tsx
+useEffect(() => {
     if (!notifList || !notifList.length) return;
     const newestId = Math.max(...notifList.map((n: any) => n.id || 0));
     // بار اول، فقط مقدار رو ذخیره کن (نه صدا)
@@ -358,6 +359,7 @@ export default function LiveMarketScreen({ showToast }: any) {
       }
     }
   }, [notifList, prefs.notify_sound, prefs.notify_vibrate, prefs.notify_browser]);
+*/
 
   useEffect(() => {
     if (!net.connected || !net.email) return;

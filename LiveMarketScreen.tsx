@@ -940,7 +940,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                           // برای FX فعلاً بی‌کار — بعداً کامل می‌کنیم
                           showToast?.('✅ معامله بسته شد');
                         } else {
-                          await _sb?.from('net_hawalas').update({ status: 'delivered' }).eq('id', d.id);
+                          await (await import("./lib.network"))._sb?.from('net_hawalas').update({ status: 'delivered' }).eq('id', d.id);
                           showToast?.('✅ تحویل تأیید شد');
                         }
                         refresh();

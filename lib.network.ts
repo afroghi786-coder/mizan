@@ -749,3 +749,15 @@ export function listenMyFXDeals(cb: (l: any[]) => void): void {
 export function listenMyHawalaDeals(cb: (l: any[]) => void): void {
   startPoll('myhwdeals', async () => cb(await fetchMyHawalaDeals()), 3000);
 }
+
+// ═══════════════════════════════════════════════════════════
+//  تحویل حواله توسط کاربر
+// ═══════════════════════════════════════════════════════════
+export async function deliverHawalaByUser(hawalaId: string): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  const { error } = await _sb.from('net_hawalas')
+    .update({ status: 'delivered', delivered_at: new Date().toISOString(), delivered_by_email: _myEmail })
+    .eq('id', hawalaId).eq('status', 'locked');
+  if (error) throw new Error(error.message);
+  return { success: true };
+}

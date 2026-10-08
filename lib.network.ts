@@ -712,3 +712,40 @@ export function listenMessages(roomId: string, cb: (msgs: any[]) => void): void 
 export function stopMessagesListen(roomId: string): void {
   stopPoll('msg_' + roomId);
 }
+
+// ═══════════════════════════════════════════════════════════
+//  معاملات در حال انجام (locked)
+// ═══════════════════════════════════════════════════════════
+
+export async function fetchMyFXDeals(): Promise<any[]> {
+  if (!_sb || !_myEmail) return [];
+  try {
+    const { data: asSeller } = await _sb.from('net_fx_offers').select('*')
+      .eq('seller_email', _myEmail).eq('status', 'locked')
+      .order('claimed_at', { ascending: false });
+    const { data: asBuyer } = await _sb.from('net_fx_offers').select('*')
+      .eq('claimed_by_email', _myEmail).eq('status', 'locked')
+      .order('claimed_at', { ascending: false });
+    return [...(asSeller || []), ...(asBuyer || [])];
+  } catch (e: any) { console.log('fetchMyFXDeals error:', e?.message); return []; }
+}
+
+export async function fetchMyHawalaDeals(): Promise<any[]> {
+  if (!_sb || !_myEmail) return [];
+  try {
+    const { data: asSender } = await _sb.from('net_hawalas').select('*')
+      .eq('from_email', _myEmail).eq('status', 'locked')
+      .order('claimed_at', { ascending: false });
+    const { data: asClaimer } = await _sb.from('net_hawalas').select('*')
+      .eq('claimed_by_email', _myEmail).eq('status', 'locked')
+      .order('claimed_at', { ascending: false });
+    return [...(asSender || []), ...(asClaimer || [])];
+  } catch (e: any) { console.log('fetchMyHawalaDeals error:', e?.message); return []; }
+}
+
+export function listenMyFXDeals(cb: (l: any[]) => void): void {
+  startPoll('myfxdeals', async () => cb(await fetchMyFXDeals()), 3000);
+}
+export function listenMyHawalaDeals(cb: (l: any[]) => void): void {
+  startPoll('myhwdeals', async () => cb(await fetchMyHawalaDeals()), 3000);
+}

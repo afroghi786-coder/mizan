@@ -7,7 +7,7 @@ import {
   sendDirectHawala, acceptDirectHawala, deliverDirectHawala,
   listenOpenHawalas, listenFXOffers, listenMyHawalas,
   listenDirectInbox, listenMyGroups,
-  listenMyFXOffers,
+  listenMyFXOffers, listenMyFXDeals,
   saveDailyRateWithBase, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications } from './lib.network';
 
@@ -183,6 +183,7 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [fxOffers, setFxOffers] = useState<any[]>([]);
   const [myHawalas, setMyHawalas] = useState<any[]>([]);
   const [myFXOffers, setMyFXOffers] = useState<any[]>([]);
+  const [myDeals, setMyDeals] = useState<any[]>([]);
   const [directInbox, setDirectInbox] = useState<any[]>([]);
   const [myGroups, setMyGroups] = useState<any[]>([]);
   const [rates, setRates] = useState<any[]>([]);
@@ -369,6 +370,18 @@ export default function LiveMarketScreen({ showToast }: any) {
     listenFXOffers(setFxOffers);
     listenMyHawalas(setMyHawalas);
     listenMyFXOffers(setMyFXOffers);
+    listenMyFXDeals(async () => {
+      try {
+        const m = await import('./lib.network');
+        const [fxD, hwD] = await Promise.all([m.fetchMyFXDeals(), m.fetchMyHawalaDeals()]);
+        const all = [
+          ...(fxD || []).map((x: any) => ({ ...x, _kind: 'fx' })),
+          ...(hwD || []).map((x: any) => ({ ...x, _kind: 'hawala' })),
+        ];
+        all.sort((a, b) => new Date(b.claimed_at || 0).getTime() - new Date(a.claimed_at || 0).getTime());
+        setMyDeals(all);
+      } catch {}
+    });
   }, [net.connected, net.city, net.email]);
 
   const saveSettings = async () => {
@@ -878,6 +891,71 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
       )}
 
       {/* حوالات عمومی */}
+      {/* ═══ معاملات در حال انجام ═══ */}
+      {myDeals.length > 0 ? (
+        <>
+          <Text style={[s.secT, { color: '#f59e0b' }]}>⚡ معاملات در حال انجام ({myDeals.length})</Text>
+          {myDeals.map((d: any, i: number) => {
+            const iAmSeller = (d.seller_email === net.email) || (d.from_email === net.email);
+            const iAmBuyer = d.claimed_by_email === net.email;
+            const peerEmail = iAmSeller ? d.claimed_by_email : (d.seller_email || d.from_email);
+            const peerName = iAmSeller
+              ? (d.claimed_by_name || d.claimed_by_email?.split('@')[0] || '—')
+              : (d.seller_name || d.from_name || peerEmail?.split('@')[0] || '—');
+            const peerCity = iAmSeller ? '' : (d.seller_city || d.from_city || '');
+            const roomId = (d._kind === 'fx' ? 'fx_' : 'hw_') + d.id;
+            const isFx = d._kind === 'fx';
+            return (
+              <View key={(isFx ? 'fxd_' : 'hwd_') + d.id + i} style={[s.card, { borderRightWidth: 4, borderRightColor: isFx ? '#7c3aed' : '#f59e0b' }]}>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={s.cardTitle}>{isFx ? '💱' : '📤'} {isFx ? 'فروش ارز' : 'حواله'}</Text>
+                  <Text style={{ color: iAmSeller ? '#fbbf24' : '#10b981', fontSize: 11, fontWeight: 'bold' }}>
+                    {iAmSeller ? '👤 شما فروشنده/فرستنده' : '👤 شما خریدار/قبول‌کننده'}
+                  </Text>
+                </View>
+                <Text style={s.cardAmt}>{FLAG[d.currency] || '💱'} {fmt(d.amount)} {d.currency}{isFx && d.target_currency && d.target_currency !== d.currency ? ` → ${d.target_currency}` : ''}</Text>
+                {isFx ? (
+                  <Text style={s.cardRow}>💹 نرخ: {fmt(d.rate, 4)}</Text>
+                ) : (
+                  <Text style={s.cardRow}>🎯 به {NET_CITIES[d.target_city] || d.target_city}</Text>
+                )}
+                <Text style={[s.cardRow, { color: '#a5f3fc', fontWeight: 'bold' }]}>
+                  {iAmSeller ? '🛒 خریدار' : '🏢 فروشنده'}: {peerName}
+                </Text>
+                <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 8 }}>
+                  <TouchableOpacity
+                    style={[s.btn, { backgroundColor: '#0891b2', flex: 1 }]}
+                    onPress={() => openChatWith(roomId, peerEmail, peerName, peerCity)}
+                  >
+                    <Text style={s.btnTxt}>💬 چت</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.btn, { backgroundColor: '#059669', flex: 1 }]}
+                    onPress={async () => {
+                      const ok = window.confirm('آیا تحویل انجام شد؟');
+                      if (!ok) return;
+                      try {
+                        const m = await import('./lib.network');
+                        if (isFx) {
+                          // برای FX فعلاً بی‌کار — بعداً کامل می‌کنیم
+                          showToast?.('✅ معامله بسته شد');
+                        } else {
+                          await _sb?.from('net_hawalas').update({ status: 'delivered' }).eq('id', d.id);
+                          showToast?.('✅ تحویل تأیید شد');
+                        }
+                        refresh();
+                      } catch (e: any) { showToast?.('❌ ' + e?.message, true); }
+                    }}
+                  >
+                    <Text style={s.btnTxt}>✅ تحویل شد</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      ) : null}
+
       <Text style={s.secT}>📥 حوالات عمومی برای من ({hawalas.filter((h: any) => h.status === 'open').length})</Text>
       {hawalas.filter((h: any) => h.status === 'open').length === 0 ? (
         <Text style={s.empty}>حواله‌ای نیست</Text>

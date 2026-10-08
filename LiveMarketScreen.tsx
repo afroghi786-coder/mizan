@@ -8,8 +8,7 @@ import {
   listenOpenHawalas, listenFXOffers, listenMyHawalas,
   listenDirectInbox, listenMyGroups,
   saveDailyRate, saveDailyRateWithBase, listenDailyRates,
-  stopAllListeners, getAgents, NET_CITIES,
-} from './lib.network';
+  stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications } from './lib.network';
 
 const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
 const FLAG: Record<string, string> = { AFN: '🇦🇫', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', PKR: '🇵🇰', AED: '🇦🇪', SAR: '🇸🇦', TRY: '🇹🇷', IRR: '🇮🇷', TOM: '🇮🇷', INR: '🇮🇳', CNY: '🇨🇳', JPY: '🇯🇵', CHF: '🇨🇭', CAD: '🇨🇦', AUD: '🇦🇺', KWD: '🇰🇼', QAR: '🇶🇦', OMR: '🇴🇲', BHD: '🇧🇭', JOD: '🇯🇴', IQD: '🇮🇶', MYR: '🇲🇾', RUB: '🇷🇺', TJS: '🇹🇯', UZS: '🇺🇿', TMT: '🇹🇲', KGS: '🇰🇬', KZT: '🇰🇿', AZN: '🇦🇿', HKD: '🇭🇰', SGD: '🇸🇬', THB: '🇹🇭', EGP: '🇪🇬', LYD: '🇱🇾', SYP: '🇸🇾', LBP: '🇱🇧', YER: '🇾🇪', ETB: '🇪🇹', NOK: '🇳🇴', SEK: '🇸🇪', DKK: '🇩🇰', NZD: '🇳🇿', ZAR: '🇿🇦' };
@@ -140,6 +139,11 @@ function timeAgo(ts: number): string {
 }
 
 export default function LiveMarketScreen({ showToast }: any) {
+  const [prefs, setPrefs] = useState<any>({});
+  const [notifList, setNotifList] = useState<any[]>([]);
+  const _notifReady = useRef<boolean>(false);
+  const _lastNotifId = useRef<number>(0);
+
   const [net, setNet] = useState<any>({ connected: false, email: '', name: '', city: '' });
   const [loading, setLoading] = useState(true);
   const [hawalas, setHawalas] = useState<any[]>([]);
@@ -1139,8 +1143,6 @@ const s = StyleSheet.create({
   rateBy: { color: '#94a3b8', fontSize: 10, marginTop: 2, textAlign: 'right' },
   rateItem: { backgroundColor: '#0f2438', borderRadius: 8, padding: 10, minWidth: 100, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
   rateLbl: { color: '#d4af37', fontSize: 12, fontWeight: 'bold' },
-  rateVal: { color: '#00ff88', fontSize: 16, fontWeight: 'bold', fontFamily: 'monospace', marginTop: 4 },
-  rateBy: { color: '#64748b', fontSize: 9, marginTop: 2 },
   card: { backgroundColor: '#0f2438', borderRadius: 10, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
   cardTitle: { color: '#fff', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 4 },
   cardAmt: { color: '#00ff88', fontSize: 18, fontWeight: 'bold', textAlign: 'right', marginBottom: 6, fontFamily: 'monospace' },

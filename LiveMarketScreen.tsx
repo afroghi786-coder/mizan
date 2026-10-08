@@ -7,7 +7,7 @@ import {
   sendDirectHawala, acceptDirectHawala, deliverDirectHawala,
   listenOpenHawalas, listenFXOffers, listenMyHawalas,
   listenDirectInbox, listenMyGroups,
-  listenMyFXOffers, listenMyFXDeals,
+  listenMyFXOffers, listenMyFXDeals, deliverHawalaByUser,
   saveDailyRateWithBase, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications } from './lib.network';
 
@@ -940,7 +940,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                           // برای FX فعلاً بی‌کار — بعداً کامل می‌کنیم
                           showToast?.('✅ معامله بسته شد');
                         } else {
-                          await (await import("./lib.network"))._sb?.from('net_hawalas').update({ status: 'delivered' }).eq('id', d.id);
+                          await m.deliverHawalaByUser(d.id);
                           showToast?.('✅ تحویل تأیید شد');
                         }
                         refresh();

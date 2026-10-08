@@ -7,7 +7,7 @@ import {
   sendDirectHawala, acceptDirectHawala, deliverDirectHawala,
   listenOpenHawalas, listenFXOffers, listenMyHawalas,
   listenDirectInbox, listenMyGroups,
-  saveDailyRate, saveDailyRateWithBase, listenDailyRates,
+  saveDailyRateWithBase, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications } from './lib.network';
 
 const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });

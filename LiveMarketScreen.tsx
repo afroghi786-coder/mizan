@@ -7,6 +7,7 @@ import {
   sendDirectHawala, acceptDirectHawala, deliverDirectHawala,
   listenOpenHawalas, listenFXOffers, listenMyHawalas,
   listenDirectInbox, listenMyGroups,
+  listenMyFXOffers,
   saveDailyRateWithBase, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications } from './lib.network';
 
@@ -181,6 +182,7 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [hawalas, setHawalas] = useState<any[]>([]);
   const [fxOffers, setFxOffers] = useState<any[]>([]);
   const [myHawalas, setMyHawalas] = useState<any[]>([]);
+  const [myFXOffers, setMyFXOffers] = useState<any[]>([]);
   const [directInbox, setDirectInbox] = useState<any[]>([]);
   const [myGroups, setMyGroups] = useState<any[]>([]);
   const [rates, setRates] = useState<any[]>([]);
@@ -195,7 +197,7 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [activities, setActivities] = useState<any[]>([]);
   const [prevRates, setPrevRates] = useState<Record<string, number>>({});
   const [now, setNow] = useState(new Date());
-  const [myDashCurs, setMyDashCurs] = useState<string[]>(['USD', 'EUR', 'PKR', 'AED', 'GBP']);
+  const [myDashCurs, setMyDashCurs] = useState<string[]>(() => loadMyDashCurs());
   const [dashCursModal, setDashCursModal] = useState(false);
   const [notifModal, setNotifModal] = useState(false);
   const [dirSearchCur, setDirSearchCur] = useState('');
@@ -359,6 +361,7 @@ export default function LiveMarketScreen({ showToast }: any) {
     listenOpenHawalas(net.city, setHawalas);
     listenFXOffers(setFxOffers);
     listenMyHawalas(setMyHawalas);
+    listenMyFXOffers(setMyFXOffers);
   }, [net.connected, net.city, net.email]);
 
   const saveSettings = async () => {
@@ -582,9 +585,14 @@ export default function LiveMarketScreen({ showToast }: any) {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {myDashCurs.filter(cur => rates.some((r: any) => r.currency === cur)).map(cur => {
+              {myDashCurs.map(cur => {
                 const stats = calcRateStats(rates, cur);
-                if (!stats) return null;
+                if (!stats) return (
+                  <View key={cur} style={s.statCard}>
+                    <Text style={s.statCardCur}>{FLAG[cur] || '💱'} {cur}</Text>
+                    <Text style={{ color: '#64748b', fontSize: 10, textAlign: 'center', paddingVertical: 8 }}>هنوز نرخی ثبت نشده</Text>
+                  </View>
+                );
                 return (
                   <View key={cur} style={s.statCard}>
                     <Text style={s.statCardCur}>{FLAG[cur]} {cur}</Text>
@@ -605,11 +613,7 @@ export default function LiveMarketScreen({ showToast }: any) {
                 );
               })}
             </ScrollView>
-            {myDashCurs.filter(cur => rates.some((r: any) => r.currency === cur)).length === 0 ? (
-              <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', paddingVertical: 10 }}>
-                ارزی برای نمایش انتخاب نشده — روی «تنظیم ارزها» بزنید
-              </Text>
-            ) : null}
+            
           </View>
         )}
 
@@ -887,30 +891,136 @@ export default function LiveMarketScreen({ showToast }: any) {
       <Modal visible={notifSettingsModal} transparent animationType="slide" onRequestClose={() => setNotifSettingsModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>
           <View style={[s.mHead, { backgroundColor: '#7c3aed' }]}>
-            <Text style={s.mTitle}>📬 تنظیمات اعلان‌ها</Text>
+            <Text style={s.mTitle}>⚙️ تنظیمات اعلان‌ها</Text>
             <TouchableOpacity onPress={() => setNotifSettingsModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
-          <ScrollView style={{ padding: 14, maxHeight: 550 }}>
+          <ScrollView style={{ padding: 14, maxHeight: 600 }}>
+
+            {/* ═══ بخش ۱: نوتیف‌های مهم ═══ */}
+            <Text style={{ color: '#f59e0b', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 8, marginTop: 4 }}>
+              🔔 نوتیف‌های مهم
+            </Text>
             {[
-              { k: 'notify_sound',      l: '🔔 صدا هنگام اعلان' },
-              { k: 'notify_vibrate',    l: '📳 لرزش گوشی' },
-              { k: 'notify_browser',    l: '💬 نوتیف مرورگر/سیستم' },
-              { k: 'notify_hawala_new', l: '📤 حواله جدید در شهر من' },
-              { k: 'notify_fx_new',     l: '💱 آگهی فروش ارز جدید' },
               { k: 'notify_hawala_claim', l: '✅ کسی حواله من را قبول کرد' },
-              { k: 'notify_fx_claim',   l: '✅ کسی آگهی من را خرید' },
-              { k: 'notify_direct',     l: '🔒 حواله خصوصی' },
+              { k: 'notify_fx_claim',     l: '✅ کسی آگهی ارز من را خرید' },
+              { k: 'notify_direct',       l: '🔒 حواله خصوصی جدید' },
+              { k: 'notify_direct_deliver', l: '📦 حواله خصوصی من تحویل شد' },
             ].map(x => (
-              <View key={x.k} style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#0f172a', borderRadius: 8, marginBottom: 8 }}>
-                <Text style={{ color: '#fff', fontSize: 13, textAlign: 'right', flex: 1 }}>{x.l}</Text>
-                <Switch
-                  value={prefs[x.k] !== false}
-                  onValueChange={v => setPrefs({ ...prefs, [x.k]: v })}
-                  trackColor={{ false: '#334155', true: '#10b981' }}
-                  thumbColor="#fff"
-                />
+              <View key={x.k} style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 10, backgroundColor: '#0f172a', borderRadius: 8, marginBottom: 6 }}>
+                <Text style={{ color: '#fff', fontSize: 12, textAlign: 'right', flex: 1 }}>{x.l}</Text>
+                <Switch value={prefs[x.k] !== false} onValueChange={v => setPrefs({ ...prefs, [x.k]: v })} trackColor={{ false: '#334155', true: '#10b981' }} thumbColor="#fff" />
               </View>
             ))}
+
+            {/* ═══ بخش ۲: نوتیف‌های بازار ═══ */}
+            <Text style={{ color: '#f59e0b', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 8, marginTop: 16 }}>
+              📊 نوتیف‌های بازار
+            </Text>
+            {[
+              { k: 'notify_hawala_new', l: '📤 حواله جدید در شهر من' },
+              { k: 'notify_fx_new',     l: '💱 آگهی فروش ارز جدید' },
+              { k: 'notify_rate_change', l: '📈 تغییر نرخ ارز' },
+            ].map(x => (
+              <View key={x.k} style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 10, backgroundColor: '#0f172a', borderRadius: 8, marginBottom: 6 }}>
+                <Text style={{ color: '#fff', fontSize: 12, textAlign: 'right', flex: 1 }}>{x.l}</Text>
+                <Switch value={prefs[x.k] !== false} onValueChange={v => setPrefs({ ...prefs, [x.k]: v })} trackColor={{ false: '#334155', true: '#10b981' }} thumbColor="#fff" />
+              </View>
+            ))}
+
+            {/* ═══ بخش ۳: صدا و هشدار ═══ */}
+            <Text style={{ color: '#f59e0b', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 8, marginTop: 16 }}>
+              🔊 صدا و هشدار
+            </Text>
+            {[
+              { k: 'notify_sound',   l: '🔔 صدا هنگام اعلان' },
+              { k: 'notify_vibrate', l: '📳 لرزش گوشی' },
+              { k: 'notify_browser', l: '💬 نوتیف مرورگر / سیستم' },
+            ].map(x => (
+              <View key={x.k} style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 10, backgroundColor: '#0f172a', borderRadius: 8, marginBottom: 6 }}>
+                <Text style={{ color: '#fff', fontSize: 12, textAlign: 'right', flex: 1 }}>{x.l}</Text>
+                <Switch value={prefs[x.k] !== false} onValueChange={v => setPrefs({ ...prefs, [x.k]: v })} trackColor={{ false: '#334155', true: '#10b981' }} thumbColor="#fff" />
+              </View>
+            ))}
+
+            {/* ═══ تست صدا و هشدار ═══ */}
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 10 }}>
+              <TouchableOpacity
+                onPress={() => { try { playNotifSound(); } catch (e) {} showToast?.('🔔 تست صدا'); }}
+                style={{ flex: 1, backgroundColor: '#0ea5e9', padding: 10, borderRadius: 8, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>🔔 تست صدا</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { try { vibrateNotif(); } catch (e) {} showToast?.('📳 تست لرزش'); }}
+                style={{ flex: 1, backgroundColor: '#0ea5e9', padding: 10, borderRadius: 8, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>📳 تست لرزش</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { try { showBrowserNotif('میزان | MIZAN', 'تست اعلان سیستم'); } catch (e) {} showToast?.('💬 تست نوتیف'); }}
+                style={{ flex: 1, backgroundColor: '#0ea5e9', padding: 10, borderRadius: 8, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>💬 تست نوتیف</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ═══ بخش ۴: ارزهای مورد علاقه ═══ */}
+            <Text style={{ color: '#f59e0b', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 8, marginTop: 16 }}>
+              ⭐ ارزهای مورد علاقه
+            </Text>
+            <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'right', marginBottom: 6 }}>
+              اعلان‌های ارزی فقط برای این ارزها می‌آید
+            </Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {['USD', 'EUR', 'GBP', 'AFN', 'PKR', 'AED', 'SAR', 'TRY', 'IRR', 'TOM', 'INR', 'CNY', 'IQD', 'KWD', 'QAR', 'OMR'].map(c => {
+                const watched = (prefs.watch_currencies || []).includes(c);
+                return (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => {
+                      const list = prefs.watch_currencies || [];
+                      const next = watched ? list.filter((x: string) => x !== c) : [...list, c];
+                      setPrefs({ ...prefs, watch_currencies: next });
+                    }}
+                    style={[s.chip, watched && { backgroundColor: '#10b981', borderColor: '#10b981' }]}
+                  >
+                    <Text style={[s.chipTxt, watched && { color: '#fff', fontWeight: 'bold' }]}>
+                      {FLAG[c] || '💱'} {c}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* ═══ بخش ۵: شهرهای مورد علاقه ═══ */}
+            <Text style={{ color: '#f59e0b', fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 8, marginTop: 16 }}>
+              🏙️ شهرهای مورد علاقه
+            </Text>
+            <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'right', marginBottom: 6 }}>
+              اعلان‌های حواله فقط برای این شهرها می‌آید
+            </Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+              {Object.keys(NET_CITIES).map(k => {
+                const watched = (prefs.watch_cities || []).includes(k);
+                return (
+                  <TouchableOpacity
+                    key={k}
+                    onPress={() => {
+                      const list = prefs.watch_cities || [];
+                      const next = watched ? list.filter((x: string) => x !== k) : [...list, k];
+                      setPrefs({ ...prefs, watch_cities: next });
+                    }}
+                    style={[s.chip, watched && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]}
+                  >
+                    <Text style={[s.chipTxt, watched && { color: '#fff', fontWeight: 'bold' }]}>
+                      {NET_CITIES[k]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* ═══ دکمه ذخیره ═══ */}
             <TouchableOpacity
               onPress={async () => {
                 try {
@@ -920,10 +1030,27 @@ export default function LiveMarketScreen({ showToast }: any) {
                   setNotifSettingsModal(false);
                 } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
               }}
-              style={{ backgroundColor: '#059669', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 12 }}
+              style={{ backgroundColor: '#059669', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 16, marginBottom: 8 }}
             >
               <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>💾 ذخیره تنظیمات</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setPrefs({
+                  notify_hawala_claim: true, notify_fx_claim: true, notify_direct: true, notify_direct_deliver: true,
+                  notify_hawala_new: true, notify_fx_new: true, notify_rate_change: true,
+                  notify_sound: true, notify_vibrate: true, notify_browser: true,
+                  watch_currencies: ['USD', 'EUR', 'PKR', 'AED', 'GBP'],
+                  watch_cities: ['KBL', 'HRT', 'MZR', 'KDH'],
+                });
+                showToast?.('↩️ پیش‌فرض شد');
+              }}
+              style={{ backgroundColor: '#64748b', padding: 10, borderRadius: 8, alignItems: 'center', marginBottom: 12 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 12 }}>↩️ بازگشت به پیش‌فرض</Text>
+            </TouchableOpacity>
+
           </ScrollView>
         </View></View>
       </Modal>

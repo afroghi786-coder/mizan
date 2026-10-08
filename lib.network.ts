@@ -639,3 +639,76 @@ export async function deleteNotification(id: number): Promise<void> {
   if (!_sb) return;
   try { await _sb.from('net_notifications').delete().eq('id', id); } catch {}
 }
+
+// ═══════════════════════════════════════════════════════════
+//  چت خصوصی — Messages
+// ═══════════════════════════════════════════════════════════
+
+export async function sendMessage(roomId: string, toEmail: string, text: string): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!text || !text.trim()) throw new Error('پیام خالی');
+  if (!roomId || !toEmail) throw new Error('اتاق یا مقصد نامشخص');
+  const { error } = await _sb.from('net_messages').insert({
+    room_id: roomId,
+    from_email: _myEmail,
+    from_name: _myName || _myEmail.split('@')[0],
+    to_email: toEmail,
+    text: text.trim().slice(0, 2000),
+    is_read: false,
+  });
+  if (error) { console.log('sendMessage error:', error.message); throw new Error(error.message); }
+  return { success: true };
+}
+
+export async function fetchMessages(roomId: string): Promise<any[]> {
+  if (!_sb || !roomId) return [];
+  try {
+    const { data, error } = await _sb
+      .from('net_messages')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (error) { console.log('fetchMessages error:', error.message); return []; }
+    return data || [];
+  } catch (e: any) { console.log('fetchMessages exception:', e?.message); return []; }
+}
+
+export async function markRoomRead(roomId: string): Promise<void> {
+  if (!_sb || !_myEmail || !roomId) return;
+  try {
+    await _sb.from('net_messages')
+      .update({ is_read: true })
+      .eq('room_id', roomId)
+      .eq('to_email', _myEmail)
+      .eq('is_read', false);
+  } catch (e) {}
+}
+
+export async function fetchMyUnreadMessages(): Promise<any[]> {
+  if (!_sb || !_myEmail) return [];
+  try {
+    const { data } = await _sb
+      .from('net_messages')
+      .select('*')
+      .eq('to_email', _myEmail)
+      .eq('is_read', false)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    return data || [];
+  } catch { return []; }
+}
+
+// ⚡ لیستنر چت — هر ۳ ثانیه پیام‌های جدید را می‌آورد
+export function listenMessages(roomId: string, cb: (msgs: any[]) => void): void {
+  startPoll('msg_' + roomId, async () => {
+    try {
+      const msgs = await fetchMessages(roomId);
+      cb(msgs);
+    } catch {}
+  }, 3000);
+}
+
+export function stopMessagesListen(roomId: string): void {
+  stopPoll('msg_' + roomId);
+}

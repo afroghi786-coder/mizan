@@ -191,6 +191,13 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [hawalaModal, setHawalaModal] = useState(false);
   const [fxModal, setFxModal] = useState(false);
   const [directModal, setDirectModal] = useState(false);
+  const [chatModal, setChatModal] = useState(false);
+  const [chatRoom, setChatRoom] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatPeer, setChatPeer] = useState<any>(null);
+  const [groupFeed, setGroupFeed] = useState<any[]>([]);
+  const [openGroup, setOpenGroup] = useState<any>(null);
   const [rateModal, setRateModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [marketStats, setMarketStats] = useState<any>({ trades: 0, hawalas: 0, agents: 0, myTrades: 0, myHawalasSent: 0, myHawalasRecv: 0, myDirectPending: 0 });
@@ -490,6 +497,62 @@ export default function LiveMarketScreen({ showToast }: any) {
       } catch (e) {}
     })();
   }, [notifModal]);
+
+
+  // ═══ چت — باز کردن روم ═══
+  
+  // ⚡ Listener چت — وقتی مودال باز است
+  useEffect(() => {
+    if (!chatModal || !chatRoom?.id) return;
+    let alive = true;
+    const tick = async () => {
+      if (!alive) return;
+      try {
+        const m = await import('./lib.network');
+        const msgs = await m.fetchMessages(chatRoom.id);
+        if (alive) setChatMessages(msgs);
+      } catch {}
+    };
+    tick();
+    const iv = setInterval(tick, 3000);
+    // mark read
+    markRoomRead(chatRoom.id).catch(() => {});
+    return () => { alive = false; clearInterval(iv); };
+  }, [chatModal, chatRoom?.id]);
+
+const openChatWith = async (roomId: string, peerEmail: string, peerName: string, peerCity: string) => {
+    setChatRoom({ id: roomId, type: 'private' });
+    setChatPeer({ email: peerEmail, name: peerName, city: peerCity });
+    setChatInput('');
+    try {
+      const m = await import('./lib.network');
+      const msgs = await m.fetchMessages(roomId);
+      setChatMessages(msgs);
+    } catch (e: any) { console.log('openChatWith', e?.message); }
+    setChatModal(true);
+  };
+
+  const sendChatMsg = async () => {
+    if (!chatInput.trim() || !chatRoom) return;
+    const text = chatInput.trim();
+    setChatInput('');
+    try {
+      const m = await import('./lib.network');
+      await m.sendMessage(chatRoom.id, chatPeer.email, text);
+      const msgs = await m.fetchMessages(chatRoom.id);
+      setChatMessages(msgs);
+    } catch (e: any) { showToast?.('❌ ' + e?.message, true); }
+  };
+
+  // ═══ فید گروه ═══
+  const openGroupFeed = async (g: any) => {
+    setOpenGroup(g);
+    try {
+      const m = await import('./lib.network');
+      const feed = await m.fetchGroupFeed(g.id);
+      setGroupFeed(feed);
+    } catch (e: any) { console.log('openGroupFeed', e?.message); }
+  };
 
   if (loading) return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
 
@@ -848,15 +911,30 @@ export default function LiveMarketScreen({ showToast }: any) {
               <Text style={s.cardAmt}>{FLAG[f.currency] || '💱'} {fmt(f.amount)} {f.currency}{f.targetCurrency && f.targetCurrency !== f.currency ? ` → ${FLAG[f.targetCurrency] || '💱'} ${f.targetCurrency}` : ''}</Text>
               <Text style={s.cardRow}>💹 نرخ: {fmt(f.rate, 4)} {f.rateType === 'auction' ? '(حراج)' : ''}</Text>
               {f.note ? <Text style={s.cardRow}>📝 {f.note}</Text> : null}
-              {f.sellerEmail === net.email ? (
+              {f.sellerEmail === net.email || f.seller_email === net.email ? (
                 <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                   <Text style={{ color: '#fbbf24', fontSize: 11, fontWeight: 'bold', flex: 1, textAlign: 'right' }}>🔵 آگهی خودم</Text>
+                  {f.claimed_by_email ? (
+                    <TouchableOpacity
+                      style={[s.btn, { backgroundColor: '#0891b2', paddingHorizontal: 12 }]}
+                      onPress={() => openChatWith('fx_' + f.id, f.claimed_by_email, f.claimed_by_name || f.claimed_by_email?.split('@')[0] || '—', '')}
+                    >
+                      <Text style={s.btnTxt}>💬 چت</Text>
+                    </TouchableOpacity>
+                  ) : null}
                   <TouchableOpacity style={[s.btn, { backgroundColor: '#dc2626', paddingHorizontal: 12 }]} onPress={async () => {
                     try { const m = await import('./lib.network'); await m.deleteFXOffer(f.id); showToast?.('🗑 حذف شد'); refresh(); } catch (e: any) { showToast?.('❌ ' + e.message, true); }
                   }}>
                     <Text style={s.btnTxt}>🗑</Text>
                   </TouchableOpacity>
                 </View>
+              ) : f.claimed_by_email === net.email ? (
+                <TouchableOpacity
+                  style={[s.btn, { backgroundColor: '#0891b2' }]}
+                  onPress={() => openChatWith('fx_' + f.id, f.seller_email || f.sellerEmail, f.seller_name || f.sellerName || '—', f.seller_city || f.sellerCity || '')}
+                >
+                  <Text style={s.btnTxt}>💬 چت با فروشنده</Text>
+                </TouchableOpacity>
               ) : (
                 <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimF(f.id)}>
                   <Text style={s.btnTxt}>💰 قبول</Text>
@@ -1165,6 +1243,30 @@ export default function LiveMarketScreen({ showToast }: any) {
                 (شهر شما از پروفایل گرفته می‌شود)
               </Text>
             </View>
+            {/* 🎯 مقصد حواله */}
+            <Text style={s.lbl}>🎯 مقصد حواله</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              <TouchableOpacity
+                onPress={() => setHawalaForm({ ...hawalaForm, targetGroupId: '' })}
+                style={[s.chip, hawalaForm.targetGroupId === '' && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]}
+              >
+                <Text style={[s.chipTxt, hawalaForm.targetGroupId === '' && { color: '#fff', fontWeight: 'bold' }]}>🌐 بازار عمومی</Text>
+              </TouchableOpacity>
+              {myGroups.map((g: any) => (
+                <TouchableOpacity
+                  key={g.id}
+                  onPress={() => setHawalaForm({ ...hawalaForm, targetGroupId: g.id })}
+                  style={[s.chip, hawalaForm.targetGroupId === g.id && { backgroundColor: '#10b981', borderColor: '#10b981' }]}
+                >
+                  <Text style={[s.chipTxt, hawalaForm.targetGroupId === g.id && { color: '#fff', fontWeight: 'bold' }]}>🔒 {g.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {myGroups.length === 0 ? (
+              <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'right', marginBottom: 8 }}>
+                برای ارسال به گروه خصوصی، ابتدا در تب «گروه‌های من» گروه بسازید
+              </Text>
+            ) : null}
             <Text style={s.lbl}>شهر مقصد *</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {Object.keys(NET_CITIES).map(k => (
@@ -1219,6 +1321,25 @@ export default function LiveMarketScreen({ showToast }: any) {
             <TouchableOpacity onPress={() => setFxModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14 }}>
+            {/* 🎯 مقصد آگهی */}
+            <Text style={s.lbl}>🎯 مقصد آگهی</Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              <TouchableOpacity
+                onPress={() => setFxForm({ ...fxForm, targetGroupId: '' })}
+                style={[s.chip, fxForm.targetGroupId === '' && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]}
+              >
+                <Text style={[s.chipTxt, fxForm.targetGroupId === '' && { color: '#fff', fontWeight: 'bold' }]}>🌐 بازار عمومی</Text>
+              </TouchableOpacity>
+              {myGroups.map((g: any) => (
+                <TouchableOpacity
+                  key={g.id}
+                  onPress={() => setFxForm({ ...fxForm, targetGroupId: g.id })}
+                  style={[s.chip, fxForm.targetGroupId === g.id && { backgroundColor: '#10b981', borderColor: '#10b981' }]}
+                >
+                  <Text style={[s.chipTxt, fxForm.targetGroupId === g.id && { color: '#fff', fontWeight: 'bold' }]}>🔒 {g.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <Text style={s.lbl}>ارز مبدأ (می‌فروشید) *</Text>
             <TextInput style={s.inp} value={fxSearchFrom} onChangeText={setFxSearchFrom} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
@@ -1530,6 +1651,95 @@ export default function LiveMarketScreen({ showToast }: any) {
           </ScrollView>
         </View></View>
       </Modal>
+
+      {/* ═══ مودال چت خصوصی ═══ */}
+      <Modal visible={chatModal} transparent animationType="slide" onRequestClose={() => setChatModal(false)}>
+        <View style={s.mBg}><View style={[s.mBox, { maxHeight: '92%' }]}>
+          <View style={[s.mHead, { backgroundColor: '#0891b2' }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.mTitle}>💬 چت با {chatPeer?.name || '—'}</Text>
+              {chatPeer?.city ? <Text style={{ color: '#a5f3fc', fontSize: 10, textAlign: 'right' }}>🏙️ {NET_CITIES[chatPeer.city] || chatPeer.city}</Text> : null}
+            </View>
+            <TouchableOpacity onPress={() => setChatModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 14, maxHeight: 400, backgroundColor: '#0a1628' }}>
+            {chatMessages.length === 0 ? (
+              <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 30 }}>هنوز پیامی نیست — شما شروع کنید</Text>
+            ) : chatMessages.map((m: any, i: number) => {
+              const mine = m.from_email === net.email;
+              return (
+                <View key={m.id || i} style={{
+                  alignSelf: mine ? 'flex-end' : 'flex-start',
+                  backgroundColor: mine ? '#0891b2' : '#1e293b',
+                  padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%',
+                }}>
+                  {!mine ? <Text style={{ color: '#a5f3fc', fontSize: 10, fontWeight: 'bold', textAlign: 'right' }}>{m.from_name}</Text> : null}
+                  <Text style={{ color: '#fff', fontSize: 12, textAlign: 'right' }}>{m.text}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
+                    {m.created_at ? new Date(m.created_at).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+          <View style={{ flexDirection: 'row-reverse', gap: 6, padding: 10, borderTopWidth: 1, borderTopColor: '#334155' }}>
+            <TextInput
+              style={[s.inp, { flex: 1, textAlign: 'right' }]}
+              value={chatInput}
+              onChangeText={setChatInput}
+              placeholder="پیام خود را بنویسید..."
+              placeholderTextColor="#94a3b8"
+              onSubmitEditing={sendChatMsg}
+            />
+            <TouchableOpacity style={[s.btn, { backgroundColor: '#0891b2', paddingHorizontal: 20 }]} onPress={sendChatMsg}>
+              <Text style={s.btnTxt}>📤 ارسال</Text>
+            </TouchableOpacity>
+          </View>
+        </View></View>
+      </Modal>
+
+      {/* ═══ مودال فید گروه ═══ */}
+      <Modal visible={!!openGroup} transparent animationType="slide" onRequestClose={() => setOpenGroup(null)}>
+        <View style={s.mBg}><View style={[s.mBox, { maxHeight: '92%' }]}>
+          <View style={[s.mHead, { backgroundColor: '#059669' }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.mTitle}>🔒 {openGroup?.name || '—'}</Text>
+              <Text style={{ color: '#a7f3d0', fontSize: 10, textAlign: 'right' }}>🏙️ {NET_CITIES[openGroup?.city] || openGroup?.city}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setOpenGroup(null)}><Text style={s.x}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 14, maxHeight: 500 }}>
+            {groupFeed.length === 0 ? (
+              <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 30 }}>هیچ فعالیتی در این گروه نیست</Text>
+            ) : groupFeed.map((item: any, i: number) => {
+              if (item._kind === 'fx') {
+                return (
+                  <View key={'fx_' + item.id} style={[s.card, { borderRightWidth: 3, borderRightColor: '#7c3aed' }]}>
+                    <Text style={s.cardTitle}>💱 {item.seller_name || item.sellerName} — {NET_CITIES[item.seller_city] || item.seller_city || '—'}</Text>
+                    <Text style={s.cardAmt}>{FLAG[item.currency] || '💱'} {fmt(item.amount)} {item.currency}</Text>
+                    <Text style={s.cardRow}>💹 نرخ: {fmt(item.rate, 4)}</Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
+                      {item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}
+                    </Text>
+                  </View>
+                );
+              } else {
+                return (
+                  <View key={'hw_' + item.id} style={[s.card, { borderRightWidth: 3, borderRightColor: '#f59e0b' }]}>
+                    <Text style={s.cardTitle}>📤 {item.from_name || item.fromName} — {NET_CITIES[item.from_city] || item.from_city || '—'}</Text>
+                    <Text style={s.cardAmt}>{FLAG[item.currency] || '💱'} {fmt(item.amount)} {item.currency} → {NET_CITIES[item.target_city] || item.target_city}</Text>
+                    <Text style={s.cardRow}>👤 {item.beneficiary_name || item.beneficiaryName}</Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
+                      {item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}
+                    </Text>
+                  </View>
+                );
+              }
+            })}
+          </ScrollView>
+        </View></View>
+      </Modal>
+
 
     </View>
   );

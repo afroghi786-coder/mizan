@@ -1,6 +1,7 @@
 // PublicMarketScreen.tsx — بازار عمومی (مستقل، بدون وابستگی به App)
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { fetchMessages, sendMessage, markRoomRead } from './lib.network';
 
 const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
 
@@ -59,6 +60,12 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [chatModal, setChatModal] = useState(false);
+  const [chatRoom, setChatRoom] = useState<any>(null);
+  const [chatPeer, setChatPeer] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatSending, setChatSending] = useState(false);
 
   const [form, setForm] = useState<any>({
     title: '', description: '', price: '', currency: 'AFN',
@@ -126,7 +133,49 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
     } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
   };
 
-  const cats = sub === 'jobs' ? JOB_CATS : sub === 'goods' ? GOODS_CATS : sub === 'services' ? SERVICE_CATS : [];
+    // ⚡ Listener چت
+  useEffect(() => {
+    if (!chatModal || !chatRoom?.id) return;
+    let alive = true;
+    const tick = async () => {
+      if (!alive) return;
+      try {
+        const msgs = await fetchMessages(chatRoom.id);
+        if (alive) setChatMessages(msgs || []);
+      } catch {}
+    };
+    tick();
+    const iv = setInterval(tick, 3000);
+    if (chatRoom?.id) markRoomRead(chatRoom.id).catch(() => {});
+    return () => { alive = false; clearInterval(iv); };
+  }, [chatModal, chatRoom?.id]);
+
+  // ═══ باز کردن چت ═══
+  const openChat = (ad: any) => {
+    const peerEmail = ad.user_email;
+    const peerName = ad.user_name || peerEmail?.split('@')[0] || '—';
+    setChatRoom({ id: 'ad_' + ad.id, type: 'public_ad' });
+    setChatPeer({ email: peerEmail, name: peerName, adId: ad.id, adTitle: ad.title });
+    setChatInput('');
+    setChatMessages([]);
+    setChatModal(true);
+  };
+
+  // ═══ ارسال پیام ═══
+  const sendChat = async () => {
+    if (!chatInput.trim() || !chatRoom || !chatPeer) return;
+    const text = chatInput.trim();
+    setChatInput('');
+    setChatSending(true);
+    try {
+      await sendMessage(chatRoom.id, chatPeer.email, text);
+      const msgs = await fetchMessages(chatRoom.id);
+      setChatMessages(msgs || []);
+    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+    setChatSending(false);
+  };
+
+const cats = sub === 'jobs' ? JOB_CATS : sub === 'goods' ? GOODS_CATS : sub === 'services' ? SERVICE_CATS : [];
   const subColor = SUBS.find(x => x.k === sub)?.c || '#0891b2';
 
   return (
@@ -220,6 +269,14 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
               {a.phone ? <Text style={st.cardPhone}>📞 {a.phone}</Text> : null}
             </View>
             <Text style={st.cardBy}>👤 {a.user_name || a.user_email?.split('@')[0] || '—'}</Text>
+            {a.user_email && a.user_email !== userEmail ? (
+              <TouchableOpacity
+                onPress={() => openChat(a)}
+                style={[st.chatBtn, { backgroundColor: subColor }]}
+              >
+                <Text style={st.chatBtnTxt}>💬 چت با فروشنده</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ))}
       </ScrollView>
@@ -314,6 +371,59 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
           </ScrollView>
         </View></View>
       </Modal>
+
+      {/* ═══ مودال چت ═══ */}
+      <Modal visible={chatModal} transparent animationType="slide" onRequestClose={() => setChatModal(false)}>
+        <View style={st.mBg}><View style={[st.mBox, { maxHeight: '92%' }]}>
+          <View style={[st.mHead, { backgroundColor: '#0891b2' }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={st.mTitle}>💬 چت با {chatPeer?.name || '—'}</Text>
+              {chatPeer?.adTitle ? <Text style={{ color: '#a5f3fc', fontSize: 10, textAlign: 'right' }} numberOfLines={1}>📋 {chatPeer.adTitle}</Text> : null}
+            </View>
+            <TouchableOpacity onPress={() => setChatModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ padding: 14, maxHeight: 380, backgroundColor: '#0a1628' }}>
+            {chatMessages.length === 0 ? (
+              <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 30 }}>هنوز پیامی نیست — شما شروع کنید</Text>
+            ) : chatMessages.map((m: any, i: number) => {
+              const mine = m.from_email === userEmail;
+              return (
+                <View key={m.id || i} style={{
+                  alignSelf: mine ? 'flex-end' : 'flex-start',
+                  backgroundColor: mine ? '#0891b2' : '#1e293b',
+                  padding: 10, borderRadius: 12, marginBottom: 8, maxWidth: '80%',
+                }}>
+                  {!mine ? <Text style={{ color: '#a5f3fc', fontSize: 10, fontWeight: 'bold', textAlign: 'right' }}>{m.from_name || m.from_email?.split('@')[0]}</Text> : null}
+                  <Text style={{ color: '#fff', fontSize: 12, textAlign: 'right' }}>{m.text}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
+                    {m.created_at ? new Date(m.created_at).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+
+          <View style={{ flexDirection: 'row-reverse', gap: 6, padding: 10, borderTopWidth: 1, borderTopColor: '#334155' }}>
+            <TextInput
+              style={[st.inp, { flex: 1 }]}
+              value={chatInput}
+              onChangeText={setChatInput}
+              placeholder="پیام خود را بنویسید..."
+              placeholderTextColor="#94a3b8"
+              onSubmitEditing={sendChat}
+            />
+            <TouchableOpacity
+              style={[st.btn, { backgroundColor: '#0891b2', paddingHorizontal: 20 }]}
+              onPress={sendChat}
+              disabled={chatSending}
+            >
+              {chatSending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={st.btnTxt}>📤 ارسال</Text>}
+            </TouchableOpacity>
+          </View>
+        </View></View>
+      </Modal>
+
     </View>
   );
 }
@@ -344,6 +454,8 @@ const st = StyleSheet.create({
   cardCity: { color: '#94a3b8', fontSize: 11 },
   cardPhone: { color: '#60a5fa', fontSize: 11, fontWeight: 'bold' },
   cardBy: { color: '#64748b', fontSize: 10, marginTop: 4, textAlign: 'right' },
+  chatBtn: { paddingVertical: 8, borderRadius: 8, alignItems: 'center', marginTop: 8 },
+  chatBtnTxt: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   fab: { position: 'absolute', bottom: 20, right: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, elevation: 5 },
   fabTxt: { fontSize: 20 },
   fabLbl: { color: '#fff', fontWeight: 'bold', fontSize: 14 },

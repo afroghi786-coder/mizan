@@ -196,6 +196,9 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [chatRoom, setChatRoom] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [unreadMsgs, setUnreadMsgs] = useState<any[]>([]);
+  const _lastMsgId = useRef<number>(0);
+  const _msgPlaying = useRef<boolean>(false);
   const [chatPeer, setChatPeer] = useState<any>(null);
   const [groupFeed, setGroupFeed] = useState<any[]>([]);
   const [openGroup, setOpenGroup] = useState<any>(null);
@@ -657,10 +660,10 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setNotifModal(true)} style={{ backgroundColor: '#1e3a5f', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#f59e0b', position: 'relative' }}>
               <Text style={{ fontSize: 16 }}>🔔</Text>
-              {notifList.filter((n: any) => !n.is_read).length > 0 ? (
+              {(notifList.filter((n: any) => !n.is_read).length + unreadMsgs.length) > 0 ? (
                 <View style={{ position: 'absolute', top: -4, right: -4, backgroundColor: '#ef4444', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 }}>
                   <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>
-                    {notifList.filter((n: any) => !n.is_read).length}
+                    {(notifList.filter((n: any) => !n.is_read).length + unreadMsgs.length)}
                   </Text>
                 </View>
               ) : null}

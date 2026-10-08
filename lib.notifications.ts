@@ -1,13 +1,18 @@
-// lib.notifications.ts — Global notification helpers
+// lib.notifications.ts — Global notification helpers (WebView-safe)
 let _audioCtx: any = null;
 let _unlocked = false;
 let _playingSound = false;
 
+const isWeb = typeof window !== 'undefined';
+const hasAudio = isWeb && (typeof (window as any).AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined');
+const hasNotif = isWeb && typeof Notification !== 'undefined';
+
 export function unlockAudio() {
+  if (!hasAudio) return;
   try {
     if (!_audioCtx) {
-      const Ctx = (typeof window !== 'undefined') && ((window as any).AudioContext || (window as any).webkitAudioContext);
-      if (Ctx) _audioCtx = new Ctx();
+      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      _audioCtx = new Ctx();
     }
     if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
     if (!_unlocked && _audioCtx) {
@@ -18,10 +23,11 @@ export function unlockAudio() {
       o.start(); o.stop(_audioCtx.currentTime + 0.01);
       _unlocked = true;
     }
-  } catch (e) {}
+  } catch (e) { console.log('unlockAudio err:', e); }
 }
 
 export function playNotifSound() {
+  if (!hasAudio) return;
   try {
     unlockAudio();
     if (!_audioCtx || _playingSound) return;
@@ -49,30 +55,30 @@ export function playNotifSound() {
 
 export function vibrateNotif() {
   try {
-    if (typeof navigator !== 'undefined' && (navigator as any).vibrate) {
+    if (isWeb && navigator && typeof (navigator as any).vibrate === 'function') {
       (navigator as any).vibrate([200, 100, 200]);
     }
   } catch (e) {}
 }
 
 export function showBrowserNotif(title: string, body: string) {
+  if (!hasNotif) return;
   try {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
     const n = new Notification(title, {
       body,
       icon: '/mizan/favicon.ico',
       silent: false,
-      requireInteraction: false,
       tag: 'mizan-' + Date.now(),
     });
     setTimeout(() => { try { n.close(); } catch {} }, 8000);
   } catch (e) {}
 }
 
-export async function requestNotifPermission() {
+export async function requestNotifPermission(): Promise<string> {
+  if (!hasNotif) return 'unsupported';
   try {
-    if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
+    if (typeof Notification.requestPermission !== 'function') return 'unsupported';
     if (Notification.permission === 'granted') return 'granted';
     if (Notification.permission === 'denied') return 'denied';
     return await Notification.requestPermission();

@@ -456,7 +456,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     };
   }, []);
 
-  useEffect(() => { requestNotifPermission().then(p => console.log('🔔 perm:', p)); }, []);
+  useEffect(() => { try { requestNotifPermission().then(p => console.log('🔔 perm:', p)).catch(() => {}); } catch (e) {} }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -475,6 +475,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     let alive = true;
     const tick = async () => {
       if (!alive) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const m = await import('./lib.network');
         const list = await m.fetchAllNotifications();
@@ -512,7 +513,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       } catch (e) {}
     };
     tick();
-    const iv = setInterval(tick, 3000);
+    const iv = setInterval(tick, 1500);
     return () => { alive = false; clearInterval(iv); };
   }, [gPrefs.notify_sound, gPrefs.notify_vibrate, gPrefs.notify_browser]);
 
@@ -521,6 +522,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     let alive = true;
     const tick = async () => {
       if (!alive) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const m = await import('./lib.network');
         const list = await m.fetchMyUnreadMessages();
@@ -542,7 +544,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
         }
       } catch (e) {}
     };
-    const iv = setInterval(tick, 3000);
+    const iv = setInterval(tick, 1500);
     return () => { alive = false; clearInterval(iv); };
   }, [gPrefs.notify_sound, gPrefs.notify_vibrate, gPrefs.notify_browser]);
 

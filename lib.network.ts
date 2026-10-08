@@ -544,7 +544,7 @@ export async function getGroupDetails(groupId: string): Promise<any> {
 // ═══════════════════════════════════════════════════════
 //  Polling
 // ═══════════════════════════════════════════════════════
-function startPoll(key: string, fn: () => Promise<void>, ms: number = 2000) {
+function startPoll(key: string, fn: () => Promise<void>, ms: number = 2500) {
   stopPoll(key);
   fn();
   _polls[key] = setInterval(fn, ms);
@@ -690,11 +690,11 @@ export async function fetchMyUnreadMessages(): Promise<any[]> {
   try {
     const { data } = await _sb
       .from('net_messages')
-      .select('*')
+      .select('id,from_name,from_email,text,created_at,room_id')
       .eq('to_email', _myEmail)
       .eq('is_read', false)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(5);
     return data || [];
   } catch { return []; }
 }

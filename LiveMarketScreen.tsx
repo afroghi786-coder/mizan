@@ -198,7 +198,7 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [dashCursModal, setDashCursModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
-  const [fxForm, setFxForm] = useState<any>({ currency: 'USD', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
+  const [fxForm, setFxForm] = useState<any>({ currency: 'USD', targetCurrency: 'AFN', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
   const [directForm, setDirectForm] = useState<any>({ toEmail: '', toName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
   const [rateForm, setRateForm] = useState<any>(() => {
     const obj: any = {};
@@ -211,6 +211,10 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [newCurCode, setNewCurCode] = useState('');
   const [newCurName, setNewCurName] = useState('');
   const [newCurRate, setNewCurRate] = useState('');
+  const [hawSearchCur, setHawSearchCur] = useState('');
+  const [fxSearchFrom, setFxSearchFrom] = useState('');
+  const [fxSearchTo, setFxSearchTo] = useState('');
+  const [claimingId, setClaimingId] = useState<string>('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -430,18 +434,24 @@ export default function LiveMarketScreen({ showToast }: any) {
   };
 
   const doClaimH = async (id: string) => {
+    if (claimingId) return;
+    setClaimingId(id);
     try {
       const r = await claimHawala(id);
       showToast?.(r.success ? '✅ قبول شد' : '⚠️ ' + r.message, !r.success);
       if (r.success) setTimeout(() => refresh(), 300);
     } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+    finally { setTimeout(() => setClaimingId(''), 500); }
   };
   const doClaimF = async (id: string) => {
+    if (claimingId) return;
+    setClaimingId(id);
     try {
       const r = await claimFXOffer(id);
       showToast?.(r.success ? '✅ قبول شد' : '⚠️ ' + r.message, !r.success);
       if (r.success) setTimeout(() => refresh(), 300);
     } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+    finally { setTimeout(() => setClaimingId(''), 500); }
   };
   const doAcceptD = async (id: string) => {
     try {
@@ -807,10 +817,11 @@ export default function LiveMarketScreen({ showToast }: any) {
               ))}
             </View>
             <Text style={s.lbl}>ارز</Text>
-            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
-              {ALL_CURS.map(c => (
+            <TextInput style={s.inp} value={hawSearchCur} onChangeText={setHawSearchCur} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+              {ALL_CURS.filter(c => !hawSearchCur || c.toLowerCase().includes(hawSearchCur.toLowerCase()) || (CUR_NAME[c] || '').includes(hawSearchCur)).map(c => (
                 <TouchableOpacity key={c} onPress={() => setHawalaForm({ ...hawalaForm, currency: c })} style={[s.chip, hawalaForm.currency === c && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]}>
-                  <Text style={[s.chipTxt, hawalaForm.currency === c && { color: '#fff' }]}>{FLAG[c]} {c}</Text>
+                  <Text style={[s.chipTxt, hawalaForm.currency === c && { color: '#fff' }]}>{FLAG[c] || '💱'} {c} - {CUR_NAME[c] || c}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -851,11 +862,22 @@ export default function LiveMarketScreen({ showToast }: any) {
             <TouchableOpacity onPress={() => setFxModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14 }}>
-            <Text style={s.lbl}>ارز</Text>
-            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
-              {ALL_CURS.map(c => (
+            <Text style={s.lbl}>ارز مبدأ (می‌فروشید) *</Text>
+            <TextInput style={s.inp} value={fxSearchFrom} onChangeText={setFxSearchFrom} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+              {ALL_CURS.filter(c => !fxSearchFrom || c.toLowerCase().includes(fxSearchFrom.toLowerCase()) || (CUR_NAME[c] || '').includes(fxSearchFrom)).map(c => (
                 <TouchableOpacity key={c} onPress={() => setFxForm({ ...fxForm, currency: c })} style={[s.chip, fxForm.currency === c && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]}>
-                  <Text style={[s.chipTxt, fxForm.currency === c && { color: '#fff' }]}>{FLAG[c]} {c}</Text>
+                  <Text style={[s.chipTxt, fxForm.currency === c && { color: '#fff' }]}>{FLAG[c] || '💱'} {c} - {CUR_NAME[c] || c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={s.lbl}>ارز مقصد (دریافت می‌کنید) *</Text>
+            <TextInput style={s.inp} value={fxSearchTo} onChangeText={setFxSearchTo} placeholder="🔍 جستجو: AFN یا افغانی یا دالر..." placeholderTextColor="#94a3b8" />
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+              {ALL_CURS.filter(c => c !== fxForm.currency).filter(c => !fxSearchTo || c.toLowerCase().includes(fxSearchTo.toLowerCase()) || (CUR_NAME[c] || '').includes(fxSearchTo)).map(c => (
+                <TouchableOpacity key={c} onPress={() => setFxForm({ ...fxForm, targetCurrency: c })} style={[s.chip, fxForm.targetCurrency === c && { backgroundColor: '#10b981', borderColor: '#10b981' }]}>
+                  <Text style={[s.chipTxt, fxForm.targetCurrency === c && { color: '#fff' }]}>{FLAG[c] || '💱'} {c} - {CUR_NAME[c] || c}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -872,7 +894,7 @@ export default function LiveMarketScreen({ showToast }: any) {
             </View>
             {fxForm.rateType === 'fixed' && (
               <>
-                <Text style={s.lbl}>نرخ (به افغانی) *</Text>
+                <Text style={s.lbl}>نرخ (به {fxForm.targetCurrency || 'AFN'}) *</Text>
                 <TextInput style={s.inp} value={fxForm.rate} onChangeText={v => setFxForm({ ...fxForm, rate: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="70500" placeholderTextColor="#94a3b8" />
               </>
             )}

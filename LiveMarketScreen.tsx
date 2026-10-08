@@ -1,6 +1,6 @@
 // LiveMarketScreen.tsx — بازار عمومی صرافان
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator, Switch } from 'react-native';
 import {
   initNetwork, loadNetSettings, saveNetSettings, getMyNetInfo,
   sendBroadcastHawala, claimHawala, sendFXOffer, claimFXOffer,
@@ -198,6 +198,8 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [myDashCurs, setMyDashCurs] = useState<string[]>(['USD', 'EUR', 'PKR', 'AED', 'GBP']);
   const [dashCursModal, setDashCursModal] = useState(false);
   const [notifModal, setNotifModal] = useState(false);
+  const [dirSearchCur, setDirSearchCur] = useState('');
+  const [notifSettingsModal, setNotifSettingsModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
   const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', targetCurrency: 'AFN', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
@@ -515,7 +517,7 @@ export default function LiveMarketScreen({ showToast }: any) {
             <Text style={s.dashSub}>{net.name || '—'} | {NET_CITIES[net.city] || '—'}</Text>
           </View>
           <View style={{ flexDirection: 'row-reverse', gap: 6, marginLeft: 8 }}>
-            <TouchableOpacity onPress={() => setSettingsModal(true)} style={{ backgroundColor: '#1e3a5f', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#7c3aed' }}>
+            <TouchableOpacity onPress={() => setNotifSettingsModal(true)} style={{ backgroundColor: '#1e3a5f', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#7c3aed' }}>
               <Text style={{ fontSize: 16 }}>⚙️</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setNotifModal(true)} style={{ backgroundColor: '#1e3a5f', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#f59e0b', position: 'relative' }}>
@@ -850,6 +852,51 @@ export default function LiveMarketScreen({ showToast }: any) {
 
 
       {/* مودال تنظیمات */}
+      {/* ═══ مودال تنظیمات اعلان‌ها ═══ */}
+      <Modal visible={notifSettingsModal} transparent animationType="slide" onRequestClose={() => setNotifSettingsModal(false)}>
+        <View style={s.mBg}><View style={s.mBox}>
+          <View style={[s.mHead, { backgroundColor: '#7c3aed' }]}>
+            <Text style={s.mTitle}>📬 تنظیمات اعلان‌ها</Text>
+            <TouchableOpacity onPress={() => setNotifSettingsModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
+          </View>
+          <ScrollView style={{ padding: 14, maxHeight: 550 }}>
+            {[
+              { k: 'notify_sound',      l: '🔔 صدا هنگام اعلان' },
+              { k: 'notify_vibrate',    l: '📳 لرزش گوشی' },
+              { k: 'notify_browser',    l: '💬 نوتیف مرورگر/سیستم' },
+              { k: 'notify_hawala_new', l: '📤 حواله جدید در شهر من' },
+              { k: 'notify_fx_new',     l: '💱 آگهی فروش ارز جدید' },
+              { k: 'notify_hawala_claim', l: '✅ کسی حواله من را قبول کرد' },
+              { k: 'notify_fx_claim',   l: '✅ کسی آگهی من را خرید' },
+              { k: 'notify_direct',     l: '🔒 حواله خصوصی' },
+            ].map(x => (
+              <View key={x.k} style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#0f172a', borderRadius: 8, marginBottom: 8 }}>
+                <Text style={{ color: '#fff', fontSize: 13, textAlign: 'right', flex: 1 }}>{x.l}</Text>
+                <Switch
+                  value={prefs[x.k] !== false}
+                  onValueChange={v => setPrefs({ ...prefs, [x.k]: v })}
+                  trackColor={{ false: '#334155', true: '#10b981' }}
+                  thumbColor="#fff"
+                />
+              </View>
+            ))}
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  const { savePreferences } = await import('./lib.network');
+                  await savePreferences(prefs);
+                  showToast?.('✅ تنظیمات ذخیره شد');
+                  setNotifSettingsModal(false);
+                } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+              }}
+              style={{ backgroundColor: '#059669', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 12 }}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>💾 ذخیره تنظیمات</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View></View>
+      </Modal>
+
       <Modal visible={settingsModal} transparent animationType="slide" onRequestClose={() => setSettingsModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>
           <View style={s.mHead}><Text style={s.mTitle}>⚙️ پروفایل شبکه</Text>
@@ -1017,8 +1064,9 @@ export default function LiveMarketScreen({ showToast }: any) {
               </ScrollView>
             )}
             <Text style={s.lbl}>ارز</Text>
+            <TextInput style={s.inp} value={dirSearchCur} onChangeText={setDirSearchCur} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
-              {['USD', 'AFN', 'EUR', 'PKR', 'AED'].map(c => (
+              {ALL_CURS.filter(c => !dirSearchCur || c.toLowerCase().includes(dirSearchCur.toLowerCase()) || (CUR_NAME[c] || '').includes(dirSearchCur)).map(c => (
                 <TouchableOpacity key={c} onPress={() => setDirectForm({ ...directForm, currency: c })} style={[s.chip, directForm.currency === c && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]}>
                   <Text style={[s.chipTxt, directForm.currency === c && { color: '#fff' }]}>{FLAG[c]} {c}</Text>
                 </TouchableOpacity>

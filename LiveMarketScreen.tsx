@@ -744,7 +744,7 @@ export default function LiveMarketScreen({ showToast }: any) {
           <Text style={[s.secT, { color: '#0891b2' }]}>🔒 حواله خصوصی دریافتی ({pendingDirect.length})</Text>
           {pendingDirect.map((h: any) => (
             <View key={h.id} style={[s.card, { borderColor: '#0891b2' }]}>
-              <Text style={s.cardTitle}>🔒 {h.fromName}</Text>
+              <Text style={s.cardTitle}>🔒 {h.fromName || h.from_email?.split("@")[0]} {h.fromCity ? `— ${NET_CITIES[h.fromCity] || h.fromCity}` : ""}</Text>
               <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
               <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
               <Text style={s.cardRow}>💰 کارمزد: {fmt(h.commission, 0)}</Text>
@@ -761,7 +761,7 @@ export default function LiveMarketScreen({ showToast }: any) {
           <Text style={[s.secT, { color: '#f59e0b' }]}>🔄 در حال انجام ({acceptedDirect.length})</Text>
           {acceptedDirect.map((h: any) => (
             <View key={h.id} style={[s.card, { borderColor: '#f59e0b' }]}>
-              <Text style={s.cardTitle}>🔄 {h.fromName}</Text>
+              <Text style={s.cardTitle}>🔄 {h.fromName || h.from_email?.split("@")[0]} {h.fromCity ? `— ${NET_CITIES[h.fromCity] || h.fromCity}` : ""}</Text>
               <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
               <Text style={s.cardRow}>👤 {h.beneficiaryName}</Text>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => doDeliverD(h.id, net.email)}>
@@ -796,16 +796,36 @@ export default function LiveMarketScreen({ showToast }: any) {
       <Text style={s.secT}>💱 فروش ارز در بازار ({fxOffers.length})</Text>
       {fxOffers.length === 0 ? (
         <Text style={s.empty}>آگهی نیست</Text>
-      ) : fxOffers.map((f: any) => (
-        <View key={f.id} style={s.card}>
-          <Text style={s.cardTitle}>{f.sellerName}</Text>
-          <Text style={s.cardAmt}>{FLAG[f.currency] || '💱'} {fmt(f.amount)} {f.currency}</Text>
-          <Text style={s.cardRow}>💹 {fmt(f.rate, 4)} {f.rateType === 'auction' ? '(حراج)' : ''}</Text>
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimF(f.id)}>
-            <Text style={s.btnTxt}>💰 قبول</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
+      ) : (
+        <>
+          {/* آگهی‌های فروش ارز بازار */}
+          {fxOffers.map((f: any) => (
+            <View key={f.id} style={[s.card, { borderRightColor: '#7c3aed', borderRightWidth: 3 }]}>
+              <Text style={s.cardTitle}>🏢 {f.sellerName} {f.sellerCity ? `— ${NET_CITIES[f.sellerCity] || f.sellerCity}` : ''}</Text>
+              <Text style={s.cardAmt}>{FLAG[f.currency] || '💱'} {fmt(f.amount)} {f.currency}{f.targetCurrency && f.targetCurrency !== f.currency ? ` → ${FLAG[f.targetCurrency] || '💱'} ${f.targetCurrency}` : ''}</Text>
+              <Text style={s.cardRow}>💹 نرخ: {fmt(f.rate, 4)} {f.rateType === 'auction' ? '(حراج)' : ''}</Text>
+              {f.note ? <Text style={s.cardRow}>📝 {f.note}</Text> : null}
+              {f.sellerEmail === net.email ? (
+                <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+                  <Text style={{ color: '#fbbf24', fontSize: 11, fontWeight: 'bold', flex: 1, textAlign: 'right' }}>🔵 آگهی خودم</Text>
+                  <TouchableOpacity style={[s.btn, { backgroundColor: '#dc2626', paddingHorizontal: 12 }]} onPress={async () => {
+                    try { const m = await import('./lib.network'); await m.deleteFXOffer(f.id); showToast?.('🗑 حذف شد'); refresh(); } catch (e: any) { showToast?.('❌ ' + e.message, true); }
+                  }}>
+                    <Text style={s.btnTxt}>🗑</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimF(f.id)}>
+                  <Text style={s.btnTxt}>💰 قبول</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+          {fxOffers.length === 0 && (myFXOffers.length === 0) ? (
+            <Text style={s.empty}>آگهی فروش ارزی نیست</Text>
+          ) : null}
+        </>
+      )}
       {/* ═══ مودال نوتیفیکیشن ═══ */}
       <Modal visible={notifModal} transparent animationType="slide" onRequestClose={() => setNotifModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>

@@ -493,6 +493,25 @@ export default function LiveMarketScreen({ showToast }: any) {
 
   if (loading) return <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" /></View>;
 
+  // 🔎 DEBUG — چرا تب‌ها نیستند؟
+  if (typeof window !== 'undefined') {
+    console.log('🔎 LIVE_MARKET DEBUG:', {
+      loading,
+      connected: net?.connected,
+      email: net?.email,
+      name: net?.name,
+      city: net?.city,
+      hasName: !!net?.name,
+      hasCity: !!net?.city,
+      hasEmail: !!net?.email,
+      ratesCount: rates?.length,
+      hawalasCount: hawalas?.length,
+      fxOffersCount: fxOffers?.length,
+      notifCount: notifList?.length,
+    });
+  }
+
+
   const pendingDirect = directInbox.filter((h: any) => h.status === 'pending');
   const acceptedDirect = directInbox.filter((h: any) => h.status === 'accepted');
 
@@ -509,6 +528,11 @@ export default function LiveMarketScreen({ showToast }: any) {
           {!net.connected && net.name ? (
             <Text style={{ color: '#fbbf24', fontSize: 10, marginTop: 4, textAlign: 'right' }}>
               ⚠️ Firebase وصل نیست — برای فعال‌سازی شبکه، VPN روشن کن
+            </Text>
+          ) : null}
+          {!net.name ? (
+            <Text style={{ color: '#f87171', fontSize: 11, marginTop: 6, textAlign: 'right', fontWeight: 'bold' }}>
+              🚨 هنوز پروفایل شبکه نساخته‌اید — روی ⚙️ بزنید و «نام» + «شهر» را وارد کنید
             </Text>
           ) : null}
         </View>

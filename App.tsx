@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
 import ExchangeScreen from './ExchangeScreen';
+import { unlockAudio, playNotifSound, vibrateNotif, showBrowserNotif } from './lib.notifications';
 import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';
@@ -434,6 +435,130 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
   useEffect(() => { reloadSettings(); }, [reloadSettings]);
   useEffect(() => { (globalThis as any).__openLang = () => setShowLang(true); }, []);
+  // 🔍 WebView detection
+  const _isWebView = (() => {
+    try {
+      if (typeof navigator === 'undefined') return true;
+      const ua = navigator.userAgent || '';
+      return /wv|WebView/i.test(ua) || typeof (window as any).ReactNativeWebView !== 'undefined';
+    } catch { return false; }
+  })();
+  // ═══ SAFE_GLOBAL_POLLING — صدا در همه تب‌ها، امن برای APK ═══
+  const [gPrefs, setGPrefs] = useState<any>({});
+  const _gLastId = useRef<number>(0);
+  const _gReady = useRef<boolean>(false);
+  const _gPlaying = useRef<boolean>(false);
+  const _gLastMsgId = useRef<number>(0);
+  const _gMsgReady = useRef<boolean>(false);
+
+  // Unlock audio در اولین کلیک
+  useEffect(() => {
+    if (_isWebView || typeof window === 'undefined') return;
+    const unlock = () => { try { unlockAudio(); } catch {} };
+    window.addEventListener('click', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    return () => {
+      try {
+        window.removeEventListener('click', unlock);
+        window.removeEventListener('touchstart', unlock);
+      } catch {}
+    };
+  }, []);
+
+  // لود preferences
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const m = await import('./lib.network');
+        const p = await m.fetchPreferences();
+        if (alive) setGPrefs(p);
+      } catch {}
+    };
+    load();
+    const iv = setInterval(load, 120000);
+    return () => { alive = false; clearInterval(iv); };
+  }, []);
+
+  // Poll اعلان‌ها
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      if (!alive) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const m = await import('./lib.network');
+        const list = await m.fetchAllNotifications();
+        if (!alive || !list?.length) return;
+        const newest = Math.max(...list.map((x: any) => x.id || 0));
+        if (!_gReady.current) { _gLastId.current = newest; _gReady.current = true; return; }
+        if (newest > _gLastId.current && !_gPlaying.current) {
+          _gPlaying.current = true;
+          const newOnes = list.filter((x: any) => (x.id || 0) > _gLastId.current && !x.is_read);
+          _gLastId.current = newest;
+          if (newOnes.length > 0) {
+            const n = newOnes[0];
+            const p = n.payload || {};
+            const texts: any = {
+              fx_taken: `✅ ${p.from_name || ''} آگهی شما را قبول کرد`,
+              hawala_taken: `✅ ${p.from_name || ''} حواله شما را قبول کرد`,
+              direct_hawala: `🔒 حواله خصوصی از ${p.from_name || ''}`,
+              direct_accepted: `✅ ${p.from_name || ''} حواله را قبول کرد`,
+              direct_delivered: `📦 ${p.from_name || ''} حواله را تحویل داد`,
+              fx_new: `💱 ${p.from_name || ''} فروش ${p.amount || 0} ${p.currency || ''}`,
+              hawala_new: `📤 ${p.from_name || ''} حواله ${p.amount || 0} ${p.currency || ''}`,
+              fx_expired: `⌛ آگهی شما منقضی شد`,
+              hawala_expired: `⌛ حواله شما منقضی شد`,
+            };
+            const msg = texts[n.type] || '🔔 اعلان جدید';
+            if (gPrefs.notify_sound !== false) { try { playNotifSound(); } catch {} }
+            if (gPrefs.notify_vibrate !== false) { try { vibrateNotif(); } catch {} }
+            if (!_isWebView && gPrefs.notify_browser !== false) { try { showBrowserNotif('میزان | MIZAN', msg); } catch {} }
+            showToast?.(msg);
+          }
+          setTimeout(() => { _gPlaying.current = false; }, 1500);
+        }
+      } catch {}
+    };
+    tick();
+    const iv = setInterval(tick, 2000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [gPrefs.notify_sound, gPrefs.notify_vibrate, gPrefs.notify_browser]);
+
+  // Poll پیام‌های چت
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      if (!alive) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const m = await import('./lib.network');
+        const list = await m.fetchMyUnreadMessages();
+        if (!alive || !list?.length) return;
+        const newest = Math.max(...list.map((x: any) => x.id || 0));
+        if (!_gMsgReady.current) { _gLastMsgId.current = newest; _gMsgReady.current = true; return; }
+        if (newest > _gLastMsgId.current && !_gPlaying.current) {
+          _gPlaying.current = true;
+          const nw = list.find((x: any) => x.id === newest);
+          _gLastMsgId.current = newest;
+          const sender = nw?.from_name || nw?.from_email?.split('@')[0] || 'کسی';
+          const preview = (nw?.text || '').slice(0, 60);
+          const msg = `💬 ${sender}: ${preview}`;
+          if (gPrefs.notify_sound !== false) { try { playNotifSound(); } catch {} }
+          if (gPrefs.notify_vibrate !== false) { try { vibrateNotif(); } catch {} }
+          if (!_isWebView && gPrefs.notify_browser !== false) { try { showBrowserNotif('میزان | پیام جدید', msg); } catch {} }
+          showToast?.(msg);
+          setTimeout(() => { _gPlaying.current = false; }, 1500);
+        }
+      } catch {}
+    };
+    const iv = setInterval(tick, 1500);
+    return () => { alive = false; clearInterval(iv); };
+  }, [gPrefs.notify_sound, gPrefs.notify_vibrate, gPrefs.notify_browser]);
+
+
+
+
 
 
 

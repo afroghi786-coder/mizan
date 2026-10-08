@@ -871,7 +871,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
               <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
               <Text style={s.cardRow}>💰 کارمزد: {fmt(h.commission, 0)}</Text>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doAcceptD(h.id)}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doAcceptD(h.id)} activeOpacity={0.6}>
                 <Text style={s.btnTxt}>✅ قبول</Text>
               </TouchableOpacity>
             </View>
@@ -973,7 +973,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
             <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📍 {NET_CITIES[h.targetCity] || h.targetCity}</Text>
             {!mine ? (
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimH(h.id)}>
+              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doClaimH(h.id)} activeOpacity={0.6}>
                 <Text style={s.btnTxt}>⚡ قبول</Text>
               </TouchableOpacity>
             ) : <Text style={[s.cardRow, { color: '#f59e0b' }]}>⏳ منتظر قبول</Text>}
@@ -1019,7 +1019,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                   <Text style={s.btnTxt}>💬 چت با فروشنده</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={() => doClaimF(f.id)}>
+                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doClaimF(f.id)} activeOpacity={0.6}>
                   <Text style={s.btnTxt}>💰 قبول</Text>
                 </TouchableOpacity>
               )}

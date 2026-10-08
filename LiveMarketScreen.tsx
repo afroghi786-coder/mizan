@@ -546,6 +546,24 @@ export default function LiveMarketScreen({ showToast }: any) {
         ) : null}
       </View>
 
+      {/* 🚨 پیام تکمیل پروفایل */}
+      {(!net.name || !net.city) ? (
+        <View style={{ margin: 14, padding: 14, backgroundColor: '#7f1d1d', borderRadius: 10, borderWidth: 2, borderColor: '#dc2626' }}>
+          <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'right', fontSize: 14, marginBottom: 6 }}>
+            ⚠️ پروفایل شبکه ناقص است
+          </Text>
+          <Text style={{ color: '#fecaca', textAlign: 'right', fontSize: 12, marginBottom: 10 }}>
+            برای دیدن حواله‌ها، فروش ارز و تب‌های بازار زنده، ابتدا نام و شهر خود را ثبت کنید.
+          </Text>
+          <TouchableOpacity
+            onPress={() => { setSettingsForm({ name: net.name || '', city: net.city || 'KBL', phone: net.phone || '' }); setSettingsModal(true); }}
+            style={{ backgroundColor: '#dc2626', padding: 10, borderRadius: 8, alignItems: 'center' }}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>⚙️ تکمیل پروفایل الان</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       {/* ═══════════════════════════════════════════ */}
       {/* 📊 داشبورد دیجیتال */}
       {/* ═══════════════════════════════════════════ */}

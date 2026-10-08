@@ -68,38 +68,55 @@ function calcRateStats(ratesArr: any[], cur: string) {
 // زمان نسبی
 // ═══ صدای نوتیف ═══
 let _audioCtx: any = null;
+// ═══ Audio Context مشترک (قفل WebView را باز می‌کند) ═══
+function _getAudioCtx() {
+  if (_audioCtx) return _audioCtx;
+  try {
+    const Ctx = (typeof window !== 'undefined') ? ((window as any).AudioContext || (window as any).webkitAudioContext) : null;
+    if (Ctx) _audioCtx = new Ctx();
+  } catch {}
+  return _audioCtx;
+}
+
+// ═══ Unlock روی اولین کلیک/لمس کاربر ═══
+function unlockAudio() {
+  try {
+    const ctx = _getAudioCtx();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume();
+      // پخش صدا در حجم صفر برای unlock
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.01);
+    }
+  } catch {}
+}
+
 function playNotifSound() {
   try {
-    if (typeof window === 'undefined') return;
-    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!AC) return;
-    if (!_audioCtx) _audioCtx = new AC();
-    const ctx = _audioCtx;
-    // پالس اول
-    const o1 = ctx.createOscillator();
-    const g1 = ctx.createGain();
-    o1.connect(g1); g1.connect(ctx.destination);
-    o1.frequency.value = 880;
-    o1.type = 'sine';
-    g1.gain.setValueAtTime(0.25, ctx.currentTime);
-    g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-    o1.start(ctx.currentTime);
-    o1.stop(ctx.currentTime + 0.3);
-    // پالس دوم
-    setTimeout(() => {
-      try {
-        const o2 = ctx.createOscillator();
-        const g2 = ctx.createGain();
-        o2.connect(g2); g2.connect(ctx.destination);
-        o2.frequency.value = 1320;
-        o2.type = 'sine';
-        g2.gain.setValueAtTime(0.25, ctx.currentTime);
-        g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-        o2.start(ctx.currentTime);
-        o2.stop(ctx.currentTime + 0.3);
-      } catch {}
-    }, 180);
-  } catch (e) { console.log('sound err:', e); }
+    const ctx = _getAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880;
+    o.type = 'sine';
+    g.gain.setValueAtTime(0.3, t);
+    g.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+    o.start(t); o.stop(t + 0.4);
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.connect(g2); g2.connect(ctx.destination);
+    o2.frequency.value = 1320;
+    o2.type = 'sine';
+    g2.gain.setValueAtTime(0.3, t + 0.2);
+    g2.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+    o2.start(t + 0.2); o2.stop(t + 0.5);
+  } catch (e) { console.log('playNotifSound err', e); }
 }
 
 function vibrateNotif() {
@@ -139,6 +156,20 @@ function timeAgo(ts: number): string {
 }
 
 export default function LiveMarketScreen({ showToast }: any) {
+  // ═══ Unlock AudioContext روی اولین تعامل کاربر ═══
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => { try { unlockAudio(); } catch {} };
+    window.addEventListener('click', handler, { once: true });
+    window.addEventListener('touchstart', handler, { once: true });
+    window.addEventListener('keydown', handler, { once: true });
+    return () => {
+      window.removeEventListener('click', handler);
+      window.removeEventListener('touchstart', handler);
+      window.removeEventListener('keydown', handler);
+    };
+  }, []);
+
   const [prefs, setPrefs] = useState<any>({});
   const [notifList, setNotifList] = useState<any[]>([]);
   const _notifReady = useRef<boolean>(false);

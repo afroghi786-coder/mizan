@@ -1,7 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
 import ExchangeScreen from './ExchangeScreen';
-import { unlockAudio, playNotifSound, vibrateNotif, showBrowserNotif, requestNotifPermission } from './lib.notifications';
 import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';

@@ -206,7 +206,7 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
   // ═══════════════════════════════════════════
   //  MODALS (مشترک بین دو نما)
   // ═══════════════════════════════════════════
-  const Modals = () => (
+  const renderModals = () => (
     <>
       {/* ═══ مودال فرم ثبت ═══ */}
       <Modal visible={showForm} transparent animationType="slide" onRequestClose={() => setShowForm(false)}>
@@ -443,7 +443,7 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
           <Text style={st.fabLbl}>ثبت آگهی</Text>
         </TouchableOpacity>
 
-        <Modals />
+        {renderModals()}
       </View>
     );
   }
@@ -455,8 +455,15 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
     <View style={st.root}>
       {/* Header */}
       <View style={st.head}>
-        <Text style={st.headTitle}>🏛️ بازار عمومی</Text>
-        <Text style={st.headSub}>دسته مورد نظر را انتخاب کنید</Text>
+        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }}>
+          <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: '#d4af37' + '20', justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 22 }}>🏛️</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={st.headTitle}>بازار عمومی</Text>
+            <Text style={st.headSub}>دسته مورد نظر را انتخاب کنید</Text>
+          </View>
+        </View>
       </View>
 
       {/* Sub tabs */}
@@ -495,12 +502,16 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
                   style={[st.bigCard, { borderRightColor: subColor }]}
                   activeOpacity={0.7}
                 >
-                  <Text style={st.bigCardIcon}>{c.i}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={st.bigCardTitle}>{c.l}</Text>
-                    <Text style={st.bigCardSub}>{catCount} آگهی</Text>
+                  <View style={[st.bigCardIconBox, { backgroundColor: subColor + '20' }]}>
+                    <Text style={st.bigCardIcon}>{c.i}</Text>
                   </View>
-                  <Text style={st.bigCardArrow}>‹</Text>
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={st.bigCardTitle}>{c.l}</Text>
+                    <Text style={st.bigCardSub}>{catCount} آگهی فعال</Text>
+                  </View>
+                  <View style={[st.bigCardArrowBox, { backgroundColor: subColor + '20' }]}>
+                    <Text style={[st.bigCardArrow, { color: subColor }]}>‹</Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -528,38 +539,72 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
         <Text style={st.fabLbl}>ثبت آگهی</Text>
       </TouchableOpacity>
 
-      <Modals />
+      {renderModals()}
     </View>
   );
 }
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0a1628' },
-  head: { backgroundColor: '#0f2438', padding: 14, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
-  headTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', textAlign: 'right' },
+  head: { backgroundColor: '#0f2438', padding: 16, paddingTop: 18, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
+  headTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', textAlign: 'right' },
   headSub: { color: '#94a3b8', fontSize: 11, textAlign: 'right', marginTop: 4 },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   backBtnTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
   tabsRow: { padding: 8, gap: 6, flexDirection: 'row-reverse' },
-  subTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#0f2438', borderWidth: 1, borderColor: '#334155' },
-  subTabTxt: { color: '#94a3b8', fontSize: 12 },
+  subTab: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 22, backgroundColor: '#0f2438', borderWidth: 1.5, borderColor: '#334155', minWidth: 100, alignItems: 'center' },
+  subTabTxt: { color: '#94a3b8', fontSize: 12.5, fontWeight: '600' },
   search: { backgroundColor: '#0f2438', color: '#fff', margin: 8, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#334155', textAlign: 'right' },
   chipsRow: { paddingHorizontal: 8, paddingVertical: 4, gap: 6, flexDirection: 'row-reverse' },
   chipsWrap: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#0f2438', borderWidth: 1, borderColor: '#334155' },
+  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, backgroundColor: '#0f2438', borderWidth: 1.5, borderColor: '#334155' },
   chipActive: { backgroundColor: '#0891b2', borderColor: '#0891b2' },
   chipTxt: { color: '#94a3b8', fontSize: 11 },
   empty: { alignItems: 'center', padding: 60 },
   emptyTxt: { color: '#94a3b8', fontSize: 14, fontWeight: 'bold', marginBottom: 6 },
   emptyHint: { color: '#64748b', fontSize: 11 },
   // کارت بزرگ دسته
-  bigCard: { backgroundColor: '#0f2438', padding: 16, borderRadius: 12, marginBottom: 10, borderRightWidth: 4, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 70 },
-  bigCardIcon: { fontSize: 34 },
-  bigCardTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'right' },
+  bigCard: { 
+    backgroundColor: '#0f2438', 
+    padding: 14, 
+    borderRadius: 14, 
+    marginBottom: 10, 
+    borderRightWidth: 4, 
+    flexDirection: 'row-reverse', 
+    alignItems: 'center', 
+    gap: 10, 
+    minHeight: 82,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  bigCardIconBox: {
+    width: 52, height: 52, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  bigCardIcon: { fontSize: 26 },
+  bigCardTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold', textAlign: 'right' },
   bigCardSub: { color: '#94a3b8', fontSize: 11, textAlign: 'right', marginTop: 4 },
-  bigCardArrow: { color: '#94a3b8', fontSize: 32, fontWeight: 'bold', marginLeft: 8 },
+  bigCardArrowBox: {
+    width: 34, height: 34, borderRadius: 17,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  bigCardArrow: { fontSize: 22, fontWeight: 'bold', lineHeight: 24 },
   // کارت آگهی
-  card: { backgroundColor: '#0f2438', padding: 12, borderRadius: 10, marginBottom: 10, borderRightWidth: 3 },
+  card: { 
+    backgroundColor: '#0f2438', 
+    padding: 14, 
+    borderRadius: 12, 
+    marginBottom: 10, 
+    borderRightWidth: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
   cardTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold', flex: 1, textAlign: 'right', marginRight: 8 },
   cardDesc: { color: '#cbd5e1', fontSize: 12, marginTop: 8, textAlign: 'right', lineHeight: 20 },
@@ -571,7 +616,7 @@ const st = StyleSheet.create({
   cardBy: { color: '#64748b', fontSize: 10, marginTop: 6, textAlign: 'right' },
   chatBtn: { paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 10 },
   chatBtnTxt: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  fab: { position: 'absolute', bottom: 20, right: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, elevation: 5 },
+  fab: { position: 'absolute', bottom: 24, right: 20, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 30, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, elevation: 8, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   fabTxt: { fontSize: 20 },
   fabLbl: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   mBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 12 },
@@ -579,7 +624,7 @@ const st = StyleSheet.create({
   mHead: { padding: 14, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
   mTitle: { color: '#fff', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' },
   lbl: { color: '#94a3b8', fontSize: 11, marginTop: 10, marginBottom: 4, textAlign: 'right', fontWeight: 'bold' },
-  inp: { backgroundColor: '#0a1628', color: '#fff', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 10, fontSize: 13, textAlign: 'right' },
+  inp: { backgroundColor: '#0a1628', color: '#fff', borderWidth: 1.5, borderColor: '#334155', borderRadius: 10, padding: 12, fontSize: 13, textAlign: 'right', marginBottom: 4 },
   btn: { padding: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   btnTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
 });

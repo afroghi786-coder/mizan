@@ -1,6 +1,7 @@
-// PublicMarketScreen.tsx — بازار عمومی (نمای دو حالته: دسته‌ها + لیست)
+// PublicMarketScreen.tsx — بازار عمومی (مستقل، بدون وابستگی به App)
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { fetchMessages, sendMessage, markRoomRead } from './lib.network';
 
 const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
 
@@ -11,7 +12,6 @@ const CITIES: Record<string, string> = {
 const CITY_KEYS = Object.keys(CITIES);
 
 type Sub = 'jobs' | 'goods' | 'services' | 'property';
-type ViewMode = 'categories' | 'list';
 
 const SUBS: { k: Sub; l: string; i: string; c: string }[] = [
   { k: 'jobs',     l: 'استخدام',     i: '💼', c: '#0891b2' },
@@ -21,16 +21,16 @@ const SUBS: { k: Sub; l: string; i: string; c: string }[] = [
 ];
 
 const JOB_CATS = [
-  { k: 'construction', l: 'ساختمانی',    i: '🏗️' },
-  { k: 'transport',    l: 'حمل و نقل',   i: '🚗' },
-  { k: 'sales',        l: 'فروش',        i: '🛒' },
-  { k: 'restaurant',   l: 'رستوران',     i: '🍽️' },
-  { k: 'office',       l: 'اداری',       i: '💼' },
-  { k: 'it',           l: 'کامپیوتر',    i: '💻' },
-  { k: 'teaching',     l: 'آموزش',       i: '📚' },
-  { k: 'health',       l: 'صحت',         i: '🩺' },
-  { k: 'clean',        l: 'نظافت',       i: '🧹' },
-  { k: 'beauty',       l: 'زیبایی',      i: '✂️' },
+  { k: 'construction', l: 'ساختمانی و فنی',    i: '🏗️' },
+  { k: 'transport',    l: 'حمل و نقل',         i: '🚗' },
+  { k: 'sales',        l: 'فروش و بازاریابی',  i: '🛒' },
+  { k: 'restaurant',   l: 'رستوران و هتل',     i: '🍽️' },
+  { k: 'office',       l: 'اداری و دفتری',     i: '💼' },
+  { k: 'it',           l: 'کامپیوتر و IT',     i: '💻' },
+  { k: 'teaching',     l: 'آموزش و تدریس',     i: '📚' },
+  { k: 'health',       l: 'صحت و درمان',       i: '🩺' },
+  { k: 'clean',        l: 'خدمات و نظافت',     i: '🧹' },
+  { k: 'beauty',       l: 'زیبایی و خیاطی',     i: '✂️' },
 ];
 
 const GOODS_CATS = [
@@ -45,14 +45,13 @@ const GOODS_CATS = [
 const SERVICE_CATS = [
   { k: 'repair',    l: 'تعمیرات',      i: '🔧' },
   { k: 'transport', l: 'حمل و نقل',    i: '🚚' },
-  { k: 'teach',     l: 'آموزش',        i: '📚' },
+  { k: 'teach',     l: 'آموزش خصوصی',  i: '📚' },
   { k: 'beauty',    l: 'زیبایی',        i: '💅' },
   { k: 'clean',     l: 'نظافت',         i: '🧹' },
 ];
 
 export default function PublicMarketScreen({ showToast, userEmail }: any) {
   const [sub, setSub] = useState<Sub>('jobs');
-  const [viewMode, setViewMode] = useState<ViewMode>('categories');
   const [loading, setLoading] = useState(false);
   const [ads, setAds] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -61,8 +60,6 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  // چت
   const [chatModal, setChatModal] = useState(false);
   const [chatRoom, setChatRoom] = useState<any>(null);
   const [chatPeer, setChatPeer] = useState<any>(null);
@@ -76,7 +73,6 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
     subcategory: '', job_type: 'full-time',
   });
 
-  // ═══ LOAD ═══
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -98,43 +94,6 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
     setRefreshing(false);
   };
 
-  // ═══ CHAT LISTENER ═══
-  useEffect(() => {
-    if (!chatModal || !chatRoom?.id) return;
-    let alive = true;
-    const tick = async () => {
-      if (!alive) return;
-      try {
-        const m = await import('./lib.network');
-        const msgs = await (m as any).fetchMessages(chatRoom.id);
-        if (alive) setChatMessages(msgs || []);
-      } catch {}
-    };
-    tick();
-    const iv = setInterval(tick, 3000);
-    (async () => {
-      try {
-        const m = await import('./lib.network');
-        await (m as any).markRoomRead(chatRoom.id);
-      } catch {}
-    })();
-    return () => { alive = false; clearInterval(iv); };
-  }, [chatModal, chatRoom?.id]);
-
-  // ═══ NAVIGATION ═══
-  const openCategoryView = (catKey: string) => {
-    setSubCat(catKey);
-    setViewMode('list');
-  };
-
-  const backToCategories = () => {
-    setViewMode('categories');
-    setSubCat('');
-    setSearch('');
-    setCityFilter('');
-  };
-
-  // ═══ SUBMIT AD ═══
   const submit = async () => {
     if (!form.title || form.title.length < 3) return showToast?.('عنوان الزامی', true);
     if (!form.city) return showToast?.('شهر الزامی', true);
@@ -163,7 +122,6 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
     setSaving(false);
   };
 
-  // ═══ DELETE AD ═══
   const del = async (id: any) => {
     try {
       const m = await import('./lib.network');
@@ -175,7 +133,24 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
     } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
   };
 
-  // ═══ CHAT OPEN ═══
+    // ⚡ Listener چت
+  useEffect(() => {
+    if (!chatModal || !chatRoom?.id) return;
+    let alive = true;
+    const tick = async () => {
+      if (!alive) return;
+      try {
+        const msgs = await fetchMessages(chatRoom.id);
+        if (alive) setChatMessages(msgs || []);
+      } catch {}
+    };
+    tick();
+    const iv = setInterval(tick, 3000);
+    if (chatRoom?.id) markRoomRead(chatRoom.id).catch(() => {});
+    return () => { alive = false; clearInterval(iv); };
+  }, [chatModal, chatRoom?.id]);
+
+  // ═══ باز کردن چت ═══
   const openChat = (ad: any) => {
     const peerEmail = ad.user_email;
     const peerName = ad.user_name || peerEmail?.split('@')[0] || '—';
@@ -186,29 +161,133 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
     setChatModal(true);
   };
 
+  // ═══ ارسال پیام ═══
   const sendChat = async () => {
     if (!chatInput.trim() || !chatRoom || !chatPeer) return;
     const text = chatInput.trim();
     setChatInput('');
     setChatSending(true);
     try {
-      const m = await import('./lib.network');
-      await (m as any).sendMessage(chatRoom.id, chatPeer.email, text);
-      const msgs = await (m as any).fetchMessages(chatRoom.id);
+      await sendMessage(chatRoom.id, chatPeer.email, text);
+      const msgs = await fetchMessages(chatRoom.id);
       setChatMessages(msgs || []);
     } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
     setChatSending(false);
   };
 
-  const cats = sub === 'jobs' ? JOB_CATS : sub === 'goods' ? GOODS_CATS : sub === 'services' ? SERVICE_CATS : [];
+const cats = sub === 'jobs' ? JOB_CATS : sub === 'goods' ? GOODS_CATS : sub === 'services' ? SERVICE_CATS : [];
   const subColor = SUBS.find(x => x.k === sub)?.c || '#0891b2';
 
-  // ═══════════════════════════════════════════
-  //  MODALS (مشترک بین دو نما)
-  // ═══════════════════════════════════════════
-  const Modals = () => (
-    <>
-      {/* ═══ مودال فرم ثبت ═══ */}
+  return (
+    <View style={st.root}>
+      {/* Header */}
+      <View style={st.head}>
+        <Text style={st.headTitle}>🏛️ بازار عمومی</Text>
+        <Text style={st.headSub}>خرید، فروش، استخدام و خدمات</Text>
+      </View>
+
+      {/* Sub tabs */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.tabsRow}>
+        {SUBS.map(x => (
+          <TouchableOpacity
+            key={x.k}
+            onPress={() => { setSub(x.k); setSubCat(''); }}
+            style={[st.subTab, sub === x.k && { backgroundColor: x.c, borderColor: x.c }]}
+          >
+            <Text style={[st.subTabTxt, sub === x.k && { color: '#fff', fontWeight: 'bold' }]}>{x.i} {x.l}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Search */}
+      <TextInput
+        style={st.search}
+        value={search}
+        onChangeText={setSearch}
+        placeholder="🔍 جستجو..."
+        placeholderTextColor="#94a3b8"
+      />
+
+      {/* City filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipsRow}>
+        <TouchableOpacity onPress={() => setCityFilter('')} style={[st.chip, !cityFilter && st.chipActive]}>
+          <Text style={[st.chipTxt, !cityFilter && { color: '#fff' }]}>همه</Text>
+        </TouchableOpacity>
+        {CITY_KEYS.map(c => (
+          <TouchableOpacity key={c} onPress={() => setCityFilter(c)} style={[st.chip, cityFilter === c && st.chipActive]}>
+            <Text style={[st.chipTxt, cityFilter === c && { color: '#fff' }]}>{CITIES[c]}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Sub-categories */}
+      {cats.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipsRow}>
+          <TouchableOpacity onPress={() => setSubCat('')} style={[st.chip, !subCat && { backgroundColor: '#1e3a5f', borderColor: subColor }]}>
+            <Text style={[st.chipTxt, !subCat && { color: subColor }]}>همه</Text>
+          </TouchableOpacity>
+          {cats.map(c => (
+            <TouchableOpacity key={c.k} onPress={() => setSubCat(c.k)} style={[st.chip, subCat === c.k && { backgroundColor: '#1e3a5f', borderColor: subColor }]}>
+              <Text style={[st.chipTxt, subCat === c.k && { color: subColor }]}>{c.i} {c.l}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* List */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#d4af37" />}
+      >
+        {loading ? (
+          <ActivityIndicator color="#d4af37" style={{ marginTop: 40 }} />
+        ) : ads.length === 0 ? (
+          <View style={st.empty}>
+            <Text style={{ fontSize: 50, marginBottom: 10 }}>📭</Text>
+            <Text style={st.emptyTxt}>هنوز آگهی‌ای نیست</Text>
+            <Text style={st.emptyHint}>اولین نفر باش — روی «ثبت آگهی» بزن</Text>
+          </View>
+        ) : ads.map((a: any) => (
+          <View key={a.id} style={[st.card, { borderRightColor: subColor }]}>
+            <View style={st.cardTop}>
+              <Text style={st.cardTitle} numberOfLines={2}>{a.title}</Text>
+              {a.user_email === userEmail ? (
+                <TouchableOpacity onPress={() => del(a.id)}>
+                  <Text style={{ fontSize: 16 }}>🗑</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {a.description ? <Text style={st.cardDesc} numberOfLines={3}>{a.description}</Text> : null}
+            {a.price > 0 ? (
+              <Text style={st.cardPrice}>💰 {fmt(a.price)} {a.currency}</Text>
+            ) : a.category === 'jobs' ? (
+              <Text style={st.cardPrice}>💰 توافقی</Text>
+            ) : null}
+            <View style={st.cardFoot}>
+              <Text style={st.cardCity}>📍 {CITIES[a.city] || a.city}</Text>
+              {a.phone ? <Text style={st.cardPhone}>📞 {a.phone}</Text> : null}
+            </View>
+            <Text style={st.cardBy}>👤 {a.user_name || a.user_email?.split('@')[0] || '—'}</Text>
+            {a.user_email && a.user_email !== userEmail ? (
+              <TouchableOpacity
+                onPress={() => openChat(a)}
+                style={[st.chatBtn, { backgroundColor: subColor }]}
+              >
+                <Text style={st.chatBtnTxt}>💬 چت با فروشنده</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ))}
+      </ScrollView>
+
+      {/* FAB */}
+      <TouchableOpacity style={[st.fab, { backgroundColor: subColor }]} onPress={() => setShowForm(true)}>
+        <Text style={st.fabTxt}>➕</Text>
+        <Text style={st.fabLbl}>ثبت آگهی</Text>
+      </TouchableOpacity>
+
+      {/* Form Modal */}
       <Modal visible={showForm} transparent animationType="slide" onRequestClose={() => setShowForm(false)}>
         <View style={st.mBg}><View style={st.mBox}>
           <View style={[st.mHead, { backgroundColor: subColor }]}>
@@ -344,191 +423,7 @@ export default function PublicMarketScreen({ showToast, userEmail }: any) {
           </View>
         </View></View>
       </Modal>
-    </>
-  );
 
-  // ═══════════════════════════════════════════
-  //  نمای لیست آگهی‌ها (تمام‌صفحه)
-  // ═══════════════════════════════════════════
-  if (viewMode === 'list') {
-    const catInfo = subCat ? cats.find(c => c.k === subCat) : null;
-    const headerTitle = catInfo ? `${catInfo.i} ${catInfo.l}` : `${SUBS.find(x => x.k === sub)?.i} همه آگهی‌ها`;
-    return (
-      <View style={st.root}>
-        {/* Header با دکمه برگشت */}
-        <View style={[st.head, { backgroundColor: subColor, flexDirection: 'row-reverse', alignItems: 'center', gap: 12 }]}>
-          <TouchableOpacity onPress={backToCategories} style={st.backBtn}>
-            <Text style={st.backBtnTxt}>← برگشت</Text>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={[st.headTitle, { fontSize: 16 }]} numberOfLines={1}>{headerTitle}</Text>
-            <Text style={st.headSub}>{ads.length} آگهی</Text>
-          </View>
-        </View>
-
-        {/* Search */}
-        <TextInput
-          style={st.search}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="🔍 جستجو در این دسته..."
-          placeholderTextColor="#94a3b8"
-        />
-
-        {/* City filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipsRow}>
-          <TouchableOpacity onPress={() => setCityFilter('')} style={[st.chip, !cityFilter && st.chipActive]}>
-            <Text style={[st.chipTxt, !cityFilter && { color: '#fff' }]}>همه شهرها</Text>
-          </TouchableOpacity>
-          {CITY_KEYS.map(c => (
-            <TouchableOpacity key={c} onPress={() => setCityFilter(c)} style={[st.chip, cityFilter === c && st.chipActive]}>
-              <Text style={[st.chipTxt, cityFilter === c && { color: '#fff' }]}>{CITIES[c]}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* لیست تمام‌صفحه */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 10, paddingBottom: 100 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#d4af37" />}
-        >
-          {loading ? (
-            <ActivityIndicator color="#d4af37" style={{ marginTop: 60 }} />
-          ) : ads.length === 0 ? (
-            <View style={st.empty}>
-              <Text style={{ fontSize: 60, marginBottom: 10 }}>📭</Text>
-              <Text style={st.emptyTxt}>هنوز آگهی‌ای در این دسته نیست</Text>
-              <Text style={st.emptyHint}>اولین نفر باش — روی «➕ ثبت» بزن</Text>
-            </View>
-          ) : ads.map((a: any) => (
-            <View key={a.id} style={[st.card, { borderRightColor: subColor }]}>
-              <View style={st.cardTop}>
-                <Text style={st.cardTitle} numberOfLines={2}>{a.title}</Text>
-                {a.user_email === userEmail ? (
-                  <TouchableOpacity onPress={() => del(a.id)}>
-                    <Text style={{ fontSize: 18 }}>🗑</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-              {a.description ? <Text style={st.cardDesc} numberOfLines={4}>{a.description}</Text> : null}
-              {a.price > 0 ? (
-                <Text style={st.cardPrice}>💰 {fmt(a.price)} {a.currency}</Text>
-              ) : a.category === 'jobs' ? (
-                <Text style={st.cardPrice}>💰 توافقی</Text>
-              ) : null}
-              {a.job_type ? (
-                <Text style={st.cardJobType}>🏷️ {a.job_type === 'full-time' ? 'تمام‌وقت' : a.job_type === 'part-time' ? 'پاره‌وقت' : 'روزمزد'}</Text>
-              ) : null}
-              <View style={st.cardFoot}>
-                <Text style={st.cardCity}>📍 {CITIES[a.city] || a.city}</Text>
-                {a.phone ? <Text style={st.cardPhone}>📞 {a.phone}</Text> : null}
-              </View>
-              <Text style={st.cardBy}>👤 {a.user_name || a.user_email?.split('@')[0] || '—'}</Text>
-              {a.user_email && a.user_email !== userEmail ? (
-                <TouchableOpacity
-                  onPress={() => openChat(a)}
-                  style={[st.chatBtn, { backgroundColor: subColor }]}
-                >
-                  <Text style={st.chatBtnTxt}>💬 چت با فروشنده</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* FAB */}
-        <TouchableOpacity style={[st.fab, { backgroundColor: subColor }]} onPress={() => setShowForm(true)}>
-          <Text style={st.fabTxt}>➕</Text>
-          <Text style={st.fabLbl}>ثبت آگهی</Text>
-        </TouchableOpacity>
-
-        <Modals />
-      </View>
-    );
-  }
-
-  // ═══════════════════════════════════════════
-  //  نمای کارت‌های دسته (صفحه اصلی)
-  // ═══════════════════════════════════════════
-  return (
-    <View style={st.root}>
-      {/* Header */}
-      <View style={st.head}>
-        <Text style={st.headTitle}>🏛️ بازار عمومی</Text>
-        <Text style={st.headSub}>دسته مورد نظر را انتخاب کنید</Text>
-      </View>
-
-      {/* Sub tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.tabsRow}>
-        {SUBS.map(x => (
-          <TouchableOpacity
-            key={x.k}
-            onPress={() => { setSub(x.k); setSubCat(''); setViewMode('categories'); }}
-            style={[st.subTab, sub === x.k && { backgroundColor: x.c, borderColor: x.c }]}
-          >
-            <Text style={[st.subTabTxt, sub === x.k && { color: '#fff', fontWeight: 'bold' }]}>{x.i} {x.l}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* کارت‌های دسته */}
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12, paddingBottom: 100 }}>
-        {sub === 'property' ? (
-          <View style={{ alignItems: 'center', padding: 60 }}>
-            <Text style={{ fontSize: 60, marginBottom: 12 }}>🏠</Text>
-            <Text style={{ color: '#94a3b8', fontSize: 14, textAlign: 'center' }}>بخش املاک به‌زودی</Text>
-          </View>
-        ) : cats.length === 0 ? (
-          <View style={{ alignItems: 'center', padding: 60 }}>
-            <Text style={{ fontSize: 60, marginBottom: 12 }}>📭</Text>
-            <Text style={{ color: '#94a3b8', fontSize: 14 }}>دسته‌ای نیست</Text>
-          </View>
-        ) : (
-          <>
-            {cats.map(c => {
-              const catCount = ads.filter((a: any) => a.subcategory === c.k).length;
-              return (
-                <TouchableOpacity
-                  key={c.k}
-                  onPress={() => openCategoryView(c.k)}
-                  style={[st.bigCard, { borderRightColor: subColor }]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={st.bigCardIcon}>{c.i}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={st.bigCardTitle}>{c.l}</Text>
-                    <Text style={st.bigCardSub}>{catCount} آگهی</Text>
-                  </View>
-                  <Text style={st.bigCardArrow}>‹</Text>
-                </TouchableOpacity>
-              );
-            })}
-
-            {/* کارت «همه آگهی‌ها» */}
-            <TouchableOpacity
-              onPress={() => openCategoryView('')}
-              style={[st.bigCard, { borderRightColor: '#d4af37', marginTop: 12 }]}
-              activeOpacity={0.7}
-            >
-              <Text style={st.bigCardIcon}>📋</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[st.bigCardTitle, { color: '#d4af37' }]}>همه آگهی‌ها</Text>
-                <Text style={st.bigCardSub}>{ads.length} آگهی</Text>
-              </View>
-              <Text style={[st.bigCardArrow, { color: '#d4af37' }]}>‹</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
-
-      {/* FAB */}
-      <TouchableOpacity style={[st.fab, { backgroundColor: subColor }]} onPress={() => setShowForm(true)}>
-        <Text style={st.fabTxt}>➕</Text>
-        <Text style={st.fabLbl}>ثبت آگهی</Text>
-      </TouchableOpacity>
-
-      <Modals />
     </View>
   );
 }
@@ -538,8 +433,6 @@ const st = StyleSheet.create({
   head: { backgroundColor: '#0f2438', padding: 14, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
   headTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', textAlign: 'right' },
   headSub: { color: '#94a3b8', fontSize: 11, textAlign: 'right', marginTop: 4 },
-  backBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  backBtnTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
   tabsRow: { padding: 8, gap: 6, flexDirection: 'row-reverse' },
   subTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#0f2438', borderWidth: 1, borderColor: '#334155' },
   subTabTxt: { color: '#94a3b8', fontSize: 12 },
@@ -552,24 +445,16 @@ const st = StyleSheet.create({
   empty: { alignItems: 'center', padding: 60 },
   emptyTxt: { color: '#94a3b8', fontSize: 14, fontWeight: 'bold', marginBottom: 6 },
   emptyHint: { color: '#64748b', fontSize: 11 },
-  // کارت بزرگ دسته
-  bigCard: { backgroundColor: '#0f2438', padding: 16, borderRadius: 12, marginBottom: 10, borderRightWidth: 4, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 70 },
-  bigCardIcon: { fontSize: 34 },
-  bigCardTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'right' },
-  bigCardSub: { color: '#94a3b8', fontSize: 11, textAlign: 'right', marginTop: 4 },
-  bigCardArrow: { color: '#94a3b8', fontSize: 32, fontWeight: 'bold', marginLeft: 8 },
-  // کارت آگهی
-  card: { backgroundColor: '#0f2438', padding: 12, borderRadius: 10, marginBottom: 10, borderRightWidth: 3 },
+  card: { backgroundColor: '#0f2438', padding: 12, borderRadius: 10, marginBottom: 8, borderRightWidth: 3 },
   cardTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold', flex: 1, textAlign: 'right', marginRight: 8 },
-  cardDesc: { color: '#cbd5e1', fontSize: 12, marginTop: 8, textAlign: 'right', lineHeight: 20 },
-  cardPrice: { color: '#10b981', fontSize: 14, fontWeight: 'bold', marginTop: 8, textAlign: 'right' },
-  cardJobType: { color: '#a78bfa', fontSize: 11, marginTop: 4, textAlign: 'right' },
+  cardTitle: { color: '#fff', fontSize: 14, fontWeight: 'bold', flex: 1, textAlign: 'right', marginRight: 8 },
+  cardDesc: { color: '#cbd5e1', fontSize: 12, marginTop: 6, textAlign: 'right' },
+  cardPrice: { color: '#10b981', fontSize: 13, fontWeight: 'bold', marginTop: 6, textAlign: 'right' },
   cardFoot: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 8 },
   cardCity: { color: '#94a3b8', fontSize: 11 },
-  cardPhone: { color: '#60a5fa', fontSize: 12, fontWeight: 'bold' },
-  cardBy: { color: '#64748b', fontSize: 10, marginTop: 6, textAlign: 'right' },
-  chatBtn: { paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 10 },
+  cardPhone: { color: '#60a5fa', fontSize: 11, fontWeight: 'bold' },
+  cardBy: { color: '#64748b', fontSize: 10, marginTop: 4, textAlign: 'right' },
+  chatBtn: { paddingVertical: 8, borderRadius: 8, alignItems: 'center', marginTop: 8 },
   chatBtnTxt: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   fab: { position: 'absolute', bottom: 20, right: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, elevation: 5 },
   fabTxt: { fontSize: 20 },

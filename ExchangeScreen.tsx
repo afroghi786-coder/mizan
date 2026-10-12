@@ -11,6 +11,7 @@ import { getAllTrades, saveTrade, deleteTrade } from './lib.fx.trade';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import {getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade, getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer, getFxPartners, createFxPartner, updateFxPartner, deleteFxPartner, getCalType, parseDateAny, g2j, g2h, j2g, h2g, toStorageDateFull} from './lib.offline';
+import { onHawalaUpdate } from './lib.events';
 import {
   getHawalas, createHawala, updateHawala, deleteHawala,
   getBoxes, createBox, updateBox, deleteBox,
@@ -226,6 +227,8 @@ export default function ExchangeScreen({ showToast }: any) {
   // ═══ Clock ═══
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(i); }, []);
 
+
+
   const reload = useCallback(async () => {
     try {
       const allCust = await getAllCust();
@@ -239,6 +242,13 @@ export default function ExchangeScreen({ showToast }: any) {
     try { setChecks(await getChecks()); } catch (e) { console.log('ck:', e); }
     try { setPartners(await getFxPartners()); } catch (e) { console.log('part:', e); }
   }, []);
+
+  // 🔄 listener برای رویداد حواله — cross-platform
+  useEffect(() => {
+    const _handler = () => { try { reload(); } catch (e) { console.log('reload err:', e); } };
+    const _unsub = onHawalaUpdate(_handler);
+    return () => { try { _unsub(); } catch {} };
+  }, [reload]);
 
   useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, [reload]);
 

@@ -1,0 +1,714 @@
+═══════════════════════════════════════════
+🔍 جستجوی کلمات کلیدی آفلاین / آپلود
+═══════════════════════════════════════════
+
+📄 AdminPanel.tsx (18 تطابق)
+───────────────────────────────────────
+   خط 26 [sync]: const loadRequests = async () => {
+   خط 40 [sync]: const loadList = async () => {
+   خط 56 [sync]: const saveLicense = async (userId: string, dur: string, ext: boolean) => {
+   خط 76 [pending]: notification_pending: true,
+   خط 89 [pending]: notification_pending: true,
+   خط 99 [sync]: const issue = async () => {
+   خط 118 [sync]: const approveRequest = async (req: any) => {
+   خط 122 [pending]: notification_pending: true,
+   خط 139 [sync]: const rejectRequest = async (req: any) => {
+   خط 151 [pending]: const pendingCount = requests.filter(r => r.status === 'pending').length;
+   خط 165 [pending]: 📩 درخواست‌ها{pendingCount > 0 ? ` (${pendingCount})` : ''}
+   خط 217 [pending]: const isPending = r.status === 'pending';
+   خط 220 [Pending]: <View key={i} style={[s.reqCard, isPending && { borderColor: '#f59e0b', borderWidth: 2 }]}>
+   خط 223 [Pending]: isPending && { backgroundColor: '#fef3c7', color: '#78350f' },
+   خط 225 [Pending]: !isPending && !isApproved && { backgroundColor: '#fee2e2', color: '#991b1b' }
+   خط 227 [Pending]: {isPending ? '⏳ در انتظار' : isApproved ? '✅ تأیید شده' : '❌ رد شده'}
+   خط 230 [Local]: {r.requested_at ? new Date(r.requested_at).toLocaleDateString('fa-IR') : ''}
+   خط 239 [Pending]: {isPending && (
+
+📄 App.tsx (132 تطابق)
+───────────────────────────────────────
+   خط 2 [Sync]: import SyncControl from './SyncControl';
+   خط 40 [Mode]: getSettings, updateSettings, loadMode,
+   خط 41 [Queue]: deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue,
+   خط 43 [offline]: } from './lib.offline';
+   خط 46 [Mode]: //  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
+   خط 48 [Mode]: export type ThemeMode = 'dark' | 'light' | 'simple';
+   خط 49 [Mode]: let THEME_MODE: ThemeMode = 'light';
+   خط 50 [Mode]: export const setThemeMode = (m: ThemeMode) => { THEME_MODE = m; };
+   خط 51 [Mode]: export const getThemeMode = () => THEME_MODE;
+   خط 80 [sync]: async function getCustomerPreviousBalance(customerCode: string, currentInvoiceNumber: string) {
+   خط 82 [sync]: const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+   خط 91 [آفلاین]: // ═══ ۲. اگه آفلاین یا سرور خالی بود، از cache ═══
+   خط 93 [local]: const raw = await AsyncStorage.getItem('@mizan_local_all_sales_full');
+   خط 95 [local]: const local = JSON.parse(raw);
+   خط 96 [local]: allSales = local.filter((s: any) => s.customer_code === customerCode);
+   خط 102 [local]: const groupedRaw = await AsyncStorage.getItem('@mizan_local_sales_grouped');
+   خط 121 [آفلاین]: // ═══ ۴. فاکتورهای آفلاین توی صف ═══
+   خط 122 [sync]: const queueRaw = await AsyncStorage.getItem('@mizan_queue');
+   خط 123 [queue]: if (queueRaw) {
+   خط 124 [queue]: const queue = JSON.parse(queueRaw);
+   خط 125 [queue]: for (const item of queue) {
+   خط 135 [Queue]: _fromQueue: true,
+   خط 322 [sync]: (globalThis as any).__changePreset = async (k: string) => {
+   خط 364 [Mode]: loadMode().then(() => loadCalType()).then(() => getSettings()).then((s: any) => {
+   خط 367 [Mode]: setThemeMode(saved);
+   خط 378 [Mode]: const next: ThemeMode =
+   خط 381 [Mode]: setThemeMode(next);
+   خط 430 [pending]: const [pendingTab, setPendingTab] = useState<string | null>(null);
+   خط 472 [sync]: const load = async () => {
+   خط 487 [sync]: const tick = async () => {
+   ... و 102 خط دیگه
+
+📄 BoxesScreen.tsx (21 تطابق)
+───────────────────────────────────────
+   خط 1 [offline]: import { toStorageDateFull } from './lib.offline';
+   خط 56 [Local]: const fmt = (n: any, d = 2) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigit
+   خط 75 [sync]: const load = useCallback(async () => {
+   خط 87 [sync]: const openKardex = async (box: any) => {
+   خط 89 [local]: setKardex(await getBoxKardex(box.id || box.local_id));
+   خط 92 [sync]: const saveBoxHandler = async () => {
+   خط 104 [sync]: const saveTxHandler = async () => {
+   خط 112 [local]: box_id: selectedBox.id || selectedBox.local_id, box_code: selectedBox.code,
+   خط 117 [Local]: description: txForm.description || '', date: txForm.date || new Date().toLocaleDateString('fa-IR'),
+   خط 126 [sync]: const saveTransfer = async () => {
+   خط 147 [Local]: date: transferForm.date || new Date().toLocaleDateString('fa-IR'),
+   خط 157 [sync]: const printKardex = async () => {
+   خط 161 [local]: const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>@page{size:A4 portrait;margin:10mm}body{
+   خط 162 [sync]: const { uri } = await Print.printToFileAsync({ html });
+   خط 163 [sync]: if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+   خط 170 [local]: const bal = balances[selectedBox.id || selectedBox.local_id] || 0;
+   خط 224 [sync]: <TouchableOpacity onPress={async () => {
+   خط 226 [local]: await deleteBoxTransaction(r.id || r.local_id);
+   خط 310 [local]: const id = b.id || b.local_id;
+   خط 326 [sync]: <TouchableOpacity onPress={async () => {
+   خط 376 [local]: <Text style={s.mTitle}>{boxForm.id || boxForm.local_id ? '✏️ ویرایش صندوق' : '➕ صندوق جدید'}</Text>
+
+📄 customLabels.ts (10 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 18 [sync]: export async function loadCustomLabels() {
+   خط 20 [sync]: const raw = await AsyncStorage.getItem(KEY);
+   خط 25 [sync]: export async function setCustomLabel(original: string, newText: string) {
+   خط 27 [sync]: try { await AsyncStorage.setItem(KEY, JSON.stringify(CUSTOM)); } catch {}
+   خط 31 [sync]: export async function resetCustomLabel(original: string) {
+   خط 33 [sync]: try { await AsyncStorage.setItem(KEY, JSON.stringify(CUSTOM)); } catch {}
+   خط 37 [sync]: export async function getAllCustom(): Promise<Record<string, string>> {
+   خط 41 [sync]: export async function resetAllCustom() {
+   خط 43 [sync]: try { await AsyncStorage.removeItem(KEY); } catch {}
+
+📄 EmpHelpers.tsx (5 تطابق)
+───────────────────────────────────────
+   خط 6 [Local]: const fmt = (n: any) => (Number(n) || 0).toLocaleString('en-US');
+   خط 11 [sync]: export async function printPayslip(emp: any, data: any, month: string, companyName: string = 'میزان') {
+   خط 34 [Local]: <div>📆 صدور: ${new Date().toLocaleDateString('fa-IR')}</div>
+   خط 83 [sync]: const { uri } = await Print.printToFileAsync({ html });
+   خط 84 [sync]: if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+
+📄 EmployeesScreen.tsx (31 تطابق)
+───────────────────────────────────────
+   خط 22 [Local]: const fmt = (n: any) => (Number(n) || 0).toLocaleString('en-US');
+   خط 24 [Local]: const today = () => new Date().toLocaleDateString('fa-IR');
+   خط 38 [sync]: const reload = useCallback(async () => {
+   خط 46 [offline]: const { getProducts } = require('./lib.offline');
+   خط 51 [sync]: useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, [reload]);
+   خط 116 [local]: const openEdit = (e: any) => { setEditId(e.local_id || e.id); setForm({ ...e }); setModal(true); };
+   خط 118 [sync]: const submit = async () => {
+   خط 133 [sync]: const remove = async (id: string) => {
+   خط 161 [local]: <View key={e.local_id || e.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#fff' }]}>
+   خط 176 [local]: <TouchableOpacity onPress={() => remove(e.local_id || e.id)} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+   خط 275 [sync]: const submit = async () => {
+   خط 312 [local]: <View key={a.local_id || a.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#fff' }]}>
+   خط 323 [local]: <TouchableOpacity onPress={async () => { await deleteAttendance(a.local_id || a.id); await reload(); showToast('🗑'); }}
+   خط 376 [Local]: month: new Date().toLocaleDateString('fa-IR').slice(0, 7),
+   خط 415 [sync]: const submit = async () => {
+   خط 429 [sync]: const remove = async (id: string) => {
+   خط 459 [local]: <View key={sp.local_id || sp.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#fff' }]}>
+   خط 475 [local]: <TouchableOpacity onPress={() => { setEditId(sp.local_id || sp.id); setForm({ ...sp }); setModal(true); }} style={s.icon
+   خط 476 [local]: <TouchableOpacity onPress={() => remove(sp.local_id || sp.id)} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+   خط 550 [pending]: {[{ k: 'paid', l: '✅ پرداخت‌شده' }, { k: 'pending', l: '⏳ در انتظار' }].map((x: any) => <TouchableOpacity key={x.k} onPr
+   خط 585 [sync]: const submit = async () => {
+   خط 616 [local]: <View key={l.local_id || l.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#fff' }]}>
+   خط 628 [local]: <TouchableOpacity onPress={async () => { await deleteLoan(l.local_id || l.id); await reload(); showToast('🗑'); }} style
+   خط 682 [sync]: const submit = async () => {
+   خط 711 [local]: <View key={l.local_id || l.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#fff' }]}>
+   خط 719 [pending]: <Text style={[s.td, { width: 90 }]}><Text style={[s.badge, l.status === 'approved' && { backgroundColor: '#d1fae5', colo
+   خط 721 [local]: <TouchableOpacity onPress={async () => { await deleteLeave(l.local_id || l.id); await reload(); showToast('🗑'); }} styl
+   خط 762 [Local]: const [month, setMonth] = useState(new Date().toLocaleDateString('fa-IR').slice(0, 7));
+   خط 784 [sync]: const saveBatch = async () => {
+   خط 925 [local]: <View key={b.local_id || b.id} style={[s.card, { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8
+   ... و 1 خط دیگه
+
+📄 ExchangeBell.tsx (9 تطابق)
+───────────────────────────────────────
+   خط 39 [sync]: const load = useCallback(async () => {
+   خط 72 [sync]: const tick = async () => {
+   خط 82 [sync]: (async () => {
+   خط 91 [sync]: const openChat = async (nt: any) => {
+   خط 124 [sync]: const sendChat = async () => {
+   خط 138 [sync]: const doAccept = async (nt: any) => {
+   خط 153 [sync]: const doDeliver = async (nt: any) => {
+   خط 167 [sync]: const doCancel = async (nt: any) => {
+   خط 247 [Local]: {nt.created_at ? new Date(nt.created_at).toLocaleString('fa-IR') : ''}
+
+📄 ExchangeInvoice.tsx (7 تطابق)
+───────────────────────────────────────
+   خط 8 [Local]: const fmt = (n: any) => (Number(n) || 0).toLocaleString('en-US');
+   خط 18 [sync]: const capture = async (mode: 'share' | 'print') => {
+   خط 21 [sync]: if (mode === 'print') await Print.printAsync({ uri });
+   خط 22 [sync]: else if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+   خط 27 [sync]: const exportPDF = async () => {
+   خط 95 [sync]: const { uri } = await Print.printToFileAsync({ html });
+   خط 96 [sync]: if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+
+📄 ExchangeScreen.tsx (38 تطابق)
+───────────────────────────────────────
+   خط 13 [offline]: import {getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade, getFxCustomers, createFxCustomer, updateFxCustomer, de
+   خط 70 [Local]: const fmt = (n: number, d = 2) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDi
+   خط 159 [pending]: date: toStorageDateFull(new Date()), status: 'pending', note: '',
+   خط 177 [pending]: const [ckForm, setCkForm] = useState<any>({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', pa
+   خط 232 [sync]: const reload = useCallback(async () => {
+   خط 253 [sync]: useEffect(() => { (async () => { await reload(); setLoad(false); })(); }, [reload]);
+   خط 362 [sync]: const buildAndShowInvoice = async (data: any) => {
+   خط 387 [sync]: const submit = async () => {
+   خط 481 [local]: setEditId(t.id || t.local_id);
+   خط 510 [sync]: const submitCustomer = async () => {
+   خط 519 [sync]: const submitPartner = async () => {
+   خط 528 [sync]: const buildStatement = async (q: string) => {
+   خط 746 [local]: <View key={t.id || t.local_id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+   خط 766 [local]: <TouchableOpacity onPress={async () => { await deleteTrade(t.id || t.local_id); await reload(); showToast('🗑 حذف شد'); 
+   خط 902 [pending]: <TouchableOpacity style={s.addSmBtn} onPress={() => { setHawEditId(null); setHawForm({ direction: 'send', amount: '', cu
+   خط 927 [local]: <View key={h.local_id || h.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+   خط 940 [local]: <TouchableOpacity onPress={() => { setHawEditId(h.local_id || h.id); setHawForm({ ...h }); setHawModal(true); }} style={
+   خط 941 [local]: <TouchableOpacity onPress={async () => { await deleteHawala(h.local_id || h.id); await reload(); showToast('🗑'); }} sty
+   خط 958 [pending]: <TouchableOpacity style={s.addSmBtn} onPress={() => { setCkEditId(null); setCkForm({ direction: 'in', check_number: '', 
+   خط 982 [local]: <View key={c.local_id || c.id} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+   خط 993 [local]: <TouchableOpacity onPress={() => { setCkEditId(c.local_id || c.id); setCkForm({ ...c }); setCkModal(true); }} style={s.i
+   خط 994 [local]: <TouchableOpacity onPress={async () => { await deleteCheck(c.local_id || c.id); await reload(); showToast('🗑'); }} styl
+   خط 1035 [local]: entries.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+   خط 1192 [local]: <View key={b.id || b.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+   خط 1251 [local]: <View key={t.id || t.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+   خط 1293 [local]: <View key={h.id || h.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+   خط 1333 [local]: <View key={k.id || k.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+   خط 1371 [local]: const box = boxes.find((x: any) => (x.id || x.local_id) === b.box_id);
+   خط 1373 [local]: <View key={b.id || b.local_id || i} style={[s.tblRow, i % 2 === 0 && { backgroundColor: '#0a1628' }]}>
+   خط 1752 [pending]: {[{ k: 'pending', l: '⏳ در انتظار' }, { k: 'done', l: '✅ انجام' }, { k: 'cancelled', l: '❌ لغو' }].map(st => (
+   ... و 8 خط دیگه
+
+📄 ExpensesScreen.tsx (11 تطابق)
+───────────────────────────────────────
+   خط 12 [pending]: const STATUSES = [{ k: 'paid', l: '✅ پرداخت‌شده' }, { k: 'pending', l: '⏳ در انتظار' }];
+   خط 14 [Local]: const fmt = (n: any) => (Number(n) || 0).toLocaleString('en-US');
+   خط 17 [Local]: const today = () => new Date().toLocaleDateString('fa-IR');
+   خط 29 [sync]: const reload = useCallback(async () => {
+   خط 32 [offline]: const { getProducts } = require('./lib.offline');
+   خط 40 [sync]: (async () => { await reload(); if (m) setLoad(false); })();
+   خط 53 [local]: const openEdit = (e: any) => { setEditId(e.local_id || e.id); setForm({ ...e }); setModal(true); };
+   خط 55 [sync]: const submit = async () => {
+   خط 69 [sync]: const remove = async (id: string) => {
+   خط 169 [local]: <View key={x.local_id || x.id} style={[s.tR, i % 2 === 0 && { backgroundColor: '#fff' }]}>
+   خط 191 [local]: <TouchableOpacity onPress={() => remove(x.local_id || x.id)} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+
+📄 GroupsScreen.tsx (9 تطابق)
+───────────────────────────────────────
+   خط 10 [Local]: const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
+   خط 25 [sync]: const refresh = useCallback(async () => {
+   خط 40 [sync]: const submitCreate = async () => {
+   خط 53 [sync]: const submitJoin = async () => {
+   خط 64 [sync]: const submitInvite = async () => {
+   خط 76 [sync]: const viewDetail = async (gid: string) => {
+   خط 83 [sync]: const doLeave = async (gid: string, gname: string) => {
+   خط 88 [sync]: const doKick = async (gid: string, email: string, name: string) => {
+   خط 93 [sync]: const doDelete = async (gid: string) => {
+
+📄 HRDash.tsx (3 تطابق)
+───────────────────────────────────────
+   خط 4 [Local]: const fmt = (n: any) => (Number(n) || 0).toLocaleString('en-US');
+   خط 9 [Local]: const todayStr = t.toLocaleDateString('fa-IR');
+   خط 31 [Local]: const ds = d.toLocaleDateString('fa-IR');
+
+📄 i18n.ts (31 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 49 [Mode]: 'کد': 'Code', 'کد مدل': 'Model Code', 'کد صاحب حساب': 'Holder Code',
+   خط 53 [Mode]: 'نام مدل': 'Model Name', 'نام محصول': 'Product Name', 'نام مشتری': 'Customer Name',
+   خط 66 [Mode]: 'افزودن مدل': 'Add Model', 'افزودن ردیف': 'Add Row',
+   خط 79 [Mode]: 'سود به تفکیک مدل': 'Profit by Model', 'منبع قیمت': 'Price Source',
+   خط 85 [Mode]: 'مدل‌ها': 'Models', 'کد مدل': 'Model Code',
+   خط 92 [آفلاین]: 'کاملاً آفلاین': 'Fully Offline',
+   خط 129 [Pending]: 'در انتظار': 'Pending', 'در حال آماده‌سازی': 'Preparing...',
+   خط 130 [آفلاین]: 'آنلاین': 'Online', 'آفلاین': 'Offline',
+   خط 131 [آپلود]: 'آپلود به سرور؟': 'Upload to server?',
+   خط 132 [آپلود]: 'بله، آپلود کن': 'Yes, upload', 'فقط آنلاین شو': 'Just go online',
+   خط 192 [آفلاین]: 'کاملاً آفلاین': 'بشپړ آفلاین',
+   خط 226 [آفلاین]: 'آنلاین': 'آنلاین', 'آفلاین': 'آفلاین',
+   خط 227 [آپلود]: 'آپلود به سرور؟': 'سرور ته اپلوډ؟',
+   خط 228 [آپلود]: 'بله، آپلود کن': 'هو، اپلوډ کړه', 'فقط آنلاین شو': 'یوازې آنلاین شه',
+   خط 295 [آفلاین]: 'کاملاً آفلاین': 'مکمل آف لائن',
+   خط 323 [آفلاین]: 'آنلاین': 'آن لائن', 'آفلاین': 'آف لائن',
+   خط 324 [آپلود]: 'آپلود به سرور؟': 'سرور پر اپلوڈ؟',
+   خط 325 [آپلود]: 'بله، آپلود کن': 'ہاں، اپلوڈ کریں', 'فقط آنلاین شو': 'صرف آن لائن ہو جائیں',
+   خط 375 [آفلاین]: 'کاملاً آفلاین': 'أوفلاين بالكامل',
+   خط 403 [آفلاین]: 'آنلاین': 'متصل', 'آفلاین': 'غير متصل',
+   خط 404 [آپلود]: 'آپلود به سرور؟': 'رفع إلى الخادم؟',
+   خط 405 [آپلود]: 'بله، آپلود کن': 'نعم، ارفع', 'فقط آنلاین شو': 'فقط اتصل',
+   خط 426 [sync]: export async function loadLang(): Promise<Lang> {
+   خط 428 [sync]: const v = await AsyncStorage.getItem(KEY);
+   خط 434 [sync]: export async function setLang(l: Lang) {
+   خط 436 [sync]: try { await AsyncStorage.setItem(KEY, l); } catch {}
+   خط 440 [sync]: export async function isFirstTime(): Promise<boolean> {
+   خط 442 [sync]: const v = await AsyncStorage.getItem(FIRST_KEY);
+   خط 447 [sync]: export async function markLangSet() {
+   ... و 1 خط دیگه
+
+📄 LanguageModal.tsx (1 تطابق)
+───────────────────────────────────────
+   خط 5 [sync]: const pick = async (code: Lang) => {
+
+📄 lib-db.ts (35 تطابق)
+───────────────────────────────────────
+   خط 5 [sync]: async function requireUser() {
+   خط 11 [sync]: export async function getCurrentUser() {
+   خط 17 [sync]: export async function getProducts() {
+   خط 25 [sync]: export async function createProduct(p: any) {
+   خط 31 [sync]: export async function updateProduct(id: string, p: any) {
+   خط 37 [sync]: export async function deleteProduct(id: string) {
+   خط 44 [sync]: export async function getSales() {
+   خط 52 [sync]: export async function getSalesGrouped() {
+   خط 69 [local]: String(b.created_at).localeCompare(String(a.created_at)));
+   خط 72 [sync]: export async function createSale(data: any) {
+   خط 96 [sync]: export async function updateSaleRow(id: string, patch: any) {
+   خط 102 [sync]: export async function deleteSale(invoiceNumber: string) {
+   خط 109 [sync]: export async function deleteSaleRow(id: string) {
+   خط 115 [sync]: export async function lookupCustomerByPhone(phone: string) {
+   خط 125 [sync]: export async function getPurchases() {
+   خط 133 [sync]: export async function getPurchasesGrouped() {
+   خط 149 [local]: String(b.created_at).localeCompare(String(a.created_at)));
+   خط 152 [sync]: export async function createPurchase(data: any) {
+   خط 196 [sync]: export async function updatePurchaseRow(id: string, patch: any) {
+   خط 202 [sync]: export async function deletePurchase(invoiceNumber: string) {
+   خط 209 [sync]: export async function deletePurchaseRow(id: string) {
+   خط 215 [sync]: export async function lookupSupplierByName(name: string) {
+   خط 225 [sync]: export async function getDashboardStats(range = 'month', filter = 'both') {
+   خط 321 [sync]: export async function getProfitByModel() {
+   خط 327 [sync]: export async function getInventory() {
+   خط 354 [local]: return String(a.name).localeCompare(String(b.name), 'fa');
+   خط 359 [sync]: export async function searchAllInvoices(query = '') {
+   خط 365 [local]: all.sort((a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at)));
+   خط 374 [sync]: export async function getInvoiceDetails(invoiceNumber: string, type: 'sales' | 'purchases') {
+   خط 384 [sync]: export async function getUnpaidInvoices() {
+   ... و 5 خط دیگه
+
+📄 lib-supabase.ts (2 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 10 [sync]: storage: AsyncStorage,
+
+📄 lib.box-auto.ts (3 تطابق)
+───────────────────────────────────────
+   خط 14 [sync]: export async function applyTradeToBoxes(trade: any, tradeCode: string): Promise<void> {
+   خط 82 [sync]: async function ensureBoxAndTx(p: {
+   خط 100 [local]: const boxId = box.id || box.local_id;
+
+📄 lib.boxes.ts (44 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 4 [local]: const BOX_KEY = '@mizan_local_fx_boxes';
+   خط 5 [local]: const TX_KEY = '@mizan_local_fx_box_tx';
+   خط 6 [local]: const OLD_TRANSFER_KEY = '@mizan_local_fx_transfers';
+   خط 15 [sync]: export async function getBoxes(): Promise<any[]> {
+   خط 16 [sync]: try { const r = await AsyncStorage.getItem(BOX_KEY); return r ? JSON.parse(r) : []; }
+   خط 20 [sync]: export async function saveBox(box: any): Promise<any> {
+   خط 22 [local]: const id = box.id || box.local_id || ('bx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
+   خط 29 [local]: const item = { ...box, id, local_id: id, code, updated_at: new Date().toISOString(), created_at: box.created_at || new D
+   خط 30 [local]: const idx = all.findIndex((x: any) => (x.id || x.local_id) === id);
+   خط 32 [sync]: await AsyncStorage.setItem(BOX_KEY, JSON.stringify(next));
+   خط 36 [sync]: export async function deleteBox(id: string): Promise<void> {
+   خط 38 [local]: await AsyncStorage.setItem(BOX_KEY, JSON.stringify(all.filter((x: any) => (x.id || x.local_id) !== id)));
+   خط 41 [sync]: export async function getBoxTransactions(boxId?: string): Promise<any[]> {
+   خط 43 [sync]: const r = await AsyncStorage.getItem(TX_KEY);
+   خط 49 [sync]: export async function addBoxTransaction(tx: any): Promise<any> {
+   خط 55 [local]: const item = { ...tx, id, code, local_id: id, created_at: tx.created_at || new Date().toISOString() };
+   خط 56 [local]: const idx = all.findIndex((x: any) => (x.id || x.local_id) === id);
+   خط 58 [sync]: await AsyncStorage.setItem(TX_KEY, JSON.stringify(next));
+   خط 62 [sync]: export async function deleteBoxTransaction(id: string): Promise<void> {
+   خط 64 [local]: await AsyncStorage.setItem(TX_KEY, JSON.stringify(all.filter((t: any) => (t.id || t.local_id) !== id)));
+   خط 67 [sync]: export async function getAllBalances(): Promise<Record<string, number>> {
+   خط 72 [local]: const id = b.id || b.local_id;
+   خط 83 [sync]: export async function getBoxKardex(boxId: string): Promise<any[]> {
+   خط 84 [local]: const box = (await getBoxes()).find((b: any) => (b.id || b.local_id) === boxId);
+   خط 87 [local]: const sorted = [...txs].sort((a: any, b: any) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+   خط 100 [sync]: export async function doTransfer(p: { from_box_code: string; to_box_code: string; amount: number; to_amount?: number; ra
+   خط 123 [local]: box_id: from.id || from.local_id, box_code: from.code, type: 'transfer_out',
+   خط 135 [local]: box_id: to.id || to.local_id, box_code: to.code, type: 'transfer_in',
+   خط 147 [sync]: export async function migrateOldTransfers(): Promise<void> {
+   ... و 14 خط دیگه
+
+📄 lib.emp.ts (42 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 5 [local]: const K = (k: string) => '@mizan_local_' + k;
+   خط 8 [Local]: async function readLocal(key: string): Promise<any[]> {
+   خط 10 [sync]: const r = await AsyncStorage.getItem(K(key));
+   خط 14 [Local]: } catch (e) { console.log('[readLocal]', key, e); return []; }
+   خط 17 [Local]: async function writeLocal(key: string, list: any[]): Promise<boolean> {
+   خط 19 [sync]: await AsyncStorage.setItem(K(key), JSON.stringify(list));
+   خط 20 [Local]: console.log('[writeLocal]', key, 'count:', list.length);
+   خط 22 [Local]: } catch (e) { console.log('[writeLocal ERR]', key, e); return false; }
+   خط 25 [sync]: async function fetchAll(table: string, key: string): Promise<any[]> {
+   خط 26 [local]: const local = await readLocal(key);
+   خط 29 [local]: if (error) { console.log('[supa read]', table, error.message); return local; }
+   خط 32 [local]: local.forEach(x => { merged[x.local_id || x.id] = x; });
+   خط 33 [local]: data.forEach(x => { merged[x.local_id || x.id] = x; });
+   خط 37 [local]: return local;
+   خط 40 [sync]: async function saveItem(table: string, key: string, item: any, isUpdate: boolean): Promise<any> {
+   خط 41 [Local]: const list = await readLocal(key);
+   خط 42 [local]: const idx = list.findIndex(x => (x.local_id || x.id) === (item.local_id || item.id));
+   خط 49 [Local]: const ok = await writeLocal(key, newList);
+   خط 50 [محلی]: if (!ok) throw new Error('ذخیره محلی ناموفق');
+   خط 58 [local]: const { error } = await supabase.from(table).upsert(cleanItem, { onConflict: 'local_id' });
+   خط 69 [sync]: async function removeById(table: string, key: string, id: string) {
+   خط 70 [Local]: const list = await readLocal(key);
+   خط 71 [local]: await writeLocal(key, list.filter(x => x.local_id !== id && x.id !== id));
+   خط 72 [local]: try { await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+   خط 80 [sync]: export async function createEmployee(p: any): Promise<any> {
+   خط 81 [Local]: const list = await readLocal('employees');
+   خط 83 [local]: const item = { ...p, code, local_id: gid(), created_at: new Date().toISOString() };
+   خط 86 [local]: export const updateEmployee = (id: string, p: any) => saveItem('employees', 'employees', { ...p, local_id: id }, true);
+   خط 93 [sync]: export async function createAttendance(p: any) {
+   ... و 12 خط دیگه
+
+📄 lib.exp.ts (25 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 5 [local]: const K = (k: string) => '@mizan_local_' + k;
+   خط 9 [Local]: async function readLocal(key: string): Promise<any[]> {
+   خط 10 [sync]: try { const r = await AsyncStorage.getItem(K(key)); if (!r) return []; const p = JSON.parse(r); return Array.isArray(p) 
+   خط 12 [Local]: async function writeLocal(key: string, list: any[]) { await AsyncStorage.setItem(K(key), JSON.stringify(list)); }
+   خط 14 [sync]: async function fetchAll(table: string, key: string): Promise<any[]> {
+   خط 15 [local]: const local = await readLocal(key);
+   خط 18 [local]: if (error || !data || !data.length) return local;
+   خط 20 [local]: local.forEach(x => { merged[x.local_id || x.id] = x; });
+   خط 21 [local]: data.forEach(x => { merged[x.local_id || x.id] = x; });
+   خط 23 [local]: } catch { return local; }
+   خط 26 [sync]: async function saveItem(table: string, key: string, item: any): Promise<any> {
+   خط 27 [Local]: const list = await readLocal(key);
+   خط 28 [local]: const idx = list.findIndex(x => (x.local_id || x.id) === (item.local_id || item.id));
+   خط 30 [Local]: await writeLocal(key, newList);
+   خط 33 [sync]: setTimeout(async () => {
+   خط 34 [local]: try { await supabase.from(table).upsert(clean, { onConflict: 'local_id' }); } catch {}
+   خط 39 [sync]: async function removeById(table: string, key: string, id: string) {
+   خط 40 [Local]: const list = await readLocal(key);
+   خط 41 [local]: await writeLocal(key, list.filter(x => x.local_id !== id && x.id !== id));
+   خط 42 [local]: try { await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+   خط 47 [sync]: export async function createExpense(p: any): Promise<any> {
+   خط 48 [Local]: const list = await readLocal('expenses');
+   خط 57 [local]: const item = { ...p, invoice_number: inv, local_id: gid(), created_at: new Date().toISOString() };
+   خط 60 [local]: export const updateExpense = (id: string, p: any) => saveItem('expenses', 'expenses', { ...p, local_id: id });
+
+📄 lib.fx.cust.ts (8 تطابق)
+───────────────────────────────────────
+   خط 1 [sync]: // lib.fx.cust.ts — فقط AsyncStorage، بدون Supabase
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 6 [sync]: export async function getAllCust(): Promise<any[]> {
+   خط 8 [sync]: const r = await AsyncStorage.getItem(KEY);
+   خط 15 [sync]: export async function saveCust(item: any): Promise<any> {
+   خط 36 [sync]: await AsyncStorage.setItem(KEY, JSON.stringify(newList));
+   خط 40 [sync]: export async function deleteCust(id: string): Promise<void> {
+   خط 43 [sync]: await AsyncStorage.setItem(KEY, JSON.stringify(filtered));
+
+📄 lib.fx.trade.ts (13 تطابق)
+───────────────────────────────────────
+   خط 1 [sync]: // lib.fx.trade.ts — ذخیره‌ی معامله + auto-sync به مشتریان/خریداران
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 10 [sync]: export async function getAllTrades(): Promise<any[]> {
+   خط 12 [sync]: const r = await AsyncStorage.getItem(TRADE_KEY);
+   خط 19 [sync]: async function saveCustRaw(item: any): Promise<void> {
+   خط 20 [sync]: const r = await AsyncStorage.getItem(CUST_KEY);
+   خط 29 [sync]: await AsyncStorage.setItem(CUST_KEY, JSON.stringify(arr));
+   خط 32 [sync]: async function getCustRaw(): Promise<any[]> {
+   خط 34 [sync]: const r = await AsyncStorage.getItem(CUST_KEY);
+   خط 47 [sync]: export async function saveTrade(item: any): Promise<any> {
+   خط 132 [sync]: await AsyncStorage.setItem(TRADE_KEY, JSON.stringify(newList));
+   خط 136 [sync]: export async function deleteTrade(id: string): Promise<void> {
+   خط 138 [sync]: await AsyncStorage.setItem(TRADE_KEY, JSON.stringify(all.filter((x: any) => x.id !== id)));
+
+📄 lib.fx.ts (55 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 6 [__getMode]: const MODE = () => (lib as any).__getMode?.() || 'online';
+   خط 7 [Local]: const getLocal = async (k: string) => {
+   خط 8 [local]: const raw = await AsyncStorage.getItem('@mizan_local_' + k);
+   خط 11 [Local]: const setLocal = async (k: string, v: any) => {
+   خط 12 [local]: await AsyncStorage.setItem('@mizan_local_' + k, JSON.stringify(v));
+   خط 18 [sync]: export async function getHawalas(): Promise<any[]> {
+   خط 19 [Local]: try { const r = await getLocal('fx_hawalas'); return r || []; } catch { return []; }
+   خط 21 [sync]: export async function createHawala(p: any): Promise<any> {
+   خط 26 [local]: const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), created_at: new D
+   خط 27 [Local]: await setLocal('fx_hawalas', [item, ...list]);
+   خط 31 [sync]: export async function updateHawala(id: string, p: any) {
+   خط 33 [local]: await setLocal('fx_hawalas', list.map((x: any) => (x.local_id === id || x.id === id) ? { ...x, ...p } : x));
+   خط 34 [local]: try { await supabase.from('fx_hawalas').update(p).or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+   خط 36 [sync]: export async function deleteHawala(id: string) {
+   خط 38 [local]: await setLocal('fx_hawalas', list.filter((x: any) => x.local_id !== id && x.id !== id));
+   خط 39 [local]: try { await supabase.from('fx_hawalas').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+   خط 45 [sync]: export async function getBoxes(): Promise<any[]> {
+   خط 46 [Local]: try { const r = await getLocal('fx_boxes'); return r || []; } catch { return []; }
+   خط 48 [sync]: export async function createBox(p: any): Promise<any> {
+   خط 53 [local]: const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), created_at: new D
+   خط 54 [Local]: await setLocal('fx_boxes', [item, ...list]);
+   خط 58 [sync]: export async function updateBox(id: string, p: any) {
+   خط 60 [local]: await setLocal('fx_boxes', list.map((x: any) => (x.local_id === id || x.id === id) ? { ...x, ...p } : x));
+   خط 61 [local]: try { await supabase.from('fx_boxes').update(p).or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+   خط 63 [sync]: export async function deleteBox(id: string) {
+   خط 65 [local]: await setLocal('fx_boxes', list.filter((x: any) => x.local_id !== id && x.id !== id));
+   خط 66 [local]: try { await supabase.from('fx_boxes').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+   خط 72 [sync]: export async function getTransfers(): Promise<any[]> {
+   خط 73 [Local]: try { const r = await getLocal('fx_transfers'); return r || []; } catch { return []; }
+   ... و 25 خط دیگه
+
+📄 lib.network.ts (79 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 21 [sync]: async function getSB(): Promise<any> {
+   خط 24 [offline]: const mod: any = await import('./lib.offline');
+   خط 30 [sync]: export async function getCurrentEmail(): Promise<string> {
+   خط 41 [sync]: export async function loadNetSettings(): Promise<void> {
+   خط 43 [sync]: _myName = (await AsyncStorage.getItem('mz_net_name')) || '';
+   خط 44 [sync]: _myCity = (await AsyncStorage.getItem('mz_net_city')) || '';
+   خط 45 [sync]: _myPhone = (await AsyncStorage.getItem('mz_net_phone')) || '';
+   خط 50 [sync]: export async function saveNetSettings(name: string, city: string, phone: string): Promise<void> {
+   خط 53 [sync]: await AsyncStorage.setItem('mz_net_name', name);
+   خط 54 [sync]: await AsyncStorage.setItem('mz_net_city', city);
+   خط 55 [sync]: await AsyncStorage.setItem('mz_net_phone', phone);
+   خط 60 [sync]: export async function initNetwork(): Promise<boolean> {
+   خط 70 [sync]: async function _registerAgent(): Promise<void> {
+   خط 89 [sync]: async function notify(toEmail: string, type: string, payload: any = {}): Promise<void> {
+   خط 107 [sync]: export async function fetchNotifications(): Promise<any[]> {
+   خط 115 [sync]: export async function markNotificationRead(id: number): Promise<void> {
+   خط 123 [sync]: export async function sendBroadcastHawala(h: any): Promise<any> {
+   خط 166 [sync]: export async function claimHawala(taskId: string): Promise<any> {
+   خط 181 [sync]: export async function sendFXOffer(o: any): Promise<any> {
+   خط 210 [sync]: export async function claimFXOffer(offerId: string): Promise<any> {
+   خط 226 [sync]: export async function deleteFXOffer(offerId: string): Promise<void> {
+   خط 231 [sync]: export async function extendFXOffer(offerId: string, newExpiresAt: number): Promise<any> {
+   خط 244 [sync]: export async function fetchMyFXOffers(): Promise<any[]> {
+   خط 255 [sync]: export async function sendDirectHawala(h: any): Promise<any> {
+   خط 280 [pending]: status: 'pending',
+   خط 294 [sync]: export async function acceptDirectHawala(hawalaId: string): Promise<any> {
+   خط 298 [pending]: if (cur.status !== 'pending') throw new Error('قبلاً قبول شده');
+   خط 301 [pending]: .eq('id', hawalaId).eq('status', 'pending');
+   خط 307 [sync]: export async function deliverDirectHawala(hawalaId: string, toEmail: string): Promise<any> {
+   ... و 49 خط دیگه
+
+📄 lib.notifications.ts (1 تطابق)
+───────────────────────────────────────
+   خط 90 [sync]: export async function requestNotifPermission(): Promise<string> {
+
+📄 lib.offline.ts (291 تطابق)
+───────────────────────────────────────
+   خط 1 [offline]: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 8 [local]: const LOCAL = '@mizan_local_';
+   خط 9 [queue]: const QUEUE = '@mizan_queue';
+   خط 11 [offline]: let MODE: 'online' | 'offline' = 'online';
+   خط 12 [offline]: let listeners: Array<(m: 'online' | 'offline') => void> = [];
+   خط 14 [sync]: export async function loadMode() {
+   خط 15 [sync]: const m = await AsyncStorage.getItem(MODE_KEY);
+   خط 16 [offline]: MODE = m === 'offline' ? 'offline' : 'online';
+   خط 19 [Mode]: export function getMode() { return MODE; }
+   خط 20 [offline]: export async function setMode(m: 'online' | 'offline') {
+   خط 22 [sync]: await AsyncStorage.setItem(MODE_KEY, m);
+   خط 25 [offline]: export function subscribeMode(fn: (m: 'online' | 'offline') => void) {
+   خط 30 [Local]: async function getLocal<T>(k: string): Promise<T | null> {
+   خط 31 [LOCAL]: const raw = await AsyncStorage.getItem(LOCAL + k);
+   خط 34 [Local]: async function setLocal(k: string, v: any) {
+   خط 35 [LOCAL]: await AsyncStorage.setItem(LOCAL + k, JSON.stringify(v));
+   خط 38 [sync]: export async function getQueue(): Promise<any[]> {
+   خط 39 [sync]: const raw = await AsyncStorage.getItem(QUEUE);
+   خط 42 [sync]: async function enqueue(op: string, payload: any) {
+   خط 43 [Queue]: const q = await getQueue();
+   خط 45 [sync]: await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+   خط 47 [sync]: export async function getQueueCount() { return (await getQueue()).length; }
+   خط 48 [sync]: export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
+   خط 50 [sync]: export async function syncToServer(): Promise<{ ok: number; fail: number }> {
+   خط 51 [Queue]: const q = await getQueue();
+   خط 63 [sync]: await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+   خط 67 [sync]: export async function pullFromServer() {
+   خط 75 [Local]: await setLocal('products', products);
+   خط 76 [Local]: await setLocal('sales', sales.data || []);
+   ... و 261 خط دیگه
+
+📄 lib.sw.ts (2 تطابق)
+───────────────────────────────────────
+   خط 3 [sync]: export async function registerSW(): Promise<any> {
+   خط 12 [sync]: export async function subscribeToPush(_email: string): Promise<any> {
+
+📄 lib.ts (46 تطابق)
+───────────────────────────────────────
+   خط 3 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 13 [sync]: storage: AsyncStorage,
+   خط 24 [Local]: export const fmt = (n: any) => (Number(n) || 0).toLocaleString('en-US');
+   خط 117 [sync]: export async function loadCalType(): Promise<CalType> {
+   خط 118 [sync]: const v = await AsyncStorage.getItem('MIZAN_CAL');
+   خط 122 [sync]: export async function saveCalType(t: CalType) {
+   خط 124 [sync]: await AsyncStorage.setItem('MIZAN_CAL', t);
+   خط 250 [sync]: export async function getProducts(): Promise<Product[]> {
+   خط 255 [sync]: export async function createProduct(p: Product) {
+   خط 260 [sync]: export async function updateProduct(id: string, p: Partial<Product>) {
+   خط 264 [sync]: export async function deleteProduct(id: string) {
+   خط 272 [sync]: export async function lookupCustomerByPhone(phone: string) {
+   خط 287 [sync]: export async function generateCustomerCode(): Promise<string> {
+   خط 304 [sync]: export async function generateInvoiceNumber(): Promise<string> {
+   خط 323 [sync]: export async function generatePurchaseInvoiceNumber(manualInvoice: string): Promise<string> {
+   خط 340 [sync]: export async function createSale(payload: {
+   خط 369 [sync]: export async function getSalesGrouped() {
+   خط 390 [local]: String(b.date).localeCompare(String(a.date)));
+   خط 392 [sync]: export async function deleteSale(invoiceNumber: string) {
+   خط 396 [sync]: export async function getUnpaidInvoices() {
+   خط 400 [sync]: export async function searchAllInvoices(q: string) {
+   خط 412 [sync]: export async function getInvoiceDetail(invoiceNumber: string) {
+   خط 424 [sync]: export async function lookupSupplierByName(name: string) {
+   خط 433 [sync]: export async function createPurchase(payload: any) {
+   خط 493 [sync]: export async function getPurchasesGrouped() {
+   خط 516 [sync]: export async function deletePurchase(invoiceNumber: string) {
+   خط 524 [sync]: export async function getDashboardStats(range: string = 'month', filter: string = 'both') {
+   خط 652 [sync]: export async function getProfitByModel() {
+   خط 660 [sync]: export async function getInventory() {
+   خط 712 [local]: return String(a.name).localeCompare(String(b.name), 'fa');
+   ... و 16 خط دیگه
+
+📄 license.ts (14 تطابق)
+───────────────────────────────────────
+   خط 2 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 7 [OFFLINE]: const OFFLINE_MAX_DAYS = 7;
+   خط 20 [sync]: async function fetchLicenseFromServer(): Promise<any> {
+   خط 34 [sync]: export async function checkLicense(): Promise<LicenseInfo> {
+   خط 36 [sync]: const lastCheckStr = await AsyncStorage.getItem(LICENSE_TS);
+   خط 45 [sync]: await AsyncStorage.setItem(LICENSE_TS, String(now));
+   خط 46 [sync]: await AsyncStorage.setItem(LICENSE_DATA, JSON.stringify(online));
+   خط 64 [sync]: const cachedStr = await AsyncStorage.getItem(LICENSE_DATA);
+   خط 74 [OFFLINE]: if (daysSince >= OFFLINE_MAX_DAYS && !isExpired && !isSuspended) {
+   خط 108 [sync]: export async function isLicenseValid(): Promise<boolean> {
+   خط 113 [local]: // بعد از پرداخت — لایسنس رو فعال کن (local + server)
+   خط 114 [sync]: export async function refreshLicenseAfterPayment() {
+   خط 117 [sync]: await AsyncStorage.setItem(LICENSE_DATA, JSON.stringify(fresh));
+   خط 118 [sync]: await AsyncStorage.setItem(LICENSE_TS, String(Date.now()));
+
+📄 LicenseGate.tsx (2 تطابق)
+───────────────────────────────────────
+   خط 12 [sync]: const check = async () => {
+   خط 43 [Local]: 📅 تاریخ انقضا: {new Date(info.expiresAt).toLocaleDateString('fa-IR')}
+
+📄 LicenseNotification.tsx (5 تطابق)
+───────────────────────────────────────
+   خط 12 [sync]: const check = async () => {
+   خط 19 [pending]: .select('notification_pending, notification_message, notification_plan, notification_at, expires_at')
+   خط 23 [pending]: if (data && data[0] && data[0].notification_pending) {
+   خط 35 [sync]: const dismiss = async () => {
+   خط 41 [pending]: .update({ notification_pending: false })
+
+📄 LicenseRequest.tsx (2 تطابق)
+───────────────────────────────────────
+   خط 13 [sync]: const submit = async () => {
+   خط 28 [pending]: status: 'pending',
+
+📄 LiveMarketScreen.tsx (74 تطابق)
+───────────────────────────────────────
+   خط 24 [Local]: const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
+   خط 50 [local]: const r = localStorage.getItem(DASH_CURS_KEY);
+   خط 59 [local]: try { localStorage.setItem(DASH_CURS_KEY, JSON.stringify(arr)); } catch {}
+   خط 213 [local]: const [locallyAccepted, setLocallyAccepted] = useState<any>({});
+   خط 252 [Pending]: const [marketStats, setMarketStats] = useState<any>({ trades: 0, hawalas: 0, agents: 0, myTrades: 0, myHawalasSent: 0, m
+   خط 286 [Mode]: currency: 'USD', targetCurrency: 'AFN', rateMode: 'same', rate: '',
+   خط 310 [sync]: const refresh = useCallback(async () => {
+   خط 324 [pending]: const dP = directInbox.filter((h: any) => h.status === 'pending').length;
+   خط 332 [Pending]: myDirectPending: dP,
+   خط 355 [local]: // 📌 بارگذاری ارزهای داشبورد از localStorage
+   خط 383 [sync]: const tick = async () => {
+   خط 451 [sync]: (async () => {
+   خط 456 [sync]: const t = setInterval(async () => { setNotifList(await fetchAllNotifications()); }, 5000);
+   خط 457 [sync]: (async () => { setNotifList(await fetchAllNotifications()); })();
+   خط 511 [sync]: (async () => { setAgents(await getAgents()); })();
+   خط 520 [sync]: listenMyFXDeals(async () => {
+   خط 534 [sync]: const saveSettings = async () => {
+   خط 544 [sync]: const submitHawala = async () => {
+   خط 545 [آفلاین]: const _isOffline = !net.connected; if (_isOffline) showToast?.('⏳ آفلاین — محلی ذخیره می‌شود');
+   خط 572 [آفلاین]: console.log('⚠️ sendBroadcastHawala ناموفق (آفلاین؟):', _sendErr?.message);
+   خط 573 [آفلاین]: showToast?.('⏳ آفلاین — بعداً ارسال می‌شود');
+   خط 593 [pending]: status: 'pending',
+   خط 619 [sync]: const submitFX = async () => {
+   خط 620 [آفلاین]: const _isOffline = !net.connected; if (_isOffline) showToast?.('⏳ آفلاین — محلی ذخیره می‌شود');
+   خط 634 [sync]: const submitDirect = async () => {
+   خط 635 [آفلاین]: const _isOffline = !net.connected; if (_isOffline) showToast?.('⏳ آفلاین — محلی ذخیره می‌شود');
+   خط 649 [Mode]: rateMode: directForm.rateMode,
+   خط 667 [آفلاین]: console.log('⚠️ sendDirectHawala ناموفق (آفلاین؟):', _sendErr?.message);
+   خط 668 [آفلاین]: showToast?.('⏳ آفلاین — بعداً ارسال می‌شود');
+   خط 688 [pending]: status: 'pending',
+   ... و 44 خط دیگه
+
+📄 presets.ts (12 تطابق)
+───────────────────────────────────────
+   خط 1 [sync]: import AsyncStorage from '@react-native-async-storage/async-storage';
+   خط 60 [sync]: export async function loadPreset(): Promise<PresetKey> {
+   خط 62 [sync]: const p = await AsyncStorage.getItem(PRESET_KEY);
+   خط 63 [sync]: const t = await AsyncStorage.getItem(TERMS_KEY);
+   خط 71 [sync]: export async function setPreset(p: PresetKey) {
+   خط 75 [sync]: await AsyncStorage.setItem(PRESET_KEY, p);
+   خط 76 [sync]: await AsyncStorage.setItem(TERMS_KEY, JSON.stringify(CURRENT_TERMS));
+   خط 80 [sync]: export async function setTerm(key: string, value: string) {
+   خط 82 [sync]: try { await AsyncStorage.setItem(TERMS_KEY, JSON.stringify(CURRENT_TERMS)); } catch {}
+   خط 85 [sync]: export async function setTabs(tabs: string[]) {
+   خط 86 [sync]: try { await AsyncStorage.setItem('@mizan_tabs', JSON.stringify(tabs)); } catch {}
+   خط 89 [sync]: export async function resetToPreset(p: PresetKey) { await setPreset(p); }
+
+📄 PublicMarketScreen.tsx (13 تطابق)
+───────────────────────────────────────
+   خط 5 [Local]: const fmt = (n: any, d = 0) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d });
+   خط 125 [sync]: const load = useCallback(async () => {
+   خط 146 [sync]: const tick = async () => {
+   خط 164 [sync]: (async () => {
+   خط 180 [sync]: const refresh = async () => {
+   خط 189 [sync]: const tick = async () => {
+   خط 199 [sync]: (async () => {
+   خط 208 [sync]: const submit = async () => {
+   خط 251 [sync]: const del = async (id: any) => {
+   خط 272 [sync]: const sendChat = async () => {
+   خط 571 [Local]: {m.created_at ? new Date(m.created_at).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : ''}
+   خط 668 [sync]: onPress={async () => {
+   خط 712 [Local]: {m.created_at ? new Date(m.created_at).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : ''}
+
+📄 SyncControl.tsx (40 تطابق)
+───────────────────────────────────────
+   خط 1 [Offline]: // SyncControl.tsx — کلید Online/Offline + مودال sync
+   خط 5 [setMode]: getMode, setMode, subscribeMode, loadMode,
+   خط 6 [Offline]: getQueueCount, syncToServer, pullFromServer, clearQueue, prepareOffline,
+   خط 7 [offline]: } from './lib.offline';
+   خط 9 [Sync]: export default function SyncControl({ showToast, compact }: any) {
+   خط 10 [offline]: const [mode, setModeLocal] = useState<'online' | 'offline'>('online');
+   خط 11 [queue]: const [queue, setQueue] = useState(0);
+   خط 13 [sync]: const [syncing, setSyncing] = useState(false);
+   خط 16 [Local]: loadMode().then(setModeLocal);
+   خط 17 [Local]: const unsub = subscribeMode(setModeLocal);
+   خط 18 [sync]: const tick = setInterval(async () => setQueue(await getQueueCount()), 3000);
+   خط 22 [sync]: const toggle = async () => {
+   خط 23 [offline]: if (mode === 'offline') {
+   خط 26 [آفلاین]: showToast('⏳ در حال آماده‌سازی آفلاین...');
+   خط 27 [Offline]: await prepareOffline();
+   خط 28 [offline]: await setMode('offline');
+   خط 29 [آفلاین]: showToast('🔴 آفلاین — همه‌چیز آماده است');
+   خط 33 [sync]: const confirmSync = async () => {
+   خط 34 [Sync]: setSyncing(true);
+   خط 36 [setMode]: await setMode('online');
+   خط 37 [sync]: const r = await syncToServer();
+   خط 39 [Queue]: await clearQueue();
+   خط 40 [Queue]: setQueue(0);
+   خط 44 [sync]: showToast(e?.message || 'خطا در sync', true);
+   خط 45 [Sync]: } finally { setSyncing(false); }
+   خط 48 [sync]: const skipSync = async () => {
+   خط 49 [setMode]: await setMode('online');
+   خط 51 [sync]: showToast('🟢 آنلاین — بدون sync');
+   خط 58 [آپلود]: <Text style={s.title}>📤 آپلود به سرور؟</Text>
+   خط 60 [queue]: {queue > 0
+   ... و 10 خط دیگه
+
+═══════════════════════════════════════════
+✅ تمام — 36 فایل
+═══════════════════════════════════════════

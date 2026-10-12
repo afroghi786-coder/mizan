@@ -25,6 +25,7 @@ import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system';
+import SmsMatchScreen from './SmsMatchScreen';
 
 import {
   supabase, fmt, parseNum, toFaNum, pad2,
@@ -571,8 +572,9 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     { key: 'mgr', icon: '📋', label: t('مدیریت'), color: '#c0392b' },
     { key: 'profit', icon: '💹', label: term('profit'), color: '#065f46' },
     { key: 'inventory', icon: '📦', label: term('inventory'), color: '#0f5132' },
-    { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },{ key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
+    { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
     { key: 'publicMarket', icon: '🏛️', label: 'بازار', color: '#0891b2' },
+    { key: 'bankMatch', icon: '🏦', label: 'بانک', color: '#f59e0b' },
     { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
     { key: 'employees', icon: '💼', label: t('کارمندان'), color: '#7c3aed' },
   ];
@@ -625,7 +627,8 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
           </View>
         </View>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
+      {tab !== 'exchange' && tab !== 'publicMarket' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
         {tabs.map((t) => (
                    <TouchableOpacity key={t.key} onPress={() => requestTab(t.key)} activeOpacity={0.7} style={[s.tab, tab === t.key && { backgroundColor: C.isSimple ? '#64748b' : t.color, borderColor: '#d4af37' }]}>
             <Text style={s.tabIcon}>{t.icon}</Text>
@@ -634,6 +637,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      )}
       <View key={`tab-${tab}-${langTick || 0}`} style={{ flex: 1 }}>
       {tab === 'order' && <SalesScreen showToast={showToast} />}
       {tab === 'purchase' && <PurchaseScreen showToast={showToast} />}
@@ -643,6 +647,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
       {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
+      {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}
       </View>
@@ -666,6 +671,22 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
         }}
         showToast={showToast}
       />
+      {tab === 'exchange' && (
+        <TouchableOpacity
+          onPress={() => setTab('order')}
+          style={{ position: 'absolute', bottom: 90, right: 14, width: 60, height: 60, borderRadius: 30, backgroundColor: '#7c3aed', borderWidth: 2, borderColor: '#d4af37', justifyContent: 'center', alignItems: 'center', zIndex: 9999, elevation: 10 }}
+        >
+          <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', lineHeight: 30 }}>←</Text>
+        </TouchableOpacity>
+      )}
+      {tab === 'publicMarket' && (
+        <TouchableOpacity
+          onPress={() => setTab('order')}
+          style={{ position: 'absolute', bottom: 90, right: 14, width: 60, height: 60, borderRadius: 30, backgroundColor: '#7c3aed', borderWidth: 2, borderColor: '#d4af37', justifyContent: 'center', alignItems: 'center', zIndex: 9999, elevation: 10 }}
+        >
+          <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', lineHeight: 30 }}>←</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 }

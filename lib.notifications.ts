@@ -42,7 +42,7 @@ export function unlockAudio() {
 }
 
 export function playNotifSound() {
-  if (_isWebView) return;  // ⚠️ در WebView صدا پخش نمی‌شود
+  // در WebView هم صدا پخش شود  // ⚠️ در WebView صدا پخش نمی‌شود
   try {
     unlockAudio();
     if (!_audioCtx || _playing) return;
@@ -69,7 +69,7 @@ export function playNotifSound() {
 }
 
 export function vibrateNotif() {
-  if (_isWebView) return;  // ⚠️ در WebView لرزش غیرفعال
+  // در WebView هم لرزش  // ⚠️ در WebView لرزش غیرفعال
   try {
     if (_N && typeof (_N as any).vibrate === 'function') {
       (_N as any).vibrate([200, 100, 200]);

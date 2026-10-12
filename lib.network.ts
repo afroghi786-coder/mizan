@@ -81,6 +81,11 @@ async function _registerAgent(): Promise<void> {
 // ═══════════════════════════════════════════════════════
 //  نوتیفیکیشن داخلی
 // ═══════════════════════════════════════════════════════
+// 🎫 تولید کد یکتای حواله P2P
+function generateHawalaCode(): string {
+  return 'P2P-' + Math.floor(100000 + Math.random() * 900000);
+}
+
 async function notify(toEmail: string, type: string, payload: any = {}): Promise<void> {
   if (!_sb || !toEmail) return;
   try {
@@ -117,17 +122,32 @@ export async function markNotificationRead(id: number): Promise<void> {
 // ═══════════════════════════════════════════════════════
 export async function sendBroadcastHawala(h: any): Promise<any> {
   if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  const _code = h.code || generateHawalaCode();
   const expiresAtH = new Date(Date.now() + (Number(h.expires || 15) * 60000)).toISOString();
   const { error } = await _sb.from('net_hawalas').insert({
-    id: h.id, from_email: _myEmail, from_name: _myName, from_city: _myCity,
-    target_city: h.targetCity, currency: h.currency, amount: h.amount,
-    beneficiary_name: h.beneficiaryName, beneficiary_phone: h.beneficiaryPhone || '',
-    max_fee: h.maxFee || 2, note: h.note || '', status: 'open',
+    id: h.id, code: _code,
+    from_email: _myEmail, from_name: _myName, from_city: _myCity,
+    sender_name: h.sender_name || _myName,
+    sender_phone: h.sender_phone || '',
+    sender_city: h.sender_city || _myCity,
+    sender_address: h.sender_address || '',
+    target_city: h.targetCity,
+    currency: h.currency,
+    amount: h.amount,
+    to_amount: h.to_amount || 0,
+    beneficiary_name: h.beneficiaryName,
+    beneficiary_phone: h.beneficiaryPhone || '',
+    beneficiary_city: h.beneficiary_city || '',
+    beneficiary_bank: h.beneficiary_bank || '',
+    beneficiary_holder: h.beneficiary_holder || '',
+    max_fee: h.maxFee || 2,
+    note: h.note || '',
+    status: 'open',
     target_group_id: h.targetGroupId || null,
     expires_at: expiresAtH,
   });
   if (error) { console.log('sendBroadcastHawala error:', error.message); throw new Error(error.message); }
-  console.log('✅ Hawala inserted:', h.id, 'expires:', expiresAtH);
+  console.log('✅ Hawala inserted:', h.id, 'code:', _code, 'expires:', expiresAtH);
   try {
     const { data: users } = await _sb.from('net_preferences').select('email, notify_hawala_new, watch_cities').eq('notify_hawala_new', true).neq('email', _myEmail);
     if (users && users.length) {
@@ -135,12 +155,12 @@ export async function sendBroadcastHawala(h: any): Promise<any> {
       for (const u of toNotify) {
         await _sb.from('net_notifications').insert({
           to_email: u.email, type: 'hawala_new',
-          payload: { hawalaId: h.id, from_name: _myName, currency: h.currency, amount: h.amount, targetCity: h.targetCity },
+          payload: { hawalaId: h.id, code: _code, from_email: _myEmail, from_name: _myName, from_city: _myCity, currency: h.currency, amount: h.amount, targetCity: h.targetCity },
         });
       }
     }
   } catch (e: any) { console.log('hawala_new notify error:', e?.message); }
-  return { success: true, id: h.id };
+  return { success: true, id: h.id, code: _code };
 }
 
 export async function claimHawala(taskId: string): Promise<any> {
@@ -151,7 +171,7 @@ export async function claimHawala(taskId: string): Promise<any> {
   if (error) return { success: false, message: error.message };
   if (!upd || !upd.length) return { success: false, message: '⛔ دیر رسیدی — یکی دیگر قبول کرد' };
   const cur = upd[0];
-  notify(cur.from_email, 'hawala_taken', { taskId, from_name: _myName, amount: cur.amount, currency: cur.currency }).catch(() => {});
+  notify(cur.from_email, 'hawala_taken', { taskId, code: cur.code, from_name: _myName, amount: cur.amount, currency: cur.currency }).catch(() => {});
   return { success: true, task: cur };
 }
 
@@ -179,7 +199,7 @@ export async function sendFXOffer(o: any): Promise<any> {
       for (const u of toNotify) {
         await _sb.from('net_notifications').insert({
           to_email: u.email, type: 'fx_new',
-          payload: { offerId: o.id, from_name: _myName, currency: o.currency, amount: o.amount, rate: o.rate },
+          payload: { offerId: o.id, from_email: _myEmail, from_name: _myName, from_city: _myCity, currency: o.currency, amount: o.amount, rate: o.rate },
         });
       }
     }
@@ -199,7 +219,7 @@ export async function claimFXOffer(offerId: string): Promise<any> {
   if (error) return { success: false, message: error.message };
   if (!upd || !upd.length) return { success: false, message: 'دیر رسیدی' };
   // ⭐ نوتیف به فروشنده
-  await notify(cur.seller_email, 'fx_taken', { offerId, from_name: _myName, amount: cur.amount, currency: cur.currency });
+  await notify(cur.seller_email, 'fx_taken', { offerId, from_email: _myEmail, from_name: _myName, from_city: _myCity, amount: cur.amount, currency: cur.currency });
   return { success: true, offer: upd[0] };
 }
 
@@ -235,15 +255,40 @@ export async function fetchMyFXOffers(): Promise<any[]> {
 export async function sendDirectHawala(h: any): Promise<any> {
   if (!_sb || !_myEmail) throw new Error('متصل نیست');
   if (!h.toEmail) throw new Error('مقصد انتخاب نشده');
+  const _code = h.code || generateHawalaCode();
   const { error } = await _sb.from('net_direct_hawalas').insert({
-    id: h.id, from_email: _myEmail, from_name: _myName, from_city: _myCity,
-    to_email: h.toEmail, currency: h.currency, amount: h.amount,
-    beneficiary_name: h.beneficiaryName, beneficiary_phone: h.beneficiaryPhone || '',
-    commission: h.commission || 0, note: h.note || '', status: 'pending',
+    id: h.id, code: _code,
+    from_email: _myEmail, from_name: _myName, from_city: _myCity,
+    sender_name: h.sender_name || _myName,
+    sender_phone: h.sender_phone || '',
+    sender_city: h.sender_city || _myCity,
+    sender_address: h.sender_address || '',
+    to_email: h.toEmail,
+    currency: h.currency,
+    target_currency: h.targetCurrency || h.currency,
+    amount: h.amount,
+    to_amount: h.to_amount || 0,
+    rate: h.rate || 0,
+    beneficiary_name: h.beneficiaryName,
+    beneficiary_phone: h.beneficiaryPhone || '',
+    beneficiary_city: h.beneficiary_city || '',
+    beneficiary_bank: h.beneficiary_bank || '',
+    beneficiary_holder: h.beneficiary_holder || '',
+    commission: h.commission || 0,
+    commission_percent: h.commission_percent || 0,
+    note: h.note || '',
+    status: 'pending',
   });
   if (error) throw new Error(error.message);
-  await notify(h.toEmail, 'direct_hawala', { hawalaId: h.id, from_name: _myName, amount: h.amount, currency: h.currency });
-  return { success: true, id: h.id };
+  await notify(h.toEmail, 'direct_hawala', {
+    hawalaId: h.id, code: _code,
+    from_email: _myEmail, from_name: _myName, from_city: _myCity,
+    amount: h.amount, currency: h.currency,
+    targetCurrency: h.targetCurrency,
+    beneficiaryName: h.beneficiaryName,
+    to_amount: h.to_amount,
+  });
+  return { success: true, id: h.id, code: _code };
 }
 
 export async function acceptDirectHawala(hawalaId: string): Promise<any> {
@@ -255,8 +300,8 @@ export async function acceptDirectHawala(hawalaId: string): Promise<any> {
     .update({ status: 'accepted', accepted_by_name: _myName, accepted_at: new Date().toISOString() })
     .eq('id', hawalaId).eq('status', 'pending');
   if (error) throw new Error(error.message);
-  await notify(cur.from_email, 'direct_accepted', { hawalaId, from_name: _myName });
-  return { success: true };
+  await notify(cur.from_email, 'direct_accepted', { hawalaId, code: cur.code, from_email: _myEmail, from_name: _myName, from_city: _myCity });
+  return { success: true, data: cur };
 }
 
 export async function deliverDirectHawala(hawalaId: string, toEmail: string): Promise<any> {
@@ -266,7 +311,7 @@ export async function deliverDirectHawala(hawalaId: string, toEmail: string): Pr
   await _sb.from('net_direct_hawalas')
     .update({ status: 'delivered', delivered_by_name: _myName, delivered_at: new Date().toISOString() })
     .eq('id', hawalaId);
-  await notify(cur.from_email, 'direct_delivered', { hawalaId, from_name: _myName });
+  await notify(cur.from_email, 'direct_delivered', { hawalaId, code: cur.code, from_email: _myEmail, from_name: _myName, from_city: _myCity });
   return { success: true };
 }
 
@@ -657,6 +702,85 @@ export async function sendMessage(roomId: string, toEmail: string, text: string)
     is_read: false,
   });
   if (error) { console.log('sendMessage error:', error.message); throw new Error(error.message); }
+    // 🔔 ساخت اعلان پیام با کانتکست حواله
+  try {
+    // استخراج hawalaId و code از room_id
+    let _hawalaId = '';
+    let _hawalaCode = '';
+    let _hawalaType = '';
+    let _beneficiaryName = '';
+    let _amount = 0;
+    let _currency = '';
+
+    if (roomId.startsWith('dh_')) {
+      _hawalaId = roomId.substring(3);
+      _hawalaType = 'direct';
+      const { data } = await _sb.from('net_direct_hawalas')
+        .select('code, beneficiary_name, amount, currency')
+        .eq('id', _hawalaId).single();
+      if (data) {
+        _hawalaCode = data.code || '';
+        _beneficiaryName = data.beneficiary_name || '';
+        _amount = data.amount || 0;
+        _currency = data.currency || '';
+      }
+    } else if (roomId.startsWith('hw_')) {
+      _hawalaId = roomId.substring(3);
+      _hawalaType = 'public';
+      const { data } = await _sb.from('net_hawalas')
+        .select('code, beneficiary_name, amount, currency')
+        .eq('id', _hawalaId).single();
+      if (data) {
+        _hawalaCode = data.code || '';
+        _beneficiaryName = data.beneficiary_name || '';
+        _amount = data.amount || 0;
+        _currency = data.currency || '';
+      }
+    } else if (roomId.startsWith('fx_')) {
+      _hawalaId = roomId.substring(3);
+      _hawalaType = 'fx';
+    }
+
+    // ✅ INSERT ساده — Trigger سرور خودش تکراری‌ها رو پاک می‌کنه
+    try {
+      await _sb.from('net_notifications').insert({
+        to_email: toEmail,
+        type: 'new_message',
+        payload: {
+          from_email: _myEmail,
+          from_name: _myName || _myEmail.split('@')[0],
+          room_id: roomId,
+          last_text: text.trim().slice(0, 80),
+          code: _hawalaCode,
+          hawalaId: _hawalaId,
+          hawalaType: _hawalaType,
+          beneficiaryName: _beneficiaryName,
+          amount: _amount,
+          currency: _currency,
+        },
+      });
+      console.log('✅ اعلان پیام insert شد | hawalaId:', _hawalaId);
+    } catch (e) { console.log('msg notif insert err:', e); }
+
+    // ساخت اعلان جدید با کانتکست
+    await _sb.from('net_notifications').insert({
+      to_email: toEmail,
+      type: 'new_message',
+      payload: {
+        from_email: _myEmail,
+        from_name: _myName || _myEmail.split('@')[0],
+        room_id: roomId,
+        last_text: text.trim().slice(0, 80),
+        code: _hawalaCode,
+        hawalaId: _hawalaId,
+        hawalaType: _hawalaType,
+        beneficiaryName: _beneficiaryName,
+        amount: _amount,
+        currency: _currency,
+      },
+    });
+  } catch (e) { console.log('msg notif error:', e); }
+
   return { success: true };
 }
 
@@ -809,4 +933,28 @@ export async function deletePublicAd(id: any): Promise<any> {
   const { error } = await _sb.from('public_general_ads').delete().eq('id', id).eq('user_email', _myEmail);
   if (error) throw new Error(error.message);
   return { success: true };
+}
+
+
+// ═══ لغو معامله ═══
+export async function cancelDirectHawala(hawalaId){if(!_sb||!_myEmail)throw new Error('متصل نیست');const{error}=await _sb.from('net_direct_hawalas').update({status:'cancelled'}).eq('id',hawalaId);if(error)throw new Error(error.message);return{success:true};}
+export async function cancelHawala(hawalaId){if(!_sb||!_myEmail)throw new Error('متصل نیست');const{error}=await _sb.from('net_hawalas').update({status:'cancelled'}).eq('id',hawalaId);if(error)throw new Error(error.message);return{success:true};}
+export async function cancelFXOffer(offerId){if(!_sb||!_myEmail)throw new Error('متصل نیست');const{error}=await _sb.from('net_fx_offers').update({status:'cancelled'}).eq('id',offerId);if(error)throw new Error(error.message);return{success:true};}
+
+
+// 🔢 شمارش پیام‌های نخوانده به تفکیک room_id (برای badge روی 💬 پیام)
+export async function getUnreadByRoom(): Promise<Record<string, number>> {
+  const map: Record<string, number> = {};
+  try {
+    if (!_sb || !_myEmail) return map;
+    const { data } = await _sb.from('net_messages')
+      .select('room_id')
+      .eq('to_email', _myEmail)
+      .eq('is_read', false);
+    for (const row of (data || [])) {
+      const rId = (row as any).room_id;
+      if (rId) map[rId] = (map[rId] || 0) + 1;
+    }
+  } catch (e) {}
+  return map;
 }

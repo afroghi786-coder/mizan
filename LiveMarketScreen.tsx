@@ -10,6 +10,7 @@ import {
   listenMyFXOffers, listenMyFXDeals, deliverHawalaByUser,
   saveDailyRateWithBase, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications, markRoomRead, listenMessages, sendMessage, fetchMessages} from './lib.network';
+import { emitHawalaUpdate } from './lib.events';
 
 
 const _isWebView = (() => {
@@ -206,6 +207,10 @@ export default function LiveMarketScreen({ showToast }: any) {
   }, []);
 
   const [prefs, setPrefs] = useState<any>({});
+  const [notifUnread, setNotifUnread] = useState<any>({});
+  const [unreadDetails, setUnreadDetails] = useState<any>({});
+  const [groupedNotifs, setGroupedNotifs] = useState<any[]>([]);
+  const [locallyAccepted, setLocallyAccepted] = useState<any>({});
   const [notifList, setNotifList] = useState<any[]>([]);
   const _notifReady = useRef<boolean>(false);
   const _lastNotifId = useRef<number>(0);
@@ -254,9 +259,36 @@ export default function LiveMarketScreen({ showToast }: any) {
   const [dirSearchCur, setDirSearchCur] = useState('');
   const [notifSettingsModal, setNotifSettingsModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ name: '', city: 'KBL', phone: '' });
-  const [hawalaForm, setHawalaForm] = useState<any>({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
+  const [hawalaForm, setHawalaForm] = useState<any>({
+    // 🎯 مقصد
+    targetCity: 'HRT',
+    // 👤 فرستنده
+    sender_name: '', sender_phone: '', sender_address: '', sender_city: '',
+    // 👤 ذی‌نفع
+    beneficiaryName: '', beneficiaryPhone: '',
+    beneficiary_city: '', beneficiary_bank: '', beneficiary_holder: '',
+    // 💰 مالی
+    currency: 'USD', amount: '', to_amount: '',
+    maxFee: '2', expires: '15',
+    // 📝 یادداشت
+    note: '',
+  });
   const [fxForm, setFxForm] = useState<any>({ currency: 'USD', targetCurrency: 'AFN', amount: '', rateType: 'fixed', rate: '', expires: '10', note: '' });
-  const [directForm, setDirectForm] = useState<any>({ toEmail: '', toName: '', currency: 'USD', targetCurrency: 'AFN', rateMode: 'same', rate: '', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
+  const [directForm, setDirectForm] = useState<any>({
+    // 👤 صراف مقصد
+    toEmail: '', toName: '',
+    // 👤 فرستنده
+    sender_name: '', sender_phone: '', sender_address: '', sender_city: '',
+    // 👤 ذی‌نفع
+    beneficiaryName: '', beneficiaryPhone: '',
+    beneficiary_city: '', beneficiary_bank: '', beneficiary_holder: '',
+    // 💰 مالی
+    currency: 'USD', targetCurrency: 'AFN', rateMode: 'same', rate: '',
+    amount: '', to_amount: '',
+    commission: '', commission_percent: '',
+    // 📝 یادداشت
+    note: '',
+  });
   const [dirSearchFrom, setDirSearchFrom] = useState('');
   const [dirSearchTo, setDirSearchTo] = useState('');
   const [rateForm, setRateForm] = useState<any>(() => {
@@ -345,6 +377,75 @@ export default function LiveMarketScreen({ showToast }: any) {
 
   useEffect(() => { refresh(); return () => stopAllListeners(); }, [refresh]);
 
+  // 🔢 شمارش + جزئیات پیام‌های نخوانده
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      try {
+        const m = await import('./lib.network');
+        if (typeof (m as any).getUnreadByRoom === 'function') {
+          const map = await (m as any).getUnreadByRoom();
+          if (alive) setNotifUnread(map);
+        }
+        if (typeof (m as any).getUnreadDetails === 'function') {
+          const det = await (m as any).getUnreadDetails();
+          if (alive) setUnreadDetails(det);
+        }
+      } catch (e) {}
+    };
+    tick();
+    const iv = setInterval(tick, 5000);
+    return () => { alive = false; clearInterval(iv); };
+  }, []);
+
+  // 📋 گروه‌بندی اعلان‌ها (حذف تکرار + اضافه اعلان پیام)
+  useEffect(() => {
+    const list = [...(notifList || [])];
+    for (const rId of Object.keys(unreadDetails || {})) {
+      const det = unreadDetails[rId];
+      if (!det || !det.count || det.count <= 0) continue;
+      const hasReal = list.some((nn: any) => {
+        const p = nn.payload || {};
+        const t = String(nn.type || '');
+        let key = '';
+        if (t === 'direct_hawala' || t === 'direct_accepted') key = 'dh_' + p.hawalaId;
+        else if (t === 'hawala_taken' || t === 'hawala_new') key = 'hw_' + (p.taskId || p.hawalaId);
+        else if (t === 'fx_new' || t === 'fx_taken') key = 'fx_' + p.offerId;
+        return key === rId;
+      });
+      if (!hasReal) {
+        list.push({
+          id: 'v_' + rId,
+          type: 'virtual_message',
+          payload: { room_id: rId, count: det.count, from: det.from, lastText: det.lastText },
+          created_at: det.lastAt,
+          is_read: false,
+          _virtual: true,
+        });
+      }
+    }
+    const groups: any = {};
+    const order: string[] = [];
+    for (const nn of list) {
+      const p = nn.payload || {};
+      const t = String(nn.type || '');
+      let key = '';
+      if (t === 'direct_hawala' || t === 'direct_accepted') key = 'dh_' + p.hawalaId;
+      else if (t === 'hawala_taken' || t === 'hawala_new') key = 'hw_' + (p.taskId || p.hawalaId);
+      else if (t === 'fx_new' || t === 'fx_taken') key = 'fx_' + p.offerId;
+      else if (t === 'virtual_message') key = p.room_id || ('v_' + nn.id);
+      else key = 'id_' + nn.id;
+      if (!groups[key]) { groups[key] = nn; order.push(key); }
+      else {
+        const cur = groups[key];
+        const curId = typeof cur.id === 'number' ? cur.id : 0;
+        const newId = typeof nn.id === 'number' ? nn.id : 0;
+        if (newId > curId) groups[key] = nn;
+      }
+    }
+    setGroupedNotifs(order.map(k => groups[k]));
+  }, [notifList, unreadDetails]);
+
   useEffect(() => {
     if (!net.connected || !net.email) return;
     (async () => {
@@ -376,12 +477,13 @@ useEffect(() => {
       if (newOnes.length > 0) {
         const n = newOnes[0];
         const p = n.payload || {};
+
         const texts: any = {
           fx_taken: `✅ ${p.from_name} آگهی شما را قبول کرد`,
-          hawala_taken: `✅ ${p.from_name} حواله شما را قبول کرد`,
-          direct_hawala: `🔒 حواله خصوصی از ${p.from_name}`,
-          direct_accepted: `✅ ${p.from_name} حواله را قبول کرد`,
-          direct_delivered: `📦 ${p.from_name} حواله را تحویل داد`,
+          hawala_taken: `✅ ${p.from_name} حواله شما را قبول کرد${p.code ? ' [' + p.code + ']' : ''}`,
+          direct_hawala: `🔒 حواله خصوصی از ${p.from_name}${p.code ? ' [' + p.code + ']' : ''}`,
+          direct_accepted: `✅ ${p.from_name} حواله را قبول کرد${p.code ? ' [' + p.code + ']' : ''}`,
+          direct_delivered: `📦 ${p.from_name} حواله را تحویل داد${p.code ? ' [' + p.code + ']' : ''}`,
           group_invite: `🌐 دعوت به گروه ${p.groupName || ''}`,
           group_join: `👥 ${p.from_name} به گروه پیوست`,
           fx_new: `💱 ${p.from_name} فروش ${fmt(p.amount)} ${p.currency}`,
@@ -440,26 +542,82 @@ useEffect(() => {
   };
 
   const submitHawala = async () => {
-    if (!net.connected) return showToast?.('❌ Firebase وصل نیست — VPN روشن کن', true);
+    const _isOffline = !net.connected; if (_isOffline) showToast?.('⏳ آفلاین — محلی ذخیره می‌شود');
     if (!hawalaForm.amount || !hawalaForm.beneficiaryName) return showToast?.('مبلغ و نام الزامی', true);
     setSaving(true);
     try {
       const id = 'H-' + Date.now().toString(36).toUpperCase();
-      await sendBroadcastHawala({
-        id, targetCity: hawalaForm.targetCity, currency: hawalaForm.currency,
-        amount: Number(hawalaForm.amount), beneficiaryName: hawalaForm.beneficiaryName,
-        beneficiaryPhone: hawalaForm.beneficiaryPhone, maxFee: Number(hawalaForm.maxFee) || 2,
-        expiresAt: Date.now() + (Number(hawalaForm.expires) || 15) * 60000, note: hawalaForm.note,
+      let _res: any = { code: '' };
+      try {
+        _res = await sendBroadcastHawala({
+        id,
+        targetCity: hawalaForm.targetCity,
+        currency: hawalaForm.currency,
+        amount: Number(hawalaForm.amount),
+        to_amount: Number(hawalaForm.to_amount) || 0,
+        beneficiaryName: hawalaForm.beneficiaryName,
+        beneficiaryPhone: hawalaForm.beneficiaryPhone,
+        beneficiary_city: hawalaForm.beneficiary_city,
+        beneficiary_bank: hawalaForm.beneficiary_bank,
+        beneficiary_holder: hawalaForm.beneficiary_holder,
+        sender_name: hawalaForm.sender_name,
+        sender_phone: hawalaForm.sender_phone,
+        sender_city: hawalaForm.sender_city,
+        sender_address: hawalaForm.sender_address,
+        maxFee: Number(hawalaForm.maxFee) || 2,
+        expires: hawalaForm.expires,
+        note: hawalaForm.note,
       });
+      } catch (_sendErr: any) {
+        console.log('⚠️ sendBroadcastHawala ناموفق (آفلاین؟):', _sendErr?.message);
+        showToast?.('⏳ آفلاین — بعداً ارسال می‌شود');
+      }
+      // 🪞 کپی توی fx_hawalas (تب حواله‌جات فرستنده — عمومی)
+      try {
+        const fx = await import('./lib.fx');
+        const _p2pCode = _res?.code || '';
+        const _exists = (await fx.getHawalas()).find((h: any) => h._p2p_id === id);
+        if (!_exists) {
+          await fx.createHawala({
+            code: _p2pCode,
+            direction: 'send',
+            partner_code: '',
+            partner_name: 'بازار عمومی',
+            beneficiary_name: hawalaForm.beneficiaryName || '',
+            beneficiary_phone: hawalaForm.beneficiaryPhone || '',
+            beneficiary_city: hawalaForm.beneficiary_city || hawalaForm.targetCity || '',
+            amount: Number(hawalaForm.amount) || 0,
+            currency: hawalaForm.currency || 'USD',
+            commission: 0,
+            total: Number(hawalaForm.amount) || 0,
+            status: 'pending',
+            date: new Date().toISOString(),
+            note: hawalaForm.note || '',
+            _p2p_id: id,
+            _p2p_type: 'public',
+            _p2p_source: 'P2P بازار عمومی',
+          });
+          console.log('✅ fx_hawalas برای فرستنده عمومی ساخته شد');
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+        }
+      } catch (e: any) { console.log('fx_hawalas public insert:', e?.message); }
       setHawalaModal(false);
       showToast?.('✅ حواله ارسال شد');
-      setHawalaForm({ targetCity: 'HRT', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', maxFee: '2', expires: '15', note: '' });
+      setHawalaForm({
+        targetCity: 'HRT',
+        sender_name: '', sender_phone: '', sender_address: '', sender_city: '',
+        beneficiaryName: '', beneficiaryPhone: '',
+        beneficiary_city: '', beneficiary_bank: '', beneficiary_holder: '',
+        currency: 'USD', amount: '', to_amount: '',
+        maxFee: '2', expires: '15',
+        note: '',
+      });
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
   };
 
   const submitFX = async () => {
-    if (!net.connected) return showToast?.('❌ Firebase وصل نیست — VPN روشن کن', true);
+    const _isOffline = !net.connected; if (_isOffline) showToast?.('⏳ آفلاین — محلی ذخیره می‌شود');
     if (!fxForm.amount) return showToast?.('مقدار الزامی', true);
     if (fxForm.rateType === 'fixed' && !fxForm.rate) return showToast?.('نرخ الزامی', true);
     setSaving(true);
@@ -474,16 +632,82 @@ useEffect(() => {
   };
 
   const submitDirect = async () => {
-    if (!net.connected) return showToast?.('❌ Firebase وصل نیست — VPN روشن کن', true);
+    const _isOffline = !net.connected; if (_isOffline) showToast?.('⏳ آفلاین — محلی ذخیره می‌شود');
     if (!directForm.toEmail) return showToast?.('صراف مقصد انتخاب کن', true);
     if (!directForm.amount || !directForm.beneficiaryName) return showToast?.('مبلغ و نام الزامی', true);
     setSaving(true);
     try {
       const id = 'DH-' + Date.now().toString(36).toUpperCase();
-      await sendDirectHawala({ id, toEmail: directForm.toEmail, currency: directForm.currency, amount: Number(directForm.amount), beneficiaryName: directForm.beneficiaryName, beneficiaryPhone: directForm.beneficiaryPhone, commission: Number(directForm.commission) || 0, note: directForm.note });
+      let _res: any = { code: '' };
+      try {
+        _res = await sendDirectHawala({
+        id,
+        toEmail: directForm.toEmail,
+        toName: directForm.toName,
+        currency: directForm.currency,
+        targetCurrency: directForm.targetCurrency,
+        rateMode: directForm.rateMode,
+        amount: Number(directForm.amount),
+        to_amount: Number(directForm.to_amount) || 0,
+        rate: Number(directForm.rate) || 0,
+        beneficiaryName: directForm.beneficiaryName,
+        beneficiaryPhone: directForm.beneficiaryPhone,
+        beneficiary_city: directForm.beneficiary_city,
+        beneficiary_bank: directForm.beneficiary_bank,
+        beneficiary_holder: directForm.beneficiary_holder,
+        sender_name: directForm.sender_name,
+        sender_phone: directForm.sender_phone,
+        sender_city: directForm.sender_city,
+        sender_address: directForm.sender_address,
+        commission: Number(directForm.commission) || 0,
+        commission_percent: Number(directForm.commission_percent) || 0,
+        note: directForm.note,
+      });
+      } catch (_sendErr: any) {
+        console.log('⚠️ sendDirectHawala ناموفق (آفلاین؟):', _sendErr?.message);
+        showToast?.('⏳ آفلاین — بعداً ارسال می‌شود');
+      }
+      // 🪞 کپی توی fx_hawalas (تب حواله‌جات فرستنده)
+      try {
+        const fx = await import('./lib.fx');
+        const _p2pCode = _res?.code || '';
+        const _exists = (await fx.getHawalas()).find((h: any) => h._p2p_id === id);
+        if (!_exists) {
+          await fx.createHawala({
+            code: _p2pCode,
+            direction: 'send',
+            partner_code: directForm.toEmail || '',
+            partner_name: directForm.toName || directForm.toEmail || '',
+            beneficiary_name: directForm.beneficiaryName || '',
+            beneficiary_phone: directForm.beneficiaryPhone || '',
+            beneficiary_city: directForm.beneficiary_city || '',
+            amount: Number(directForm.amount) || 0,
+            currency: directForm.currency || 'USD',
+            commission: Number(directForm.commission) || 0,
+            total: (Number(directForm.amount) || 0) + (Number(directForm.commission) || 0),
+            status: 'pending',
+            date: new Date().toISOString(),
+            note: directForm.note || '',
+            _p2p_id: id,
+            _p2p_type: 'direct',
+            _p2p_source: 'P2P صرافی خصوصی',
+          });
+          console.log('✅ fx_hawalas برای فرستنده ساخته شد');
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+        }
+      } catch (e: any) { console.log('fx_hawalas direct insert:', e?.message); }
       setDirectModal(false);
       showToast?.('✅ حواله خصوصی ارسال شد');
-      setDirectForm({ toEmail: '', toName: '', currency: 'USD', amount: '', beneficiaryName: '', beneficiaryPhone: '', commission: '', note: '' });
+      setDirectForm({
+        toEmail: '', toName: '',
+        sender_name: '', sender_phone: '', sender_address: '', sender_city: '',
+        beneficiaryName: '', beneficiaryPhone: '',
+        beneficiary_city: '', beneficiary_bank: '', beneficiary_holder: '',
+        currency: 'USD', targetCurrency: 'AFN', rateMode: 'same', rate: '',
+        amount: '', to_amount: '',
+        commission: '', commission_percent: '',
+        note: '',
+      });
     } catch (e: any) { showToast?.('❌ ' + e.message, true); }
     setSaving(false);
   };
@@ -531,7 +755,39 @@ useEffect(() => {
   };
   const doAcceptD = async (id: string) => {
     try {
-      await acceptDirectHawala(id);
+      const _r = await acceptDirectHawala(id);
+      setLocallyAccepted((prev: any) => ({ ...prev, [id]: true }));
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+      // 🪞 کپی توی fx_hawalas (تب حواله‌جات گیرنده)
+      try {
+        const _d = (_r as any)?.data;
+        if (_d) {
+          const fx = await import('./lib.fx');
+          const _exists = (await fx.getHawalas()).find((h: any) => h._p2p_id === id);
+          if (!_exists) {
+            await fx.createHawala({
+              code: _d.code || '',
+              direction: 'receive',
+              partner_code: _d.from_email || '',
+              partner_name: _d.from_name || _d.from_email || '',
+              beneficiary_name: _d.beneficiary_name || '',
+              beneficiary_phone: _d.beneficiary_phone || '',
+              beneficiary_city: _d.beneficiary_city || '',
+              amount: Number(_d.amount) || 0,
+              currency: _d.currency || 'USD',
+              commission: Number(_d.commission) || 0,
+              total: Number(_d.amount) || 0,
+              status: 'pending',
+              date: new Date().toISOString(),
+              note: _d.note || '',
+              _p2p_id: id,
+              _p2p_type: 'direct',
+              _p2p_source: 'P2P صرافی خصوصی — دریافتی',
+            });
+            console.log('✅ fx_hawalas برای گیرنده (doAcceptD) ساخته شد');
+          }
+        }
+      } catch (e: any) { console.log('fx_hawalas receiver doAcceptD:', e?.message); }
       showToast?.('✅ قبول شد');
       setTimeout(() => refresh(), 300);
     } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
@@ -588,6 +844,65 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
       setChatMessages(msgs);
     } catch (e: any) { console.log('openChatWith', e?.message); }
     setChatModal(true);
+  };
+
+  // 🔔 باز کردن چت از اعلان
+  
+  const openChatFromNotif = async (nt: any) => {
+    const p = nt.payload || {};
+    let fromEmail = p.from_email || p.fromEmail || '';
+    let fromName = p.from_name || p.fromName || '';
+    let fromCity = p.from_city || p.fromCity || '';
+    let roomId = '';
+
+    // تعیین room_id بر اساس نوع اعلان
+    if (nt.type === 'hawala_taken' && p.taskId) roomId = 'hw_' + p.taskId;
+    else if (nt.type === 'fx_taken' && p.offerId) roomId = 'fx_' + p.offerId;
+    else if (nt.type === 'direct_hawala' && p.hawalaId) roomId = 'dh_' + p.hawalaId;
+    else if (nt.type === 'direct_accepted' && p.hawalaId) roomId = 'dh_' + p.hawalaId;
+    else if (nt.type === 'direct_delivered' && p.hawalaId) roomId = 'dh_' + p.hawalaId;
+    else if (nt.type === 'fx_new' && p.offerId) roomId = 'fx_' + p.offerId;
+    else if (nt.type === 'hawala_new' && p.hawalaId) roomId = 'hw_' + p.hawalaId;
+    else if (nt.type === 'new_message' && p.room_id) roomId = p.room_id;
+    else roomId = 'nt_' + (nt.id || Date.now());
+
+    // اگر from_email نداریم، از دیتابیس بخون (برای اعلان‌های قدیمی)
+    if (!fromEmail && p.hawalaId) {
+      try {
+        const m = await import('./lib.network');
+        const sb = (m as any)._sb || (m as any).getSB;
+        if (typeof sb === 'function') {
+          const client = await sb();
+          if (client) {
+            const { data } = await client.from('net_direct_hawalas').select('*').eq('id', p.hawalaId).single();
+            if (data) {
+              fromEmail = data.from_email || '';
+              fromName = data.from_name || '';
+              fromCity = data.from_city || '';
+            }
+          }
+        } else if (sb && sb.from) {
+          const { data } = await sb.from('net_direct_hawalas').select('*').eq('id', p.hawalaId).single();
+          if (data) {
+            fromEmail = data.from_email || '';
+            fromName = data.from_name || '';
+            fromCity = data.from_city || '';
+          }
+        }
+      } catch (e) { console.log('lookup error:', e); }
+    }
+
+    if (!fromEmail) {
+      showToast?.('⚠️ اطلاعات فرستنده پیدا نشد — اعلان قدیمی است', true);
+      return;
+    }
+
+    if (!fromName) fromName = fromEmail.split('@')[0] || 'کسی';
+
+    setNotifModal(false);
+    setTimeout(() => {
+      openChatWith(roomId, fromEmail, fromName, fromCity);
+    }, 250);
   };
 
   const sendChatMsg = async () => {
@@ -741,7 +1056,11 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                   </Text>
                 </View>
               ) : null}
-            </TouchableOpacity>
+            {(() => { const c = (notifList || []).filter((x: any) => !x.is_read).length; return c > 0 ? (
+                          <View style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#ef4444', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5, zIndex: 99999, elevation: 10 }}>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>{c > 99 ? '۹۹+' : c}</Text>
+                          </View>
+                        ) : null; })()}{/* __bellBadgeAdded__ */}</TouchableOpacity>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.dashClock}>{String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}:{String(now.getSeconds()).padStart(2, '0')}</Text>
@@ -1110,20 +1429,22 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             <TouchableOpacity onPress={() => setNotifModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14, maxHeight: 500 }}>
-            {notifList.length === 0 ? (
+            {groupedNotifs.length === 0 ? (
               <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 30 }}>📭 اعلانی نیست</Text>
-            ) : notifList.map((n: any, i: number) => {
+            ) : groupedNotifs.map((n: any, i: number) => {
               const p = n.payload || {};
               const texts: any = {
                 fx_taken: `✅ ${p.from_name} آگهی شما را قبول کرد`,
-                hawala_taken: `✅ ${p.from_name} حواله شما را قبول کرد`,
-                direct_hawala: `🔒 حواله خصوصی از ${p.from_name}`,
-                direct_accepted: `✅ ${p.from_name} حواله را قبول کرد`,
-                direct_delivered: `📦 ${p.from_name} حواله را تحویل داد`,
+                hawala_taken: `✅ ${p.from_name} حواله شما را قبول کرد${p.code ? ' [' + p.code + ']' : ''}`,
+                direct_hawala: `🔒 حواله خصوصی از ${p.from_name}${p.code ? ' [' + p.code + ']' : ''}`,
+                direct_accepted: `✅ ${p.from_name} حواله را قبول کرد${p.code ? ' [' + p.code + ']' : ''}`,
+                direct_delivered: `📦 ${p.from_name} حواله را تحویل داد${p.code ? ' [' + p.code + ']' : ''}`,
                 group_invite: `🌐 دعوت به گروه ${p.groupName || ''}`,
                 group_join: `👥 ${p.from_name} به گروه پیوست`,
                 fx_new: `💱 ${p.from_name} فروش ${fmt(p.amount)} ${p.currency}`,
-                hawala_new: `📤 ${p.from_name} حواله ${fmt(p.amount)} ${p.currency}`,
+                hawala_new: `📤 ${p.from_name} حواله ${fmt(p.amount)} ${p.currency}${p.code ? ' [' + p.code + ']' : ''}`,
+                new_message: `${p.hawalaType === 'direct' ? '📤 پیام برای حواله‌ات' : p.hawalaType === 'public' ? '📤 پیام برای حواله عمومی' : '💬 پیام جدید'} از ${p.from_name || p.from_email || "کاربر"}${p.code ? ' #' + p.code : ''}`,
+                virtual_message: `💬 پیام جدید از ${p.from || "کاربر"}${p.code ? ' [' + p.code + ']' : ''}`,
               };
               const msg = texts[n.type] || '🔔 اعلان جدید';
               const isUnread = !n.is_read;
@@ -1140,6 +1461,133 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                   <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'right', marginTop: 4 }}>
                     {n.created_at ? new Date(n.created_at).toLocaleString('fa-IR') : ''}
                   </Text>
+                {(() => {
+                        const p = n.payload || {};
+                        const t = String(n.type || '');
+                        const isDone = t.includes('delivered');
+                        const isInfo = t.includes('group');
+                        const hasDeal = !!(p.hawalaId || p.offerId || p.taskId);
+                        const isAccepted = t.includes('taken') || t.includes('accepted') || (p.hawalaId && locallyAccepted[p.hawalaId]);
+                        let rId = '';
+                        if (t === 'direct_hawala' || t === 'direct_accepted') rId = 'dh_' + p.hawalaId;
+                        else if (t === 'hawala_taken' || t === 'hawala_new') rId = 'hw_' + (p.taskId || p.hawalaId);
+                        else if (t === 'fx_new' || t === 'fx_taken') rId = 'fx_' + p.offerId;
+                          else if (t === 'new_message') rId = p.room_id;
+                        const cnt = notifUnread[rId] || 0;
+                        return (
+                          <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                            <TouchableOpacity
+                              onPress={() => openChatFromNotif(n)}
+                              style={{ backgroundColor: '#0891b2', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>💬 پیام</Text>{(() => {
+                          const p = (n && n.payload) || {};
+                          const t = String((n && n.type) || '');
+                          let rId = '';
+                          if (t === 'direct_hawala' || t === 'direct_accepted') rId = 'dh_' + p.hawalaId;
+                          else if (t === 'hawala_taken' || t === 'hawala_new') rId = 'hw_' + (p.taskId || p.hawalaId);
+                          else if (t === 'fx_new' || t === 'fx_taken') rId = 'fx_' + p.offerId;
+                          else if (t === 'virtual_message') rId = p.room_id;
+                          const cnt = notifUnread[rId] || 0;
+                          return cnt > 0 ? (
+                            <View style={{ backgroundColor: '#ef4444', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, marginRight: 4 }}>
+                              <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{cnt > 9 ? '۹+' : cnt}</Text>
+                            </View>
+                          ) : null;
+                        })()}{/* __chatBadgeAdded__ */}
+                              {cnt > 0 ? (
+                                <View style={{ backgroundColor: '#ef4444', borderRadius: 9, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 }}>
+                                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{cnt > 9 ? '۹+' : cnt}</Text>
+                                </View>
+                              ) : null}
+                            </TouchableOpacity>
+                            {hasDeal && !isDone && !isInfo ? (
+                              !isAccepted ? (
+                                <TouchableOpacity
+                                  onPress={async () => {
+                                    try {
+                                      const m = await import('./lib.network');
+                                      let _accData: any = null;
+                                      if (t.includes('direct') && p.hawalaId) _accData = (await (m as any).acceptDirectHawala?.(p.hawalaId))?.data;
+                                      else if (t.includes('hawala') && (p.hawalaId || p.taskId)) await (m as any).claimHawala?.(p.hawalaId || p.taskId);
+                                      else if (t.includes('fx') && p.offerId) await (m as any).claimFXOffer?.(p.offerId);
+                                      // 🪞 کپی توی fx_hawalas (گیرنده از اعلان)
+                                      try {
+                                        if (_accData && p.hawalaId) {
+                                          const fx = await import('./lib.fx');
+                                          const _exists = (await fx.getHawalas()).find((h: any) => h._p2p_id === p.hawalaId);
+                                          if (!_exists) {
+                                            await fx.createHawala({
+                                              code: _accData.code || p.code || '',
+                                              direction: 'receive',
+                                              partner_code: _accData.from_email || p.from_email || '',
+                                              partner_name: _accData.from_name || p.from_name || '',
+                                              beneficiary_name: _accData.beneficiary_name || '',
+                                              beneficiary_phone: _accData.beneficiary_phone || '',
+                                              beneficiary_city: _accData.beneficiary_city || '',
+                                              amount: Number(_accData.amount) || 0,
+                                              currency: _accData.currency || p.currency || 'USD',
+                                              commission: Number(_accData.commission) || 0,
+                                              total: Number(_accData.amount) || 0,
+                                              status: 'pending',
+                                              date: new Date().toISOString(),
+                                              note: _accData.note || '',
+                                              _p2p_id: p.hawalaId,
+                                              _p2p_type: 'direct',
+                                              _p2p_source: 'P2P صرافی خصوصی — دریافتی (اعلان)',
+                                            });
+                                            console.log('✅ fx_hawalas برای گیرنده (اعلان) ساخته شد');
+                                          }
+                                        }
+                                      } catch (e: any) { console.log('fx_hawalas receiver notif:', e?.message); }
+                                      if (p.hawalaId) setLocallyAccepted((prev: any) => ({ ...prev, [p.hawalaId]: true }));
+                                      if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+                                      showToast?.('✅ قبول شد');
+                                      refresh();
+                                    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+                                  }}
+                                  style={{ backgroundColor: '#059669', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8 }}
+                                >
+                                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✅ قبول</Text>
+                                </TouchableOpacity>
+                              ) : (
+                                <TouchableOpacity
+                                  onPress={async () => {
+                                    try {
+                                      const m = await import('./lib.network');
+                                      if (t.includes('direct') && p.hawalaId) await (m as any).deliverDirectHawala?.(p.hawalaId, net.email);
+                                      else if (t.includes('hawala') && (p.hawalaId || p.taskId)) await (m as any).deliverHawalaByUser?.(p.hawalaId || p.taskId);
+                                      showToast?.('✅ تحویل شد');
+                                      refresh();
+                                    } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+                                  }}
+                                  style={{ backgroundColor: '#7c3aed', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8 }}
+                                >
+                                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>📦 تحویل</Text>
+                                </TouchableOpacity>
+                              )
+                            ) : null}
+                            {hasDeal && !isDone && !isInfo ? (
+                              <TouchableOpacity
+                                onPress={async () => {
+                                  if (typeof window !== 'undefined' && window.confirm && !window.confirm('لغو شود؟')) return;
+                                  try {
+                                    const m = await import('./lib.network');
+                                    if (t.includes('direct') && p.hawalaId) await (m as any).cancelDirectHawala?.(p.hawalaId);
+                                    else if (t.includes('hawala') && (p.hawalaId || p.taskId)) await (m as any).cancelHawala?.(p.hawalaId || p.taskId);
+                                    else if (t.includes('fx') && p.offerId) await (m as any).cancelFXOffer?.(p.offerId);
+                                    showToast?.('🗑 لغو شد');
+                                    setNotifList((prev: any[]) => prev.filter((x: any) => x.id !== n.id));
+                                  } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+                                }}
+                                style={{ backgroundColor: '#dc2626', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8 }}
+                              >
+                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>❌ لغو</Text>
+                              </TouchableOpacity>
+                            ) : null}
+                          </View>
+                        );
+                      })()}
                 </View>
               );
             })}
@@ -1457,11 +1905,29 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             </View>
             <Text style={s.lbl}>توضیحات</Text>
             <TextInput style={[s.inp, { minHeight: 50 }]} value={hawalaForm.note} onChangeText={v => setHawalaForm({ ...hawalaForm, note: v })} multiline placeholderTextColor="#94a3b8" />
-            <View style={s.rowBtns}>
+            <Text style={[s.lbl, { color: '#f59e0b', marginTop: 14, fontWeight: 'bold' }]}>👤 اطلاعات فرستنده</Text>
+                <TextInput value={hawalaForm.sender_name || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_name: v })} placeholder="نام فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput value={hawalaForm.sender_phone || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_phone: v })} placeholder="تلفن فرستنده" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="phone-pad" />
+                <TextInput value={hawalaForm.sender_city || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_city: v })} placeholder="شهر فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput value={hawalaForm.sender_address || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_address: v })} placeholder="آدرس فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+
+                {/* ═══ اطلاعات ذی‌نفع تکمیلی (جدید) ═══ */}
+                <Text style={[s.lbl, { color: '#f59e0b', marginTop: 14, fontWeight: 'bold' }]}>👤 اطلاعات ذی‌نفع تکمیلی</Text>
+                <TextInput value={hawalaForm.beneficiary_city || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_city: v })} placeholder="شهر ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput value={hawalaForm.beneficiary_bank || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_bank: v })} placeholder="نام بانک ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput value={hawalaForm.beneficiary_holder || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_holder: v })} placeholder="شماره حساب ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+
+                {/* ═══ مالی تکمیلی (جدید) ═══ */}
+                <Text style={[s.lbl, { color: '#f59e0b', marginTop: 14, fontWeight: 'bold' }]}>💰 مالی تکمیلی</Text>
+                <TextInput value={hawalaForm.to_amount || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, to_amount: v })} placeholder="مبلغ دریافتی" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
+
+                
+                <View style={s.rowBtns}>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawalaModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#f59e0b', flex: 2 }]} onPress={submitHawala} disabled={saving}>
+              {/* ═══ اطلاعات فرستنده (جدید) ═══ */}
+                <TouchableOpacity style={[s.btn, { backgroundColor: '#f59e0b', flex: 2 }]} onPress={submitHawala} disabled={saving}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>📤 ارسال</Text>}
               </TouchableOpacity>
             </View>
@@ -1613,11 +2079,31 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             <TextInput style={s.inp} value={directForm.commission} onChangeText={v => setDirectForm({ ...directForm, commission: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>توضیحات</Text>
             <TextInput style={[s.inp, { minHeight: 50 }]} value={directForm.note} onChangeText={v => setDirectForm({ ...directForm, note: v })} multiline placeholderTextColor="#94a3b8" />
-            <View style={s.rowBtns}>
+            <Text style={[s.lbl, { color: '#0891b2', marginTop: 14, fontWeight: 'bold' }]}>👤 اطلاعات فرستنده</Text>
+                <TextInput value={directForm.sender_name || ''} onChangeText={v => setDirectForm({ ...directForm, sender_name: v })} placeholder="نام فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput value={directForm.sender_phone || ''} onChangeText={v => setDirectForm({ ...directForm, sender_phone: v })} placeholder="تلفن فرستنده" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="phone-pad" />
+                <TextInput value={directForm.sender_city || ''} onChangeText={v => setDirectForm({ ...directForm, sender_city: v })} placeholder="شهر فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput value={directForm.sender_address || ''} onChangeText={v => setDirectForm({ ...directForm, sender_address: v })} placeholder="آدرس فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+
+                {/* ═══ اطلاعات ذی‌نفع تکمیلی (جدید) ═══ */}
+                <Text style={[s.lbl, { color: '#0891b2', marginTop: 14, fontWeight: 'bold' }]}>👤 اطلاعات ذی‌نفع تکمیلی</Text>
+                <TextInput value={directForm.beneficiary_city || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_city: v })} placeholder="شهر ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput value={directForm.beneficiary_bank || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_bank: v })} placeholder="نام بانک ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput value={directForm.beneficiary_holder || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_holder: v })} placeholder="شماره حساب ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+
+                {/* ═══ مالی تکمیلی (جدید) ═══ */}
+                <Text style={[s.lbl, { color: '#0891b2', marginTop: 14, fontWeight: 'bold' }]}>💰 مالی تکمیلی</Text>
+                <TextInput value={directForm.to_amount || ''} onChangeText={v => setDirectForm({ ...directForm, to_amount: v })} placeholder="مبلغ دریافتی" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
+                <TextInput value={directForm.rate || ''} onChangeText={v => setDirectForm({ ...directForm, rate: v })} placeholder="نرخ تبدیل" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
+                <TextInput value={directForm.commission_percent || ''} onChangeText={v => setDirectForm({ ...directForm, commission_percent: v })} placeholder="درصد کمیسیون" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
+
+                
+                <View style={s.rowBtns}>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setDirectModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#0891b2', flex: 2 }]} onPress={submitDirect} disabled={saving}>
+              {/* ═══ اطلاعات فرستنده (جدید) ═══ */}
+                <TouchableOpacity style={[s.btn, { backgroundColor: '#0891b2', flex: 2 }]} onPress={submitDirect} disabled={saving}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>🔒 ارسال</Text>}
               </TouchableOpacity>
             </View>
@@ -1987,6 +2473,7 @@ const s = StyleSheet.create({
   x: { color: '#fff', fontSize: 24 },
   lbl: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', marginTop: 10, marginBottom: 4, textAlign: 'right' },
   inp: { backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: '#334155', borderRadius: 8, padding: 10, fontSize: 13, textAlign: 'right' },
+  inpSm: { backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: '#334155', borderRadius: 6, paddingVertical: 6, paddingHorizontal: 8, fontSize: 11, textAlign: 'right', marginBottom: 4 },
   chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#334155', backgroundColor: '#1a2332', marginLeft: 4, marginTop: 4 },
   chipAct: { backgroundColor: '#059669', borderColor: '#059669' },
   chipTxt: { color: '#cbd5e1', fontSize: 11, fontWeight: 'bold' },

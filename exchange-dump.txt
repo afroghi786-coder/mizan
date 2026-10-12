@@ -1,0 +1,259 @@
+═══════════════════════════════════════════════════════════
+📊 تحلیل کامل تب صرافی (ExchangeScreen.tsx)
+═══════════════════════════════════════════════════════════
+
+📄 فایل: ExchangeScreen.tsx
+📏 تعداد خط: 2288
+📏 حجم: 140.0 KB
+
+═══════════════════════════════════════════════════════════
+📦 Import ها (کامپوننت‌ها و ماژول‌ها)
+═══════════════════════════════════════════════════════════
+  1. import LiveMarketScreen from './LiveMarketScreen'
+  2. import GroupsScreen from './GroupsScreen'
+  3. import { getBoxTxsByCounterparty, getBoxSummaryForPerson, backfillBoxTxs, getBoxesForPerson } from './lib.boxes'
+  4. import { applyTradeToBoxes } from './lib.box-auto'
+  5. import BoxesScreen from './BoxesScreen'
+  6. import { getAllCust, saveCust, deleteCust } from './lib.fx.cust'
+  7. import ExchangeInvoice from './ExchangeInvoice'
+  8. import CurrencyPicker, { CUR_INFO, curFlag, curLabel as curLabel2, ALL_CURS as ALL_CURS_NET } from './CurrencyPicker'
+  9. import { getAllTrades, saveTrade, deleteTrade } from './lib.fx.trade'
+  10. import { useState, useEffect, useCallback } from 'react'
+  11. import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native'
+  12. import {getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade, getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer, getFxPartners,
+  13. import { getHawalas, createHawala, updateHawala, deleteHawala, getBoxes, createBox, updateBox, deleteBox, getTransfers, createTransfer, deleteTransfer
+
+═══════════════════════════════════════════════════════════
+🎛️ State ها (useState)
+═══════════════════════════════════════════════════════════
+  1. const [type, setType] = useState<any>(getCalType());
+  2. const [g, setG] = useState<Date | null>(value ? parseDateAny(value) : (defaultToToday ? new Date() : null));
+  3. const [fields, setFields] = useState({ y: '', m: '', d: '', h: '00', n: '00', s: '00' });
+  4. const [showInvoice, setShowInvoice] = useState<any>(null);
+  5. const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger' | 
+  6. const [trades, setTrades] = useState<any[]>([]);
+  7. const [customers, setCustomers] = useState<any[]>([]);
+  8. const [partners, setPartners] = useState<any[]>([]);
+  9. const [fxCustomers, setFxCustomers] = useState<any[]>([]);
+  10. const [fxBuyers, setFxBuyers] = useState<any[]>([]);
+  11. const [load, setLoad] = useState(true);
+  12. const [hawalas, setHawalas] = useState<any[]>([]);
+  13. const [boxes, setBoxes] = useState<any[]>([]);
+  14. const [transfers, setTransfers] = useState<any[]>([]);
+  15. const [checks, setChecks] = useState<any[]>([]);
+  16. const [hawModal, setHawModal] = useState(false);
+  17. const [hawCurSearch, setHawCurSearch] = useState('');
+  18. const [hawForm, setHawForm] = useState<any>({ direction: 'send', // ① صراف فرستنده (از خریداران) sender_exchange_code: '
+  19. const [hawCurFrom, setHawCurFrom] = useState(false);
+  20. const [hawCurTo, setHawCurTo] = useState(false);
+  21. const [hawPick, setHawPick] = useState<'sender_ex' | 'executor' | null>(null);
+  22. const [hawSenderSearch, setHawSenderSearch] = useState('');
+  23. const [hawSenderStatus, setHawSenderStatus] = useState('');
+  24. const [hawBenStatus, setHawBenStatus] = useState('');
+  25. const [hawEditId, setHawEditId] = useState<string | null>(null);
+  26. const [boxModal, setBoxModal] = useState(false);
+  27. const [boxForm, setBoxForm] = useState<any>({ name: '', currency: 'USD', partner_code: '', opening: '0' });
+  28. const [boxEditId, setBoxEditId] = useState<string | null>(null);
+  29. const [trModal, setTrModal] = useState(false);
+  30. const [trForm, setTrForm] = useState<any>({ from_box: '', to_box: '', amount: '', rate: '1', date: toStorageDateFull(new
+  31. const [ckModal, setCkModal] = useState(false);
+  32. const [ckCurSearch, setCkCurSearch] = useState('');
+  33. const [ckForm, setCkForm] = useState<any>({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', pa
+  34. const [ckEditId, setCkEditId] = useState<string | null>(null);
+  35. const [stmtSearch, setStmtSearch] = useState('');
+  36. const [stmtCustomer, setStmtCustomer] = useState<any>(null);
+  37. const [stmtData, setStmtData] = useState<any>(null);
+  38. const [now, setNow] = useState(new Date());
+  39. const [editId, setEditId] = useState<string | null>(null);
+  40. const [fInvoice, setFInvoice] = useState('');
+  41. const [fType, setFType] = useState<'buy' | 'sell'>('buy');
+  42. const [fPartner, setFPartner] = useState('');
+  43. const [fPhone, setFPhone] = useState('');
+  44. const [fCustName, setFCustName] = useState('');
+  45. const [fCustCode, setFCustCode] = useState('');
+  46. const [fBank, setFBank] = useState('');
+  47. const [fHolder, setFHolder] = useState('');
+  48. const [fFrom, setFFrom] = useState('AFN');
+  49. const [fTo, setFTo] = useState('USD');
+  50. const [fFromQty, setFFromQty] = useState('');
+  51. const [fToQty, setFToQty] = useState('');
+  52. const [fRate, setFRate] = useState('');
+  53. const [fDesc, setFDesc] = useState('');
+  54. const [fDate, setFDate] = useState(toStorageDateFull(new Date()));
+  55. const [fBuyerPhone, setFBuyerPhone] = useState('');
+  56. const [fBuyerName, setFBuyerName] = useState('');
+  57. const [fBuyerBank, setFBuyerBank] = useState('');
+  58. const [fBuyerAccount, setFBuyerAccount] = useState('');
+  59. const [fBuyerHolder, setFBuyerHolder] = useState('');
+  60. const [fBuyerAddress, setFBuyerAddress] = useState('');
+  61. const [fBuyerStatus, setFBuyerStatus] = useState('');
+  62. const [fCustBank, setFCustBank] = useState('');
+  63. const [fCustAccount, setFCustAccount] = useState('');
+  64. const [fCustHolder, setFCustHolder] = useState('');
+  65. const [fCustAddress, setFCustAddress] = useState('');
+  66. const [fCustStatus, setFCustStatus] = useState('');
+  67. const [showFromCur, setShowFromCur] = useState(false);
+  68. const [curSearch, setCurSearch] = useState('');
+  69. const [showToCur, setShowToCur] = useState(false);
+  70. const [showPartnerPick, setShowPartnerPick] = useState(false);
+  71. const [showOwnerPick, setShowOwnerPick] = useState(false);
+  72. const [custModal, setCustModal] = useState(false);
+  73. const [partnerModal, setPartnerModal] = useState(false);
+  74. const [custForm, setCustForm] = useState<any>({ name: '', phone: '', bank: '', holder_name: '', holder_code: '', notes: 
+  75. const [partnerForm, setPartnerForm] = useState<any>({ name: '', phone: '', notes: '' });
+  76. const [custEditId, setCustEditId] = useState<string | null>(null);
+  77. const [partnerEditId, setPartnerEditId] = useState<string | null>(null);
+  78. const [data, setData] = useState<any[]>([]);
+  79. const [modal, setModal] = useState(false);
+  80. const [editId, setEditId] = useState<string | null>(null);
+  81. const [form, setForm] = useState<any>({});
+  82. const [q, setQ] = useState('');
+  83. const [saving, setSaving] = useState(false);
+
+═══════════════════════════════════════════════════════════
+⚙️ توابع (const/function)
+═══════════════════════════════════════════════════════════
+  1. const MAIN_CURS =
+  2. const fmt =
+  3. const parse =
+  4. const pad2 =
+  5. function genInvoiceNumber(
+  6. const d =
+  7. const ds =
+  8. const m =
+  9. const n =
+  10. function DateField(
+  11. const h =
+  12. const apply =
+  13. const y =
+  14. const r =
+  15. const F =
+  16. const next =
+  17. function ExchangeScreen(
+  18. const i =
+  19. const reload =
+  20. const allCust =
+  21. const dash =
+  22. const fq =
+  23. const tq =
+  24. const pf =
+  25. const lookupCustomer =
+  26. const p =
+  27. const found =
+  28. const pickPartner =
+  29. const onBuyerPhoneChange =
+  30. const recalc =
+  31. const calcProfit =
+  32. const avgBuyRate =
+  33. const buildAndShowInvoice =
+  34. const allTrades =
+  35. const bc =
+  36. const cc =
+  37. const buyerTrades =
+  38. const customerTrades =
+  39. const calc =
+  40. const submit =
+  41. const buyerPhone =
+  42. const custPhone =
+  43. const buyerName =
+  44. const profit =
+  45. const all =
+  46. const existing =
+  47. const resetForm =
+  48. const openNew =
+  49. const openEdit =
+  50. const submitCustomer =
+  51. const submitPartner =
+  52. const buildStatement =
+  53. const key =
+  54. const allPeople =
+  55. const seen =
+  56. const k =
+  57. const cust =
+  58. const myTrades =
+  59. const myHawalas =
+  60. const myChecks =
+  61. const f =
+  62. const totalProfit =
+  63. const totalHawalaFees =
+  64. const totalTradeFrom =
+  65. const totalTradeTo =
+  66. const boxGivenTotal =
+  67. const boxReceivedTotal =
+  68. const timeStr =
+  69. const q =
+  70. const col =
+  71. const profitCol =
+  72. const stCol =
+  73. const stTxt =
+  74. const b =
+  75. const dec =
+  76. const bal =
+  77. const cur =
+  78. const entries =
+  79. const box =
+  80. const val =
+  81. const amt =
+  82. const rate =
+  83. const pct =
+  84. const payload =
+  85. function PartyList(
+  86. const isBuyer =
+  87. const title =
+  88. const color =
+  89. const prefix =
+  90. const loadData =
+  91. const phone =
+  92. const remove =
+  93. const filtered =
+  94. const ptStyles =
+  95. const s =
+  96. const hawSec =
+
+═══════════════════════════════════════════════════════════
+📑 تب‌ها / زیرتب‌ها
+═══════════════════════════════════════════════════════════
+  ⚠️ هیچ تب پیدا نشد با الگوهای معمول
+
+═══════════════════════════════════════════════════════════
+🇮🇷 کلمات کلیدی فارسی
+═══════════════════════════════════════════════════════════
+  خرید: 38 بار
+  ارز: 34 بار
+  صندوق: 31 بار
+  حواله: 11 بار
+  حواله‌جات: 4 بار
+  فروش: 4 بار
+  بازار: 2 بار
+  بازار زنده: 2 بار
+  صرافی: 2 بار
+
+═══════════════════════════════════════════════════════════
+🧩 کامپوننت‌های داخلی
+═══════════════════════════════════════════════════════════
+  1. const MAIN_CURS =
+  2. function DateField(
+  3. function ExchangeScreen(
+  4. function PartyList(
+
+═══════════════════════════════════════════════════════════
+🔍 خطوط کلیدی (شماره خط + متن)
+═══════════════════════════════════════════════════════════
+  خط 556: // ═══ حواله‌جات (ذی‌نفع یا شریک) ═══
+  خط 687: { k: 'hawalas', l: '💸 حواله‌جات' },
+  خط 887: {/* ═══════ حواله‌جات ═══════ */}
+  خط 891: <Text style={s.secT}>💸 حواله‌جات ({hawalas.length})</Text>
+
+═══════════════════════════════════════════════════════════
+📂 فایل‌های مرتبط در پروژه
+═══════════════════════════════════════════════════════════
+  ✅ ExchangeScreen.tsx (2288 خط، 146.6 KB)
+  ✅ LiveMarketScreen.tsx (2227 خط، 130.0 KB)
+  ✅ PublicMarketScreen.tsx (786 خط، 39.3 KB)
+  ✅ ExchangeBell.tsx (325 خط، 16.5 KB)
+  ✅ lib.network.ts (860 خط، 43.2 KB)
+  ✅ App.tsx (3876 خط، 232.0 KB)
+
+═══════════════════════════════════════════════════════════
+💾 گزارش کامل در فایل: exchange-report.json
+═══════════════════════════════════════════════════════════

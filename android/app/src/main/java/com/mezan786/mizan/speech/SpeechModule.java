@@ -2,6 +2,8 @@ package com.mezan786.mizan.speech;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -12,7 +14,6 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import java.util.ArrayList;
@@ -20,29 +21,20 @@ import java.util.Locale;
 
 public class SpeechModule extends ReactContextBaseJavaModule implements LifecycleEventListener {
     private final ReactApplicationContext reactContext;
-    private SpeechRecognizer speechRecognizer;
-    private TextToSpeech tts;
+    private SpeechRecognizer speechRecognizer = null;
+    private TextToSpeech tts = null;
     private boolean ttsReady = false;
+    private boolean ttsInitFailed = false;
     private boolean isListening = false;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public SpeechModule(ReactApplicationContext context) {
         super(context);
         this.reactContext = context;
-        context.addLifecycleEventListener(this);
-        // Init TTS
-        tts = new TextToSpeech(context, status -> {
-            if (status == TextToSpeech.SUCCESS) {
-                try {
-                    int faResult = tts.setLanguage(new Locale("fa", "IR"));
-                    if (faResult == TextToSpeech.LANG_MISSING_DATA || faResult == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        tts.setLanguage(Locale.US);
-                    }
-                    ttsReady = true;
-                } catch (Exception e) {
-                    ttsReady = false;
-                }
-            }
-        });
+        try {
+            context.addLifecycleEventListener(this);
+        } catch (Exception ignored) {}
+        // TTS رو lazy می‌کنیم — نه در constructor
     }
 
     @Override
@@ -50,91 +42,152 @@ public class SpeechModule extends ReactContextBaseJavaModule implements Lifecycl
         return "Speech";
     }
 
+    // ─── Lazy init برای TTS
+    private void initTTSIfNeeded() {
+        if (tts != null || ttsInitFailed) return;
+        try {
+            tts = new TextToSpeech(reactContext.getApplicationContext(), status -> {
+                try {
+                    if (status == TextToSpeech.SUCCESS && tts != null) {
+                        int faResult = tts.setLanguage(new Locale("fa", "IR"));
+                        if (faResult == TextToSpeech.LANG_MISSING_DATA || faResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+                            // فارسی نیست، انگلیسی
+                            try {
+                                tts.setLanguage(Locale.US);
+                            } catch (Exception ignored) {}
+                        }
+                        ttsReady = true;
+                    } else {
+                        ttsInitFailed = true;
+                    }
+                } catch (Exception e) {
+                    ttsInitFailed = true;
+                }
+            });
+        } catch (Exception e) {
+            ttsInitFailed = true;
+            tts = null;
+        }
+    }
+
+    // ─── Event emitter ایمن
     private void sendEvent(String name, WritableMap params) {
         try {
-            reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                .emit(name, params);
+            reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(name, params);
         } catch (Exception ignored) {}
     }
 
+    // ═══════════════════════════════════════════
+    // STT — Speech to Text
+    // ═══════════════════════════════════════════
     @ReactMethod
     public void startListening(String lang, Promise promise) {
-        if (!SpeechRecognizer.isRecognitionAvailable(reactContext)) {
-            promise.reject("NOT_AVAILABLE", "Speech recognition not available");
-            return;
-        }
-        if (isListening) {
-            promise.resolve(true);
-            return;
-        }
         try {
-            if (speechRecognizer != null) {
-                speechRecognizer.destroy();
+            if (!SpeechRecognizer.isRecognitionAvailable(reactContext)) {
+                promise.reject("NOT_AVAILABLE", "تشخیص گفتار روی این گوشی نیست");
+                return;
             }
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(reactContext);
-            final Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            String useLang = (lang != null && !lang.isEmpty()) ? lang : "fa-IR";
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, useLang);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, useLang);
-            intent.putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false);
-            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
-            intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, reactContext.getPackageName());
 
-            speechRecognizer.setRecognitionListener(new RecognitionListener() {
-                @Override public void onReadyForSpeech(Bundle params) {
-                    isListening = true;
-                    WritableMap m = Arguments.createMap();
-                    m.putString("status", "ready");
-                    sendEvent("onSpeechReady", m);
+            if (isListening && speechRecognizer != null) {
+                promise.resolve(true);
+                return;
+            }
+
+            // پاکسازی قبلی
+            try {
+                if (speechRecognizer != null) {
+                    speechRecognizer.destroy();
+                    speechRecognizer = null;
                 }
-                @Override public void onBeginningOfSpeech() {
+            } catch (Exception ignored) {}
+
+            // ساخت جدید — در main thread
+            final String useLang = (lang != null && !lang.isEmpty()) ? lang : "fa-IR";
+            mainHandler.post(() -> {
+                try {
+                    speechRecognizer = SpeechRecognizer.createSpeechRecognizer(reactContext);
+                    if (speechRecognizer == null) {
+                        WritableMap m = Arguments.createMap();
+                        m.putString("message", "سرویس تشخیص گفتار در دسترس نیست");
+                        sendEvent("onSpeechError", m);
+                        return;
+                    }
+
+                    final Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, useLang);
+                    intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, useLang);
+                    intent.putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, false);
+                    intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+                    intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+                    intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, reactContext.getPackageName());
+
+                    speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                        @Override public void onReadyForSpeech(Bundle params) {
+                            isListening = true;
+                            WritableMap m = Arguments.createMap();
+                            m.putString("status", "ready");
+                            sendEvent("onSpeechReady", m);
+                        }
+                        @Override public void onBeginningOfSpeech() {
+                            WritableMap m = Arguments.createMap();
+                            m.putString("status", "speaking");
+                            sendEvent("onSpeechStart", m);
+                        }
+                        @Override public void onRmsChanged(float rmsdB) {}
+                        @Override public void onBufferReceived(byte[] buffer) {}
+                        @Override public void onEndOfSpeech() {
+                            WritableMap m = Arguments.createMap();
+                            m.putString("status", "processing");
+                            sendEvent("onSpeechEnd", m);
+                        }
+                        @Override public void onError(int error) {
+                            isListening = false;
+                            WritableMap m = Arguments.createMap();
+                            m.putInt("error", error);
+                            m.putString("message", errorToString(error));
+                            sendEvent("onSpeechError", m);
+                        }
+                        @Override public void onResults(Bundle results) {
+                            isListening = false;
+                            try {
+                                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                                WritableMap m = Arguments.createMap();
+                                if (matches != null && !matches.isEmpty()) {
+                                    m.putString("text", matches.get(0));
+                                } else {
+                                    m.putString("text", "");
+                                }
+                                sendEvent("onSpeechResult", m);
+                            } catch (Exception e) {
+                                WritableMap m = Arguments.createMap();
+                                m.putString("text", "");
+                                sendEvent("onSpeechResult", m);
+                            }
+                        }
+                        @Override public void onPartialResults(Bundle partialResults) {
+                            try {
+                                ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                                if (matches != null && !matches.isEmpty()) {
+                                    WritableMap m = Arguments.createMap();
+                                    m.putString("text", matches.get(0));
+                                    sendEvent("onSpeechPartial", m);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        @Override public void onEvent(int eventType, Bundle params) {}
+                    });
+                    speechRecognizer.startListening(intent);
+                } catch (Exception e) {
                     WritableMap m = Arguments.createMap();
-                    m.putString("status", "speaking");
-                    sendEvent("onSpeechStart", m);
-                }
-                @Override public void onRmsChanged(float rmsdB) {}
-                @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onEndOfSpeech() {
-                    WritableMap m = Arguments.createMap();
-                    m.putString("status", "processing");
-                    sendEvent("onSpeechEnd", m);
-                }
-                @Override public void onError(int error) {
-                    isListening = false;
-                    WritableMap m = Arguments.createMap();
-                    m.putInt("error", error);
-                    m.putString("message", errorToString(error));
+                    m.putString("message", "خطا: " + (e.getMessage() != null ? e.getMessage() : "ناشناخته"));
                     sendEvent("onSpeechError", m);
                 }
-                @Override public void onResults(Bundle results) {
-                    isListening = false;
-                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    WritableArray arr = Arguments.createArray();
-                    if (matches != null) {
-                        for (String s : matches) arr.pushString(s);
-                    }
-                    WritableMap m = Arguments.createMap();
-                    m.putArray("results", arr);
-                    if (matches != null && !matches.isEmpty()) m.putString("text", matches.get(0));
-                    else m.putString("text", "");
-                    sendEvent("onSpeechResult", m);
-                }
-                @Override public void onPartialResults(Bundle partialResults) {
-                    ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    if (matches != null && !matches.isEmpty()) {
-                        WritableMap m = Arguments.createMap();
-                        m.putString("text", matches.get(0));
-                        sendEvent("onSpeechPartial", m);
-                    }
-                }
-                @Override public void onEvent(int eventType, Bundle params) {}
             });
-            speechRecognizer.startListening(intent);
+
             promise.resolve(true);
         } catch (Exception e) {
-            promise.reject("START_ERROR", e.getMessage());
+            try { promise.reject("START_ERROR", e.getMessage()); } catch (Exception ignored) {}
         }
     }
 
@@ -147,7 +200,7 @@ public class SpeechModule extends ReactContextBaseJavaModule implements Lifecycl
             isListening = false;
             promise.resolve(true);
         } catch (Exception e) {
-            promise.reject("STOP_ERROR", e.getMessage());
+            try { promise.resolve(true); } catch (Exception ignored) {}
         }
     }
 
@@ -160,21 +213,41 @@ public class SpeechModule extends ReactContextBaseJavaModule implements Lifecycl
             isListening = false;
             promise.resolve(true);
         } catch (Exception e) {
-            promise.reject("CANCEL_ERROR", e.getMessage());
+            try { promise.resolve(true); } catch (Exception ignored) {}
         }
     }
 
+    // ═══════════════════════════════════════════
+    // TTS — Text to Speech
+    // ═══════════════════════════════════════════
     @ReactMethod
     public void speak(String text, String lang, Promise promise) {
         try {
+            if (text == null || text.isEmpty()) {
+                promise.resolve(false);
+                return;
+            }
+            initTTSIfNeeded();
+            if (tts == null || ttsInitFailed) {
+                promise.resolve(false);
+                return;
+            }
             if (!ttsReady) {
-                promise.reject("TTS_NOT_READY", "TTS not ready");
+                // یه بار صبر کن
+                mainHandler.postDelayed(() -> {
+                    try {
+                        if (tts != null && ttsReady) {
+                            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "mizan_" + System.currentTimeMillis());
+                        }
+                    } catch (Exception ignored) {}
+                }, 500);
+                promise.resolve(true);
                 return;
             }
             tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "mizan_" + System.currentTimeMillis());
             promise.resolve(true);
         } catch (Exception e) {
-            promise.reject("TTS_ERROR", e.getMessage());
+            try { promise.resolve(false); } catch (Exception ignored) {}
         }
     }
 
@@ -184,17 +257,16 @@ public class SpeechModule extends ReactContextBaseJavaModule implements Lifecycl
             if (tts != null) tts.stop();
             promise.resolve(true);
         } catch (Exception e) {
-            promise.reject("STOP_TTS_ERROR", e.getMessage());
+            try { promise.resolve(true); } catch (Exception ignored) {}
         }
     }
 
     @ReactMethod
     public void isAvailable(Promise promise) {
         try {
-            boolean avail = SpeechRecognizer.isRecognitionAvailable(reactContext);
-            promise.resolve(avail);
+            promise.resolve(SpeechRecognizer.isRecognitionAvailable(reactContext));
         } catch (Exception e) {
-            promise.resolve(false);
+            try { promise.resolve(false); } catch (Exception ignored) {}
         }
     }
 
@@ -208,30 +280,36 @@ public class SpeechModule extends ReactContextBaseJavaModule implements Lifecycl
         switch (error) {
             case SpeechRecognizer.ERROR_AUDIO: return "خطای صدا";
             case SpeechRecognizer.ERROR_CLIENT: return "خطای کلاینت";
-            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS: return "مجوز صدا ندارید";
-            case SpeechRecognizer.ERROR_NETWORK: return "خطای شبکه";
-            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT: return "شبکه timeout شد";
-            case SpeechRecognizer.ERROR_NO_MATCH: return "چیزی نفهمیدم";
-            case SpeechRecognizer.ERROR_RECOGNIZER_BUSY: return "موتور مشغول است";
+            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS: return "مجوز میکروفون نیست";
+            case SpeechRecognizer.ERROR_NETWORK: return "نیاز به اینترنت";
+            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT: return "شبکه کند";
+            case SpeechRecognizer.ERROR_NO_MATCH: return "نفهمیدم، دوباره بگو";
+            case SpeechRecognizer.ERROR_RECOGNIZER_BUSY: return "در حال کار...";
             case SpeechRecognizer.ERROR_SERVER: return "خطای سرور";
             case SpeechRecognizer.ERROR_SPEECH_TIMEOUT: return "چیزی نگفتی";
-            default: return "خطای ناشناخته: " + error;
+            default: return "خطای " + error;
         }
     }
 
     @Override public void onHostResume() {}
     @Override public void onHostPause() {
-        if (speechRecognizer != null) {
-            try { speechRecognizer.stopListening(); } catch (Exception ignored) {}
-        }
+        try {
+            if (speechRecognizer != null) speechRecognizer.stopListening();
+        } catch (Exception ignored) {}
     }
     @Override public void onHostDestroy() {
-        if (speechRecognizer != null) {
-            try { speechRecognizer.destroy(); } catch (Exception ignored) {}
-            speechRecognizer = null;
-        }
-        if (tts != null) {
-            try { tts.shutdown(); } catch (Exception ignored) {}
-        }
+        try {
+            if (speechRecognizer != null) {
+                speechRecognizer.destroy();
+                speechRecognizer = null;
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (tts != null) {
+                tts.stop();
+                tts.shutdown();
+                tts = null;
+            }
+        } catch (Exception ignored) {}
     }
 }

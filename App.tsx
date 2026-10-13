@@ -27,6 +27,8 @@ import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system';
 import SmsMatchScreen from './SmsMatchScreen';
 import ManualEntryScreen from './ManualEntryScreen';
+import LocalBotScreen from './LocalBotScreen';
+import LearningScreen from './LearningScreen';
 
 import {
   supabase, fmt, parseNum, toFaNum, pad2,
@@ -575,6 +577,8 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     { key: 'inventory', icon: '📦', label: term('inventory'), color: '#0f5132' },
     { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
     { key: 'publicMarket', icon: '🏛️', label: 'بازار', color: '#0891b2' },
+    { key: 'aiAssistant', icon: '🤖', label: 'ربات', color: '#10b981' },
+    { key: 'botLearning', icon: '🎓', label: 'آموزش', color: '#f59e0b' },
     { key: 'manualEntry', icon: '🤖', label: 'دستیار', color: '#7c3aed' },
     { key: 'bankMatch', icon: '🏦', label: 'بانک', color: '#f59e0b' },
     { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
@@ -629,7 +633,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
           </View>
         </View>
       </View>
-      {tab !== 'exchange' && tab !== 'publicMarket' && (
+      {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
         {tabs.map((t) => (
                    <TouchableOpacity key={t.key} onPress={() => requestTab(t.key)} activeOpacity={0.7} style={[s.tab, tab === t.key && { backgroundColor: C.isSimple ? '#64748b' : t.color, borderColor: '#d4af37' }]}>
@@ -649,6 +653,8 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
       {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
+      {tab === 'aiAssistant' && <LocalBotScreen showToast={showToast} onExit={() => setTab('dashboard')} onOpenLearning={() => setTab('botLearning')} />}
+      {tab === 'botLearning' && <LearningScreen showToast={showToast} />}
       {tab === 'manualEntry' && <ManualEntryScreen showToast={showToast} />}
       {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}

@@ -1,3 +1,4 @@
+import React from 'react';
 import { toStorageDateFull } from './lib.offline';
 import { DateField } from './App';
 // BoxesScreen.tsx — صندوق استاندارد با کاردکس و تراکنش
@@ -55,8 +56,22 @@ const CUR: Record<string, { name: string; flag: string; dec: number }> = {
 };
 const fmt = (n: any, d = 2) => (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 });
 
-export default function BoxesScreen({ showToast, buyers }: any) {
+export default function BoxesScreen({ showToast, buyers, filterName }: any) {
+  const [deepFilter, setDeepFilter] = React.useState('');
   const [boxes, setBoxes] = useState<any[]>([]);
+
+  // 🔍 فیلتر صندوق‌ها بر اساس deepFilter
+  const filteredBoxes = React.useMemo(() => {
+    if (!deepFilter || !deepFilter.trim()) return boxes;
+    const q = String(deepFilter).toLowerCase().trim();
+    return (boxes || []).filter((b: any) =>
+      String(b.name || '').toLowerCase().includes(q) ||
+      String(b.code || '').toLowerCase().includes(q) ||
+      String(b.owner_code || '').toLowerCase().includes(q) ||
+      String(b.owner_name || '').toLowerCase().includes(q)
+    );
+  }, [boxes, deepFilter]);
+
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [selectedBox, setSelectedBox] = useState<any>(null);
@@ -171,6 +186,22 @@ export default function BoxesScreen({ showToast, buyers }: any) {
     const col = bal > 0 ? '#00ff88' : bal < 0 ? '#ff3355' : '#94a3b8';
     return (
       <View style={{ flex: 1 }}>
+
+        {/* 🔍 جستجوی صندوق */}
+        <View style={{ flexDirection: 'row-reverse', padding: 10, gap: 8, alignItems: 'center' }}>
+          <TextInput
+            style={{ flex: 1, backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: deepFilter ? '#f59e0b' : '#334155', borderRadius: 8, padding: 10, textAlign: 'right', fontSize: 13 }}
+            value={deepFilter}
+            onChangeText={setDeepFilter}
+            placeholder="🔍 جستجوی صندوق (اسم / کد)"
+            placeholderTextColor="#64748b"
+          />
+          {deepFilter ? (
+            <TouchableOpacity onPress={() => setDeepFilter('')} style={{ backgroundColor: '#dc2626', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8 }}>
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>✕</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
         <View style={{ backgroundColor: '#065f46', padding: 12, borderRadius: 10 }}>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
@@ -306,7 +337,7 @@ export default function BoxesScreen({ showToast, buyers }: any) {
                 <Text key={i} style={[s.th, { width: [36,100,170,100,130,160,200][i] }]}>{h}</Text>
               ))}
             </View>
-            {boxes.map((b: any, i: number) => {
+            {filteredBoxes.map((b: any, i: number) => {
               const id = b.id || b.local_id;
               const bal = balances[id] || 0;
               const col = bal > 0 ? '#00ff88' : bal < 0 ? '#ff3355' : '#94a3b8';
@@ -334,7 +365,6 @@ export default function BoxesScreen({ showToast, buyers }: any) {
           </View>
         </ScrollView>
       )}
-
 
       {/* BOX_CUR_MODAL */}
       <Modal visible={showBoxCur} transparent animationType="fade" onRequestClose={() => setShowBoxCur(false)}>
@@ -439,7 +469,7 @@ export default function BoxesScreen({ showToast, buyers }: any) {
           <ScrollView style={{ padding: 14, maxHeight: 500 }}>
             <Text style={s.lbl}>از صندوق *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
-              {boxes.map((b: any) => (
+              {filteredBoxes.map((b: any) => (
                 <TouchableOpacity key={b.code} onPress={() => setTransferForm((f: any) => ({ ...f, from_box_code: b.code }))} style={[s.curPick, transferForm.from_box_code === b.code && s.curPickActive, { flexDirection: 'column', alignItems: 'center', paddingVertical: 8 }]}>
                   <Text style={[s.curPickTxt, transferForm.from_box_code === b.code && { color: '#fff' }]}>{b.name}</Text>
                   {b.owner_code ? <Text style={{ fontSize: 9, color: transferForm.from_box_code === b.code ? '#a7f3d0' : '#94a3b8', marginTop: 3 }}>🆔 {b.owner_code}</Text> : null}
@@ -449,7 +479,7 @@ export default function BoxesScreen({ showToast, buyers }: any) {
             </ScrollView>
             <Text style={s.lbl}>به صندوق *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
-              {boxes.map((b: any) => (
+              {filteredBoxes.map((b: any) => (
                 <TouchableOpacity key={b.code} onPress={() => setTransferForm((f: any) => ({ ...f, to_box_code: b.code }))} style={[s.curPick, transferForm.to_box_code === b.code && s.curPickActive, { flexDirection: 'column', alignItems: 'center', paddingVertical: 8 }]}>
                   <Text style={[s.curPickTxt, transferForm.to_box_code === b.code && { color: '#fff' }]}>{b.name}</Text>
                   {b.owner_code ? <Text style={{ fontSize: 9, color: transferForm.to_box_code === b.code ? '#a7f3d0' : '#94a3b8', marginTop: 3 }}>🆔 {b.owner_code}</Text> : null}

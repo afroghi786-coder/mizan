@@ -26,6 +26,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system';
 import SmsMatchScreen from './SmsMatchScreen';
+import ManualEntryScreen from './ManualEntryScreen';
 
 import {
   supabase, fmt, parseNum, toFaNum, pad2,
@@ -574,6 +575,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     { key: 'inventory', icon: '📦', label: term('inventory'), color: '#0f5132' },
     { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
     { key: 'publicMarket', icon: '🏛️', label: 'بازار', color: '#0891b2' },
+    { key: 'manualEntry', icon: '🤖', label: 'دستیار', color: '#7c3aed' },
     { key: 'bankMatch', icon: '🏦', label: 'بانک', color: '#f59e0b' },
     { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
     { key: 'employees', icon: '💼', label: t('کارمندان'), color: '#7c3aed' },
@@ -647,6 +649,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
       {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
+      {tab === 'manualEntry' && <ManualEntryScreen showToast={showToast} />}
       {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}

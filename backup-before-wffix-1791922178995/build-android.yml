@@ -1,0 +1,50 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0 ndk;27.1.12297006'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Revert gradle URL to official
+        run: |
+          sed -i 's|mirrors.cloud.tencent.com/gradle/|services.gradle.org/distributions/|g' android/gradle/wrapper/gradle-wrapper.properties
+          sed -i 's|-all.zip|-bin.zip|g' android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mizan-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30

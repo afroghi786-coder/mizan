@@ -5,6 +5,7 @@ import {
   getSettings, saveSettings, getTransactions, processNewSms, matchTransactions,
   confirmMatch, rejectMatch, getStats, DEFAULT_SETTINGS,
 } from './lib.sms';
+import { SmsPattern, getPatterns, savePattern, deletePattern, resetPatterns, testPattern, BUILTIN_PATTERNS } from './lib.sms.patterns';
 
 export default function SmsMatchScreen({ showToast }: any) {
   const [settings, setSettings] = useState<any>(DEFAULT_SETTINGS);
@@ -13,12 +14,18 @@ export default function SmsMatchScreen({ showToast }: any) {
   const [scanning, setScanning] = useState(false);
   const [settingsModal, setSettingsModal] = useState(false);
   const [detailTx, setDetailTx] = useState<any>(null);
+  const [patternsModal, setPatternsModal] = useState(false);
+  const [patterns, setPatterns] = useState<any[]>([]);
+  const [editingPattern, setEditingPattern] = useState<any>(null);
+  const [testSms, setTestSms] = useState('');
+  const [testResult, setTestResult] = useState<any>(null);
 
   const load = useCallback(async () => {
     const s = await getSettings();
     setSettings(s);
     const list = await getTransactions();
     setTxs(list);
+    setPatterns(await getPatterns());
     setLoading(false);
   }, []);
 
@@ -113,6 +120,9 @@ export default function SmsMatchScreen({ showToast }: any) {
           <View style={s.actionsRow}>
             <TouchableOpacity style={[s.btn, { backgroundColor: '#0891b2' }]} onPress={scanNow} disabled={scanning}>
               {scanning ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>🔍 اسکن</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => setPatternsModal(true)}>
+              <Text style={s.btnTxt}>📋 الگوها</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b' }]} onPress={() => setSettingsModal(true)}>
               <Text style={s.btnTxt}>⚙️ تنظیمات</Text>
@@ -276,7 +286,182 @@ export default function SmsMatchScreen({ showToast }: any) {
               </TouchableOpacity>
             </ScrollView>
           </View>
+        
+      {/* Patterns Modal */}
+      <Modal visible={patternsModal} transparent animationType="slide" onRequestClose={() => setPatternsModal(false)}>
+        <View style={s.mBg}>
+          <View style={s.mBox}>
+            <View style={s.mHead}>
+              <Text style={s.mTitle}>📋 الگوهای پیامک</Text>
+              <TouchableOpacity onPress={() => setPatternsModal(false)}><Text style={s.x}>×</Text></TouchableOpacity>
+            </View>
+            <ScrollView style={{ padding: 12 }}>
+              <Text style={s.mLbl}>✅ الگوهای فعال (روی هر کدام بزنید تا غیرفعال شود):</Text>
+              {patterns.map((p: any) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[s.candBox, { borderColor: p.enabled ? '#059669' : '#475569', opacity: p.enabled ? 1 : 0.5 }]}
+                  onPress={async () => {
+                    const updated = { ...p, enabled: !p.enabled };
+                    await savePattern(updated);
+                    setPatterns(await getPatterns());
+                  }}
+                >
+                  <Text style={s.candName}>{p.name}</Text>
+                  <Text style={s.candInv}>
+                    {p.enabled ? '🟢 فعال' : '⚪ غیرفعال'} — {p.bank === 'GEN' ? '🌍 عمومی' : p.bank}
+                  </Text>
+                  <View style={{ flexDirection: 'row-reverse', marginTop: 6, gap: 6 }}>
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#0891b2', padding: 6, borderRadius: 6 }}
+                      onPress={() => { setEditingPattern({ ...p }); setTestSms(''); setTestResult(null); }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 11 }}>✏️ ویرایش</Text>
+                    </TouchableOpacity>
+                    {!p.isBuiltIn && (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#dc2626', padding: 6, borderRadius: 6 }}
+                        onPress={async () => {
+                          await deletePattern(p.id);
+                          setPatterns(await getPatterns());
+                          showToast?.('🗑 حذف شد');
+                        }}
+                      >
+                        <Text style={{ color: '#fff', fontSize: 11 }}>🗑 حذف</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]}
+                onPress={() => {
+                  setEditingPattern({
+                    id: 'custom_' + Date.now(),
+                    name: '🏦 الگوی جدید من',
+                    bank: 'CUSTOM',
+                    enabled: true,
+                    isBuiltIn: false,
+                    depositKeywords: ['واریز', 'افزایش', 'بستانکار'],
+                    withdrawKeywords: ['برداشت', 'کسر', 'بدهکار'],
+                  });
+                  setTestSms('');
+                  setTestResult(null);
+                }}
+              >
+                <Text style={s.btnTxt}>➕ افزودن الگوی جدید</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}
+                onPress={async () => {
+                  await resetPatterns();
+                  setPatterns(await getPatterns());
+                  showToast?.('🔄 به پیش‌فرض برگشت');
+                }}
+              >
+                <Text style={s.btnTxt}>🔄 بازگشت به پیش‌فرض</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
         </View>
+      </Modal>
+
+      {/* Edit Pattern Modal */}
+      <Modal visible={!!editingPattern} transparent animationType="slide" onRequestClose={() => setEditingPattern(null)}>
+        <View style={s.mBg}>
+          <View style={s.mBox}>
+            <View style={s.mHead}>
+              <Text style={s.mTitle}>✏️ ویرایش الگو</Text>
+              <TouchableOpacity onPress={() => setEditingPattern(null)}><Text style={s.x}>×</Text></TouchableOpacity>
+            </View>
+            <ScrollView style={{ padding: 12 }}>
+              <Text style={s.mLbl}>📝 نام الگو</Text>
+              <TextInput
+                style={s.inp}
+                value={editingPattern?.name || ''}
+                onChangeText={(v) => setEditingPattern({ ...editingPattern, name: v })}
+                placeholder="مثلاً: بانک ملی افغانستان"
+                placeholderTextColor="#64748b"
+              />
+
+              <Text style={s.mLbl}>💰 کلمات واریز (با کاما جدا کنید)</Text>
+              <TextInput
+                style={s.inp}
+                value={(editingPattern?.depositKeywords || []).join('، ')}
+                onChangeText={(v) => setEditingPattern({ ...editingPattern, depositKeywords: v.split(/[،,]/).map(x => x.trim()).filter(Boolean) })}
+                placeholder="واریز، افزایش، بستانکار"
+                placeholderTextColor="#64748b"
+              />
+
+              <Text style={s.mLbl}>💸 کلمات برداشت (با کاما جدا کنید)</Text>
+              <TextInput
+                style={s.inp}
+                value={(editingPattern?.withdrawKeywords || []).join('، ')}
+                onChangeText={(v) => setEditingPattern({ ...editingPattern, withdrawKeywords: v.split(/[،,]/).map(x => x.trim()).filter(Boolean) })}
+                placeholder="برداشت، کسر، بدهکار"
+                placeholderTextColor="#64748b"
+              />
+
+              <Text style={s.mLbl}>🧪 تست الگو — یک پیامک نمونه پیست کنید:</Text>
+              <TextInput
+                style={[s.inp, { minHeight: 70, textAlignVertical: 'top' }]}
+                value={testSms}
+                onChangeText={setTestSms}
+                placeholder="مبلغ ۵۰۰۰ افغانی از حساب شما برداشت شد"
+                placeholderTextColor="#64748b"
+                multiline
+              />
+
+              <TouchableOpacity
+                style={[s.btn, { backgroundColor: '#0891b2', marginTop: 8 }]}
+                onPress={() => {
+                  if (!editingPattern || !testSms) return;
+                  const r = testPattern(editingPattern, testSms);
+                  setTestResult(r);
+                }}
+              >
+                <Text style={s.btnTxt}>🔍 تست</Text>
+              </TouchableOpacity>
+
+              {testResult && (
+                <View style={[s.candBox, { borderColor: testResult.ok ? '#059669' : '#dc2626', marginTop: 8 }]}>
+                  <Text style={s.candName}>{testResult.ok ? '✅ موفق' : '❌ خطا'}</Text>
+                  {testResult.ok ? (
+                    <>
+                      <Text style={s.candAmt}>💰 مبلغ: {testResult.amount}</Text>
+                      <Text style={s.candInv}>📊 نوع: {testResult.type === 'deposit' ? 'واریز' : 'برداشت'}</Text>
+                    </>
+                  ) : (
+                    <Text style={s.candInv}>⚠️ {testResult.reason}</Text>
+                  )}
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[s.btn, { backgroundColor: '#059669', marginTop: 14 }]}
+                onPress={async () => {
+                  await savePattern(editingPattern);
+                  setPatterns(await getPatterns());
+                  setEditingPattern(null);
+                  showToast?.('✅ ذخیره شد');
+                }}
+              >
+                <Text style={s.btnTxt}>💾 ذخیره</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[s.btn, { backgroundColor: '#64748b', marginTop: 8 }]}
+                onPress={() => setEditingPattern(null)}
+              >
+                <Text style={s.btnTxt}>❌ لغو</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+    </View>
       </Modal>
     </View>
   );

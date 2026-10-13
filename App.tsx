@@ -25,7 +25,6 @@ import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import * as XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system';
-import SmsMatchScreen from './SmsMatchScreen';
 
 import {
   supabase, fmt, parseNum, toFaNum, pad2,
@@ -647,7 +646,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
       {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
-      {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
+      {tab === 'bankMatch' && <View style={{flex:1, backgroundColor:'#0a1628', justifyContent:'center', alignItems:'center'}}><Text style={{color:'#fff', fontSize:20}}>🧪 تست SMS</Text></View>}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}
       </View>

@@ -17,7 +17,14 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.mizan.app"
+      "package": "com.mezan786.mizan",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,7 +36,21 @@
     },
     "owner": "mezan786",
     "plugins": [
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "اجازه دسترسی به میکروفون برای دستیار صوتی",
+          "speechRecognitionPermission": "اجازه دسترسی به تشخیص گفتار برای دستیار صوتی"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#7c3aed"
+        }
+      ]
     ],
     "newArchEnabled": false
   }

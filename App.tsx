@@ -1,5 +1,7 @@
 import React from 'react';
 
+import * as Notifications from 'expo-notifications';
+
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
@@ -301,6 +303,17 @@ const dash = {
 export default function App() {
   const [fontsLoaded] = useFonts({ Orbitron_900Black, Orbitron_700Bold, ShareTechMono_400Regular });
   const [fontTimeout, setFontTimeout] = useState(false);
+
+    // 📢 درخواست مجوز نوتیفیکیشن
+    useEffect(() => {
+      (async () => {
+        try {
+          const { status } = await Notifications.requestPermissionsAsync();
+          if (status !== 'granted') console.log('Notification permission not granted');
+        } catch (e) { console.log('perm err', e); }
+      })();
+    }, []);
+
   useEffect(() => { const t = setTimeout(() => setFontTimeout(true), 3000); return () => clearTimeout(t); }, []);
   const fontsReady = fontsLoaded || fontTimeout;
 
@@ -384,7 +397,6 @@ export default function App() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <GlobalVoice showToast={showToast} />
       <LanguageModal
         visible={showLangFirst}
         current={getLang()}

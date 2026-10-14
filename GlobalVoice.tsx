@@ -1,16 +1,28 @@
 // ═══════════════════════════════════════════════════════════
-//  🤖 GlobalVoice — کامل: TTS + همه زیرتب‌ها + پنل هوشمند
+//  🤖 GlobalVoice — دو-حالته (وب + موبایل)
 // ═══════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
-  StyleSheet, Platform, KeyboardAvoidingView, AppState,
+  StyleSheet, Platform, KeyboardAvoidingView, Animated,
+  PanResponder,
 } from 'react-native';
+
+// ─── کتابخانه‌های صدا (فقط موبایل)
+let Speech: any = null;
+let Voice: any = null;
+
+if (Platform.OS !== 'web') {
+  try { Speech = require('expo-speech'); } catch {}
+  try { Voice = require('@react-native-voice/voice').default; } catch {}
+}
 
 const isWeb = Platform.OS === 'web';
 let recognition: any = null;
 
-// ═══ ابزار
+// ═══════════════════════════════════════════════════════════
+//  ابزار DOM (فقط وب)
+// ═══════════════════════════════════════════════════════════
 function norm(s: string): string {
   return (s || '').toString().trim().replace(/[\u200c\u200f]/g, ' ').replace(/\s+/g, ' ').toLowerCase();
 }
@@ -94,7 +106,9 @@ function findBestInput(): any {
   return null;
 }
 
-// ═══ دانش: تب‌ها
+// ═══════════════════════════════════════════════════════════
+//  دانش
+// ═══════════════════════════════════════════════════════════
 const TABS: Record<string, string[]> = {
   exchange:     ['صرافی', 'صراف'],
   publicMarket: ['بازار عمومی', 'بازار'],
@@ -111,7 +125,6 @@ const TABS: Record<string, string[]> = {
   print:        ['پرینت'],
 };
 
-// ═══ دانش: همه زیرتب‌های صرافی
 const SUBS: Record<string, string[]> = {
   list:       ['معاملات', 'لیست معاملات'],
   form:       ['معامله جدید', 'فرم معامله'],
@@ -126,7 +139,6 @@ const SUBS: Record<string, string[]> = {
   myGroups:   ['شبکه‌ها', 'شبکه ها', 'شبکه', 'گروه'],
 };
 
-// ═══ فلوها
 const FLOWS: { words: string[]; steps: any[] }[] = [
   { words: ['فاکتور فروش', 'فروش جدید'], steps: [{t:'tab',v:'order'}, {t:'click',m:['فاکتور جدید','فاکتور فروش','فروش جدید','جدید','+']}] },
   { words: ['فاکتور خرید', 'خرید جدید'], steps: [{t:'tab',v:'purchase'}, {t:'click',m:['فاکتور جدید','فاکتور خرید','خرید جدید','جدید','+']}] },
@@ -146,16 +158,13 @@ function goTab(key: string) {
   return false;
 }
 
-// ═══ تغییر زیرتب — هم با دانش، هم با کلیک روی دکمه
 async function goSub(key: string) {
   goTab('exchange');
   await new Promise(r => setTimeout(r, 200));
-  // روش ۱: __exchangeSetSub
   try {
     const setSub = (globalThis as any).__exchangeSetSub;
     if (setSub) { setSub(key); await new Promise(r => setTimeout(r, 150)); return true; }
   } catch {}
-  // روش ۲: کلیک روی دکمه با label
   const words = SUBS[key] || [];
   for (const w of words) {
     const hit = findBestButton(w);
@@ -167,76 +176,30 @@ async function goSub(key: string) {
 const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 // ═══════════════════════════════════════════════════════════
-//  🔊 TTS — نسخه مقاوم (فارسی + fallback)
+//  🔊 TTS — دو-حالته
 // ═══════════════════════════════════════════════════════════
-let _voiceCache: any[] = [];
-
-function getVoices(): any[] {
-  if (!isWeb) return [];
-  try {
-    const synth = (window as any).speechSynthesis;
-    if (!synth) return [];
-    const v = synth.getVoices();
-    if (v && v.length > 0) _voiceCache = v;
-    return _voiceCache;
-  } catch { return []; }
-}
-
 function speak(text: string) {
-  if (!isWeb) return;
-  try {
-    const synth = (window as any).speechSynthesis;
-    if (!synth) { console.log('❌ TTS نیست'); return; }
-    try { synth.cancel(); } catch {}
-
-    const attempt = (retry: number) => {
-      const voices = getVoices();
+  if (!text) return;
+  if (isWeb) {
+    try {
+      const synth = (window as any).speechSynthesis;
+      if (!synth) return;
+      synth.cancel();
+      const voices = synth.getVoices() || [];
+      const fa = voices.find((v: any) => (v.lang || '').toLowerCase().startsWith('fa'));
       const u = new SpeechSynthesisUtterance(text);
-      // بهترین صدای فارسی
-      const fa = voices.find((v: any) => (v.lang || '').toLowerCase() === 'fa-ir')
-              || voices.find((v: any) => (v.lang || '').toLowerCase().startsWith('fa'));
-      if (fa) {
-        u.voice = fa;
-        u.lang = 'fa-IR';
-      } else {
-        // fallback هر زبانی
-        u.lang = 'en-US';
-        if (voices.length) u.voice = voices[0];
-      }
+      if (fa) { u.voice = fa; u.lang = 'fa-IR'; } else { u.lang = 'fa-IR'; }
       u.rate = 1.05;
-      u.pitch = 1.0;
-      u.volume = 1.0;
-      u.onstart = () => console.log('🔊 TTS start:', text.slice(0, 30));
-      u.onerror = (e: any) => console.log('🔊 TTS err:', e.error);
-      try { synth.speak(u); } catch (e) { console.log('speak err', e); }
-
-      // اگر صدایی پخش نشد و صداها لود نشده بود، دوباره تلاش کن
-      if (voices.length === 0 && retry < 3) {
-        setTimeout(() => attempt(retry + 1), 300);
+      synth.speak(u);
+    } catch {}
+  } else {
+    try {
+      if (Speech && Speech.speak) {
+        Speech.stop();
+        Speech.speak(text, { language: 'fa-IR', rate: 1.05, pitch: 1.0 });
       }
-    };
-
-    if (_voiceCache.length === 0) {
-      getVoices();
-      setTimeout(() => attempt(0), 100);
-    } else {
-      attempt(0);
-    }
-  } catch (e) { console.log('TTS outer', e); }
-}
-
-// باز کردن قفل TTS با اولین لمس کاربر
-function unlockTTS() {
-  if (!isWeb) return;
-  try {
-    const synth = (window as any).speechSynthesis;
-    if (!synth) return;
-    const u = new SpeechSynthesisUtterance(' ');
-    u.volume = 0;
-    u.rate = 2;
-    synth.speak(u);
-    getVoices(); // پیش‌بارگذاری
-  } catch {}
+    } catch (e) { console.log('TTS err', e); }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -254,14 +217,22 @@ export default function GlobalVoice({ showToast }: any) {
   const keepAlive = useRef(false);
   const lastReplyTime = useRef(0);
 
-  useEffect(() => {
-    getVoices();
-    if (isWeb) {
-      try {
-        (window as any).speechSynthesis.onvoiceschanged = () => getVoices();
-      } catch {}
-    }
-  }, []);
+  const pan = useRef(new Animated.ValueXY({ x: 16, y: 400 })).current;
+  const isDragging = useRef(false);
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3,
+      onPanResponderGrant: () => { isDragging.current = false; },
+      onPanResponderMove: (_, g) => {
+        if (Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3) {
+          isDragging.current = true;
+          pan.setValue({ x: Math.max(0, g.moveX - 25), y: Math.max(0, g.moveY - 25) });
+        }
+      },
+      onPanResponderRelease: () => { setTimeout(() => { isDragging.current = false; }, 100); },
+    })
+  ).current;
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
@@ -275,40 +246,43 @@ export default function GlobalVoice({ showToast }: any) {
     return () => clearInterval(iv);
   }, [open]);
 
-  // 🔄 نگهبان میکروفون
   useEffect(() => {
-    if (!open || !listening) return;
-    const iv = setInterval(() => {
-      if (keepAlive.current && recognition) {
-        try { recognition.stop(); } catch {}
-      }
-    }, 15000);
+    if (!isWeb || !open || !listening) return;
+    const iv = setInterval(() => { if (keepAlive.current && recognition) try { recognition.stop(); } catch {} }, 15000);
     return () => clearInterval(iv);
   }, [open, listening]);
 
-  const reply = (text: string) => {
-    lastReplyTime.current = Date.now();
-    setMessages((prev) => [...prev, { from: 'bot', text }]);
-    speak(text);
-  };
-
-  // ⭐ پنل خودکار مخفی بعد از تغییر صفحه
-  const autoHideAfterAction = () => {
-    if (!open) return;
-    setTimeout(() => {
-      // اگر ۵۰۰ms گذشت و چیز دیگری نگفتیم، پنل را ببند (میکروفون روشن بماند)
-      if (Date.now() - lastReplyTime.current >= 400) {
-        setOpen(false);
-        // میکروفون خودکار بعد از 300ms دوباره روشن
-        setTimeout(() => {
-          if (keepAlive.current && !listening) startRecognition();
-        }, 300);
+  // ─── Voice setup (نیتیو)
+  useEffect(() => {
+    if (isWeb || !Voice) return;
+    Voice.onSpeechStart = () => { setListening(true); setStatus('🎤 آماده'); };
+    Voice.onSpeechEnd = () => { setListening(false); setStatus(''); };
+    Voice.onSpeechResults = (e: any) => {
+      const text = e.value?.[0] || '';
+      if (text) {
+        setMessages((prev) => [...prev, { from: 'me', text: '🎤 ' + text }]);
+        setTimeout(() => runCommand(text), 20);
       }
-    }, 1200);
+    };
+    Voice.onSpeechError = (e: any) => {
+      console.log('Voice error', e);
+      setListening(false);
+      setStatus('');
+    };
+    return () => {
+      try { Voice.destroy().then(Voice.removeAllListeners); } catch {}
+    };
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════
+  //  STT
+  // ═══════════════════════════════════════════════════════════
+  const startRecognition = async () => {
+    if (isWeb) startRecognitionWeb();
+    else await startRecognitionNative();
   };
 
-  const startRecognition = () => {
-    if (!isWeb) return;
+  const startRecognitionWeb = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setStatus('❌ STT نداره'); return; }
     if (keepAlive.current && recognition) return;
@@ -342,10 +316,7 @@ export default function GlobalVoice({ showToast }: any) {
         };
         r.onend = () => {
           if (keepAlive.current) {
-            setTimeout(() => {
-              if (!keepAlive.current) return;
-              try { r.start(); } catch { build(); }
-            }, 200);
+            setTimeout(() => { if (!keepAlive.current) return; try { r.start(); } catch { build(); } }, 200);
           } else { setListening(false); setStatus(''); }
         };
         r.start();
@@ -355,21 +326,56 @@ export default function GlobalVoice({ showToast }: any) {
     build();
   };
 
-  const stopRecognition = () => {
-    keepAlive.current = false;
-    try { recognition?.stop(); recognition?.abort?.(); } catch {}
-    recognition = null;
+  const startRecognitionNative = async () => {
+    if (!Voice) { setStatus('❌ Voice نصب نیست'); return; }
+    try {
+      const available = await Voice.isAvailable();
+      if (!available) { setStatus('❌ STT گوشی نیست'); return; }
+      setStatus('🎤 آماده');
+      await Voice.start('fa-IR');
+      setListening(true);
+    } catch (e: any) {
+      setStatus('⚠️ ' + e.message);
+      setListening(false);
+    }
+  };
+
+  const stopRecognition = async () => {
+    if (isWeb) {
+      keepAlive.current = false;
+      try { recognition?.stop(); recognition?.abort?.(); } catch {}
+      recognition = null;
+    } else {
+      try { await Voice?.stop(); await Voice?.cancel(); } catch {}
+    }
     setListening(false);
     setStatus('');
   };
 
+  const reply = (text: string) => {
+    lastReplyTime.current = Date.now();
+    setMessages((prev) => [...prev, { from: 'bot', text }]);
+    speak(text);
+  };
+
+  const autoHideAfterAction = () => {
+    if (!open) return;
+    setTimeout(() => {
+      if (Date.now() - lastReplyTime.current >= 400) {
+        setOpen(false);
+        setTimeout(() => { if (keepAlive.current && !listening) startRecognition(); }, 300);
+      }
+    }, 1200);
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  //  مغز
   // ═══════════════════════════════════════════════════════════
   const runCommand = async (text: string) => {
     const t = (text || '').trim();
     if (!t) return;
     const low = norm(t);
 
-    // کمک
     if (low.includes('کمک') || low.includes('چیکار')) {
       reply('بگو: فاکتور فروش، صندوق‌ها، مشتریان، حواله جدید، برو انبار.');
       return;
@@ -396,16 +402,9 @@ export default function GlobalVoice({ showToast }: any) {
       return;
     }
 
-    // ═══ اول: کلیک هوشمند روی صفحه فعلی
     let found = findBestButton(t);
-    if (found) {
-      clickEl(found.el);
-      reply('زدم روی: ' + found.label);
-      autoHideAfterAction();
-      return;
-    }
+    if (found) { clickEl(found.el); reply('زدم روی: ' + found.label); autoHideAfterAction(); return; }
 
-    // ═══ دوم: فلوها
     for (const flow of FLOWS) {
       for (const w of flow.words) {
         if (low === norm(w) || low.includes(norm(w))) {
@@ -426,42 +425,30 @@ export default function GlobalVoice({ showToast }: any) {
       }
     }
 
-    // ═══ سوم: تب
     for (const key of Object.keys(TABS)) {
       for (const w of TABS[key]) {
         if (low === norm(w) || low === 'برو ' + norm(w) || low.includes('برو ' + norm(w))) {
-          goTab(key); reply('رفتم ' + w);
-          autoHideAfterAction();
-          return;
+          goTab(key); reply('رفتم ' + w); autoHideAfterAction(); return;
         }
       }
     }
 
-    // ═══ چهارم: زیرتب
     for (const key of Object.keys(SUBS)) {
       for (const w of SUBS[key]) {
         if (low === norm(w) || low.includes(norm(w))) {
-          await goSub(key); reply('رفتم ' + w);
-          autoHideAfterAction();
-          return;
+          await goSub(key); reply('رفتم ' + w); autoHideAfterAction(); return;
         }
       }
     }
 
-    // ═══ پنجم: کلمات جدا
     const words = t.split(/\s+/).filter(w => w.length >= 3).sort((a, b) => b.length - a.length);
     for (const w of words) {
       const f = findBestButton(w);
       if (f) { clickEl(f.el); reply('زدم روی: ' + f.label); autoHideAfterAction(); return; }
     }
 
-    // ═══ ششم: فیلد
     const inp = findBestInput();
-    if (inp) {
-      fillEl(inp, t);
-      reply('نوشتم: ' + t);
-      return;
-    }
+    if (inp) { fillEl(inp, t); reply('نوشتم: ' + t); return; }
 
     reply('«' + t + '» رو نفهمیدم.');
   };
@@ -474,25 +461,28 @@ export default function GlobalVoice({ showToast }: any) {
   };
 
   const onMicPress = () => {
-    unlockTTS();
     if (!open) {
       setOpen(true);
-      if (!listening && isWeb) startRecognition();
+      if (!listening) startRecognition();
     } else {
-      // اگر باز است، فقط میکروفون را روشن کن
       if (!listening) startRecognition();
     }
   };
 
   return (
     <>
-      <TouchableOpacity
-        onPress={onMicPress}
-        style={[styles.floatBtn, listening && styles.floatBtnOn]}
-        activeOpacity={0.85}
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[styles.floatBtn, { left: pan.x, top: pan.y }]}
       >
-        <Text style={styles.floatIcon}>{listening ? '🔴' : (open ? '🔽' : '🎤')}</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => { if (!isDragging.current) onMicPress(); }}
+          style={styles.floatBtnInner}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.floatIcon}>{listening ? '🔴' : (open ? '🔽' : '🎤')}</Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       {open && (
         <View style={styles.panelWrap} pointerEvents="box-none">
@@ -505,7 +495,7 @@ export default function GlobalVoice({ showToast }: any) {
                 onPress={() => listening ? stopRecognition() : startRecognition()}
                 style={[styles.toggleBtn, listening && styles.toggleOn]}
               >
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
                   {listening ? '⏹' : '🎤'}
                 </Text>
               </TouchableOpacity>
@@ -552,39 +542,44 @@ export default function GlobalVoice({ showToast }: any) {
 
 const styles = StyleSheet.create({
   floatBtn: {
-    position: 'absolute', bottom: 20, right: 16,
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: '#7c3aed', justifyContent: 'center', alignItems: 'center',
-    zIndex: 9999, elevation: 20, borderWidth: 2, borderColor: '#d4af37',
+    position: 'absolute',
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#7c3aed',
+    zIndex: 9999, elevation: 20,
+    borderWidth: 2, borderColor: '#d4af37',
+    justifyContent: 'center', alignItems: 'center',
   },
-  floatBtnOn: { backgroundColor: '#dc2626' },
-  floatIcon: { fontSize: 20 },
-  panelWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '26%', zIndex: 9998 },
+  floatBtnInner: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    width: '100%', height: '100%',
+  },
+  floatIcon: { fontSize: 22 },
+  panelWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '30%', zIndex: 9998 },
   panel: {
     flex: 1, backgroundColor: 'rgba(10,22,40,0.96)',
-    borderTopLeftRadius: 14, borderTopRightRadius: 14,
+    borderTopLeftRadius: 16, borderTopRightRadius: 16,
     borderTopWidth: 2, borderColor: '#7c3aed', overflow: 'hidden',
   },
   header: {
     flexDirection: 'row-reverse', alignItems: 'center',
-    paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#0f2438',
+    paddingHorizontal: 8, paddingVertical: 5, backgroundColor: '#0f2438',
   },
-  title: { color: '#fff', fontSize: 11, fontWeight: 'bold', flex: 1, textAlign: 'right' },
+  title: { color: '#fff', fontSize: 12, fontWeight: 'bold', flex: 1, textAlign: 'right' },
   closeBtn: { padding: 4 },
-  closeText: { color: '#94a3b8', fontSize: 13 },
-  toggleBtn: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#334155', marginLeft: 4 },
+  closeText: { color: '#94a3b8', fontSize: 14 },
+  toggleBtn: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#334155', marginLeft: 4 },
   toggleOn: { backgroundColor: '#dc2626' },
   statusBar: { backgroundColor: '#0f2438', paddingHorizontal: 10, paddingVertical: 2 },
   statusText: { color: '#94a3b8', fontSize: 9 },
   chat: { flex: 1 },
-  bubble: { maxWidth: '90%', borderRadius: 8, padding: 5, marginVertical: 1 },
+  bubble: { maxWidth: '88%', borderRadius: 10, padding: 6, marginVertical: 2 },
   botB: { alignSelf: 'flex-start', backgroundColor: '#1e293b' },
   meB: { alignSelf: 'flex-end', backgroundColor: '#7c3aed' },
-  txt: { color: '#e2e8f0', fontSize: 11, lineHeight: 16 },
+  txt: { color: '#e2e8f0', fontSize: 12, lineHeight: 18 },
   bar: {
     flexDirection: 'row-reverse', alignItems: 'center',
-    padding: 3, borderTopWidth: 1, borderTopColor: '#334155',
+    padding: 4, borderTopWidth: 1, borderTopColor: '#334155',
   },
-  inp: { flex: 1, color: '#fff', backgroundColor: '#1e293b', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5, marginHorizontal: 4, fontSize: 11 },
-  send: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#7c3aed', justifyContent: 'center', alignItems: 'center' },
+  inp: { flex: 1, color: '#fff', backgroundColor: '#1e293b', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, marginHorizontal: 5, fontSize: 12 },
+  send: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#7c3aed', justifyContent: 'center', alignItems: 'center' },
 });

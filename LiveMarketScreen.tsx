@@ -195,14 +195,19 @@ export default function LiveMarketScreen({ showToast }: any) {
   // ═══ Unlock AudioContext روی اولین تعامل کاربر ═══
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (typeof (window as any).addEventListener !== 'function') return;
     const handler = () => { try { unlockAudio(); } catch {} };
-    window.addEventListener('click', handler, { once: true });
-    window.addEventListener('touchstart', handler, { once: true });
-    window.addEventListener('keydown', handler, { once: true });
+    try {
+      window.addEventListener('click', handler, { once: true });
+      window.addEventListener('touchstart', handler, { once: true });
+      window.addEventListener('keydown', handler, { once: true });
+    } catch (e) { console.log('addEventListener err', e); }
     return () => {
-      window.removeEventListener('click', handler);
-      window.removeEventListener('touchstart', handler);
-      window.removeEventListener('keydown', handler);
+      try {
+        window.removeEventListener('click', handler);
+        window.removeEventListener('touchstart', handler);
+        window.removeEventListener('keydown', handler);
+      } catch {}
     };
   }, []);
 

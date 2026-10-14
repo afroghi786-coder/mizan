@@ -42,3 +42,13 @@ export async function deleteCust(id: string): Promise<void> {
   const filtered = all.filter((x: any) => x.id !== id && x.code !== id);
   await AsyncStorage.setItem(KEY, JSON.stringify(filtered));
 }
+
+
+// ═══════════════════════════════════════════════════════════
+//  🔄 Aliasها — هماهنگی با importهای موجود در پروژه
+// ═══════════════════════════════════════════════════════════
+
+export const getFxCustomers = getAllCust;
+export const createFxCustomer = saveCust;
+export const updateFxCustomer = saveCust;
+export const deleteFxCustomer = deleteCust;

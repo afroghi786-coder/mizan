@@ -10,9 +10,36 @@ import {
 
 // ─── کتابخانه‌های صدا (import استاتیک)
 import * as Speech from 'expo-speech';
-import Voice from '@react-native-voice/voice';
 
 const isWeb = Platform.OS === 'web';
+
+// ─── Voice stub (پکیج حذف شده — بعداً اضافه می‌شود)
+const Voice: any = {
+  isAvailable: async () => false,
+  start: async () => {},
+  stop: async () => {},
+  cancel: async () => {},
+  destroy: async () => {},
+  removeAllListeners: () => {},
+  onSpeechStart: null,
+  onSpeechEnd: null,
+  onSpeechResults: null,
+  onSpeechError: null,
+};
+
+// ─── Voice stub (پکیج حذف شده — بعداً اضافه می‌شود)
+const Voice: any = {
+  isAvailable: async () => false,
+  start: async () => {},
+  stop: async () => {},
+  cancel: async () => {},
+  destroy: async () => {},
+  removeAllListeners: () => {},
+  onSpeechStart: null,
+  onSpeechEnd: null,
+  onSpeechResults: null,
+  onSpeechError: null,
+};
 let recognition: any = null;
 
 // ═══════════════════════════════════════════════════════════

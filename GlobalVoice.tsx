@@ -8,14 +8,9 @@ import {
   PanResponder,
 } from 'react-native';
 
-// ─── کتابخانه‌های صدا (فقط موبایل)
-let Speech: any = null;
-let Voice: any = null;
-
-if (Platform.OS !== 'web') {
-  try { Speech = require('expo-speech'); } catch {}
-  try { Voice = require('@react-native-voice/voice').default; } catch {}
-}
+// ─── کتابخانه‌های صدا (import استاتیک)
+import * as Speech from 'expo-speech';
+import Voice from '@react-native-voice/voice';
 
 const isWeb = Platform.OS === 'web';
 let recognition: any = null;
@@ -194,7 +189,7 @@ function speak(text: string) {
     } catch {}
   } else {
     try {
-      if (Speech && Speech.speak) {
+      if (Speech?.speak) {
         Speech.stop();
         Speech.speak(text, { language: 'fa-IR', rate: 1.05, pitch: 1.0 });
       }
@@ -327,7 +322,7 @@ export default function GlobalVoice({ showToast }: any) {
   };
 
   const startRecognitionNative = async () => {
-    if (!Voice) { setStatus('❌ Voice نصب نیست'); return; }
+    
     try {
       const available = await Voice.isAvailable();
       if (!available) { setStatus('❌ STT گوشی نیست'); return; }

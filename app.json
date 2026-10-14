@@ -36,14 +36,6 @@
     },
     "owner": "mezan786",
     "plugins": [
-      "expo-sharing",
-      [
-        "@react-native-voice/voice",
-        {
-          "microphonePermission": "اجازه دسترسی به میکروفون برای دستیار صوتی",
-          "speechRecognitionPermission": "اجازه دسترسی به تشخیص گفتار برای دستیار صوتی"
-        }
-      ],
       [
         "expo-notifications",
         {

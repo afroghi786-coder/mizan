@@ -6,7 +6,7 @@ const { Speech } = NativeModules;
 // ─── تشخیص محیط
 export const isWeb = Platform.OS === 'web';
 export const isAndroid = Platform.OS === 'android';
-export const hasNativeSpeech = !!(Speech && isAndroid);
+export const hasNativeSpeech = false; // غیرفعال شد
 
 // ═══════════════════════════════════════════
 // STT — تبدیل صدا به متن

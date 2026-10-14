@@ -10,7 +10,8 @@ import CurrencyPicker, { CUR_INFO, curFlag, curLabel as curLabel2, ALL_CURS as A
 import { getAllTrades, saveTrade, deleteTrade } from './lib.fx.trade';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
-import {getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade, getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer, getFxPartners, createFxPartner, updateFxPartner, deleteFxPartner, getCalType, parseDateAny, g2j, g2h, j2g, h2g, toStorageDateFull} from './lib.offline';
+import { getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade, getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer, getFxPartners, createFxPartner, updateFxPartner, deleteFxPartner, g2j, g2h, j2g, h2g } from './lib.offline';
+import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 import { onHawalaUpdate } from './lib.events';
 import { consumeDeepLink, registerHandler } from './lib.assistant.bridge';
 import {

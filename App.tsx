@@ -1,3 +1,5 @@
+
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
 import ExchangeScreen from './ExchangeScreen';
@@ -13,11 +15,7 @@ import LicenseGate from './LicenseGate';
 import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import {
-  StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal,
-  SafeAreaView, Switch,
-} from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Switch } from 'react-native';
 import { useFonts, Orbitron_900Black, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 import { ShareTechMono_400Regular } from '@expo-google-fonts/share-tech-mono';
 import * as Print from 'expo-print';
@@ -29,22 +27,10 @@ import SmsMatchScreen from './SmsMatchScreen';
 import ManualEntryScreen from './ManualEntryScreen';
 import LocalBotScreen from './LocalBotScreen';
 import LearningScreen from './LearningScreen';
+import DateField from './lib.datefield';
 
-import {
-  supabase, fmt, parseNum, toFaNum, pad2,
-  getCalType, setCalType, loadCalType, saveCalType, CalType,
-  parseDateAny, toStorageDate, toStorageDateFull, displayDate, displayDateOnly,
-    jalaliDisplay, g2j, j2g, g2h, h2g,
-  BANKS, SHIPPINGS, DASH_RANGE_LABELS,
-  getProducts, createProduct, updateProduct, deleteProduct,
-  lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale,
-  getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail,
-  lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase,
-  getDashboardStats, getInventory,
-  getSettings, updateSettings, loadMode,
-  deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue,
-  Product, SaleItem, PurchaseItem, Settings,
-} from './lib.offline';
+import { supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings } from './lib.offline';
+import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 
 // ══════════════════════════════════════════════════════════
 //  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
@@ -456,18 +442,27 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const _gLastMsgId = useRef<number>(0);
   const _gMsgReady = useRef<boolean>(false);
 
-  // Unlock audio در اولین کلیک
+  // Unlock audio در اولین کلیک (ایمن شده)
   useEffect(() => {
-    if (_isWebView || typeof window === 'undefined') return;
-    const unlock = () => { try { unlockAudio(); } catch {} };
-    window.addEventListener('click', unlock, { once: true });
-    window.addEventListener('touchstart', unlock, { once: true });
-    return () => {
-      try {
-        window.removeEventListener('click', unlock);
-        window.removeEventListener('touchstart', unlock);
-      } catch {}
-    };
+    try {
+      if (_isWebView) return;
+      if (typeof window === 'undefined') return;
+      if (!window || typeof window.addEventListener !== 'function') return;
+      const unlock = () => { try { if (typeof unlockAudio === 'function') unlockAudio(); } catch {} };
+      window.addEventListener('click', unlock, { once: true });
+      window.addEventListener('touchstart', unlock, { once: true });
+      return () => {
+        try {
+          if (window && typeof window.removeEventListener === 'function') {
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('touchstart', unlock);
+          }
+        } catch {}
+      };
+    } catch (e) {
+      console.log('audio unlock err:', e);
+      return;
+    }
   }, []);
 
   // لود preferences
@@ -593,7 +588,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   };
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: C.bg }]}>
+    <View style={[s.safe, { backgroundColor: C.bg }]}>
         <StatusBar style={C.isDark ? 'light' : 'dark'} />
       <View style={[s.header, {
         backgroundColor:
@@ -696,7 +691,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
           <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', lineHeight: 30 }}>←</Text>
         </TouchableOpacity>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 // ══════════════════════════════════════════════════════════
@@ -837,51 +832,7 @@ function CellAutocomplete({ value, onChange, onSelect, options, placeholder }: a
 // ══════════════════════════════════════════════════════════
 //  DATE FIELD
 // ══════════════════════════════════════════════════════════
-export function DateField({ value, onChange, compact, defaultToToday }: any) {
-  const [type, setType] = useState<CalType>(getCalType());
-  const [g, setG] = useState<Date | null>(value ? parseDateAny(value) : (defaultToToday ? new Date() : null));
-  const [fields, setFields] = useState({ y: '', m: '', d: '', h: '00', n: '00', s: '00' });
-
-  useEffect(() => {
-    if (!g) { setFields({ y: '', m: '', d: '', h: '00', n: '00', s: '00' }); return; }
-    let y = 0, mo = 0, d = 0;
-    if (type === 'jalali') { [y, mo, d] = g2j(g.getFullYear(), g.getMonth() + 1, g.getDate()); }
-    else if (type === 'hijri') { const h = g2h(g); y = h.y; mo = h.m; d = h.d; }
-    else { y = g.getFullYear(); mo = g.getMonth() + 1; d = g.getDate(); }
-    setFields({ y: String(y), m: pad2(mo), d: pad2(d), h: pad2(g.getHours()), n: pad2(g.getMinutes()), s: pad2(g.getSeconds()) });
-  }, [g, type]);
-
-  const apply = (f: any) => {
-    setFields(f);
-    const y = parseInt(f.y, 10), m = parseInt(f.m, 10), d = parseInt(f.d, 10);
-    if (!y || !m || !d) { setG(null); onChange(''); return; }
-    const h = parseInt(f.h, 10) || 0, n = parseInt(f.n, 10) || 0, sec = parseInt(f.s, 10) || 0;
-    let gg: Date;
-    if (type === 'jalali') { const r = j2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
-    else if (type === 'hijri') { const r = h2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
-    else { gg = new Date(y, m - 1, d, h, n, sec); }
-    setG(gg); onChange(toStorageDateFull(gg));
-  };                                             
-
-  const F = ({ v, k, w, ph }: any) => (
-    <TextInput style={[s.dateInp, { width: w || 44, color: C.text }, compact && { fontSize: 11 }]} value={v} onChangeText={(t) => apply({ ...fields, [k]: t.replace(/\D/g, '').slice(0, k === 'y' ? 4 : 2) })} keyboardType="numeric" placeholder={ph} placeholderTextColor={C.textMut} />
-  );
-
-  return (
-    <View style={[s.dateBox, { backgroundColor: C.input, borderColor: C.border }, compact && { paddingVertical: 3 }]}>
-      <F v={fields.y} k="y" w={compact ? 52 : 60} ph="YYYY" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>/</Text><F v={fields.m} k="m" ph="MM" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>/</Text><F v={fields.d} k="d" ph="DD" />
-      <Text style={[s.dateSep, { width: 8, color: C.textMut }]}> </Text>
-      <F v={fields.h} k="h" ph="HH" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>:</Text><F v={fields.n} k="n" ph="MM" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>:</Text><F v={fields.s} k="s" ph="SS" />
-      <TouchableOpacity style={[s.typeBtn, { backgroundColor: C.border }]} onPress={() => { const next = type === 'jalali' ? 'gregorian' : type === 'gregorian' ? 'hijri' : 'jalali'; setType(next); }}>
-        <Text style={[s.typeBtnTxt, { color: C.text }]}>{type === 'jalali' ? 'شمسی' : type === 'gregorian' ? 'میلادی' : 'قمری'}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
+// DateField به lib.datefield.tsx منتقل شد
 
 // ══════════════════════════════════════════════════════════
 //  DASHBOARD

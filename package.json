@@ -1,7 +1,7 @@
 {
   "name": "mizan-app",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "index.js",
   "dependencies": {
     "@expo-google-fonts/orbitron": "^0.4.2",
     "@expo-google-fonts/share-tech-mono": "^0.4.1",

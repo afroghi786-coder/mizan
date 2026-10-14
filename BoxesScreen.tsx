@@ -1,6 +1,6 @@
 import React from 'react';
-import { toStorageDateFull } from './lib.offline';
-import { DateField } from './App';
+import { toStorageDateFull } from './lib';;
+import DateField from './lib.datefield';;
 // BoxesScreen.tsx — صندوق استاندارد با کاردکس و تراکنش
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator } from 'react-native';

@@ -290,7 +290,7 @@ export default function PublicMarketScreen({ showToast, userEmail, onBack }: any
       <View style={st.header}>
         <View style={st.headerTop}>
           {onBack ? (
-            <TouchableOpacity onPress={onBack} style={st.backBtn} activeOpacity={0.7}>
+            <TouchableOpacity accessibilityLabel="بازگشت" onPress={onBack} style={st.backBtn} activeOpacity={0.7}>
               <Text style={st.backBtnTxt}>‹ بازگشت</Text>
             </TouchableOpacity>
           ) : <View style={st.backBtn} />}
@@ -313,7 +313,7 @@ export default function PublicMarketScreen({ showToast, userEmail, onBack }: any
         </View>
         <View style={st.searchWrap}>
           <Text style={st.searchIcon}>🔍</Text>
-          <TextInput
+          <TextInput accessibilityLabel="جستجو..."
             style={st.searchInput}
             value={search}
             onChangeText={setSearch}
@@ -341,7 +341,7 @@ export default function PublicMarketScreen({ showToast, userEmail, onBack }: any
       {/* chips زیردسته */}
       <View style={st.chipsWrapOuter}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipsWrap}>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="همه"
             onPress={() => setSubCat('')}
             style={[st.chip, !subCat && { backgroundColor: subColor, borderColor: subColor }]}
           >
@@ -400,7 +400,7 @@ export default function PublicMarketScreen({ showToast, userEmail, onBack }: any
             <View style={st.cardBottom}>
               <Text style={st.cardBy}>👤 {a.user_name || a.user_email?.split('@')[0] || '—'}</Text>
               {a.user_email && a.user_email !== userEmail ? (
-                <TouchableOpacity onPress={() => openChat(a)} style={[st.chatBtn, { backgroundColor: subColor }]}>
+                <TouchableOpacity accessibilityLabel="چت" onPress={() => openChat(a)} style={[st.chatBtn, { backgroundColor: subColor }]}>
                   <Text style={st.chatBtnTxt}>💬 چت</Text>
                 </TouchableOpacity>
               ) : (
@@ -440,7 +440,7 @@ export default function PublicMarketScreen({ showToast, userEmail, onBack }: any
             </View>
 
             <Text style={st.lbl}>عنوان *</Text>
-            <TextInput style={st.inp} value={form.title} onChangeText={(v: string) => setForm({ ...form, title: v })} placeholder="مثلاً: بنا با تجربه ۵ سال" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="مثلاً: بنا با تجربه ۵ سال" style={st.inp} value={form.title} onChangeText={(v: string) => setForm({ ...form, title: v })} placeholder="مثلاً: بنا با تجربه ۵ سال" placeholderTextColor="#94a3b8" />
 
             <Text style={st.lbl}>شهر *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.formChips}>
@@ -509,13 +509,13 @@ export default function PublicMarketScreen({ showToast, userEmail, onBack }: any
             </View>
 
             <Text style={st.lbl}>شماره تماس</Text>
-            <TextInput style={st.inp} value={form.phone} onChangeText={(v: string) => setForm({ ...form, phone: v.replace(/[^0-9]/g, '') })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="07..." style={st.inp} value={form.phone} onChangeText={(v: string) => setForm({ ...form, phone: v.replace(/[^0-9]/g, '') })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
 
             <Text style={st.lbl}>توضیحات</Text>
-            <TextInput style={[st.inp, { minHeight: 80, textAlignVertical: 'top' }]} value={form.description} onChangeText={(v: string) => setForm({ ...form, description: v })} multiline placeholder="جزئیات..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="جزئیات..." style={[st.inp, { minHeight: 80, textAlignVertical: 'top' }]} value={form.description} onChangeText={(v: string) => setForm({ ...form, description: v })} multiline placeholder="جزئیات..." placeholderTextColor="#94a3b8" />
 
             <View style={{ flexDirection: 'row-reverse', gap: 10, marginTop: 18 }}>
-              <TouchableOpacity style={[st.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setShowForm(false)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[st.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setShowForm(false)}>
                 <Text style={st.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[st.btn, { backgroundColor: subColor, flex: 2 }]} onPress={submit} disabled={saving}>
@@ -657,14 +657,14 @@ export default function PublicMarketScreen({ showToast, userEmail, onBack }: any
               })}
             </View>
 
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="ذخیره تنظیمات"
               onPress={() => { saveMarketPrefs(); showToast?.('✅ ذخیره شد'); setSettingsModal(false); }}
               style={[st.btn, { backgroundColor: '#059669', marginTop: 18 }]}
             >
               <Text style={st.btnTxt}>💾 ذخیره تنظیمات</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="تست صدا و لرزش"
               onPress={async () => {
                 try {
                   const nt = await import('./lib.notifications');
@@ -717,7 +717,7 @@ export default function PublicMarketScreen({ showToast, userEmail, onBack }: any
           </ScrollView>
 
           <View style={{ flexDirection: 'row-reverse', gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: '#334155' }}>
-            <TextInput
+            <TextInput accessibilityLabel="پیام..."
               style={[st.inp, { flex: 1, marginBottom: 0 }]}
               value={chatInput}
               onChangeText={setChatInput}

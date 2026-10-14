@@ -1,7 +1,43 @@
-node_modules/
+# ═══════════════════════════════════════════
+#  .gitignore — نسخه صحیح
+#  فقط پوشه‌های ریشه را ignore می‌کند
+# ═══════════════════════════════════════════
+
+# وابستگی‌ها (فقط ریشه)
+/node_modules/
+
+# Expo
 .expo/
+/web-build/
+
+# بکاپ‌ها (فقط ریشه)
+/backup-*/
+
+# اسکریپت‌های dev (فقط ریشه)
+/*.cjs
+
+# لاگ‌ها
+*.log
+/check-errors.txt
+/app-structure.json
+
+# Env
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android build (اما نه سورس)
 android/app/build/
 android/build/
 android/.gradle/
-*.log
-.env
+android/.idea/
+
+# iOS build
+ios/build/
+ios/Pods/
+
+# نکته: docs/assets/node_modules/ را ignore نمی‌کنیم
+# چون فونت‌های Google داخلش است

@@ -1,9 +1,51 @@
-// lib.datefield.tsx — DateField component (جدا شده)
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Modal, Platform } from 'react-native';
-import { parseDateAny, toStorageDateFull, getCalType } from './lib';
+// lib.datefield.tsx — DateField component (بازنویسی کامل)
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native';
+import { parseDateAny, toStorageDateFull, getCalType, pad2, g2j, g2h, j2g, h2g } from './lib';
 
 export type CalType = 'jalali' | 'gregorian' | 'hijri';
+
+const getTheme = () => (globalThis as any).__getThemeMode?.() || 'light';
+
+const C = {
+  get text()    { return getTheme() === 'dark' ? '#ffffff' : '#1a2332'; },
+  get textMut() { return getTheme() === 'dark' ? '#94a3b8' : '#64748b'; },
+  get border()  { return getTheme() === 'dark' ? '#334155' : '#e2e8f0'; },
+  get input()   { return getTheme() === 'dark' ? '#1a2332' : '#ffffff'; },
+};
+
+const s = StyleSheet.create({
+  dateBox: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  dateInp: {
+    textAlign: 'center',
+    fontSize: 13,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  dateSep: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginHorizontal: 1,
+  },
+  typeBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 'auto',
+  },
+  typeBtnTxt: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+});
 
 export function DateField({ value, onChange, compact, defaultToToday }: any) {
   const [type, setType] = useState<CalType>(getCalType());
@@ -22,30 +64,52 @@ export function DateField({ value, onChange, compact, defaultToToday }: any) {
   const apply = (f: any) => {
     setFields(f);
     const y = parseInt(f.y, 10), m = parseInt(f.m, 10), d = parseInt(f.d, 10);
-    if (!y || !m || !d) { setG(null); onChange(''); return; }
+    if (!y || !m || !d) { setG(null); onChange?.(''); return; }
     const h = parseInt(f.h, 10) || 0, n = parseInt(f.n, 10) || 0, sec = parseInt(f.s, 10) || 0;
     let gg: Date;
     if (type === 'jalali') { const r = j2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
     else if (type === 'hijri') { const r = h2g(y, m, d); gg = new Date(r.y, r.m - 1, r.d, h, n, sec); }
     else { gg = new Date(y, m - 1, d, h, n, sec); }
-    setG(gg); onChange(toStorageDateFull(gg));
-  };                                             
+    setG(gg);
+    onChange?.(toStorageDateFull(gg));
+  };
 
   const F = ({ v, k, w, ph }: any) => (
-    <TextInput style={[s.dateInp, { width: w || 44, color: C.text }, compact && { fontSize: 11 }]} value={v} onChangeText={(t) => apply({ ...fields, [k]: t.replace(/\D/g, '').slice(0, k === 'y' ? 4 : 2) })} keyboardType="numeric" placeholder={ph} placeholderTextColor={C.textMut} />
+    <TextInput
+      accessibilityLabel={'date_' + k}
+      style={[s.dateInp, { width: w || 44, color: C.text }, compact && { fontSize: 11 }]}
+      value={v}
+      onChangeText={(t) => apply({ ...fields, [k]: t.replace(/\D/g, '').slice(0, k === 'y' ? 4 : 2) })}
+      keyboardType="numeric"
+      placeholder={ph}
+      placeholderTextColor={C.textMut}
+    />
   );
 
   return (
     <View style={[s.dateBox, { backgroundColor: C.input, borderColor: C.border }, compact && { paddingVertical: 3 }]}>
       <F v={fields.y} k="y" w={compact ? 52 : 60} ph="YYYY" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>/</Text><F v={fields.m} k="m" ph="MM" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>/</Text><F v={fields.d} k="d" ph="DD" />
+      <Text style={[s.dateSep, { color: C.textMut }]}>/</Text>
+      <F v={fields.m} k="m" ph="MM" />
+      <Text style={[s.dateSep, { color: C.textMut }]}>/</Text>
+      <F v={fields.d} k="d" ph="DD" />
       <Text style={[s.dateSep, { width: 8, color: C.textMut }]}> </Text>
       <F v={fields.h} k="h" ph="HH" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>:</Text><F v={fields.n} k="n" ph="MM" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>:</Text><F v={fields.s} k="s" ph="SS" />
-      <TouchableOpacity style={[s.typeBtn, { backgroundColor: C.border }]} onPress={() => { const next = type === 'jalali' ? 'gregorian' : type === 'gregorian' ? 'hijri' : 'jalali'; setType(next); }}>
-        <Text style={[s.typeBtnTxt, { color: C.text }]}>{type === 'jalali' ? 'شمسی' : type === 'gregorian' ? 'میلادی' : 'قمری'}</Text>
+      <Text style={[s.dateSep, { color: C.textMut }]}>:</Text>
+      <F v={fields.n} k="n" ph="MM" />
+      <Text style={[s.dateSep, { color: C.textMut }]}>:</Text>
+      <F v={fields.s} k="s" ph="SS" />
+      <TouchableOpacity
+        accessibilityLabel="نوع تاریخ"
+        style={[s.typeBtn, { backgroundColor: C.border }]}
+        onPress={() => {
+          const next = type === 'jalali' ? 'gregorian' : type === 'gregorian' ? 'hijri' : 'jalali';
+          setType(next);
+        }}
+      >
+        <Text style={[s.typeBtnTxt, { color: C.text }]}>
+          {type === 'jalali' ? 'شمسی' : type === 'gregorian' ? 'میلادی' : 'قمری'}
+        </Text>
       </TouchableOpacity>
     </View>
   );

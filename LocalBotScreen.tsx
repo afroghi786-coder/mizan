@@ -316,7 +316,7 @@ export default function LocalBotScreen({ showToast, onExit }: any) {
       <View style={s.bottomBar}>
         {listening && <View style={s.listen}><Text style={s.listenTxt}>🎤 {partial || 'گوش می‌دم...'}</Text></View>}
         <View style={s.inputRow}>
-          <TextInput
+          <TextInput accessibilityLabel="مثلاً: صندوق احمد"
             style={s.inp}
             value={text}
             onChangeText={setText}

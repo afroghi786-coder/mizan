@@ -121,10 +121,10 @@ export default function SmsMatchScreen({ showToast }: any) {
             <TouchableOpacity style={[s.btn, { backgroundColor: '#0891b2' }]} onPress={scanNow} disabled={scanning}>
               {scanning ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>🔍 اسکن</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => setPatternsModal(true)}>
+            <TouchableOpacity accessibilityLabel="الگوها" style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => setPatternsModal(true)}>
               <Text style={s.btnTxt}>📋 الگوها</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b' }]} onPress={() => setSettingsModal(true)}>
+            <TouchableOpacity accessibilityLabel="تنظیمات" style={[s.btn, { backgroundColor: '#64748b' }]} onPress={() => setSettingsModal(true)}>
               <Text style={s.btnTxt}>⚙️ تنظیمات</Text>
             </TouchableOpacity>
           </View>
@@ -150,7 +150,7 @@ export default function SmsMatchScreen({ showToast }: any) {
 
         {pending.length > 0 && <Text style={s.sectionT}>🟡 در انتظار تأیید ({pending.length})</Text>}
         {pending.map((t: any) => (
-          <TouchableOpacity key={t.id} style={[s.card, { borderColor: '#f59e0b' }]} onPress={() => setDetailTx(t)}>
+          <TouchableOpacity accessibilityLabel="برای انتخاب لمس کنید" key={t.id} style={[s.card, { borderColor: '#f59e0b' }]} onPress={() => setDetailTx(t)}>
             <View style={s.cardHead}>
               <Text style={s.amt}>{t.type === 'deposit' ? '➕' : '➖'} {fmt(t.amount)} AFN</Text>
               <Text style={s.date}>{fmtDate(t.date)}</Text>
@@ -196,7 +196,7 @@ export default function SmsMatchScreen({ showToast }: any) {
                   {(detailTx.candidates || []).map((c: any, i: number) => {
                     const color = c.diffDays <= 1 ? '#059669' : c.diffDays <= 3 ? '#f59e0b' : '#dc2626';
                     return (
-                      <TouchableOpacity
+                      <TouchableOpacity accessibilityLabel="AFN"
                         key={i}
                         style={[s.candBox, { borderColor: color }]}
                         onPress={async () => {
@@ -215,7 +215,7 @@ export default function SmsMatchScreen({ showToast }: any) {
                       </TouchableOpacity>
                     );
                   })}
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityLabel="هیچ‌کدام"
                     style={[s.btn, { backgroundColor: '#dc2626', marginTop: 12 }]}
                     onPress={async () => { await rejectMatch(detailTx.id); await load(); setDetailTx(null); }}
                   >
@@ -271,14 +271,14 @@ export default function SmsMatchScreen({ showToast }: any) {
                 <Switch value={settings.filterAds} onValueChange={(v) => setSettings({ ...settings, filterAds: v })} />
               </View>
 
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="ذخیره"
                 style={[s.btn, { backgroundColor: '#059669', marginTop: 14 }]}
                 onPress={async () => { await saveSettings(settings); showToast?.('✅ ذخیره شد'); setSettingsModal(false); }}
               >
                 <Text style={s.btnTxt}>💾 ذخیره</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="بازگشت به پیش‌فرض"
                 style={[s.btn, { backgroundColor: '#64748b', marginTop: 8 }]}
                 onPress={() => { setSettings({ ...DEFAULT_SETTINGS, enabled: settings.enabled }); }}
               >
@@ -298,7 +298,7 @@ export default function SmsMatchScreen({ showToast }: any) {
             <ScrollView style={{ padding: 12 }}>
               <Text style={s.mLbl}>✅ الگوهای فعال (روی هر کدام بزنید تا غیرفعال شود):</Text>
               {patterns.map((p: any) => (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="ویرایش"
                   key={p.id}
                   style={[s.candBox, { borderColor: p.enabled ? '#059669' : '#475569', opacity: p.enabled ? 1 : 0.5 }]}
                   onPress={async () => {
@@ -312,14 +312,14 @@ export default function SmsMatchScreen({ showToast }: any) {
                     {p.enabled ? '🟢 فعال' : '⚪ غیرفعال'} — {p.bank === 'GEN' ? '🌍 عمومی' : p.bank}
                   </Text>
                   <View style={{ flexDirection: 'row-reverse', marginTop: 6, gap: 6 }}>
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityLabel="ویرایش"
                       style={{ backgroundColor: '#0891b2', padding: 6, borderRadius: 6 }}
                       onPress={() => { setEditingPattern({ ...p }); setTestSms(''); setTestResult(null); }}
                     >
                       <Text style={{ color: '#fff', fontSize: 11 }}>✏️ ویرایش</Text>
                     </TouchableOpacity>
                     {!p.isBuiltIn && (
-                      <TouchableOpacity
+                      <TouchableOpacity accessibilityLabel="حذف"
                         style={{ backgroundColor: '#dc2626', padding: 6, borderRadius: 6 }}
                         onPress={async () => {
                           await deletePattern(p.id);
@@ -333,7 +333,7 @@ export default function SmsMatchScreen({ showToast }: any) {
                   </View>
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="افزودن الگوی جدید"
                 style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]}
                 onPress={() => {
                   setEditingPattern({
@@ -352,7 +352,7 @@ export default function SmsMatchScreen({ showToast }: any) {
                 <Text style={s.btnTxt}>➕ افزودن الگوی جدید</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="بازگشت به پیش‌فرض"
                 style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}
                 onPress={async () => {
                   await resetPatterns();
@@ -377,7 +377,7 @@ export default function SmsMatchScreen({ showToast }: any) {
             </View>
             <ScrollView style={{ padding: 12 }}>
               <Text style={s.mLbl}>📝 نام الگو</Text>
-              <TextInput
+              <TextInput accessibilityLabel="مثلاً: بانک ملی افغانستان"
                 style={s.inp}
                 value={editingPattern?.name || ''}
                 onChangeText={(v) => setEditingPattern({ ...editingPattern, name: v })}
@@ -386,7 +386,7 @@ export default function SmsMatchScreen({ showToast }: any) {
               />
 
               <Text style={s.mLbl}>💰 کلمات واریز (با کاما جدا کنید)</Text>
-              <TextInput
+              <TextInput accessibilityLabel="واریز، افزایش، بستانکار"
                 style={s.inp}
                 value={(editingPattern?.depositKeywords || []).join('، ')}
                 onChangeText={(v) => setEditingPattern({ ...editingPattern, depositKeywords: v.split(/[،,]/).map(x => x.trim()).filter(Boolean) })}
@@ -395,7 +395,7 @@ export default function SmsMatchScreen({ showToast }: any) {
               />
 
               <Text style={s.mLbl}>💸 کلمات برداشت (با کاما جدا کنید)</Text>
-              <TextInput
+              <TextInput accessibilityLabel="برداشت، کسر، بدهکار"
                 style={s.inp}
                 value={(editingPattern?.withdrawKeywords || []).join('، ')}
                 onChangeText={(v) => setEditingPattern({ ...editingPattern, withdrawKeywords: v.split(/[،,]/).map(x => x.trim()).filter(Boolean) })}
@@ -404,7 +404,7 @@ export default function SmsMatchScreen({ showToast }: any) {
               />
 
               <Text style={s.mLbl}>🧪 تست الگو — یک پیامک نمونه پیست کنید:</Text>
-              <TextInput
+              <TextInput accessibilityLabel="مبلغ ۵۰۰۰ افغانی از حساب شما برداشت شد"
                 style={[s.inp, { minHeight: 70, textAlignVertical: 'top' }]}
                 value={testSms}
                 onChangeText={setTestSms}
@@ -413,7 +413,7 @@ export default function SmsMatchScreen({ showToast }: any) {
                 multiline
               />
 
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="تست"
                 style={[s.btn, { backgroundColor: '#0891b2', marginTop: 8 }]}
                 onPress={() => {
                   if (!editingPattern || !testSms) return;
@@ -438,7 +438,7 @@ export default function SmsMatchScreen({ showToast }: any) {
                 </View>
               )}
 
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="ذخیره"
                 style={[s.btn, { backgroundColor: '#059669', marginTop: 14 }]}
                 onPress={async () => {
                   await savePattern(editingPattern);
@@ -450,7 +450,7 @@ export default function SmsMatchScreen({ showToast }: any) {
                 <Text style={s.btnTxt}>💾 ذخیره</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="لغو"
                 style={[s.btn, { backgroundColor: '#64748b', marginTop: 8 }]}
                 onPress={() => setEditingPattern(null)}
               >

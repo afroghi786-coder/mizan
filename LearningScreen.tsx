@@ -88,16 +88,16 @@ export default function LearningScreen({ showToast }: any) {
 
       {/* Tab Bar */}
       <View style={s.tabs}>
-        <TouchableOpacity style={[s.tab, tab === 'lessons' && s.tabActive]} onPress={() => setTab('lessons')}>
+        <TouchableOpacity accessibilityLabel="درس‌ها" style={[s.tab, tab === 'lessons' && s.tabActive]} onPress={() => setTab('lessons')}>
           <Text style={[s.tabTxt, tab === 'lessons' && s.tabTxtActive]}>📚 درس‌ها ({lessons.length})</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.tab, tab === 'aliases' && s.tabActive]} onPress={() => setTab('aliases')}>
+        <TouchableOpacity accessibilityLabel="مترادف‌ها" style={[s.tab, tab === 'aliases' && s.tabActive]} onPress={() => setTab('aliases')}>
           <Text style={[s.tabTxt, tab === 'aliases' && s.tabTxtActive]}>🔤 مترادف‌ها ({aliases.length})</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.tab, tab === 'fails' && s.tabActive]} onPress={() => setTab('fails')}>
+        <TouchableOpacity accessibilityLabel="نفهمید" style={[s.tab, tab === 'fails' && s.tabActive]} onPress={() => setTab('fails')}>
           <Text style={[s.tabTxt, tab === 'fails' && s.tabTxtActive]}>❓ نفهمید ({fails.length})</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.tab, tab === 'stats' && s.tabActive]} onPress={() => setTab('stats')}>
+        <TouchableOpacity accessibilityLabel="آمار" style={[s.tab, tab === 'stats' && s.tabActive]} onPress={() => setTab('stats')}>
           <Text style={[s.tabTxt, tab === 'stats' && s.tabTxtActive]}>📊 آمار</Text>
         </TouchableOpacity>
       </View>
@@ -108,7 +108,7 @@ export default function LearningScreen({ showToast }: any) {
         {tab === 'lessons' && (
           <>
             <Text style={s.hint}>📚 به ربات یاد بده «این عبارت یعنی این کار»</Text>
-            <TouchableOpacity style={s.addBtn} onPress={() => setNewLessonModal(true)}>
+            <TouchableOpacity accessibilityLabel="افزودن درس جدید" style={s.addBtn} onPress={() => setNewLessonModal(true)}>
               <Text style={s.addBtnTxt}>➕ افزودن درس جدید</Text>
             </TouchableOpacity>
             {lessons.length === 0 ? (
@@ -119,14 +119,14 @@ export default function LearningScreen({ showToast }: any) {
                   <Text style={s.cardTitle}>💬 «{l.phrase}»</Text>
                   <Text style={s.cardSub}>🎯 {LEARNABLE_INTENTS.find(x => x.id === l.intent)?.label || l.intent}</Text>
                   {l.params?.name ? <Text style={s.cardSub}>👤 {l.params.name}</Text> : null}
-                  <TouchableOpacity style={s.delBtn} onPress={async () => { await removeLesson(l.id); await load(); }}>
+                  <TouchableOpacity accessibilityLabel="حذف" style={s.delBtn} onPress={async () => { await removeLesson(l.id); await load(); }}>
                     <Text style={s.delTxt}>🗑 حذف</Text>
                   </TouchableOpacity>
                 </View>
               ))
             )}
             {lessons.length > 0 && (
-              <TouchableOpacity style={[s.addBtn, { backgroundColor: '#dc2626', marginTop: 12 }]} onPress={async () => {
+              <TouchableOpacity accessibilityLabel="پاک کردن همه" style={[s.addBtn, { backgroundColor: '#dc2626', marginTop: 12 }]} onPress={async () => {
                 Alert.alert('پاک کردن همه؟', '', [
                   { text: 'لغو', style: 'cancel' },
                   { text: 'بله', onPress: async () => { await clearLessons(); await load(); } },
@@ -142,7 +142,7 @@ export default function LearningScreen({ showToast }: any) {
         {tab === 'aliases' && (
           <>
             <Text style={s.hint}>🔤 کلمات جایگزین: «این» یعنی «اون»</Text>
-            <TouchableOpacity style={s.addBtn} onPress={() => setNewAliasModal(true)}>
+            <TouchableOpacity accessibilityLabel="افزودن مترادف" style={s.addBtn} onPress={() => setNewAliasModal(true)}>
               <Text style={s.addBtnTxt}>➕ افزودن مترادف</Text>
             </TouchableOpacity>
             {aliases.length === 0 ? (
@@ -151,7 +151,7 @@ export default function LearningScreen({ showToast }: any) {
               aliases.map((a) => (
                 <View key={a.id} style={s.card}>
                   <Text style={s.cardTitle}>«{a.from}» → «{a.to}»</Text>
-                  <TouchableOpacity style={s.delBtn} onPress={async () => { await removeAlias(a.id); await load(); }}>
+                  <TouchableOpacity accessibilityLabel="حذف" style={s.delBtn} onPress={async () => { await removeAlias(a.id); await load(); }}>
                     <Text style={s.delTxt}>🗑 حذف</Text>
                   </TouchableOpacity>
                 </View>
@@ -168,7 +168,7 @@ export default function LearningScreen({ showToast }: any) {
               <Text style={s.empty}>عالی! هیچ چیزی نفهمیده نشده</Text>
             ) : (
               fails.sort((a, b) => b.count - a.count).map((f) => (
-                <TouchableOpacity key={f.id} style={[s.card, f.taught && { opacity: 0.5 }]} onPress={() => teachFromFail(f)}>
+                <TouchableOpacity accessibilityLabel="بار تکرار" key={f.id} style={[s.card, f.taught && { opacity: 0.5 }]} onPress={() => teachFromFail(f)}>
                   <Text style={s.cardTitle}>💬 «{f.text}»</Text>
                   <Text style={s.cardSub}>🔴 {f.count} بار تکرار</Text>
                   {f.taught ? <Text style={[s.cardSub, { color: '#10b981' }]}>✅ آموزش داده شد</Text> : <Text style={[s.cardSub, { color: '#f59e0b' }]}>⚠️ آموزش بده</Text>}
@@ -176,7 +176,7 @@ export default function LearningScreen({ showToast }: any) {
               ))
             )}
             {fails.length > 0 && (
-              <TouchableOpacity style={[s.addBtn, { backgroundColor: '#dc2626', marginTop: 12 }]} onPress={async () => {
+              <TouchableOpacity accessibilityLabel="پاک کردن" style={[s.addBtn, { backgroundColor: '#dc2626', marginTop: 12 }]} onPress={async () => {
                 Alert.alert('پاک کردن همه؟', '', [
                   { text: 'لغو', style: 'cancel' },
                   { text: 'بله', onPress: async () => { await clearFails(); await load(); } },
@@ -223,7 +223,7 @@ export default function LearningScreen({ showToast }: any) {
             </View>
             <ScrollView style={{ padding: 14 }}>
               <Text style={s.mLbl}>💬 عبارت کاربر:</Text>
-              <TextInput style={s.mInp} value={lessonPhrase} onChangeText={setLessonPhrase} placeholder="مثلاً: احمد صندوق" placeholderTextColor="#64748b" />
+              <TextInput accessibilityLabel="مثلاً: احمد صندوق" style={s.mInp} value={lessonPhrase} onChangeText={setLessonPhrase} placeholder="مثلاً: احمد صندوق" placeholderTextColor="#64748b" />
               
               <Text style={[s.mLbl, { marginTop: 12 }]}>🎯 این عبارت یعنی:</Text>
               {LEARNABLE_INTENTS.map((it) => (
@@ -238,9 +238,9 @@ export default function LearningScreen({ showToast }: any) {
               ))}
 
               <Text style={[s.mLbl, { marginTop: 12 }]}>👤 اسم (اگه لازمه):</Text>
-              <TextInput style={s.mInp} value={lessonName} onChangeText={setLessonName} placeholder="احمد" placeholderTextColor="#64748b" />
+              <TextInput accessibilityLabel="احمد" style={s.mInp} value={lessonName} onChangeText={setLessonName} placeholder="احمد" placeholderTextColor="#64748b" />
 
-              <TouchableOpacity style={[s.addBtn, { backgroundColor: '#059669', marginTop: 16 }]} onPress={saveLesson}>
+              <TouchableOpacity accessibilityLabel="ذخیره درس" style={[s.addBtn, { backgroundColor: '#059669', marginTop: 16 }]} onPress={saveLesson}>
                 <Text style={s.addBtnTxt}>💾 ذخیره درس</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -258,12 +258,12 @@ export default function LearningScreen({ showToast }: any) {
             </View>
             <ScrollView style={{ padding: 14 }}>
               <Text style={s.mLbl}>«این کلمه»...</Text>
-              <TextInput style={s.mInp} value={aliasFrom} onChangeText={setAliasFrom} placeholder="کاردکس" placeholderTextColor="#64748b" />
+              <TextInput accessibilityLabel="کاردکس" style={s.mInp} value={aliasFrom} onChangeText={setAliasFrom} placeholder="کاردکس" placeholderTextColor="#64748b" />
               
               <Text style={[s.mLbl, { marginTop: 12 }]}>...یعنی «این کلمه»:</Text>
-              <TextInput style={s.mInp} value={aliasTo} onChangeText={setAliasTo} placeholder="صندوق" placeholderTextColor="#64748b" />
+              <TextInput accessibilityLabel="صندوق" style={s.mInp} value={aliasTo} onChangeText={setAliasTo} placeholder="صندوق" placeholderTextColor="#64748b" />
 
-              <TouchableOpacity style={[s.addBtn, { backgroundColor: '#059669', marginTop: 16 }]} onPress={saveAlias}>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.addBtn, { backgroundColor: '#059669', marginTop: 16 }]} onPress={saveAlias}>
                 <Text style={s.addBtnTxt}>💾 ذخیره</Text>
               </TouchableOpacity>
             </ScrollView>

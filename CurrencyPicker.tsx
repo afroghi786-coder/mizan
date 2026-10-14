@@ -77,7 +77,7 @@ export default function CurrencyPicker({ visible, current, onSelect, onClose, ti
             <TouchableOpacity onPress={onClose}><Text style={st.x}>×</Text></TouchableOpacity>
           </View>
           <View style={{ padding: 10 }}>
-            <TextInput
+            <TextInput accessibilityLabel="🔍 جستجو: USD یا دالر یا افغانی..."
               style={st.search}
               value={q}
               onChangeText={setQ}

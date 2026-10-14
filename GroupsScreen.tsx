@@ -115,10 +115,10 @@ export default function GroupsScreen({ showToast }: any) {
   return (
     <View>
       <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 12 }}>
-        <TouchableOpacity style={[s.actBtn, { backgroundColor: '#059669' }]} onPress={() => setCreateModal(true)}>
+        <TouchableOpacity accessibilityLabel="ساخت گروه" style={[s.actBtn, { backgroundColor: '#059669' }]} onPress={() => setCreateModal(true)}>
           <Text style={s.actBtnTxt}>➕ ساخت گروه</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.actBtn, { backgroundColor: '#1e40af' }]} onPress={() => setJoinModal(true)}>
+        <TouchableOpacity accessibilityLabel="پیوستن با کد" style={[s.actBtn, { backgroundColor: '#1e40af' }]} onPress={() => setJoinModal(true)}>
           <Text style={s.actBtnTxt}>🔑 پیوستن با کد</Text>
         </TouchableOpacity>
       </View>
@@ -143,22 +143,22 @@ export default function GroupsScreen({ showToast }: any) {
           </View>
           <Text style={s.cardSub}>📍 {NET_CITIES[g.city] || g.city} | 👥 {g.memberCount || 1} عضو</Text>
           {g.role === 'owner' && (
-            <TouchableOpacity style={s.inviteBox} onPress={() => copyCode(g.inviteCode)}>
+            <TouchableOpacity accessibilityLabel="کد دعوت" style={s.inviteBox} onPress={() => copyCode(g.inviteCode)}>
               <Text style={s.inviteLbl}>🔑 کد دعوت (لمس کن کپی)</Text>
               <Text style={s.inviteCode}>{g.inviteCode}</Text>
             </TouchableOpacity>
           )}
           <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 8 }}>
-            <TouchableOpacity style={[s.btn, { backgroundColor: '#1e40af', flex: 1 }]} onPress={() => viewDetail(g.id)}>
+            <TouchableOpacity accessibilityLabel="مشاهده" style={[s.btn, { backgroundColor: '#1e40af', flex: 1 }]} onPress={() => viewDetail(g.id)}>
               <Text style={s.btnTxt}>👁️ مشاهده</Text>
             </TouchableOpacity>
             {g.role === 'owner' && (
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 1 }]} onPress={() => { setInviteModal(g); setInviteEmail(''); }}>
+              <TouchableOpacity accessibilityLabel="دعوت" style={[s.btn, { backgroundColor: '#7c3aed', flex: 1 }]} onPress={() => { setInviteModal(g); setInviteEmail(''); }}>
                 <Text style={s.btnTxt}>➕ دعوت</Text>
               </TouchableOpacity>
             )}
             {g.role !== 'owner' && (
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#dc2626', flex: 1 }]} onPress={() => doLeave(g.id, g.name)}>
+              <TouchableOpacity accessibilityLabel="خروج" style={[s.btn, { backgroundColor: '#dc2626', flex: 1 }]} onPress={() => doLeave(g.id, g.name)}>
                 <Text style={s.btnTxt}>🚪 خروج</Text>
               </TouchableOpacity>
             )}
@@ -175,7 +175,7 @@ export default function GroupsScreen({ showToast }: any) {
           </View>
           <ScrollView style={{ padding: 14 }}>
             <Text style={s.lbl}>نام گروه *</Text>
-            <TextInput style={s.inp} value={createForm.name} onChangeText={v => setCreateForm({ ...createForm, name: v })} placeholder="مثلاً صرافان مورد اعتماد" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="مثلاً صرافان مورد اعتماد" style={s.inp} value={createForm.name} onChangeText={v => setCreateForm({ ...createForm, name: v })} placeholder="مثلاً صرافان مورد اعتماد" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>شهر</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {Object.keys(NET_CITIES).map(k => (
@@ -185,7 +185,7 @@ export default function GroupsScreen({ showToast }: any) {
               ))}
             </View>
             <View style={s.rowBtns}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCreateModal(false)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCreateModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submitCreate} disabled={saving}>
@@ -205,9 +205,9 @@ export default function GroupsScreen({ showToast }: any) {
           </View>
           <ScrollView style={{ padding: 14 }}>
             <Text style={s.lbl}>کد دعوت (INV-XXXXXXXX)</Text>
-            <TextInput style={s.inp} value={joinCode} onChangeText={v => setJoinCode(v.toUpperCase())} placeholder="INV-ABCD1234" placeholderTextColor="#94a3b8" autoCapitalize="characters" />
+            <TextInput accessibilityLabel="INV-ABCD1234" style={s.inp} value={joinCode} onChangeText={v => setJoinCode(v.toUpperCase())} placeholder="INV-ABCD1234" placeholderTextColor="#94a3b8" autoCapitalize="characters" />
             <View style={s.rowBtns}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setJoinModal(false)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setJoinModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#1e40af', flex: 2 }]} onPress={submitJoin} disabled={saving}>
@@ -227,12 +227,12 @@ export default function GroupsScreen({ showToast }: any) {
           </View>
           <ScrollView style={{ padding: 14 }}>
             <Text style={s.lbl}>ایمیل صراف مورد اعتماد</Text>
-            <TextInput style={s.inp} value={inviteEmail} onChangeText={setInviteEmail} placeholder="ahmed@gmail.com" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
+            <TextInput accessibilityLabel="ahmed@gmail.com" style={s.inp} value={inviteEmail} onChangeText={setInviteEmail} placeholder="ahmed@gmail.com" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
             <Text style={{ color: '#94a3b8', fontSize: 10, marginTop: 6, textAlign: 'right' }}>
               💡 اگر صراف در شبکه نصب نکرده باشد، عضویتش بعداً ثبت می‌شود.
             </Text>
             <View style={s.rowBtns}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setInviteModal(null)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setInviteModal(null)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submitInvite} disabled={saving}>
@@ -254,7 +254,7 @@ export default function GroupsScreen({ showToast }: any) {
             <ScrollView style={{ padding: 14 }}>
               <Text style={s.detailSub}>📍 {NET_CITIES[detailModal.meta?.city] || '—'} | 👑 {detailModal.meta?.ownerName}</Text>
               {detailModal.meta?.ownerEmail === net.email && (
-                <TouchableOpacity style={s.inviteBox} onPress={() => copyCode(detailModal.meta.inviteCode)}>
+                <TouchableOpacity accessibilityLabel="کد دعوت" style={s.inviteBox} onPress={() => copyCode(detailModal.meta.inviteCode)}>
                   <Text style={s.inviteLbl}>🔑 کد دعوت (لمس کن کپی)</Text>
                   <Text style={s.inviteCode}>{detailModal.meta.inviteCode}</Text>
                 </TouchableOpacity>
@@ -276,11 +276,11 @@ export default function GroupsScreen({ showToast }: any) {
                 </View>
               ))}
               <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 16 }}>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setDetailModal(null)}>
+                <TouchableOpacity accessibilityLabel="بستن" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setDetailModal(null)}>
                   <Text style={s.btnTxt}>بستن</Text>
                 </TouchableOpacity>
                 {detailModal.meta?.ownerEmail === net.email && (
-                  <TouchableOpacity style={[s.btn, { backgroundColor: '#dc2626', flex: 1 }]} onPress={() => doDelete(detailModal.id)}>
+                  <TouchableOpacity accessibilityLabel="حذف" style={[s.btn, { backgroundColor: '#dc2626', flex: 1 }]} onPress={() => doDelete(detailModal.id)}>
                     <Text style={s.btnTxt}>🗑 حذف</Text>
                   </TouchableOpacity>
                 )}

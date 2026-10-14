@@ -60,7 +60,7 @@ export default function LicenseRequest({ visible, onClose, showToast, userEmail 
                   به‌زودی با شما تماس می‌گیریم.{'\n\n'}
                   💡 پس از تأیید، یک بار اینترنت وصل کنید تا لایسنس فعال شود.
                 </Text>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={close}>
+                <TouchableOpacity accessibilityLabel="باشه" style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={close}>
                   <Text style={s.btnTxt}>✅ باشه</Text>
                 </TouchableOpacity>
               </>
@@ -74,16 +74,16 @@ export default function LicenseRequest({ visible, onClose, showToast, userEmail 
                 </Text>
 
                 <Text style={s.lbl}>نام و نام خانوادگی *</Text>
-                <TextInput style={s.inp} value={name} onChangeText={setName} placeholder="مثلاً: علی احمدی" placeholderTextColor="#94a3b8" />
+                <TextInput accessibilityLabel="مثلاً: علی احمدی" style={s.inp} value={name} onChangeText={setName} placeholder="مثلاً: علی احمدی" placeholderTextColor="#94a3b8" />
 
                 <Text style={s.lbl}>شماره موبایل *</Text>
-                <TextInput style={s.inp} value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={11} placeholder="09121234567" placeholderTextColor="#94a3b8" />
+                <TextInput accessibilityLabel="09121234567" style={s.inp} value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={11} placeholder="09121234567" placeholderTextColor="#94a3b8" />
 
                 <Text style={s.lbl}>توضیحات (اختیاری)</Text>
-                <TextInput style={[s.inp, { height: 80, textAlignVertical: 'top' }]} value={message} onChangeText={setMessage} multiline placeholder="هر توضیحی که لازم می‌دانید..." placeholderTextColor="#94a3b8" />
+                <TextInput accessibilityLabel="هر توضیحی که لازم می‌دانید..." style={[s.inp, { height: 80, textAlignVertical: 'top' }]} value={message} onChangeText={setMessage} multiline placeholder="هر توضیحی که لازم می‌دانید..." placeholderTextColor="#94a3b8" />
 
                 <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-                  <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b' }]} onPress={close}>
+                  <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b' }]} onPress={close}>
                     <Text style={s.btnTxt}>انصراف</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submit} disabled={sending}>

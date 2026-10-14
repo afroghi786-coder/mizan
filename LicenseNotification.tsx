@@ -92,7 +92,7 @@ export default function LicenseNotification({ showToast }: any) {
 
           <Text style={s.thanks}>از اعتماد شما سپاسگزاریم 🙏</Text>
 
-          <TouchableOpacity style={s.btn} onPress={dismiss}>
+          <TouchableOpacity accessibilityLabel="متوجه شدم" style={s.btn} onPress={dismiss}>
             <Text style={s.btnTxt}>✅ متوجه شدم</Text>
           </TouchableOpacity>
         </View>

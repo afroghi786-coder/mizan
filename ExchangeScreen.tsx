@@ -8,12 +8,13 @@ import { getAllCust, saveCust, deleteCust } from './lib.fx.cust';
 import ExchangeInvoice from './ExchangeInvoice';
 import CurrencyPicker, { CUR_INFO, curFlag, curLabel as curLabel2, ALL_CURS as ALL_CURS_NET } from './CurrencyPicker';
 import { getAllTrades, saveTrade, deleteTrade } from './lib.fx.trade';
-import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade, getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer, getFxPartners, createFxPartner, updateFxPartner, deleteFxPartner, g2j, g2h, j2g, h2g } from './lib.offline';
 import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 import { onHawalaUpdate } from './lib.events';
 import { consumeDeepLink, registerHandler } from './lib.assistant.bridge';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { registerCommands, unregisterCommands } from './CommandBus';
 import {
   getHawalas, createHawala, updateHawala, deleteHawala,
   getBoxes, createBox, updateBox, deleteBox,
@@ -130,6 +131,42 @@ function DateField({ value, onChange, compact, defaultToToday }: any) {
 export default function ExchangeScreen({ showToast }: any) {
   const [showInvoice, setShowInvoice] = useState<any>(null);
   const [sub, setSub] = useState<'list' | 'form' | 'customers' | 'partners' | 'hawalas' | 'boxes' | 'checks' | 'ledger' | 'statement' | 'liveMarket' | 'myGroups'>('list');
+
+  // 📖 دفترچه فرمان‌های صرافی
+  useEffect(() => {
+    registerCommands('exchange', {
+      'معاملات':       () => setSub('list'),
+      'لیست معاملات':  () => setSub('list'),
+      'معامله جدید':   () => setSub('form'),
+      'فرم معامله':    () => setSub('form'),
+      'صندوق‌ها':      () => setSub('boxes'),
+      'صندوق ها':      () => setSub('boxes'),
+      'صندوق':         () => setSub('boxes'),
+      'حواله‌جات':     () => setSub('hawalas'),
+      'حواله جات':     () => setSub('hawalas'),
+      'حواله':         () => setSub('hawalas'),
+      'چک‌ها':         () => setSub('checks'),
+      'چک ها':         () => setSub('checks'),
+      'چک':            () => setSub('checks'),
+      'مشتریان':       () => setSub('customers'),
+      'مشتری':         () => setSub('customers'),
+      'شریکان':        () => setSub('partners'),
+      'شرکا':          () => setSub('partners'),
+      'کاردکس':        () => setSub('ledger'),
+      'دفتر کل':       () => setSub('ledger'),
+      'پرینت حساب':    () => setSub('statement'),
+      'صورتحساب':      () => setSub('statement'),
+      'بازار زنده':    () => setSub('liveMarket'),
+      'شبکه‌ها':       () => setSub('myGroups'),
+    });
+    return () => unregisterCommands('exchange');
+  }, []);
+
+  // 🌉 ثبت setSub برای دستیار
+  useEffect(() => {
+    try { (globalThis as any).__exchangeSetSub = (s: string) => setSub(s as any); } catch {}
+    return () => { try { delete (globalThis as any).__exchangeSetSub; } catch {} };
+  }, []);
   const [boxDeepSearch, setBoxDeepSearch] = useState<string>('');
   const [trades, setTrades] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -799,18 +836,18 @@ export default function ExchangeScreen({ showToast }: any) {
               </TouchableOpacity>
 
               <Text style={s.lbl}>📞 تلفن خریدار *</Text>
-              <TextInput style={s.inp} value={fBuyerPhone} onChangeText={onBuyerPhoneChange} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="09..." style={s.inp} value={fBuyerPhone} onChangeText={onBuyerPhoneChange} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor="#94a3b8" />
 
               {fPartner ? <View style={{ backgroundColor: '#d1fae5', padding: 6, borderRadius: 6, marginTop: 4 }}><Text style={{ color: '#065f46', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>🆔 {fPartner}</Text></View> : null}
 
               <Text style={s.lbl}>🏦 بانک</Text>
-              <TextInput style={s.inp} value={fBuyerBank} onChangeText={setFBuyerBank} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام بانک" style={s.inp} value={fBuyerBank} onChangeText={setFBuyerBank} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>💳 شماره حساب</Text>
-              <TextInput style={s.inp} value={fBuyerAccount} onChangeText={setFBuyerAccount} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="شماره حساب" style={s.inp} value={fBuyerAccount} onChangeText={setFBuyerAccount} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>👤 صاحب حساب</Text>
-              <TextInput style={s.inp} value={fBuyerHolder} onChangeText={setFBuyerHolder} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام صاحب حساب" style={s.inp} value={fBuyerHolder} onChangeText={setFBuyerHolder} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>📍 آدرس</Text>
-              <TextInput style={[s.inp, { minHeight: 40 }]} value={fBuyerAddress} onChangeText={setFBuyerAddress} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="آدرس" style={[s.inp, { minHeight: 40 }]} value={fBuyerAddress} onChangeText={setFBuyerAddress} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
             </View>
 
             <View style={{ backgroundColor: '#eff6ff', borderRadius: 10, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: '#bfdbfe' }}>
@@ -820,28 +857,28 @@ export default function ExchangeScreen({ showToast }: any) {
               </View>
 
               <Text style={s.lbl}>📞 تلفن مشتری * (اول تلفن بزن)</Text>
-              <TextInput style={s.inp} value={fPhone} onChangeText={v => { const d = v.replace(/[^\d]/g, '').slice(0, 11); setFPhone(d); if (d.length === 11) lookupCustomer(d); }} keyboardType="phone-pad" maxLength={11} placeholder="09123456789" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="09123456789" style={s.inp} value={fPhone} onChangeText={v => { const d = v.replace(/[^\d]/g, '').slice(0, 11); setFPhone(d); if (d.length === 11) lookupCustomer(d); }} keyboardType="phone-pad" maxLength={11} placeholder="09123456789" placeholderTextColor="#94a3b8" />
 
               {fCustCode ? <View style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6, marginTop: 4 }}><Text style={{ color: '#1e40af', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>🆔 {fCustCode}</Text></View> : null}
 
               <Text style={s.lbl}>👤 نام و نام خانوادگی *</Text>
-              <TextInput style={s.inp} value={fCustName} onChangeText={setFCustName} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام کامل" style={s.inp} value={fCustName} onChangeText={setFCustName} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>🏦 بانک</Text>
-              <TextInput style={s.inp} value={fCustBank} onChangeText={setFCustBank} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام بانک" style={s.inp} value={fCustBank} onChangeText={setFCustBank} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>💳 شماره حساب</Text>
-              <TextInput style={s.inp} value={fCustAccount} onChangeText={setFCustAccount} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="شماره حساب" style={s.inp} value={fCustAccount} onChangeText={setFCustAccount} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>👤 صاحب حساب</Text>
-              <TextInput style={s.inp} value={fCustHolder} onChangeText={setFCustHolder} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام صاحب حساب" style={s.inp} value={fCustHolder} onChangeText={setFCustHolder} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>📍 آدرس</Text>
-              <TextInput style={[s.inp, { minHeight: 40 }]} value={fCustAddress} onChangeText={setFCustAddress} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="آدرس" style={[s.inp, { minHeight: 40 }]} value={fCustAddress} onChangeText={setFCustAddress} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
             </View>
 
             <Text style={s.lbl}>🔀 نوع معامله</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-              <TouchableOpacity onPress={() => { setFType('buy'); setFFrom('AFN'); setFTo('USD'); }} style={[s.typeBtn, fType === 'buy' && s.typeBtnBuy]}>
+              <TouchableOpacity accessibilityLabel="خرید ارز" onPress={() => { setFType('buy'); setFFrom('AFN'); setFTo('USD'); }} style={[s.typeBtn, fType === 'buy' && s.typeBtnBuy]}>
                 <Text style={[s.typeBtnTxt, fType === 'buy' && { color: '#fff' }]}>📥 خرید ارز</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setFType('sell'); setFFrom('USD'); setFTo('AFN'); }} style={[s.typeBtn, fType === 'sell' && s.typeBtnSell]}>
+              <TouchableOpacity accessibilityLabel="فروش ارز" onPress={() => { setFType('sell'); setFFrom('USD'); setFTo('AFN'); }} style={[s.typeBtn, fType === 'sell' && s.typeBtnSell]}>
                 <Text style={[s.typeBtnTxt, fType === 'sell' && { color: '#fff' }]}>📤 فروش ارز</Text>
               </TouchableOpacity>
             </View>
@@ -851,25 +888,25 @@ export default function ExchangeScreen({ showToast }: any) {
               <TouchableOpacity style={s.curPick} onPress={() => setShowFromCur(true)}>
                 <Text style={s.curPickTxt}>{CUR[fFrom]?.flag} {fFrom}</Text>
               </TouchableOpacity>
-              <TextInput style={[s.inp, { flex: 1 }]} value={fFromQty} onChangeText={v => { setFFromQty(v); recalc('from', v); }} keyboardType="numeric" placeholder="مقدار" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="مقدار" style={[s.inp, { flex: 1 }]} value={fFromQty} onChangeText={v => { setFFromQty(v); recalc('from', v); }} keyboardType="numeric" placeholder="مقدار" placeholderTextColor="#94a3b8" />
             </View>
 
             <Text style={s.lbl}>💹 نرخ تبدیل</Text>
-            <TextInput style={s.inp} value={fRate} onChangeText={v => { setFRate(v); recalc('rate', v); }} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="مثلاً 70500" style={s.inp} value={fRate} onChangeText={v => { setFRate(v); recalc('rate', v); }} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
 
             <Text style={s.lbl}>📥 به ارز (می‌گیرم) *</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
               <TouchableOpacity style={s.curPick} onPress={() => setShowToCur(true)}>
                 <Text style={s.curPickTxt}>{CUR[fTo]?.flag} {fTo}</Text>
               </TouchableOpacity>
-              <TextInput style={[s.inp, { flex: 1 }]} value={fToQty} onChangeText={v => { setFToQty(v); recalc('to', v); }} keyboardType="numeric" placeholder="مقدار" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="مقدار" style={[s.inp, { flex: 1 }]} value={fToQty} onChangeText={v => { setFToQty(v); recalc('to', v); }} keyboardType="numeric" placeholder="مقدار" placeholderTextColor="#94a3b8" />
             </View>
 
             <Text style={s.lbl}>📝 توضیحات</Text>
             <TextInput style={[s.inp, { minHeight: 60, textAlignVertical: 'top' }]} value={fDesc} onChangeText={setFDesc} multiline placeholderTextColor="#94a3b8" />
 
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => { resetForm(); setSub('list'); }}>
+              <TouchableOpacity accessibilityLabel="برگشت" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => { resetForm(); setSub('list'); }}>
                 <Text style={s.btnTxt}>↩️ برگشت</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submit}>
@@ -902,7 +939,7 @@ export default function ExchangeScreen({ showToast }: any) {
           <View>
             <View style={s.headRow}>
               <Text style={s.secT}>💸 حواله‌جات ({hawalas.length})</Text>
-              <TouchableOpacity style={s.addSmBtn} onPress={() => { setHawEditId(null); setHawForm({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: toStorageDateFull(new Date()), note: '' }); setHawModal(true); }}>
+              <TouchableOpacity accessibilityLabel="جدید" style={s.addSmBtn} onPress={() => { setHawEditId(null); setHawForm({ direction: 'send', amount: '', currency: 'USD', commission: '0', beneficiary_name: '', beneficiary_phone: '', beneficiary_city: '', partner_code: '', status: 'pending', date: toStorageDateFull(new Date()), note: '' }); setHawModal(true); }}>
                 <Text style={s.addSmBtnTxt}>➕ جدید</Text>
               </TouchableOpacity>
             </View>
@@ -958,7 +995,7 @@ export default function ExchangeScreen({ showToast }: any) {
           <View>
             <View style={s.headRow}>
               <Text style={s.secT}>📄 چک‌ها ({checks.length})</Text>
-              <TouchableOpacity style={s.addSmBtn} onPress={() => { setCkEditId(null); setCkForm({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: toStorageDateFull(new Date()), status: 'pending', note: '' }); setCkModal(true); }}>
+              <TouchableOpacity accessibilityLabel="جدید" style={s.addSmBtn} onPress={() => { setCkEditId(null); setCkForm({ direction: 'in', check_number: '', bank: '', amount: '', currency: 'AFN', partner_code: '', partner_name: '', due_date: toStorageDateFull(new Date()), status: 'pending', note: '' }); setCkModal(true); }}>
                 <Text style={s.addSmBtnTxt}>➕ جدید</Text>
               </TouchableOpacity>
             </View>
@@ -1071,14 +1108,14 @@ export default function ExchangeScreen({ showToast }: any) {
             <View style={[s.formCard, { marginBottom: 12 }]}>
               <Text style={s.lbl}>🔍 جستجو (کد / تلفن / نام)</Text>
               <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-                <TextInput
+                <TextInput accessibilityLabel="B_1001 یا X_1001 یا 0912... یا احمد"
                   style={[s.inp, { flex: 1 }]}
                   value={stmtSearch}
                   onChangeText={setStmtSearch}
                   placeholder="B_1001 یا X_1001 یا 0912... یا احمد"
                   placeholderTextColor="#94a3b8"
                 />
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', paddingHorizontal: 16 }]} onPress={() => buildStatement(stmtSearch)}>
+                <TouchableOpacity accessibilityLabel="نمایش" style={[s.btn, { backgroundColor: '#059669', paddingHorizontal: 16 }]} onPress={() => buildStatement(stmtSearch)}>
                   <Text style={s.btnTxt}>🔍 نمایش</Text>
                 </TouchableOpacity>
               </View>
@@ -1428,7 +1465,7 @@ export default function ExchangeScreen({ showToast }: any) {
         <View style={s.mBg}><View style={s.mBox}>
           <View style={s.mHead}><Text style={s.mTitle}>📤 ارز مبدأ</Text><TouchableOpacity onPress={() => setShowFromCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 10 }}>
-          <TextInput
+          <TextInput accessibilityLabel="🔍 جستجو: USD یا دالر یا افغانی..."
             style={[s.inp, { textAlign: 'right' }]}
             value={curSearch}
             onChangeText={setCurSearch}
@@ -1452,7 +1489,7 @@ export default function ExchangeScreen({ showToast }: any) {
         <View style={s.mBg}><View style={s.mBox}>
           <View style={s.mHead}><Text style={s.mTitle}>📥 ارز مقصد</Text><TouchableOpacity onPress={() => setShowToCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 10 }}>
-          <TextInput
+          <TextInput accessibilityLabel="🔍 جستجو: USD یا دالر یا افغانی..."
             style={[s.inp, { textAlign: 'right' }]}
             value={curSearch}
             onChangeText={setCurSearch}
@@ -1495,8 +1532,8 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>بانک</Text><TextInput style={s.inp} value={custForm.bank} onChangeText={v => setCustForm({ ...custForm, bank: v })} />
             <Text style={s.lbl}>صاحب حساب</Text><TextInput style={s.inp} value={custForm.holder_name} onChangeText={v => setCustForm({ ...custForm, holder_name: v })} />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCustModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submitCustomer}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCustModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submitCustomer}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
@@ -1510,8 +1547,8 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>نام *</Text><TextInput style={s.inp} value={partnerForm.name} onChangeText={v => setPartnerForm({ ...partnerForm, name: v })} />
             <Text style={s.lbl}>تلفن</Text><TextInput style={s.inp} value={partnerForm.phone} onChangeText={v => setPartnerForm({ ...partnerForm, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setPartnerModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submitPartner}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setPartnerModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submitPartner}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
@@ -1543,7 +1580,7 @@ export default function ExchangeScreen({ showToast }: any) {
                 {hawSenderStatus ? <Text style={{ fontSize: 10, fontWeight: 'bold', color: hawSenderStatus.includes('قبلی') ? '#059669' : '#ea580c' }}>{hawSenderStatus}</Text> : null}
               </View>
               <Text style={s.lbl}>📞 تلفن فرستنده</Text>
-              <TextInput
+              <TextInput accessibilityLabel="09123456789"
                 style={s.inp}
                 value={hawForm.sender_phone || ''}
                 onChangeText={(v) => {
@@ -1568,7 +1605,7 @@ export default function ExchangeScreen({ showToast }: any) {
               />
               {hawForm.sender_code ? <Text style={[s.badge, { marginTop: 4, alignSelf: 'center' }]}>🆔 {hawForm.sender_code}</Text> : null}
               <Text style={s.lbl}>👤 نام فرستنده *</Text>
-              <TextInput style={s.inp} value={hawForm.sender_name || ''} onChangeText={(v) => setHawForm({ ...hawForm, sender_name: v })} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام کامل" style={s.inp} value={hawForm.sender_name || ''} onChangeText={(v) => setHawForm({ ...hawForm, sender_name: v })} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>📍 آدرس</Text>
               <TextInput style={s.inp} value={hawForm.sender_address || ''} onChangeText={(v) => setHawForm({ ...hawForm, sender_address: v })} placeholderTextColor="#94a3b8" />
             </View>
@@ -1580,7 +1617,7 @@ export default function ExchangeScreen({ showToast }: any) {
                 {hawBenStatus ? <Text style={{ fontSize: 10, fontWeight: 'bold', color: hawBenStatus.includes('قبلی') ? '#059669' : '#ea580c' }}>{hawBenStatus}</Text> : null}
               </View>
               <Text style={s.lbl}>📞 تلفن ذی‌نفع</Text>
-              <TextInput
+              <TextInput accessibilityLabel="09123456789"
                 style={s.inp}
                 value={hawForm.beneficiary_phone || ''}
                 onChangeText={(v) => {
@@ -1700,16 +1737,16 @@ export default function ExchangeScreen({ showToast }: any) {
 
               <Text style={s.lbl}>💵 کارمزد</Text>
               <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 6 }}>
-                <TouchableOpacity style={[s.typeBtn, hawForm.commission_type === 'manual' && { backgroundColor: '#059669', borderColor: '#059669' }]} onPress={() => setHawForm({ ...hawForm, commission_type: 'manual' })}>
+                <TouchableOpacity accessibilityLabel="دستی" style={[s.typeBtn, hawForm.commission_type === 'manual' && { backgroundColor: '#059669', borderColor: '#059669' }]} onPress={() => setHawForm({ ...hawForm, commission_type: 'manual' })}>
                   <Text style={[s.typeBtnTxt, hawForm.commission_type === 'manual' && { color: '#fff' }]}>✏️ دستی</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.typeBtn, hawForm.commission_type === 'percent' && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]} onPress={() => setHawForm({ ...hawForm, commission_type: 'percent' })}>
+                <TouchableOpacity accessibilityLabel="درصدی" style={[s.typeBtn, hawForm.commission_type === 'percent' && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]} onPress={() => setHawForm({ ...hawForm, commission_type: 'percent' })}>
                   <Text style={[s.typeBtnTxt, hawForm.commission_type === 'percent' && { color: '#fff' }]}>📊 درصدی</Text>
                 </TouchableOpacity>
               </View>
 
               {hawForm.commission_type === 'manual' ? (
-                <TextInput
+                <TextInput accessibilityLabel="مبلغ ثابت"
                   style={s.inp}
                   value={String(hawForm.commission || '')}
                   onChangeText={(v) => setHawForm({ ...hawForm, commission: v.replace(/[^\d]/g, '') })}
@@ -1719,7 +1756,7 @@ export default function ExchangeScreen({ showToast }: any) {
                 />
               ) : (
                 <>
-                  <TextInput
+                  <TextInput accessibilityLabel="٪ درصد — مثلاً 0.5"
                     style={s.inp}
                     value={String(hawForm.commission_percent || '')}
                     onChangeText={(v) => {
@@ -1763,8 +1800,8 @@ export default function ExchangeScreen({ showToast }: any) {
             </View>
 
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره"
                 style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]}
                 onPress={async () => {
                   try {
@@ -1887,7 +1924,7 @@ export default function ExchangeScreen({ showToast }: any) {
           <View style={s.mHead}><Text style={s.mTitle}>{boxEditId ? '✏️ ویرایش صندوق' : '➕ صندوق جدید'}</Text><TouchableOpacity onPress={() => setBoxModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 16 }}>
             <Text style={s.lbl}>نام *</Text>
-            <TextInput style={s.inp} value={boxForm.name} onChangeText={v => setBoxForm({ ...boxForm, name: v })} placeholder="مثلاً: صندوق دالر" />
+            <TextInput accessibilityLabel="مثلاً: صندوق دالر" style={s.inp} value={boxForm.name} onChangeText={v => setBoxForm({ ...boxForm, name: v })} placeholder="مثلاً: صندوق دالر" />
             <Text style={s.lbl}>ارز</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {['USD', 'EUR', 'AFN', 'PKR', 'AED', 'IRR'].map(c => (
@@ -1907,8 +1944,8 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>موجودی اولیه</Text>
             <TextInput style={s.inp} value={String(boxForm.opening)} onChangeText={v => setBoxForm({ ...boxForm, opening: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setBoxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setBoxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
                 if (!boxForm.name) return showToast('نام الزامی', true);
                 const payload = { ...boxForm, opening: Number(boxForm.opening) || 0 };
                 if (boxEditId) await updateBox(boxEditId, payload);
@@ -1948,8 +1985,8 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>تاریخ</Text>
             <DateField value={trForm.date} onChange={(v: string) => setTrForm({ ...trForm, date: v })} compact defaultToToday />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTrModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTrModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
                 if (!trForm.from_box || !trForm.to_box) return showToast('صندوق‌ها را انتخاب کن', true);
                 if (trForm.from_box === trForm.to_box) return showToast('صندوق مبدأ و مقصد یکسان', true);
                 if (!trForm.amount || Number(trForm.amount) <= 0) return showToast('مبلغ را وارد کن', true);
@@ -1968,10 +2005,10 @@ export default function ExchangeScreen({ showToast }: any) {
           <View style={{ padding: 16 }}>
             <Text style={s.lbl}>نوع چک</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-              <TouchableOpacity style={[s.typeBtn, ckForm.direction === 'in' && { backgroundColor: '#34d399', borderColor: '#34d399' }]} onPress={() => setCkForm({ ...ckForm, direction: 'in' })}>
+              <TouchableOpacity accessibilityLabel="دریافتی" style={[s.typeBtn, ckForm.direction === 'in' && { backgroundColor: '#34d399', borderColor: '#34d399' }]} onPress={() => setCkForm({ ...ckForm, direction: 'in' })}>
                 <Text style={[s.typeBtnTxt, ckForm.direction === 'in' && { color: '#fff' }]}>📥 دریافتی</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[s.typeBtn, ckForm.direction === 'out' && { backgroundColor: '#fb923c', borderColor: '#fb923c' }]} onPress={() => setCkForm({ ...ckForm, direction: 'out' })}>
+              <TouchableOpacity accessibilityLabel="پرداختی" style={[s.typeBtn, ckForm.direction === 'out' && { backgroundColor: '#fb923c', borderColor: '#fb923c' }]} onPress={() => setCkForm({ ...ckForm, direction: 'out' })}>
                 <Text style={[s.typeBtnTxt, ckForm.direction === 'out' && { color: '#fff' }]}>📤 پرداختی</Text>
               </TouchableOpacity>
             </View>
@@ -1984,7 +2021,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <Text style={s.lbl}>مبلغ *</Text>
             <TextInput style={s.inp} value={String(ckForm.amount)} onChangeText={v => setCkForm({ ...ckForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" />
             <Text style={s.lbl}>💱 ارز</Text>
-            <TextInput style={s.inp} value={ckCurSearch} onChangeText={setCkCurSearch} placeholder="🔍 جستجو: USD، دالر، افغانی..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="🔍 جستجو: USD، دالر، افغانی..." style={s.inp} value={ckCurSearch} onChangeText={setCkCurSearch} placeholder="🔍 جستجو: USD، دالر، افغانی..." placeholderTextColor="#94a3b8" />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
               {Object.keys(CUR).filter(k => { const q = ckCurSearch.toLowerCase().trim(); if (!q) return true; return k.toLowerCase().includes(q) || CUR[k].name.includes(ckCurSearch); }).map(k => (
                 <TouchableOpacity key={k} style={[s.curPick, ckForm.currency === k && { backgroundColor: '#065f46', borderColor: '#065f46' }]} onPress={() => setCkForm({ ...ckForm, currency: k })}>
@@ -2003,8 +2040,8 @@ export default function ExchangeScreen({ showToast }: any) {
               ))}
             </View>
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCkModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCkModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={async () => {
                 if (!ckForm.amount || Number(ckForm.amount) <= 0) return showToast('مبلغ الزامی', true);
                 const payload = { ...ckForm, amount: Number(ckForm.amount) || 0 };
                 if (ckEditId) await updateCheck(ckEditId, payload);
@@ -2100,7 +2137,7 @@ function PartyList({ type, showToast }: any) {
         <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{`افزودن ${isBuyer ? 'خریدار' : 'مشتری'} جدید`}</Text>
       </TouchableOpacity>
 
-      <TextInput style={s.inp} value={q} onChangeText={setQ} placeholder="جستجو: کد، نام، تلفن، بانک..." placeholderTextColor="#94a3b8" />
+      <TextInput accessibilityLabel="جستجو: کد، نام، تلفن، بانک..." style={s.inp} value={q} onChangeText={setQ} placeholder="جستجو: کد، نام، تلفن، بانک..." placeholderTextColor="#94a3b8" />
 
       <Text style={s.secT}>{`${title} (${filtered.length})`}</Text>
 
@@ -2133,7 +2170,7 @@ function PartyList({ type, showToast }: any) {
               <Text style={[ptStyles.td, { width: 140, color: '#0f172a', textAlign: 'right' }]} numberOfLines={1}>{x.holder_name || '—'}</Text>
               <Text style={[ptStyles.td, { width: 180, color: '#64748b', fontSize: 11, textAlign: 'right' }]} numberOfLines={1}>{x.address || '—'}</Text>
               <View style={[ptStyles.td, { width: 140, flexDirection: 'row', justifyContent: 'center', gap: 4 }]}>
-                <TouchableOpacity onPress={() => openEdit(x)} style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 6 }}>
+                <TouchableOpacity accessibilityLabel="ویرایش" onPress={() => openEdit(x)} style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 6 }}>
                   <Text style={{ fontSize: 12, color: '#1e40af', fontWeight: 'bold' }}>✏️ ویرایش</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => remove(x.id)} style={{ paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fee2e2', borderRadius: 6 }}>
@@ -2154,10 +2191,10 @@ function PartyList({ type, showToast }: any) {
             </View>
             <View style={{ padding: 16 }}>
               <Text style={s.lbl}>نام و نام خانوادگی *</Text>
-              <TextInput style={s.inp} value={form.name || ''} onChangeText={v => setForm({ ...form, name: v })} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام کامل" style={s.inp} value={form.name || ''} onChangeText={v => setForm({ ...form, name: v })} placeholder="نام کامل" placeholderTextColor="#94a3b8" />
 
               <Text style={s.lbl}>تلفن همراه *</Text>
-              <TextInput style={s.inp} value={form.phone || ''} onChangeText={v => setForm({ ...form, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} placeholder="09123456789" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="09123456789" style={s.inp} value={form.phone || ''} onChangeText={v => setForm({ ...form, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} placeholder="09123456789" placeholderTextColor="#94a3b8" />
 
               {form.phone && String(form.phone).length >= 10 ? (
                 <View style={{ backgroundColor: '#d1fae5', padding: 10, borderRadius: 8, marginTop: 8 }}>
@@ -2166,22 +2203,22 @@ function PartyList({ type, showToast }: any) {
               ) : null}
 
               <Text style={s.lbl}>بانک</Text>
-              <TextInput style={s.inp} value={form.bank || ''} onChangeText={v => setForm({ ...form, bank: v })} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام بانک" style={s.inp} value={form.bank || ''} onChangeText={v => setForm({ ...form, bank: v })} placeholder="نام بانک" placeholderTextColor="#94a3b8" />
 
               <Text style={s.lbl}>شماره حساب</Text>
-              <TextInput style={s.inp} value={form.account_number || ''} onChangeText={v => setForm({ ...form, account_number: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="شماره حساب" style={s.inp} value={form.account_number || ''} onChangeText={v => setForm({ ...form, account_number: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="شماره حساب" placeholderTextColor="#94a3b8" />
 
               <Text style={s.lbl}>صاحب حساب</Text>
-              <TextInput style={s.inp} value={form.holder_name || ''} onChangeText={v => setForm({ ...form, holder_name: v })} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="نام صاحب حساب" style={s.inp} value={form.holder_name || ''} onChangeText={v => setForm({ ...form, holder_name: v })} placeholder="نام صاحب حساب" placeholderTextColor="#94a3b8" />
 
               <Text style={s.lbl}>آدرس</Text>
-              <TextInput style={[s.inp, { minHeight: 50 }]} value={form.address || ''} onChangeText={v => setForm({ ...form, address: v })} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="آدرس" style={[s.inp, { minHeight: 50 }]} value={form.address || ''} onChangeText={v => setForm({ ...form, address: v })} multiline placeholder="آدرس" placeholderTextColor="#94a3b8" />
 
               <Text style={s.lbl}>یادداشت</Text>
-              <TextInput style={[s.inp, { minHeight: 50 }]} value={form.note || ''} onChangeText={v => setForm({ ...form, note: v })} multiline placeholder="اختیاری" placeholderTextColor="#94a3b8" />
+              <TextInput accessibilityLabel="اختیاری" style={[s.inp, { minHeight: 50 }]} value={form.note || ''} onChangeText={v => setForm({ ...form, note: v })} multiline placeholder="اختیاری" placeholderTextColor="#94a3b8" />
 
               <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 20 }}>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
+                <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
                   <Text style={s.btnTxt}>انصراف</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.btn, { backgroundColor: color, flex: 2 }]} onPress={submit} disabled={saving}>

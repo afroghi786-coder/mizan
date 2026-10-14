@@ -6,7 +6,7 @@ const { Speech } = NativeModules;
 // ─── تشخیص محیط
 export const isWeb = Platform.OS === 'web';
 export const isAndroid = Platform.OS === 'android';
-export const hasNativeSpeech = false; // غیرفعال شد
+export const hasNativeSpeech = !!(Speech && isAndroid);
 
 // ═══════════════════════════════════════════
 // STT — تبدیل صدا به متن
@@ -150,4 +150,63 @@ export function getVoices(): any[] {
     return (window as any).speechSynthesis.getVoices() || [];
   }
   return [];
+}
+
+// ═══════════════════════════════════════════
+// Continuous Mode — میکروفون یکبار روشن بمونه
+// ═══════════════════════════════════════════
+let _continuous = false;
+let _continuousHandler: any = null;
+let _onContinuousResult: ((txt: string) => void) | null = null;
+let _onContinuousPartial: ((txt: string) => void) | null = null;
+
+export function setContinuousMode(on: boolean): void {
+  _continuous = on;
+  console.log('🎤 continuous:', on);
+}
+
+export function isContinuousMode(): boolean {
+  return _continuous;
+}
+
+export function startContinuous(
+  onResult: (txt: string) => void,
+  onPartial: (txt: string) => void,
+  onError: (err: string) => void
+): void {
+  _onContinuousResult = onResult;
+  _onContinuousPartial = onPartial;
+  _continuous = true;
+  
+  const startOnce = () => {
+    if (!_continuous) return;
+    _continuousHandler = startSTT(
+      (p) => { if (_onContinuousPartial) _onContinuousPartial(p); },
+      (t) => {
+        if (_onContinuousResult) _onContinuousResult(t);
+        // بعد از نتیجه، دوباره شروع کن
+        if (_continuous) {
+          setTimeout(() => startOnce(), 300);
+        }
+      },
+      (e) => {
+        if (onError) onError(e);
+        // بعد از خطا هم دوباره شروع کن
+        if (_continuous) {
+          setTimeout(() => startOnce(), 1500);
+        }
+      }
+    );
+  };
+  startOnce();
+}
+
+export function stopContinuous(): void {
+  _continuous = false;
+  _onContinuousResult = null;
+  _onContinuousPartial = null;
+  if (_continuousHandler) {
+    stopSTT(_continuousHandler);
+    _continuousHandler = null;
+  }
 }

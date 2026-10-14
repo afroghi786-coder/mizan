@@ -136,13 +136,13 @@ export default function DateField({ value, onChange, defaultToToday, compact, in
 
       {showType && (
         <View style={styles.typeMenu}>
-          <TouchableOpacity style={styles.typeItem} onPress={() => changeType('jalali')}>
+          <TouchableOpacity accessibilityLabel="شمسی" style={styles.typeItem} onPress={() => changeType('jalali')}>
             <Text style={styles.typeItemText}>🌙 شمسی</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.typeItem} onPress={() => changeType('gregorian')}>
+          <TouchableOpacity accessibilityLabel="میلادی" style={styles.typeItem} onPress={() => changeType('gregorian')}>
             <Text style={styles.typeItemText}>🌍 میلادی</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.typeItem} onPress={() => changeType('hijri')}>
+          <TouchableOpacity accessibilityLabel="قمری" style={styles.typeItem} onPress={() => changeType('hijri')}>
             <Text style={styles.typeItemText}>🕋 قمری</Text>
           </TouchableOpacity>
         </View>

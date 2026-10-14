@@ -189,7 +189,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
 
         {/* 🔍 جستجوی صندوق */}
         <View style={{ flexDirection: 'row-reverse', padding: 10, gap: 8, alignItems: 'center' }}>
-          <TextInput
+          <TextInput accessibilityLabel="🔍 جستجوی صندوق (اسم / کد)"
             style={{ flex: 1, backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: deepFilter ? '#f59e0b' : '#334155', borderRadius: 8, padding: 10, textAlign: 'right', fontSize: 13 }}
             value={deepFilter}
             onChangeText={setDeepFilter}
@@ -224,10 +224,10 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
           ))}
         </View>
         <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
-          <TouchableOpacity onPress={printKardex} style={{ backgroundColor: '#8e44ad', paddingVertical: 10, borderRadius: 8, flex: 1 }}>
+          <TouchableOpacity accessibilityLabel="پرینت" onPress={printKardex} style={{ backgroundColor: '#8e44ad', paddingVertical: 10, borderRadius: 8, flex: 1 }}>
             <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center', fontSize: 12 }}>🖨️ پرینت</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setSelectedBox(null)} style={{ backgroundColor: '#64748b', paddingVertical: 10, borderRadius: 8, flex: 1 }}>
+          <TouchableOpacity accessibilityLabel="برگشت" onPress={() => setSelectedBox(null)} style={{ backgroundColor: '#64748b', paddingVertical: 10, borderRadius: 8, flex: 1 }}>
             <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center', fontSize: 12 }}>↩️ برگشت</Text>
           </TouchableOpacity>
         </View>
@@ -274,14 +274,14 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
             <ScrollView style={{ padding: 14, maxHeight: 500 }}>
               {(txForm.type === 'adjust_in' || txForm.type === 'adjust_out') && (
                 <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 8 }}>
-                  <TouchableOpacity onPress={() => setTxForm((f: any) => ({ ...f, type: 'adjust_in' }))} style={[s.chip, txForm.type === 'adjust_in' && s.chipActive]}><Text style={[s.chipTxt, txForm.type === 'adjust_in' && s.chipTxtActive]}>➕ افزایش</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => setTxForm((f: any) => ({ ...f, type: 'adjust_out' }))} style={[s.chip, txForm.type === 'adjust_out' && s.chipActive]}><Text style={[s.chipTxt, txForm.type === 'adjust_out' && s.chipTxtActive]}>➖ کاهش</Text></TouchableOpacity>
+                  <TouchableOpacity accessibilityLabel="افزایش" onPress={() => setTxForm((f: any) => ({ ...f, type: 'adjust_in' }))} style={[s.chip, txForm.type === 'adjust_in' && s.chipActive]}><Text style={[s.chipTxt, txForm.type === 'adjust_in' && s.chipTxtActive]}>➕ افزایش</Text></TouchableOpacity>
+                  <TouchableOpacity accessibilityLabel="کاهش" onPress={() => setTxForm((f: any) => ({ ...f, type: 'adjust_out' }))} style={[s.chip, txForm.type === 'adjust_out' && s.chipActive]}><Text style={[s.chipTxt, txForm.type === 'adjust_out' && s.chipTxtActive]}>➖ کاهش</Text></TouchableOpacity>
                 </View>
               )}
               {(txForm.type === 'fee_in' || txForm.type === 'fee_out') && (
                 <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 8 }}>
-                  <TouchableOpacity onPress={() => setTxForm((f: any) => ({ ...f, type: 'fee_in' }))} style={[s.chip, txForm.type === 'fee_in' && s.chipActive]}><Text style={[s.chipTxt, txForm.type === 'fee_in' && s.chipTxtActive]}>📥 دریافت</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => setTxForm((f: any) => ({ ...f, type: 'fee_out' }))} style={[s.chip, txForm.type === 'fee_out' && s.chipActive]}><Text style={[s.chipTxt, txForm.type === 'fee_out' && s.chipTxtActive]}>📤 پرداخت</Text></TouchableOpacity>
+                  <TouchableOpacity accessibilityLabel="دریافت" onPress={() => setTxForm((f: any) => ({ ...f, type: 'fee_in' }))} style={[s.chip, txForm.type === 'fee_in' && s.chipActive]}><Text style={[s.chipTxt, txForm.type === 'fee_in' && s.chipTxtActive]}>📥 دریافت</Text></TouchableOpacity>
+                  <TouchableOpacity accessibilityLabel="پرداخت" onPress={() => setTxForm((f: any) => ({ ...f, type: 'fee_out' }))} style={[s.chip, txForm.type === 'fee_out' && s.chipActive]}><Text style={[s.chipTxt, txForm.type === 'fee_out' && s.chipTxtActive]}>📤 پرداخت</Text></TouchableOpacity>
                 </View>
               )}
               <Text style={s.lbl}>مبلغ *</Text>
@@ -300,7 +300,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
               <Text style={s.lbl}>شرح</Text>
               <TextInput style={[s.inp, { minHeight: 60 }]} value={txForm.description || ''} onChangeText={v => setTxForm((f: any) => ({ ...f, description: v }))} multiline placeholderTextColor="#94a3b8" />
               <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+                <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
                 <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={saveTxHandler} disabled={saving}>
                   {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>💾 ذخیره</Text>}
                 </TouchableOpacity>
@@ -318,10 +318,10 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
       <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <Text style={{ color: '#d4af37', fontSize: 14, fontWeight: 'bold' }}>📦 صندوق‌ها ({boxes.length})</Text>
         <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-          <TouchableOpacity onPress={() => { setTransferForm({ from_box_code: '', to_box_code: '', amount: '', date: toStorageDateFull(new Date()) }); setTransferModal(true); }} style={{ backgroundColor: '#059669', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}>
+          <TouchableOpacity accessibilityLabel="انتقال" onPress={() => { setTransferForm({ from_box_code: '', to_box_code: '', amount: '', date: toStorageDateFull(new Date()) }); setTransferModal(true); }} style={{ backgroundColor: '#059669', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}>
             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>🔄 انتقال</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setBoxForm({ name: '', currency: 'USD', owner_code: '', owner_name: '', opening: '0' }); setBoxModal(true); }} style={{ backgroundColor: '#7c3aed', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}>
+          <TouchableOpacity accessibilityLabel="جدید" onPress={() => { setBoxForm({ name: '', currency: 'USD', owner_code: '', owner_name: '', opening: '0' }); setBoxModal(true); }} style={{ backgroundColor: '#7c3aed', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 }}>
             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>➕ جدید</Text>
           </TouchableOpacity>
         </View>
@@ -352,7 +352,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
                   <Text style={[s.td, { width: 130, color: col, fontWeight: 'bold', fontSize: 13 }]}>{bal > 0 ? '+' : ''}{fmt(bal, CUR[b.currency]?.dec || 2)}</Text>
                   <Text style={[s.td, { width: 160, color: '#00ff88', fontWeight: 'bold', fontSize: 11 }]}>{b.owner_name ? `👤 ${b.owner_name}` : '—'}</Text>
                   <View style={[s.td, { width: 200, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
-                    <TouchableOpacity onPress={() => openKardex(b)} style={[s.iconBtn, { backgroundColor: '#dbeafe' }]}><Text style={{ fontSize: 11, color: '#1e40af', fontWeight: 'bold' }}>📋 کاردکس</Text></TouchableOpacity>
+                    <TouchableOpacity accessibilityLabel="کاردکس" onPress={() => openKardex(b)} style={[s.iconBtn, { backgroundColor: '#dbeafe' }]}><Text style={{ fontSize: 11, color: '#1e40af', fontWeight: 'bold' }}>📋 کاردکس</Text></TouchableOpacity>
                     <TouchableOpacity onPress={() => { setBoxForm({ ...b }); setBoxModal(true); }} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
                     <TouchableOpacity onPress={async () => {
                       if (typeof window !== 'undefined' && !window.confirm('حذف صندوق ' + b.name + '؟')) return;
@@ -374,7 +374,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
             <TouchableOpacity onPress={() => setShowBoxCur(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
           </View>
           <View style={{ padding: 10 }}>
-            <TextInput
+            <TextInput accessibilityLabel="🔍 جستجو: USD یا دالر یا افغانی..."
               style={[s.inp, { textAlign: 'right' }]}
               value={boxCurSearch}
               onChangeText={setBoxCurSearch}
@@ -412,7 +412,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
               <Text style={{ color: boxForm.owner_name ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>{boxForm.owner_name ? `👤 ${boxForm.owner_name}  (${boxForm.owner_code || '—'})` : '🔍 انتخاب از خریداران...'}</Text>
             </TouchableOpacity>
             <Text style={s.lbl}>نام صندوق *</Text>
-            <TextInput style={s.inp} value={boxForm.name || ''} onChangeText={v => setBoxForm((f: any) => ({ ...f, name: v }))} placeholder="صندوق دلار" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="صندوق دلار" style={s.inp} value={boxForm.name || ''} onChangeText={v => setBoxForm((f: any) => ({ ...f, name: v }))} placeholder="صندوق دلار" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>ارز *</Text>
             <TouchableOpacity
               style={s.inp}
@@ -429,7 +429,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
             <Text style={s.lbl}>یادداشت</Text>
             <TextInput style={[s.inp, { minHeight: 60 }]} value={boxForm.notes || ''} onChangeText={v => setBoxForm((f: any) => ({ ...f, notes: v }))} multiline placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setBoxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setBoxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={saveBoxHandler} disabled={saving}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>💾 ذخیره</Text>}
               </TouchableOpacity>
@@ -508,7 +508,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
                     <Text style={{ color: '#fed7aa', fontSize: 11, textAlign: 'center', fontWeight: 'bold' }}>⚠️ ارزها متفاوت — تبدیل لازم است</Text>
                   </View>
                   <Text style={s.lbl}>💹 نرخ تبدیل ({fb.currency} → {tb.currency}) *</Text>
-                  <TextInput style={s.inp} value={String(transferForm.rate || '')} onChangeText={v => setTransferForm((f: any) => ({ ...f, rate: v.replace(/[^\d.-]/g, '') }))} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
+                  <TextInput accessibilityLabel="مثلاً 70500" style={s.inp} value={String(transferForm.rate || '')} onChangeText={v => setTransferForm((f: any) => ({ ...f, rate: v.replace(/[^\d.-]/g, '') }))} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
                   {amt > 0 && rate > 0 && (
                     <View style={{ backgroundColor: '#0f2438', padding: 10, borderRadius: 8, marginTop: 8, borderWidth: 2, borderColor: '#10b981' }}>
                       <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'center', marginBottom: 4 }}>مبلغ دریافتی</Text>
@@ -523,7 +523,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
             <Text style={s.lbl}>شرح</Text>
             <TextInput style={[s.inp, { minHeight: 60 }]} value={transferForm.description || ''} onChangeText={v => setTransferForm((f: any) => ({ ...f, description: v }))} multiline placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTransferModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTransferModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={saveTransfer} disabled={saving}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>✅ انتقال</Text>}
               </TouchableOpacity>

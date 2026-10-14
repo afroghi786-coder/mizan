@@ -257,21 +257,21 @@ export default function ExchangeBell({ showToast, onBack }: any) {
 
                       {/* قبول — برای هر معامله‌ای که قبول نشده */}
                       {hasDeal && !isDone && !isInfo ? (
-                        <TouchableOpacity onPress={() => doAccept(nt)} disabled={!!busy} style={{ backgroundColor: '#059669', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, minWidth: 80, alignItems: 'center', opacity: busy ? 0.5 : 1 }}>
+                        <TouchableOpacity accessibilityLabel="قبول" onPress={() => doAccept(nt)} disabled={!!busy} style={{ backgroundColor: '#059669', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, minWidth: 80, alignItems: 'center', opacity: busy ? 0.5 : 1 }}>
                           <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>✅ قبول</Text>
                         </TouchableOpacity>
                       ) : null}
 
                       {/* تحویل — برای بعد از قبول */}
                       {hasDeal && !isDone && !isInfo && (t.includes('taken') || t.includes('accepted')) ? (
-                        <TouchableOpacity onPress={() => doDeliver(nt)} disabled={!!busy} style={{ backgroundColor: '#7c3aed', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, minWidth: 80, alignItems: 'center', opacity: busy ? 0.5 : 1 }}>
+                        <TouchableOpacity accessibilityLabel="تحویل" onPress={() => doDeliver(nt)} disabled={!!busy} style={{ backgroundColor: '#7c3aed', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, minWidth: 80, alignItems: 'center', opacity: busy ? 0.5 : 1 }}>
                           <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>📦 تحویل</Text>
                         </TouchableOpacity>
                       ) : null}
 
                       {/* لغو */}
                       {hasDeal && !isDone && !isInfo ? (
-                        <TouchableOpacity onPress={() => doCancel(nt)} disabled={!!busy} style={{ backgroundColor: '#dc2626', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, minWidth: 80, alignItems: 'center', opacity: busy ? 0.5 : 1 }}>
+                        <TouchableOpacity accessibilityLabel="لغو" onPress={() => doCancel(nt)} disabled={!!busy} style={{ backgroundColor: '#dc2626', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, minWidth: 80, alignItems: 'center', opacity: busy ? 0.5 : 1 }}>
                           <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>❌ لغو</Text>
                         </TouchableOpacity>
                       ) : null}
@@ -306,7 +306,7 @@ export default function ExchangeBell({ showToast, onBack }: any) {
               })}
             </ScrollView>
             <View style={{ flexDirection: 'row-reverse', gap: 8, padding: 12, borderTopWidth: 1, borderTopColor: '#334155' }}>
-              <TextInput
+              <TextInput accessibilityLabel="پیام..."
                 style={{ flex: 1, backgroundColor: '#0a1628', color: '#fff', borderWidth: 1.5, borderColor: '#334155', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13.5, textAlign: 'right' }}
                 value={chatInput}
                 onChangeText={setChatInput}

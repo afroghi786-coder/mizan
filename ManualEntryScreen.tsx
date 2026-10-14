@@ -351,13 +351,13 @@ export default function ManualEntryScreen({ showToast }: any) {
 
       {/* Mode Tabs */}
       <View style={s.modeTabs}>
-        <TouchableOpacity style={[s.modeTab, mode === 'entry' && s.modeTabActive]} onPress={() => setMode('entry')}>
+        <TouchableOpacity accessibilityLabel="ورود" style={[s.modeTab, mode === 'entry' && s.modeTabActive]} onPress={() => setMode('entry')}>
           <Text style={[s.modeTabTxt, mode === 'entry' && s.modeTabTxtActive]}>✏️ ورود</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.modeTab, mode === 'query' && s.modeTabActive]} onPress={() => setMode('query')}>
+        <TouchableOpacity accessibilityLabel="سؤال" style={[s.modeTab, mode === 'query' && s.modeTabActive]} onPress={() => setMode('query')}>
           <Text style={[s.modeTabTxt, mode === 'query' && s.modeTabTxtActive]}>❓ سؤال</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.modeTab, mode === 'dialogue' && s.modeTabActive]} onPress={() => setMode('dialogue')}>
+        <TouchableOpacity accessibilityLabel="گفتگو" style={[s.modeTab, mode === 'dialogue' && s.modeTabActive]} onPress={() => setMode('dialogue')}>
           <Text style={[s.modeTabTxt, mode === 'dialogue' && s.modeTabTxtActive]}>💬 گفتگو</Text>
         </TouchableOpacity>
       </View>
@@ -374,7 +374,7 @@ export default function ManualEntryScreen({ showToast }: any) {
                   <Text style={s.shortcutLabel}>{sc.label}</Text>
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity style={[s.shortcutBtn, { borderColor: '#059669' }]} onPress={() => startDL('buy')}>
+              <TouchableOpacity accessibilityLabel="گفتگو" style={[s.shortcutBtn, { borderColor: '#059669' }]} onPress={() => startDL('buy')}>
                 <Text style={s.shortcutIcon}>🎤</Text>
                 <Text style={s.shortcutLabel}>گفتگو</Text>
               </TouchableOpacity>
@@ -389,7 +389,7 @@ export default function ManualEntryScreen({ showToast }: any) {
             <Text style={s.dlQuestion}>{dialogue.steps[dialogue.step]?.question || 'تمام شد'}</Text>
             {dialogue.step < dialogue.steps.length && (
               <>
-                <TextInput
+                <TextInput accessibilityLabel="پاسخ..."
                   style={s.inp}
                   value={dialogueAnswer}
                   onChangeText={setDialogueAnswer}
@@ -398,7 +398,7 @@ export default function ManualEntryScreen({ showToast }: any) {
                   onSubmitEditing={answerDL}
                 />
                 <View style={s.row}>
-                  <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={answerDL}>
+                  <TouchableOpacity accessibilityLabel="پاسخ" style={[s.btn, { backgroundColor: '#059669' }]} onPress={answerDL}>
                     <Text style={s.btnTxt}>↩️ پاسخ</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -415,7 +415,7 @@ export default function ManualEntryScreen({ showToast }: any) {
                 <Text style={s.dlSummary}>📋 خلاصه: {'\n'}{
                   Object.entries(dialogue.data).map(([k, v]: any) => `${k}: ${v}`).join('\n')
                 }</Text>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="تأیید و تحلیل"
                   style={[s.btn, { backgroundColor: '#059669', marginTop: 8 }]}
                   onPress={() => {
                     const d = dialogue.data;
@@ -499,7 +499,7 @@ export default function ManualEntryScreen({ showToast }: any) {
             <Text style={s.cardTitle}>{queryResult.ok ? '📊 پاسخ' : '⚠️'}</Text>
             <Text style={s.queryAnswer}>{queryResult.answer}</Text>
             {speechAvailable && queryResult.ok && (
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', marginTop: 8 }]} onPress={() => speak(queryResult.answer)}>
+              <TouchableOpacity accessibilityLabel="بخوان" style={[s.btn, { backgroundColor: '#7c3aed', marginTop: 8 }]} onPress={() => speak(queryResult.answer)}>
                 <Text style={s.btnTxt}>🔊 بخوان</Text>
               </TouchableOpacity>
             )}
@@ -558,10 +558,10 @@ export default function ManualEntryScreen({ showToast }: any) {
           <>
             <View style={[s.row, { marginTop: 16, alignItems: 'center' }]}>
               <Text style={[s.lbl, { flex: 1, marginTop: 0 }]}>📋 تاریخچه ({filteredHistory.length})</Text>
-              <TouchableOpacity style={[s.smallBtn, { backgroundColor: historyFilter === 'today' ? '#0891b2' : '#334155' }]} onPress={() => setHistoryFilter('today')}>
+              <TouchableOpacity accessibilityLabel="امروز" style={[s.smallBtn, { backgroundColor: historyFilter === 'today' ? '#0891b2' : '#334155' }]} onPress={() => setHistoryFilter('today')}>
                 <Text style={s.smallBtnTxt}>امروز</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[s.smallBtn, { backgroundColor: historyFilter === 'all' ? '#0891b2' : '#334155' }]} onPress={() => setHistoryFilter('all')}>
+              <TouchableOpacity accessibilityLabel="همه" style={[s.smallBtn, { backgroundColor: historyFilter === 'all' ? '#0891b2' : '#334155' }]} onPress={() => setHistoryFilter('all')}>
                 <Text style={s.smallBtnTxt}>همه</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.smallBtn, { backgroundColor: '#059669' }]} onPress={exportExcel}>
@@ -622,7 +622,7 @@ export default function ManualEntryScreen({ showToast }: any) {
             </View>
             <Text style={s.lbl2}>💱 واحد پول</Text>
             <TextInput style={s.inp} value={settings.defaultCurrency} onChangeText={(v) => setSettings({ ...settings, defaultCurrency: v })} />
-            <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 14 }]} onPress={async () => { await saveManualSettings(settings); showToast?.('✅ ذخیره شد'); setSettingsModal(false); }}>
+            <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#059669', marginTop: 14 }]} onPress={async () => { await saveManualSettings(settings); showToast?.('✅ ذخیره شد'); setSettingsModal(false); }}>
               <Text style={s.btnTxt}>💾 ذخیره</Text>
             </TouchableOpacity>
           </ScrollView>

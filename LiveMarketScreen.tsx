@@ -1023,7 +1023,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
           <Text style={{ color: '#fecaca', textAlign: 'right', fontSize: 12, marginBottom: 10 }}>
             برای دیدن حواله‌ها، فروش ارز و تب‌های بازار زنده، ابتدا نام و شهر خود را ثبت کنید.
           </Text>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="تکمیل پروفایل الان"
             onPress={() => { setSettingsForm({ name: net.name || '', city: net.city || 'KBL', phone: net.phone || '' }); setSettingsModal(true); }}
             style={{ backgroundColor: '#dc2626', padding: 10, borderRadius: 8, alignItems: 'center' }}
           >
@@ -1094,7 +1094,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
           <View style={s.statsBox}>
             <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <Text style={s.statsBoxTitle}>📊 آمار لحظه‌ای</Text>
-              <TouchableOpacity onPress={() => setDashCursModal(true)} style={{ backgroundColor: '#7c3aed', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+              <TouchableOpacity accessibilityLabel="تنظیم ارزها" onPress={() => setDashCursModal(true)} style={{ backgroundColor: '#7c3aed', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
                 <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>⚙️ تنظیم ارزها</Text>
               </TouchableOpacity>
             </View>
@@ -1199,16 +1199,16 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
       {/* دکمه‌های عملیات */}
       {(net.name && net.city) ? (
         <View style={{ flexDirection: 'row-reverse', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
-          <TouchableOpacity style={[s.actBtn, { backgroundColor: '#f59e0b' }]} onPress={() => setHawalaModal(true)}>
+          <TouchableOpacity accessibilityLabel="حواله عمومی" style={[s.actBtn, { backgroundColor: '#f59e0b' }]} onPress={() => setHawalaModal(true)}>
             <Text style={s.actBtnTxt}>📤 حواله عمومی</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.actBtn, { backgroundColor: '#7c3aed' }]} onPress={() => setFxModal(true)}>
+          <TouchableOpacity accessibilityLabel="فروش ارز" style={[s.actBtn, { backgroundColor: '#7c3aed' }]} onPress={() => setFxModal(true)}>
             <Text style={s.actBtnTxt}>💱 فروش ارز</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.actBtn, { backgroundColor: '#0891b2' }]} onPress={async () => { setAgents(await getAgents()); setDirectModal(true); }}>
+          <TouchableOpacity accessibilityLabel="حواله خصوصی" style={[s.actBtn, { backgroundColor: '#0891b2' }]} onPress={async () => { setAgents(await getAgents()); setDirectModal(true); }}>
             <Text style={s.actBtnTxt}>🔒 حواله خصوصی</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.actBtn, { backgroundColor: '#059669' }]} onPress={() => { const obj: any = {}; ALL_CURS.forEach(k => obj[k] = ''); setRateForm(obj); setCustomRates([]); setRateModal(true); }}>
+          <TouchableOpacity accessibilityLabel="نرخ روز" style={[s.actBtn, { backgroundColor: '#059669' }]} onPress={() => { const obj: any = {}; ALL_CURS.forEach(k => obj[k] = ''); setRateForm(obj); setCustomRates([]); setRateModal(true); }}>
             <Text style={s.actBtnTxt}>📈 نرخ روز</Text>
           </TouchableOpacity>
         </View>
@@ -1262,7 +1262,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
               <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📞 {h.beneficiaryPhone || '—'}</Text>
               <Text style={s.cardRow}>💰 کارمزد: {fmt(h.commission, 0)}</Text>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doAcceptD(h.id)} activeOpacity={0.6}>
+              <TouchableOpacity accessibilityLabel="قبول" style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doAcceptD(h.id)} activeOpacity={0.6}>
                 <Text style={s.btnTxt}>✅ قبول</Text>
               </TouchableOpacity>
             </View>
@@ -1278,7 +1278,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               <Text style={s.cardTitle}>🔄 {h.fromName || h.from_email?.split("@")[0]} {h.fromCity ? `— ${NET_CITIES[h.fromCity] || h.fromCity}` : ""}</Text>
               <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
               <Text style={s.cardRow}>👤 {h.beneficiaryName}</Text>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => doDeliverD(h.id, net.email)}>
+              <TouchableOpacity accessibilityLabel="تحویل دادم" style={[s.btn, { backgroundColor: '#7c3aed' }]} onPress={() => doDeliverD(h.id, net.email)}>
                 <Text style={s.btnTxt}>📦 تحویل دادم</Text>
               </TouchableOpacity>
             </View>
@@ -1319,13 +1319,13 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                   {iAmSeller ? '🛒 خریدار' : '🏢 فروشنده'}: {peerName}
                 </Text>
                 <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 8 }}>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityLabel="چت"
                     style={[s.btn, { backgroundColor: '#0891b2', flex: 1 }]}
                     onPress={() => openChatWith(roomId, peerEmail, peerName, peerCity)}
                   >
                     <Text style={s.btnTxt}>💬 چت</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityLabel="تحویل شد"
                     style={[s.btn, { backgroundColor: '#059669', flex: 1 }]}
                     onPress={async () => {
                       const ok = (typeof window !== 'undefined' && window.confirm) ? window.confirm('آیا تحویل انجام شد؟') : true;
@@ -1364,7 +1364,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             <Text style={s.cardAmt}>{FLAG[h.currency] || '💱'} {fmt(h.amount)} {h.currency}</Text>
             <Text style={s.cardRow}>👤 {h.beneficiaryName} | 📍 {NET_CITIES[h.targetCity] || h.targetCity}</Text>
             {!mine ? (
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doClaimH(h.id)} activeOpacity={0.6}>
+              <TouchableOpacity accessibilityLabel="قبول" style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doClaimH(h.id)} activeOpacity={0.6}>
                 <Text style={s.btnTxt}>⚡ قبول</Text>
               </TouchableOpacity>
             ) : <Text style={[s.cardRow, { color: '#f59e0b' }]}>⏳ منتظر قبول</Text>}
@@ -1389,7 +1389,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                 <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
                   <Text style={{ color: '#fbbf24', fontSize: 11, fontWeight: 'bold', flex: 1, textAlign: 'right' }}>🔵 آگهی خودم</Text>
                   {f.claimed_by_email ? (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityLabel="چت"
                       style={[s.btn, { backgroundColor: '#0891b2', paddingHorizontal: 12 }]}
                       onPress={() => openChatWith('fx_' + f.id, f.claimed_by_email, f.claimed_by_name || f.claimed_by_email?.split('@')[0] || '—', '')}
                     >
@@ -1403,14 +1403,14 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                   </TouchableOpacity>
                 </View>
               ) : f.claimed_by_email === net.email ? (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="چت با فروشنده"
                   style={[s.btn, { backgroundColor: '#0891b2' }]}
                   onPress={() => openChatWith('fx_' + f.id, f.seller_email || f.sellerEmail, f.seller_name || f.sellerName || '—', f.seller_city || f.sellerCity || '')}
                 >
                   <Text style={s.btnTxt}>💬 چت با فروشنده</Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doClaimF(f.id)} activeOpacity={0.6}>
+                <TouchableOpacity accessibilityLabel="قبول" style={[s.btn, { backgroundColor: '#059669' }]} onPressIn={() => doClaimF(f.id)} activeOpacity={0.6}>
                   <Text style={s.btnTxt}>💰 قبول</Text>
                 </TouchableOpacity>
               )}
@@ -1476,7 +1476,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                         const cnt = notifUnread[rId] || 0;
                         return (
                           <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                            <TouchableOpacity
+                            <TouchableOpacity accessibilityLabel="پیام"
                               onPress={() => openChatFromNotif(n)}
                               style={{ backgroundColor: '#0891b2', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8, flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }}
                             >
@@ -1503,7 +1503,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                             </TouchableOpacity>
                             {hasDeal && !isDone && !isInfo ? (
                               !isAccepted ? (
-                                <TouchableOpacity
+                                <TouchableOpacity accessibilityLabel="قبول"
                                   onPress={async () => {
                                     try {
                                       const m = await import('./lib.network');
@@ -1551,7 +1551,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                                   <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✅ قبول</Text>
                                 </TouchableOpacity>
                               ) : (
-                                <TouchableOpacity
+                                <TouchableOpacity accessibilityLabel="تحویل"
                                   onPress={async () => {
                                     try {
                                       const m = await import('./lib.network');
@@ -1568,7 +1568,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                               )
                             ) : null}
                             {hasDeal && !isDone && !isInfo ? (
-                              <TouchableOpacity
+                              <TouchableOpacity accessibilityLabel="لغو"
                                 onPress={async () => {
                                   if (typeof window !== 'undefined' && window.confirm && !window.confirm('لغو شود؟')) return;
                                   try {
@@ -1595,7 +1595,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
           {notifList.length > 0 ? (
             <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: '#334155' }}>
               <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="خواندن همه"
                   onPress={async () => {
                     try {
                       const { markAllRead } = await import('./lib.network');
@@ -1608,7 +1608,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                 >
                   <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>✅ خواندن همه</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="پاک کردن همه"
                   onPress={async () => {
                     try {
                       const { deleteNotification } = await import('./lib.network');
@@ -1688,19 +1688,19 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
 
             {/* ═══ تست صدا و هشدار ═══ */}
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 10 }}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="تست صدا"
                 onPress={() => { try { playNotifSound(); } catch (e) {} showToast?.('🔔 تست صدا'); }}
                 style={{ flex: 1, backgroundColor: '#0ea5e9', padding: 10, borderRadius: 8, alignItems: 'center' }}
               >
                 <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>🔔 تست صدا</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="تست لرزش"
                 onPress={() => { try { vibrateNotif(); } catch (e) {} showToast?.('📳 تست لرزش'); }}
                 style={{ flex: 1, backgroundColor: '#0ea5e9', padding: 10, borderRadius: 8, alignItems: 'center' }}
               >
                 <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>📳 تست لرزش</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="تست نوتیف"
                 onPress={() => { try { showBrowserNotif('میزان | MIZAN', 'تست اعلان سیستم'); } catch (e) {} showToast?.('💬 تست نوتیف'); }}
                 style={{ flex: 1, backgroundColor: '#0ea5e9', padding: 10, borderRadius: 8, alignItems: 'center' }}
               >
@@ -1765,7 +1765,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             </View>
 
             {/* ═══ دکمه ذخیره ═══ */}
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="ذخیره تنظیمات"
               onPress={async () => {
                 try {
                   const { savePreferences } = await import('./lib.network');
@@ -1779,7 +1779,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>💾 ذخیره تنظیمات</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="بازگشت به پیش‌فرض"
               onPress={() => {
                 setPrefs({
                   notify_hawala_claim: true, notify_fx_claim: true, notify_direct: true, notify_direct_deliver: true,
@@ -1808,7 +1808,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             <Text style={s.lbl}>ایمیل (هویت شما)</Text>
             <TextInput style={[s.inp, { backgroundColor: '#0a1628', color: '#94a3b8' }]} value={net.email} editable={false} />
             <Text style={s.lbl}>نام صرافی *</Text>
-            <TextInput style={s.inp} value={settingsForm.name} onChangeText={v => setSettingsForm({ ...settingsForm, name: v })} placeholder="مثلاً صرافی میزان" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="مثلاً صرافی میزان" style={s.inp} value={settingsForm.name} onChangeText={v => setSettingsForm({ ...settingsForm, name: v })} placeholder="مثلاً صرافی میزان" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>شهر *</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {Object.keys(NET_CITIES).map(k => (
@@ -1818,9 +1818,9 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               ))}
             </View>
             <Text style={s.lbl}>تلفن</Text>
-            <TextInput style={s.inp} value={settingsForm.phone} onChangeText={v => setSettingsForm({ ...settingsForm, phone: v })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="07..." style={s.inp} value={settingsForm.phone} onChangeText={v => setSettingsForm({ ...settingsForm, phone: v })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
             <View style={s.rowBtns}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setSettingsModal(false)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setSettingsModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={saveSettings} disabled={saving}>
@@ -1849,7 +1849,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             {/* 🎯 مقصد حواله */}
             <Text style={s.lbl}>🎯 مقصد حواله</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="بازار عمومی"
                 onPress={() => setHawalaForm({ ...hawalaForm, targetGroupId: '' })}
                 style={[s.chip, hawalaForm.targetGroupId === '' && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]}
               >
@@ -1879,7 +1879,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               ))}
             </View>
             <Text style={s.lbl}>ارز</Text>
-            <TextInput style={s.inp} value={hawSearchCur} onChangeText={setHawSearchCur} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="🔍 جستجو: USD یا دالر یا افغانی..." style={s.inp} value={hawSearchCur} onChangeText={setHawSearchCur} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
               {ALL_CURS.filter(c => !hawSearchCur || c.toLowerCase().includes(hawSearchCur.toLowerCase()) || (CUR_NAME[c] || '').includes(hawSearchCur)).map(c => (
                 <TouchableOpacity key={c} onPress={() => setHawalaForm({ ...hawalaForm, currency: c })} style={[s.chip, hawalaForm.currency === c && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]}>
@@ -1888,11 +1888,11 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               ))}
             </View>
             <Text style={s.lbl}>مقدار *</Text>
-            <TextInput style={s.inp} value={hawalaForm.amount} onChangeText={v => setHawalaForm({ ...hawalaForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="1000" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="1000" style={s.inp} value={hawalaForm.amount} onChangeText={v => setHawalaForm({ ...hawalaForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="1000" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>نام ذی‌نفع *</Text>
-            <TextInput style={s.inp} value={hawalaForm.beneficiaryName} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiaryName: v })} placeholder="نام گیرنده" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="نام گیرنده" style={s.inp} value={hawalaForm.beneficiaryName} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiaryName: v })} placeholder="نام گیرنده" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>تلفن ذی‌نفع</Text>
-            <TextInput style={s.inp} value={hawalaForm.beneficiaryPhone} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiaryPhone: v.replace(/[^\d]/g, '') })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="07..." style={s.inp} value={hawalaForm.beneficiaryPhone} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiaryPhone: v.replace(/[^\d]/g, '') })} keyboardType="phone-pad" placeholder="07..." placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
               <View style={{ flex: 1 }}>
                 <Text style={s.lbl}>حداکثر کارمزد %</Text>
@@ -1900,30 +1900,30 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.lbl}>مهلت (دقیقه)</Text>
-                <TextInput style={s.inp} value={hawalaForm.expires} onChangeText={v => setHawalaForm({ ...hawalaForm, expires: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="15" placeholderTextColor="#94a3b8" />
+                <TextInput accessibilityLabel="15" style={s.inp} value={hawalaForm.expires} onChangeText={v => setHawalaForm({ ...hawalaForm, expires: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="15" placeholderTextColor="#94a3b8" />
               </View>
             </View>
             <Text style={s.lbl}>توضیحات</Text>
             <TextInput style={[s.inp, { minHeight: 50 }]} value={hawalaForm.note} onChangeText={v => setHawalaForm({ ...hawalaForm, note: v })} multiline placeholderTextColor="#94a3b8" />
             <Text style={[s.lbl, { color: '#f59e0b', marginTop: 14, fontWeight: 'bold' }]}>👤 اطلاعات فرستنده</Text>
-                <TextInput value={hawalaForm.sender_name || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_name: v })} placeholder="نام فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
-                <TextInput value={hawalaForm.sender_phone || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_phone: v })} placeholder="تلفن فرستنده" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="phone-pad" />
-                <TextInput value={hawalaForm.sender_city || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_city: v })} placeholder="شهر فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
-                <TextInput value={hawalaForm.sender_address || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_address: v })} placeholder="آدرس فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="نام فرستنده" value={hawalaForm.sender_name || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_name: v })} placeholder="نام فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="تلفن فرستنده" value={hawalaForm.sender_phone || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_phone: v })} placeholder="تلفن فرستنده" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="phone-pad" />
+                <TextInput accessibilityLabel="شهر فرستنده" value={hawalaForm.sender_city || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_city: v })} placeholder="شهر فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="آدرس فرستنده" value={hawalaForm.sender_address || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, sender_address: v })} placeholder="آدرس فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
 
                 {/* ═══ اطلاعات ذی‌نفع تکمیلی (جدید) ═══ */}
                 <Text style={[s.lbl, { color: '#f59e0b', marginTop: 14, fontWeight: 'bold' }]}>👤 اطلاعات ذی‌نفع تکمیلی</Text>
-                <TextInput value={hawalaForm.beneficiary_city || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_city: v })} placeholder="شهر ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
-                <TextInput value={hawalaForm.beneficiary_bank || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_bank: v })} placeholder="نام بانک ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
-                <TextInput value={hawalaForm.beneficiary_holder || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_holder: v })} placeholder="شماره حساب ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="شهر ذی‌نفع" value={hawalaForm.beneficiary_city || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_city: v })} placeholder="شهر ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="نام بانک ذی‌نفع" value={hawalaForm.beneficiary_bank || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_bank: v })} placeholder="نام بانک ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="شماره حساب ذی‌نفع" value={hawalaForm.beneficiary_holder || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, beneficiary_holder: v })} placeholder="شماره حساب ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
 
                 {/* ═══ مالی تکمیلی (جدید) ═══ */}
                 <Text style={[s.lbl, { color: '#f59e0b', marginTop: 14, fontWeight: 'bold' }]}>💰 مالی تکمیلی</Text>
-                <TextInput value={hawalaForm.to_amount || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, to_amount: v })} placeholder="مبلغ دریافتی" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
+                <TextInput accessibilityLabel="مبلغ دریافتی" value={hawalaForm.to_amount || ''} onChangeText={v => setHawalaForm({ ...hawalaForm, to_amount: v })} placeholder="مبلغ دریافتی" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
 
                 
                 <View style={s.rowBtns}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawalaModal(false)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawalaModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               {/* ═══ اطلاعات فرستنده (جدید) ═══ */}
@@ -1945,7 +1945,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             {/* 🎯 مقصد آگهی */}
             <Text style={s.lbl}>🎯 مقصد آگهی</Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="بازار عمومی"
                 onPress={() => setFxForm({ ...fxForm, targetGroupId: '' })}
                 style={[s.chip, fxForm.targetGroupId === '' && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]}
               >
@@ -1962,7 +1962,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               ))}
             </View>
             <Text style={s.lbl}>ارز مبدأ (می‌فروشید) *</Text>
-            <TextInput style={s.inp} value={fxSearchFrom} onChangeText={setFxSearchFrom} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="🔍 جستجو: USD یا دالر یا افغانی..." style={s.inp} value={fxSearchFrom} onChangeText={setFxSearchFrom} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
               {ALL_CURS.filter(c => !fxSearchFrom || c.toLowerCase().includes(fxSearchFrom.toLowerCase()) || (CUR_NAME[c] || '').includes(fxSearchFrom)).map(c => (
                 <TouchableOpacity key={c} onPress={() => setFxForm({ ...fxForm, currency: c })} style={[s.chip, fxForm.currency === c && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]}>
@@ -1972,7 +1972,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             </View>
 
             <Text style={s.lbl}>ارز مقصد (دریافت می‌کنید) *</Text>
-            <TextInput style={s.inp} value={fxSearchTo} onChangeText={setFxSearchTo} placeholder="🔍 جستجو: AFN یا افغانی یا دالر..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="🔍 جستجو: AFN یا افغانی یا دالر..." style={s.inp} value={fxSearchTo} onChangeText={setFxSearchTo} placeholder="🔍 جستجو: AFN یا افغانی یا دالر..." placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
               {ALL_CURS.filter(c => c !== fxForm.currency).filter(c => !fxSearchTo || c.toLowerCase().includes(fxSearchTo.toLowerCase()) || (CUR_NAME[c] || '').includes(fxSearchTo)).map(c => (
                 <TouchableOpacity key={c} onPress={() => setFxForm({ ...fxForm, targetCurrency: c })} style={[s.chip, fxForm.targetCurrency === c && { backgroundColor: '#10b981', borderColor: '#10b981' }]}>
@@ -1981,26 +1981,26 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               ))}
             </View>
             <Text style={s.lbl}>مقدار *</Text>
-            <TextInput style={s.inp} value={fxForm.amount} onChangeText={v => setFxForm({ ...fxForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="100" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="100" style={s.inp} value={fxForm.amount} onChangeText={v => setFxForm({ ...fxForm, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="100" placeholderTextColor="#94a3b8" />
             <Text style={s.lbl}>نوع قیمت</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-              <TouchableOpacity style={[s.chip, fxForm.rateType === 'fixed' && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]} onPress={() => setFxForm({ ...fxForm, rateType: 'fixed' })}>
+              <TouchableOpacity accessibilityLabel="نرخ ثابت" style={[s.chip, fxForm.rateType === 'fixed' && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]} onPress={() => setFxForm({ ...fxForm, rateType: 'fixed' })}>
                 <Text style={[s.chipTxt, fxForm.rateType === 'fixed' && { color: '#fff' }]}>💰 نرخ ثابت</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[s.chip, fxForm.rateType === 'auction' && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]} onPress={() => setFxForm({ ...fxForm, rateType: 'auction' })}>
+              <TouchableOpacity accessibilityLabel="حراج" style={[s.chip, fxForm.rateType === 'auction' && { backgroundColor: '#7c3aed', borderColor: '#7c3aed' }]} onPress={() => setFxForm({ ...fxForm, rateType: 'auction' })}>
                 <Text style={[s.chipTxt, fxForm.rateType === 'auction' && { color: '#fff' }]}>📊 حراج</Text>
               </TouchableOpacity>
             </View>
             {fxForm.rateType === 'fixed' && (
               <>
                 <Text style={s.lbl}>نرخ (به {fxForm.targetCurrency || 'AFN'}) *</Text>
-                <TextInput style={s.inp} value={fxForm.rate} onChangeText={v => setFxForm({ ...fxForm, rate: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="70500" placeholderTextColor="#94a3b8" />
+                <TextInput accessibilityLabel="70500" style={s.inp} value={fxForm.rate} onChangeText={v => setFxForm({ ...fxForm, rate: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="70500" placeholderTextColor="#94a3b8" />
               </>
             )}
             <Text style={s.lbl}>مهلت (دقیقه)</Text>
-            <TextInput style={s.inp} value={fxForm.expires} onChangeText={v => setFxForm({ ...fxForm, expires: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="10" placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="10" style={s.inp} value={fxForm.expires} onChangeText={v => setFxForm({ ...fxForm, expires: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="10" placeholderTextColor="#94a3b8" />
             <View style={s.rowBtns}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setFxModal(false)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setFxModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submitFX} disabled={saving}>
@@ -2035,7 +2035,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               </ScrollView>
             )}
             <Text style={s.lbl}>ارز</Text>
-            <TextInput style={s.inp} value={dirSearchCur} onChangeText={setDirSearchCur} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
+            <TextInput accessibilityLabel="🔍 جستجو: USD یا دالر یا افغانی..." style={s.inp} value={dirSearchCur} onChangeText={setDirSearchCur} placeholder="🔍 جستجو: USD یا دالر یا افغانی..." placeholderTextColor="#94a3b8" />
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
               {ALL_CURS.filter(c => !dirSearchCur || c.toLowerCase().includes(dirSearchCur.toLowerCase()) || (CUR_NAME[c] || '').includes(dirSearchCur)).map(c => (
                 <TouchableOpacity key={c} onPress={() => setDirectForm({ ...directForm, currency: c })} style={[s.chip, directForm.currency === c && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]}>
@@ -2047,17 +2047,17 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             {/* نوع تبدیل */}
             <Text style={s.lbl}>نوع تبدیل</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 4 }}>
-              <TouchableOpacity style={[s.chip, directForm.rateMode === 'same' && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]} onPress={() => setDirectForm({ ...directForm, rateMode: 'same' })}>
+              <TouchableOpacity accessibilityLabel="ارز به ارز" style={[s.chip, directForm.rateMode === 'same' && { backgroundColor: '#0891b2', borderColor: '#0891b2' }]} onPress={() => setDirectForm({ ...directForm, rateMode: 'same' })}>
                 <Text style={[s.chipTxt, directForm.rateMode === 'same' && { color: '#fff' }]}>🔄 ارز به ارز</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[s.chip, directForm.rateMode === 'different' && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]} onPress={() => setDirectForm({ ...directForm, rateMode: 'different' })}>
+              <TouchableOpacity accessibilityLabel="ارز متفاوت" style={[s.chip, directForm.rateMode === 'different' && { backgroundColor: '#f59e0b', borderColor: '#f59e0b' }]} onPress={() => setDirectForm({ ...directForm, rateMode: 'different' })}>
                 <Text style={[s.chipTxt, directForm.rateMode === 'different' && { color: '#fff' }]}>💱 ارز متفاوت</Text>
               </TouchableOpacity>
             </View>
             {directForm.rateMode === 'different' ? (
               <>
                 <Text style={s.lbl}>ارز مقصد (گیرنده می‌گیرد) *</Text>
-                <TextInput style={s.inp} value={dirSearchTo} onChangeText={setDirSearchTo} placeholder="🔍 جستجو: AFN یا افغانی یا دالر..." placeholderTextColor="#94a3b8" />
+                <TextInput accessibilityLabel="🔍 جستجو: AFN یا افغانی یا دالر..." style={s.inp} value={dirSearchTo} onChangeText={setDirSearchTo} placeholder="🔍 جستجو: AFN یا افغانی یا دالر..." placeholderTextColor="#94a3b8" />
                 <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                   {ALL_CURS.filter(c => c !== directForm.currency).filter(c => !dirSearchTo || c.toLowerCase().includes(dirSearchTo.toLowerCase()) || (CUR_NAME[c] || '').includes(dirSearchTo)).map(c => (
                     <TouchableOpacity key={c} onPress={() => setDirectForm({ ...directForm, targetCurrency: c })} style={[s.chip, directForm.targetCurrency === c && { backgroundColor: '#10b981', borderColor: '#10b981' }]}>
@@ -2066,7 +2066,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                   ))}
                 </View>
                 <Text style={s.lbl}>نرخ تبدیل (۱ {directForm.currency} = ? {directForm.targetCurrency}) *</Text>
-                <TextInput style={s.inp} value={directForm.rate} onChangeText={(v: string) => setDirectForm({ ...directForm, rate: v.replace(/[^0-9.]/g, '') })} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
+                <TextInput accessibilityLabel="مثلاً 70500" style={s.inp} value={directForm.rate} onChangeText={(v: string) => setDirectForm({ ...directForm, rate: v.replace(/[^0-9.]/g, '') })} keyboardType="numeric" placeholder="مثلاً 70500" placeholderTextColor="#94a3b8" />
               </>
             ) : null}
 <Text style={s.lbl}>مقدار *</Text>
@@ -2080,26 +2080,26 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             <Text style={s.lbl}>توضیحات</Text>
             <TextInput style={[s.inp, { minHeight: 50 }]} value={directForm.note} onChangeText={v => setDirectForm({ ...directForm, note: v })} multiline placeholderTextColor="#94a3b8" />
             <Text style={[s.lbl, { color: '#0891b2', marginTop: 14, fontWeight: 'bold' }]}>👤 اطلاعات فرستنده</Text>
-                <TextInput value={directForm.sender_name || ''} onChangeText={v => setDirectForm({ ...directForm, sender_name: v })} placeholder="نام فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
-                <TextInput value={directForm.sender_phone || ''} onChangeText={v => setDirectForm({ ...directForm, sender_phone: v })} placeholder="تلفن فرستنده" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="phone-pad" />
-                <TextInput value={directForm.sender_city || ''} onChangeText={v => setDirectForm({ ...directForm, sender_city: v })} placeholder="شهر فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
-                <TextInput value={directForm.sender_address || ''} onChangeText={v => setDirectForm({ ...directForm, sender_address: v })} placeholder="آدرس فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="نام فرستنده" value={directForm.sender_name || ''} onChangeText={v => setDirectForm({ ...directForm, sender_name: v })} placeholder="نام فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="تلفن فرستنده" value={directForm.sender_phone || ''} onChangeText={v => setDirectForm({ ...directForm, sender_phone: v })} placeholder="تلفن فرستنده" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="phone-pad" />
+                <TextInput accessibilityLabel="شهر فرستنده" value={directForm.sender_city || ''} onChangeText={v => setDirectForm({ ...directForm, sender_city: v })} placeholder="شهر فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="آدرس فرستنده" value={directForm.sender_address || ''} onChangeText={v => setDirectForm({ ...directForm, sender_address: v })} placeholder="آدرس فرستنده" placeholderTextColor="#64748b" style={s.inpSm} />
 
                 {/* ═══ اطلاعات ذی‌نفع تکمیلی (جدید) ═══ */}
                 <Text style={[s.lbl, { color: '#0891b2', marginTop: 14, fontWeight: 'bold' }]}>👤 اطلاعات ذی‌نفع تکمیلی</Text>
-                <TextInput value={directForm.beneficiary_city || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_city: v })} placeholder="شهر ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
-                <TextInput value={directForm.beneficiary_bank || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_bank: v })} placeholder="نام بانک ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
-                <TextInput value={directForm.beneficiary_holder || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_holder: v })} placeholder="شماره حساب ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="شهر ذی‌نفع" value={directForm.beneficiary_city || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_city: v })} placeholder="شهر ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="نام بانک ذی‌نفع" value={directForm.beneficiary_bank || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_bank: v })} placeholder="نام بانک ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
+                <TextInput accessibilityLabel="شماره حساب ذی‌نفع" value={directForm.beneficiary_holder || ''} onChangeText={v => setDirectForm({ ...directForm, beneficiary_holder: v })} placeholder="شماره حساب ذی‌نفع" placeholderTextColor="#64748b" style={s.inpSm} />
 
                 {/* ═══ مالی تکمیلی (جدید) ═══ */}
                 <Text style={[s.lbl, { color: '#0891b2', marginTop: 14, fontWeight: 'bold' }]}>💰 مالی تکمیلی</Text>
-                <TextInput value={directForm.to_amount || ''} onChangeText={v => setDirectForm({ ...directForm, to_amount: v })} placeholder="مبلغ دریافتی" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
-                <TextInput value={directForm.rate || ''} onChangeText={v => setDirectForm({ ...directForm, rate: v })} placeholder="نرخ تبدیل" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
-                <TextInput value={directForm.commission_percent || ''} onChangeText={v => setDirectForm({ ...directForm, commission_percent: v })} placeholder="درصد کمیسیون" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
+                <TextInput accessibilityLabel="مبلغ دریافتی" value={directForm.to_amount || ''} onChangeText={v => setDirectForm({ ...directForm, to_amount: v })} placeholder="مبلغ دریافتی" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
+                <TextInput accessibilityLabel="نرخ تبدیل" value={directForm.rate || ''} onChangeText={v => setDirectForm({ ...directForm, rate: v })} placeholder="نرخ تبدیل" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
+                <TextInput accessibilityLabel="درصد کمیسیون" value={directForm.commission_percent || ''} onChangeText={v => setDirectForm({ ...directForm, commission_percent: v })} placeholder="درصد کمیسیون" placeholderTextColor="#64748b" style={s.inpSm} keyboardType="numeric" />
 
                 
                 <View style={s.rowBtns}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setDirectModal(false)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setDirectModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               {/* ═══ اطلاعات فرستنده (جدید) ═══ */}
@@ -2174,14 +2174,14 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
 
             {/* دکمه افزودن ارز دستی */}
             {!showAddCur ? (
-              <TouchableOpacity onPress={() => setShowAddCur(true)} style={{ backgroundColor: '#1e3a5f', padding: 10, borderRadius: 8, marginTop: 10, alignItems: 'center', borderWidth: 1, borderColor: '#7c3aed' }}>
+              <TouchableOpacity accessibilityLabel="افزودن ارز دستی" onPress={() => setShowAddCur(true)} style={{ backgroundColor: '#1e3a5f', padding: 10, borderRadius: 8, marginTop: 10, alignItems: 'center', borderWidth: 1, borderColor: '#7c3aed' }}>
                 <Text style={{ color: '#a78bfa', fontSize: 12, fontWeight: 'bold' }}>➕ افزودن ارز دستی</Text>
               </TouchableOpacity>
             ) : (
               <View style={{ backgroundColor: '#1e1b4b', padding: 10, borderRadius: 8, marginTop: 10, borderWidth: 1, borderColor: '#a78bfa' }}>
                 <Text style={{ color: '#a78bfa', fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>➕ ارز جدید</Text>
                 <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
-                  <TextInput
+                  <TextInput accessibilityLabel="کد (مثلاً BTC)"
                     style={[s.inp, { flex: 1 }]}
                     value={newCurCode}
                     onChangeText={v => setNewCurCode(v.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5))}
@@ -2189,7 +2189,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                     placeholderTextColor="#94a3b8"
                     autoCapitalize="characters"
                   />
-                  <TextInput
+                  <TextInput accessibilityLabel="نام فارسی"
                     style={[s.inp, { flex: 1.5 }]}
                     value={newCurName}
                     onChangeText={setNewCurName}
@@ -2206,10 +2206,10 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                   placeholderTextColor="#94a3b8"
                 />
                 <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 8 }}>
-                  <TouchableOpacity onPress={() => { setShowAddCur(false); setNewCurCode(''); setNewCurName(''); setNewCurRate(''); }} style={{ padding: 8, backgroundColor: '#64748b', borderRadius: 6, flex: 1 }}>
+                  <TouchableOpacity accessibilityLabel="انصراف" onPress={() => { setShowAddCur(false); setNewCurCode(''); setNewCurName(''); setNewCurRate(''); }} style={{ padding: 8, backgroundColor: '#64748b', borderRadius: 6, flex: 1 }}>
                     <Text style={{ color: '#fff', textAlign: 'center', fontSize: 12 }}>انصراف</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityLabel="افزودن"
                     onPress={() => {
                       if (!newCurCode || !newCurName) return showToast?.('کد و نام الزامی', true);
                       if (ALL_CURS.includes(newCurCode)) return showToast?.('این ارز از قبل هست', true);
@@ -2228,7 +2228,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             )}
 
             <View style={s.rowBtns}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setRateModal(false)}>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setRateModal(false)}>
                 <Text style={s.btnTxt}>انصراف</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submitRates} disabled={saving}>
@@ -2270,19 +2270,19 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               );
             })}
             <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 14 }}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="پاک همه"
                 onPress={() => { setMyDashCurs([]); saveMyDashCurs([]); }}
                 style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]}
               >
                 <Text style={s.btnTxt}>پاک همه</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="پیش‌فرض"
                 onPress={() => { setMyDashCurs(['USD', 'EUR', 'PKR', 'AED', 'GBP']); saveMyDashCurs(['USD', 'EUR', 'PKR', 'AED', 'GBP']); }}
                 style={[s.btn, { backgroundColor: '#0891b2', flex: 1 }]}
               >
                 <Text style={s.btnTxt}>پیش‌فرض</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="تمام"
                 onPress={() => setDashCursModal(false)}
                 style={[s.btn, { backgroundColor: '#059669', flex: 2 }]}
               >
@@ -2324,7 +2324,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
             })}
           </ScrollView>
           <View style={{ flexDirection: 'row-reverse', gap: 6, padding: 10, borderTopWidth: 1, borderTopColor: '#334155' }}>
-            <TextInput
+            <TextInput accessibilityLabel="پیام خود را بنویسید..."
               style={[s.inp, { flex: 1, textAlign: 'right' }]}
               value={chatInput}
               onChangeText={setChatInput}
@@ -2332,7 +2332,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
               placeholderTextColor="#94a3b8"
               onSubmitEditing={sendChatMsg}
             />
-            <TouchableOpacity style={[s.btn, { backgroundColor: '#0891b2', paddingHorizontal: 20 }]} onPress={sendChatMsg}>
+            <TouchableOpacity accessibilityLabel="ارسال" style={[s.btn, { backgroundColor: '#0891b2', paddingHorizontal: 20 }]} onPress={sendChatMsg}>
               <Text style={s.btnTxt}>📤 ارسال</Text>
             </TouchableOpacity>
           </View>

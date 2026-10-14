@@ -50,11 +50,11 @@ export default function LicenseGate({ children, showToast }: any) {
             </Text>
           ) : null}
 
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={check}>
+          <TouchableOpacity accessibilityLabel="تلاش مجدد" style={[s.btn, { backgroundColor: '#059669' }]} onPress={check}>
             <Text style={s.btnTxt}>🔄 تلاش مجدد</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#1e3a8a', marginTop: 8 }]} onPress={() => setShowRequest(true)}>
+          <TouchableOpacity accessibilityLabel="درخواست لایسنس" style={[s.btn, { backgroundColor: '#1e3a8a', marginTop: 8 }]} onPress={() => setShowRequest(true)}>
             <Text style={s.btnTxt}>📩 درخواست لایسنس</Text>
           </TouchableOpacity>
 

@@ -186,19 +186,19 @@ export default function ExchangeInvoice({ invoice, onBack, onNew, showToast }: a
 
       {/* دکمه‌ها */}
       <View style={{ flexDirection: 'row', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-        <TouchableOpacity style={[s.btn, { backgroundColor: '#fff', borderWidth: 2, borderColor: '#1e3a5f', flex: 1, minWidth: 90 }]} onPress={() => capture('print')}>
+        <TouchableOpacity accessibilityLabel="پرینت" style={[s.btn, { backgroundColor: '#fff', borderWidth: 2, borderColor: '#1e3a5f', flex: 1, minWidth: 90 }]} onPress={() => capture('print')}>
           <Text style={[s.btnTxt, { color: '#1e3a5f' }]}>🖨️ پرینت</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', flex: 1, minWidth: 90 }]} onPress={() => capture('share')}>
+        <TouchableOpacity accessibilityLabel="اشتراک" style={[s.btn, { backgroundColor: '#0ea5e9', flex: 1, minWidth: 90 }]} onPress={() => capture('share')}>
           <Text style={s.btnTxt}>📤 اشتراک</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.btn, { backgroundColor: '#8e44ad', flex: 1, minWidth: 90 }]} onPress={exportPDF}>
+        <TouchableOpacity accessibilityLabel="PDF" style={[s.btn, { backgroundColor: '#8e44ad', flex: 1, minWidth: 90 }]} onPress={exportPDF}>
           <Text style={s.btnTxt}>📄 PDF</Text>
         </TouchableOpacity>
       </View>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-        <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={onBack}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
-        <TouchableOpacity style={[s.btn, { backgroundColor: '#065f46', flex: 1 }]} onPress={onNew}><Text style={s.btnTxt}>➕ معامله جدید</Text></TouchableOpacity>
+        <TouchableOpacity accessibilityLabel="برگشت" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={onBack}><Text style={s.btnTxt}>↩️ برگشت</Text></TouchableOpacity>
+        <TouchableOpacity accessibilityLabel="معامله جدید" style={[s.btn, { backgroundColor: '#065f46', flex: 1 }]} onPress={onNew}><Text style={s.btnTxt}>➕ معامله جدید</Text></TouchableOpacity>
       </View>
     </ScrollView>
   );

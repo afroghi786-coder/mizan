@@ -139,7 +139,7 @@ function EmpTab({ emps, reload, showToast }: any) {
 
   return (
     <View>
-      <TouchableOpacity style={s.addBtn} onPress={openNew}><Text style={s.addBtnTxt}>➕ استخدام کارمند جدید</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityLabel="استخدام کارمند جدید" style={s.addBtn} onPress={openNew}><Text style={s.addBtnTxt}>➕ استخدام کارمند جدید</Text></TouchableOpacity>
       <Text style={s.secT}>📋 لیست کارمندان ({emps.length})</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
@@ -205,7 +205,7 @@ function EmpTab({ emps, reload, showToast }: any) {
 
             <Text style={s.section}>💼 اطلاعات شغلی</Text>
             <Text style={s.lbl}>سمت *</Text>
-            <TextInput style={s.inp} value={form.role} onChangeText={v => setForm({ ...form, role: v })} placeholder="فروشنده، حسابدار، ..." />
+            <TextInput accessibilityLabel="فروشنده، حسابدار، ..." style={s.inp} value={form.role} onChangeText={v => setForm({ ...form, role: v })} placeholder="فروشنده، حسابدار، ..." />
             <Text style={s.lbl}>دپارتمان</Text>
             <View style={s.chips}>
               {DEPTS.map(x => <TouchableOpacity key={x} onPress={() => setForm({ ...form, department: x })} style={[s.chip, form.department === x && s.chipActive]}><Text style={[s.chipTxt, form.department === x && s.chipTxtActive]}>{x}</Text></TouchableOpacity>)}
@@ -215,7 +215,7 @@ function EmpTab({ emps, reload, showToast }: any) {
               {CONTRACT_TYPES.map(x => <TouchableOpacity key={x} onPress={() => setForm({ ...form, contract_type: x })} style={[s.chip, form.contract_type === x && s.chipActive]}><Text style={[s.chipTxt, form.contract_type === x && s.chipTxtActive]}>{x}</Text></TouchableOpacity>)}
             </View>
             <Text style={s.lbl}>تاریخ شروع</Text>
-            <TextInput style={s.inp} value={form.start_date} onChangeText={v => setForm({ ...form, start_date: v })} placeholder="1405/08/15" />
+            <TextInput accessibilityLabel="1405/08/15" style={s.inp} value={form.start_date} onChangeText={v => setForm({ ...form, start_date: v })} placeholder="1405/08/15" />
             <Text style={s.lbl}>حقوق پایه ماهانه</Text>
             <TextInput style={s.inp} value={String(form.base_salary || '')} onChangeText={v => setForm({ ...form, base_salary: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="0" />
             <Text style={s.lbl}>حق مسکن</Text>
@@ -249,8 +249,8 @@ function EmpTab({ emps, reload, showToast }: any) {
             <TextInput style={[s.inp, { minHeight: 60 }]} value={form.note} onChangeText={v => setForm({ ...form, note: v })} multiline />
 
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 20 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
@@ -284,10 +284,10 @@ function AttTab({ emps, atts, reload, showToast }: any) {
 
   return (
     <View>
-      <TouchableOpacity style={[s.addBtn, { backgroundColor: '#1e3a8a' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت حضور</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityLabel="ثبت حضور" style={[s.addBtn, { backgroundColor: '#1e3a8a' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت حضور</Text></TouchableOpacity>
       <Text style={s.lbl}>فیلتر کارمند</Text>
       <View style={s.chips}>
-        <TouchableOpacity onPress={() => setFilter('')} style={[s.chip, !filter && s.chipActive]}><Text style={[s.chipTxt, !filter && s.chipTxtActive]}>همه</Text></TouchableOpacity>
+        <TouchableOpacity accessibilityLabel="همه" onPress={() => setFilter('')} style={[s.chip, !filter && s.chipActive]}><Text style={[s.chipTxt, !filter && s.chipTxtActive]}>همه</Text></TouchableOpacity>
         {emps.map((e: any) => <TouchableOpacity key={e.code} onPress={() => setFilter(e.code)} style={[s.chip, filter === e.code && s.chipActive]}><Text style={[s.chipTxt, filter === e.code && s.chipTxtActive]}>{e.name}</Text></TouchableOpacity>)}
       </View>
 
@@ -343,16 +343,16 @@ function AttTab({ emps, atts, reload, showToast }: any) {
               {ATT_STATUSES.map(x => <TouchableOpacity key={x} onPress={() => setForm({ ...form, status: x })} style={[s.chip, form.status === x && s.chipActive]}><Text style={[s.chipTxt, form.status === x && s.chipTxtActive]}>{x}</Text></TouchableOpacity>)}
             </View>
             <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
-              <View style={{ flex: 1 }}><Text style={s.lbl}>ورود</Text><TextInput style={s.inp} value={form.check_in} onChangeText={v => setForm({ ...form, check_in: v })} placeholder="08:00" /></View>
-              <View style={{ flex: 1 }}><Text style={s.lbl}>خروج</Text><TextInput style={s.inp} value={form.check_out} onChangeText={v => setForm({ ...form, check_out: v })} placeholder="17:00" /></View>
+              <View style={{ flex: 1 }}><Text style={s.lbl}>ورود</Text><TextInput accessibilityLabel="08:00" style={s.inp} value={form.check_in} onChangeText={v => setForm({ ...form, check_in: v })} placeholder="08:00" /></View>
+              <View style={{ flex: 1 }}><Text style={s.lbl}>خروج</Text><TextInput accessibilityLabel="17:00" style={s.inp} value={form.check_out} onChangeText={v => setForm({ ...form, check_out: v })} placeholder="17:00" /></View>
             </View>
             <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
               <View style={{ flex: 1 }}><Text style={s.lbl}>ساعت کار</Text><TextInput style={s.inp} value={String(form.hours)} onChangeText={v => setForm({ ...form, hours: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" /></View>
               <View style={{ flex: 1 }}><Text style={s.lbl}>اضافه‌کاری</Text><TextInput style={s.inp} value={String(form.overtime)} onChangeText={v => setForm({ ...form, overtime: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" /></View>
             </View>
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#1e3a8a', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#1e3a8a', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
@@ -435,7 +435,7 @@ function SalaryTab({ emps, salaries, atts, prods, reload, showToast }: any) {
 
   return (
     <View>
-      <TouchableOpacity style={[s.addBtn, { backgroundColor: '#059669' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ پرداخت حقوق جدید</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityLabel="پرداخت حقوق جدید" style={[s.addBtn, { backgroundColor: '#059669' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ پرداخت حقوق جدید</Text></TouchableOpacity>
       <Text style={s.secT}>📋 لیست پرداختی‌ها ({salaries.length})</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
@@ -491,7 +491,7 @@ function SalaryTab({ emps, salaries, atts, prods, reload, showToast }: any) {
               {emps.map((e: any) => <TouchableOpacity key={e.code} onPress={() => pickEmployee(e)} style={[s.chip, form.employee_code === e.code && s.chipActive]}><Text style={[s.chipTxt, form.employee_code === e.code && s.chipTxtActive]}>{e.name}</Text></TouchableOpacity>)}
             </View>
             <Text style={s.lbl}>ماه</Text>
-            <TextInput style={s.inp} value={form.month} onChangeText={v => upd('month', v)} placeholder="1405/08" />
+            <TextInput accessibilityLabel="1405/08" style={s.inp} value={form.month} onChangeText={v => upd('month', v)} placeholder="1405/08" />
 
             <Text style={s.section}>💰 محاسبه حقوق</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
@@ -554,8 +554,8 @@ function SalaryTab({ emps, salaries, atts, prods, reload, showToast }: any) {
             <TextInput style={[s.inp, { minHeight: 50 }]} value={form.description} onChangeText={v => upd('description', v)} multiline />
 
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 20 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
@@ -595,7 +595,7 @@ function LoansTab({ emps, loans, reload, showToast }: any) {
 
   return (
     <View>
-      <TouchableOpacity style={[s.addBtn, { backgroundColor: '#dc2626' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت وام / مساعده</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityLabel="ثبت وام" style={[s.addBtn, { backgroundColor: '#dc2626' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت وام / مساعده</Text></TouchableOpacity>
       <Text style={s.secT}>📋 وام‌ها و مساعده‌ها ({loans.length})</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
         <View>
@@ -655,8 +655,8 @@ function LoansTab({ emps, loans, reload, showToast }: any) {
             <Text style={s.lbl}>توضیحات</Text>
             <TextInput style={[s.inp, { minHeight: 50 }]} value={form.note} onChangeText={v => setForm({ ...form, note: v })} multiline />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#dc2626', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#dc2626', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
@@ -692,7 +692,7 @@ function LeavesTab({ emps, leaves, reload, showToast }: any) {
 
   return (
     <View>
-      <TouchableOpacity style={[s.addBtn, { backgroundColor: '#10b981' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت مرخصی</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityLabel="ثبت مرخصی" style={[s.addBtn, { backgroundColor: '#10b981' }]} onPress={openNew}><Text style={s.addBtnTxt}>➕ ثبت مرخصی</Text></TouchableOpacity>
       <Text style={s.secT}>📋 مرخصی‌ها ({leaves.length})</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={true} nestedScrollEnabled={true} style={{ maxWidth: "100%" }} contentContainerStyle={{ paddingRight: 4 }}>
         <View>
@@ -745,8 +745,8 @@ function LeavesTab({ emps, leaves, reload, showToast }: any) {
             <Text style={s.lbl}>دلیل</Text>
             <TextInput style={[s.inp, { minHeight: 50 }]} value={form.reason} onChangeText={v => setForm({ ...form, reason: v })} multiline />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#10b981', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#10b981', flex: 2 }]} onPress={submit}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
         </ScrollView></View>
@@ -833,19 +833,19 @@ function PayrollTab({ emps, atts, loans, salaries, batches, reload, showToast }:
     <View>
       <View style={[s.card, { padding: 12, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0' }]}>
         <Text style={s.lbl}>📅 ماه حقوق (مثلاً 1405/08)</Text>
-        <TextInput style={s.inp} value={month} onChangeText={setMonth} placeholder="1405/08" />
+        <TextInput accessibilityLabel="1405/08" style={s.inp} value={month} onChangeText={setMonth} placeholder="1405/08" />
         <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 12 }}>
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#7c3aed', flex: 1 }]} onPress={doCalc}>
+          <TouchableOpacity accessibilityLabel="محاسبه حقوق همه" style={[s.btn, { backgroundColor: '#7c3aed', flex: 1 }]} onPress={doCalc}>
             <Text style={s.btnTxt}>🧮 محاسبه حقوق همه</Text>
           </TouchableOpacity>
           {calc.length > 0 && (
-            <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 1 }]} onPress={saveBatch}>
+            <TouchableOpacity accessibilityLabel="ذخیره دسته" style={[s.btn, { backgroundColor: '#059669', flex: 1 }]} onPress={saveBatch}>
               <Text style={s.btnTxt}>💾 ذخیره دسته</Text>
             </TouchableOpacity>
           )}
         </View>
         {calc.length > 0 && (
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginTop: 8 }]} onPress={() => { if (exportBankFile(calc.map((c: any) => c.employee), calc, month)) showToast('✅ فایل بانکی'); }}>
+          <TouchableOpacity accessibilityLabel="فایل بانکی" style={[s.btn, { backgroundColor: '#0ea5e9', marginTop: 8 }]} onPress={() => { if (exportBankFile(calc.map((c: any) => c.employee), calc, month)) showToast('✅ فایل بانکی'); }}>
             <Text style={s.btnTxt}>📥 فایل بانکی (CSV)</Text>
           </TouchableOpacity>
         )}
@@ -906,7 +906,7 @@ function PayrollTab({ emps, atts, loans, salaries, batches, reload, showToast }:
                   <Text style={[s.td, { width: 90, color: '#dc2626' }]}>{fmt(c.loan)}</Text>
                   <Text style={[s.td, { width: 110, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(c.net_salary)}</Text>
                   <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
-                    <TouchableOpacity onPress={() => printPayslip(c.employee, c, month).then((ok: any) => ok && showToast('✅ فیش'))} style={[s.iconBtn, { backgroundColor: '#dbeafe', borderRadius: 6, paddingHorizontal: 10 }]}>
+                    <TouchableOpacity accessibilityLabel="فیش" onPress={() => printPayslip(c.employee, c, month).then((ok: any) => ok && showToast('✅ فیش'))} style={[s.iconBtn, { backgroundColor: '#dbeafe', borderRadius: 6, paddingHorizontal: 10 }]}>
                       <Text style={{ fontSize: 11 }}>🖨️ فیش</Text>
                     </TouchableOpacity>
                   </View>

@@ -157,15 +157,15 @@ export default function AdminPanel({ showToast }: any) {
 
       {/* تب‌ها */}
       <View style={s.tabsRow}>
-        <TouchableOpacity onPress={() => setTab('issue')} style={[s.tab, tab === 'issue' && s.tabActive]}>
+        <TouchableOpacity accessibilityLabel="صدور" onPress={() => setTab('issue')} style={[s.tab, tab === 'issue' && s.tabActive]}>
           <Text style={[s.tabTxt, tab === 'issue' && s.tabTxtActive]}>✅ صدور</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setTab('requests')} style={[s.tab, tab === 'requests' && s.tabActive]}>
+        <TouchableOpacity accessibilityLabel="درخواست‌ها" onPress={() => setTab('requests')} style={[s.tab, tab === 'requests' && s.tabActive]}>
           <Text style={[s.tabTxt, tab === 'requests' && s.tabTxtActive]}>
             📩 درخواست‌ها{pendingCount > 0 ? ` (${pendingCount})` : ''}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setTab('list')} style={[s.tab, tab === 'list' && s.tabActive]}>
+        <TouchableOpacity accessibilityLabel="لیست" onPress={() => setTab('list')} style={[s.tab, tab === 'list' && s.tabActive]}>
           <Text style={[s.tabTxt, tab === 'list' && s.tabTxtActive]}>📋 لیست</Text>
         </TouchableOpacity>
       </View>
@@ -174,7 +174,7 @@ export default function AdminPanel({ showToast }: any) {
       {tab === 'issue' && (
         <View style={s.card}>
           <Text style={s.lbl}>📧 ایمیل کاربر</Text>
-          <TextInput
+          <TextInput accessibilityLabel="user@example.com"
             style={s.inp}
             value={email}
             onChangeText={setEmail}
@@ -193,7 +193,7 @@ export default function AdminPanel({ showToast }: any) {
             ))}
           </View>
 
-          <TouchableOpacity style={s.checkboxRow} onPress={() => setExtend(!extend)}>
+          <TouchableOpacity accessibilityLabel="مدت جدید به انقضای فعلی اضافه شود" style={s.checkboxRow} onPress={() => setExtend(!extend)}>
             <Text style={s.checkbox}>{extend ? '☑️' : '⬜'}</Text>
             <Text style={s.checkboxLbl}>مدت جدید به انقضای فعلی اضافه شود (تمدید)</Text>
           </TouchableOpacity>
@@ -207,7 +207,7 @@ export default function AdminPanel({ showToast }: any) {
       {/* ═══ تب درخواست‌ها ═══ */}
       {tab === 'requests' && (
         <View>
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#334155', marginBottom: 12 }]} onPress={loadRequests}>
+          <TouchableOpacity accessibilityLabel="بروزرسانی" style={[s.btn, { backgroundColor: '#334155', marginBottom: 12 }]} onPress={loadRequests}>
             <Text style={s.btnTxt}>🔄 بروزرسانی</Text>
           </TouchableOpacity>
 
@@ -238,10 +238,10 @@ export default function AdminPanel({ showToast }: any) {
 
                 {isPending && (
                   <View style={s.reqActions}>
-                    <TouchableOpacity style={[s.reqBtn, { backgroundColor: '#dc2626' }]} onPress={() => rejectRequest(r)}>
+                    <TouchableOpacity accessibilityLabel="رد" style={[s.reqBtn, { backgroundColor: '#dc2626' }]} onPress={() => rejectRequest(r)}>
                       <Text style={s.reqBtnTxt}>❌ رد</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[s.reqBtn, { backgroundColor: '#059669', flex: 2 }]} onPress={() => approveRequest(r)}>
+                    <TouchableOpacity accessibilityLabel="تأیید" style={[s.reqBtn, { backgroundColor: '#059669', flex: 2 }]} onPress={() => approveRequest(r)}>
                       <Text style={s.reqBtnTxt}>✅ تأیید + صدور ۱ ماه</Text>
                     </TouchableOpacity>
                   </View>
@@ -255,7 +255,7 @@ export default function AdminPanel({ showToast }: any) {
       {/* ═══ تب لیست ═══ */}
       {tab === 'list' && (
         <View>
-          <TouchableOpacity style={[s.btn, { backgroundColor: '#334155', marginBottom: 12 }]} onPress={loadList}>
+          <TouchableOpacity accessibilityLabel="بروزرسانی" style={[s.btn, { backgroundColor: '#334155', marginBottom: 12 }]} onPress={loadList}>
             <Text style={s.btnTxt}>🔄 بروزرسانی</Text>
           </TouchableOpacity>
 

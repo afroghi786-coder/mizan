@@ -65,10 +65,10 @@ export default function SyncControl({ showToast, compact }: any) {
             <ActivityIndicator color="#059669" style={{ marginTop: 16 }} />
           ) : (
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b' }]} onPress={skipSync}>
+              <TouchableOpacity accessibilityLabel="فقط آنلاین شو" style={[s.btn, { backgroundColor: '#64748b' }]} onPress={skipSync}>
                 <Text style={s.btnTxt}>فقط آنلاین شو</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={confirmSync}>
+              <TouchableOpacity accessibilityLabel="بله، آپلود کن" style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={confirmSync}>
                 <Text style={s.btnTxt}>✅ بله، آپلود کن</Text>
               </TouchableOpacity>
             </View>

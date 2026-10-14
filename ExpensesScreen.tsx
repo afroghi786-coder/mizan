@@ -115,12 +115,12 @@ export default function ExpensesScreen({ showToast }: any) {
       {/* ═══ محتوا ═══ */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 10, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
 
-        <TouchableOpacity style={s.addBtn} onPress={openNew}>
+        <TouchableOpacity accessibilityLabel="ثبت هزینه جدید" style={s.addBtn} onPress={openNew}>
           <Text style={s.addBtnTxt}>➕ ثبت هزینه جدید</Text>
         </TouchableOpacity>
 
         {/* جستجو */}
-        <TextInput
+        <TextInput accessibilityLabel="🔍 جستجو: عنوان، شماره فاکتور، دریافت‌کننده..."
           style={s.inp}
           value={q}
           onChangeText={setQ}
@@ -131,7 +131,7 @@ export default function ExpensesScreen({ showToast }: any) {
         {/* فیلتر دسته */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 42, marginTop: 8 }}>
           <View style={{ flexDirection: 'row-reverse', gap: 4 }}>
-            <TouchableOpacity onPress={() => setFilterCat('')} style={[s.chip, !filterCat && s.chipActive]}>
+            <TouchableOpacity accessibilityLabel="همه" onPress={() => setFilterCat('')} style={[s.chip, !filterCat && s.chipActive]}>
               <Text style={[s.chipTxt, !filterCat && s.chipTxtActive]}>همه</Text>
             </TouchableOpacity>
             {CATEGORIES.slice(0, 12).map(c => (
@@ -216,13 +216,13 @@ export default function ExpensesScreen({ showToast }: any) {
                 ))}
               </View>
               <Text style={s.lbl}>عنوان *</Text>
-              <TextInput style={s.inp} value={form.title || ''} onChangeText={v => setForm({ ...form, title: v })} placeholder="مثلاً: قبض برق ماه مهر" />
+              <TextInput accessibilityLabel="مثلاً: قبض برق ماه مهر" style={s.inp} value={form.title || ''} onChangeText={v => setForm({ ...form, title: v })} placeholder="مثلاً: قبض برق ماه مهر" />
 
               <Text style={s.lbl}>مبلغ *</Text>
               <TextInput style={s.inp} value={String(form.amount || '')} onChangeText={v => setForm({ ...form, amount: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="0" />
 
               <Text style={s.lbl}>توضیحات</Text>
-              <TextInput style={[s.inp, { minHeight: 60 }]} value={form.description || ''} onChangeText={v => setForm({ ...form, description: v })} multiline placeholder="اختیاری" />
+              <TextInput accessibilityLabel="اختیاری" style={[s.inp, { minHeight: 60 }]} value={form.description || ''} onChangeText={v => setForm({ ...form, description: v })} multiline placeholder="اختیاری" />
 
               <Text style={s.section}>💳 اطلاعات پرداخت</Text>
               <Text style={s.lbl}>روش پرداخت</Text>
@@ -245,7 +245,7 @@ export default function ExpensesScreen({ showToast }: any) {
                     ))}
                   </View>
                   <Text style={s.lbl}>شماره حساب</Text>
-                  <TextInput style={s.inp} value={form.account_number || ''} onChangeText={v => setForm({ ...form, account_number: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="شماره حساب" />
+                  <TextInput accessibilityLabel="شماره حساب" style={s.inp} value={form.account_number || ''} onChangeText={v => setForm({ ...form, account_number: v.replace(/[^\d]/g, '') })} keyboardType="numeric" placeholder="شماره حساب" />
                 </>
               )}
 
@@ -262,19 +262,19 @@ export default function ExpensesScreen({ showToast }: any) {
                   ))}
                 </View>
               ) : null}
-              <TextInput style={s.inp} value={form.payer_name || ''} onChangeText={v => setForm({ ...form, payer_name: v })} placeholder="نام پرداخت‌کننده" />
+              <TextInput accessibilityLabel="نام پرداخت‌کننده" style={s.inp} value={form.payer_name || ''} onChangeText={v => setForm({ ...form, payer_name: v })} placeholder="نام پرداخت‌کننده" />
               {form.payer_code ? <Text style={s.codeBadge}>کد: {form.payer_code}</Text> : null}
 
               <Text style={s.lbl}>🏢 دریافت‌کننده</Text>
-              <TextInput style={s.inp} value={form.receiver_name || ''} onChangeText={v => setForm({ ...form, receiver_name: v })} placeholder="مثلاً: شرکت برق، آقای احمدی" />
+              <TextInput accessibilityLabel="مثلاً: شرکت برق، آقای احمدی" style={s.inp} value={form.receiver_name || ''} onChangeText={v => setForm({ ...form, receiver_name: v })} placeholder="مثلاً: شرکت برق، آقای احمدی" />
 
               <Text style={s.lbl}>📅 تاریخ و زمان پرداخت</Text>
               <View style={s.dateBox}>
-                <TextInput style={[s.dateInp, { flex: 2 }]} value={form.payment_date || ''} onChangeText={v => setForm({ ...form, payment_date: v })} placeholder="1405/08/15" />
+                <TextInput accessibilityLabel="1405/08/15" style={[s.dateInp, { flex: 2 }]} value={form.payment_date || ''} onChangeText={v => setForm({ ...form, payment_date: v })} placeholder="1405/08/15" />
                 <Text style={s.dateSep}>|</Text>
-                <TextInput style={[s.dateInp, { flex: 1, textAlign: 'center' }]} value={form.payment_time_h || ''} onChangeText={v => setForm({ ...form, payment_time_h: v.replace(/[^\d]/g, '').slice(0, 2) })} placeholder="HH" maxLength={2} />
+                <TextInput accessibilityLabel="HH" style={[s.dateInp, { flex: 1, textAlign: 'center' }]} value={form.payment_time_h || ''} onChangeText={v => setForm({ ...form, payment_time_h: v.replace(/[^\d]/g, '').slice(0, 2) })} placeholder="HH" maxLength={2} />
                 <Text style={s.dateSep}>:</Text>
-                <TextInput style={[s.dateInp, { flex: 1, textAlign: 'center' }]} value={form.payment_time_m || ''} onChangeText={v => setForm({ ...form, payment_time_m: v.replace(/[^\d]/g, '').slice(0, 2) })} placeholder="MM" maxLength={2} />
+                <TextInput accessibilityLabel="MM" style={[s.dateInp, { flex: 1, textAlign: 'center' }]} value={form.payment_time_m || ''} onChangeText={v => setForm({ ...form, payment_time_m: v.replace(/[^\d]/g, '').slice(0, 2) })} placeholder="MM" maxLength={2} />
               </View>
 
               <Text style={s.section}>📌 وضعیت</Text>
@@ -287,10 +287,10 @@ export default function ExpensesScreen({ showToast }: any) {
               </View>
 
               <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 20 }}>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
+                <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
                   <Text style={s.btnTxt}>انصراف</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.btn, { backgroundColor: '#dc2626', flex: 2 }]} onPress={submit}>
+                <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#dc2626', flex: 2 }]} onPress={submit}>
                   <Text style={s.btnTxt}>💾 ذخیره</Text>
                 </TouchableOpacity>
               </View>

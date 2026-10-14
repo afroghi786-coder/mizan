@@ -41,3 +41,4 @@ ios/Pods/
 
 # نکته: docs/assets/node_modules/ را ignore نمی‌کنیم
 # چون فونت‌های Google داخلش است
+.npmrc

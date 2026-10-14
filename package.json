@@ -7,7 +7,6 @@
     "@expo-google-fonts/share-tech-mono": "^0.4.1",
     "@expo/metro-runtime": "~57.0.16",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native-voice/voice": "^3.2.4",
     "@react-navigation/bottom-tabs": "^7.19.2",
     "@react-navigation/native": "^7.4.1",
     "@supabase/supabase-js": "^2.117.1",

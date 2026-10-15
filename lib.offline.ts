@@ -1,5 +1,5 @@
 // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as lib from './lib';
 
 export * from './lib';

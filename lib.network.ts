@@ -1,5 +1,5 @@
 // lib.network.ts — شبکه صرافی (Supabase + Notifications)
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const NET_CITIES: Record<string, string> = {
   KBL: 'کابل', HRT: 'هرات', MZR: 'مزار شریف', KDH: 'کندهار',

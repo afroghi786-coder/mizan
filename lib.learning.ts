@@ -1,5 +1,5 @@
 // lib.learning.ts — یادگیری و آموزش ربات
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { norm } from './lib.local.nlu';
 
 const LESSONS_KEY = '@mizan_bot_lessons_v1';

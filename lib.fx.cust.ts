@@ -1,5 +1,5 @@
 // lib.fx.cust.ts — فقط AsyncStorage، بدون Supabase
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = '@mizan_customers_v2';
 

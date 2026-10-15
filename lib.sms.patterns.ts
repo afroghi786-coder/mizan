@@ -1,5 +1,5 @@
 // lib.sms.patterns.ts — الگوهای پیامک بانکی + پارسر هوشمند
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = '@mizan_sms_patterns_v2';
 

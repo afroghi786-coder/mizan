@@ -1,5 +1,5 @@
 // lib.emp.ts — نسخه محکم و ساده
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './lib';
 
 const K = (k: string) => '@mizan_local_' + k;

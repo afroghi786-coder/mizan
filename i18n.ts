@@ -1,5 +1,5 @@
 // i18n.ts — سیستم چندزبانه با دیکشنری کامل
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clRaw } from './customLabels';
 
 export type Lang = 'fa' | 'ps' | 'prs' | 'ur' | 'ar' | 'en';

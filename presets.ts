@@ -1,4 +1,4 @@
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PRESET_KEY = '@mizan_preset';
 const TERMS_KEY = '@mizan_terms';

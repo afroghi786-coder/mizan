@@ -1,5 +1,5 @@
 // lib.exp.ts — هزینه‌ها (استاندارد)
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './lib';
 
 const K = (k: string) => '@mizan_local_' + k;

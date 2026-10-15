@@ -1,5 +1,5 @@
 // customLabels.ts — سیستم ویرایش برچسب‌ها
-import AsyncStorage from 'expo-sqlite/kv-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = '@mizan_custom_labels';
 let CUSTOM: Record<string, string> = {};

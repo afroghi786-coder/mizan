@@ -10,7 +10,6 @@ import {
 
 // ─── کتابخانه‌های صدا (import استاتیک)
 import * as Speech from 'expo-speech';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
 const isWeb = Platform.OS === 'web';
 
@@ -329,30 +328,7 @@ export default function GlobalVoice({ showToast }: any) {
   };
 
   const startRecognitionNative = async () => {
-    try {
-      // درخواست مجوز
-      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!perm.granted) {
-        setStatus('❌ دسترسی میکروفون را بده');
-        return;
-      }
-      
-      // تنظیمات
-      ExpoSpeechRecognitionModule.start({
-        lang: 'fa-IR',
-        interimResults: true,
-        continuous: true,
-        requiresOnDeviceRecognition: false, // اجازه آنلاین
-        addsPunctuation: false,
-      });
-      
-      setListening(true);
-      setStatus('🎤 آماده شنیدن');
-    } catch (e: any) {
-      console.log('STT err:', e);
-      setStatus('⚠️ ' + e.message);
-      setListening(false);
-    }
+    setStatus('🎤 میکروفون فعلاً غیرفعال است');
   };
 
   const stopRecognition = async () => {

@@ -39,29 +39,6 @@ import BotUI from './BotUI';
 import GlobalVoice from './GlobalVoice';
 import { registerCommands } from './CommandBus';
 
-
-// ═══ تنظیمات اعلان‌ها
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
-// ═══ کانال اعلان برای اندروید
-if (Platform.OS === 'android') {
-  Notifications.setNotificationChannelAsync('default', {
-    name: 'اعلان‌های میزان',
-    importance: Notifications.AndroidImportance.MAX,
-    sound: 'default',
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#7c3aed',
-    enableVibrate: true,
-  }).catch(e => console.log('channel err', e));
-}
-
-
 // ══════════════════════════════════════════════════════════
 //  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
 // ══════════════════════════════════════════════════════════
@@ -329,7 +306,7 @@ export default function App() {
 
     // 📢 درخواست مجوز نوتیفیکیشن
     useEffect(() => {
-          (async () => {
+      (async () => {
         try {
           const { status } = await Notifications.requestPermissionsAsync();
           if (status !== 'granted') console.log('Notification permission not granted');

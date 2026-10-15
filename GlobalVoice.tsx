@@ -13,6 +13,19 @@ import * as Speech from 'expo-speech';
 
 const isWeb = Platform.OS === 'web';
 
+// ─── Voice stub (پکیج حذف شده — بعداً اضافه می‌شود)
+const Voice: any = {
+  isAvailable: async () => false,
+  start: async () => {},
+  stop: async () => {},
+  cancel: async () => {},
+  destroy: async () => {},
+  removeAllListeners: () => {},
+  onSpeechStart: null,
+  onSpeechEnd: null,
+  onSpeechResults: null,
+  onSpeechError: null,
+};
 
 let recognition: any = null;
 
@@ -189,17 +202,12 @@ function speak(text: string) {
       synth.speak(u);
     } catch {}
   } else {
-    // APK نیتیو
     try {
-      Speech.stop();
-      Speech.speak(text, {
-        language: 'fa-IR',
-        rate: 1.0,
-        pitch: 1.0,
-        volume: 1.0,
-      });
-      console.log('🔊 TTS:', text.slice(0, 40));
-    } catch (e) { console.log('❌ TTS err:', e); }
+      if (Speech?.speak) {
+        Speech.stop();
+        Speech.speak(text, { language: 'fa-IR', rate: 1.05, pitch: 1.0 });
+      }
+    } catch (e) { console.log('TTS err', e); }
   }
 }
 
@@ -328,7 +336,17 @@ export default function GlobalVoice({ showToast }: any) {
   };
 
   const startRecognitionNative = async () => {
-    setStatus('🎤 میکروفون فعلاً غیرفعال است');
+    
+    try {
+      const available = await Voice.isAvailable();
+      if (!available) { setStatus('❌ STT گوشی نیست'); return; }
+      setStatus('🎤 آماده');
+      await Voice.start('fa-IR');
+      setListening(true);
+    } catch (e: any) {
+      setStatus('⚠️ ' + e.message);
+      setListening(false);
+    }
   };
 
   const stopRecognition = async () => {

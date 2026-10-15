@@ -42,8 +42,7 @@
           "icon": "./assets/icon.png",
           "color": "#7c3aed"
         }
-      ],
-      "expo-audio"
+      ]
     ],
     "newArchEnabled": false
   }

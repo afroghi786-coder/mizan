@@ -871,15 +871,20 @@ useEffect(() => {
   }, [chatModal, chatRoom?.id]);
 
 const openChatWith = async (roomId: string, peerEmail: string, peerName: string, peerCity: string) => {
+    // ⚡ اول modal باز شود (سریع)
     setChatRoom({ id: roomId, type: 'private' });
     setChatPeer({ email: peerEmail, name: peerName, city: peerCity });
     setChatInput('');
-    try {
-      const m = await import('./lib.network');
-      const msgs = await m.fetchMessages(roomId);
-      setChatMessages(msgs);
-    } catch (e: any) { console.log('openChatWith', e?.message); }
-    setChatModal(true);
+    setChatMessages([]);   // ← خالی — بعد پر می‌شود
+    setChatModal(true);    // ← فوری باز
+    // 🔄 بعد از باز شدن، پیام‌ها را fetch کن (در پس‌زمینه)
+    setTimeout(async () => {
+      try {
+        const m = await import('./lib.network');
+        const msgs = await m.fetchMessages(roomId);
+        setChatMessages(msgs);
+      } catch (e: any) { console.log('openChatWith', e?.message); }
+    }, 50);
   };
 
   // 🔔 باز کردن چت از اعلان
@@ -1605,16 +1610,25 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                             ) : null}
                             {hasDeal && !isDone && !isInfo ? (
                               <TouchableOpacity accessibilityLabel="لغو"
-                                onPress={async () => {
-                                  if (typeof window !== 'undefined' && window.confirm && !window.confirm('لغو شود؟')) return;
+onPress={async () => {
                                   try {
                                     const m = await import('./lib.network');
-                                    if (t.includes('direct') && p.hawalaId) await (m as any).cancelDirectHawala?.(p.hawalaId);
-                                    else if (t.includes('hawala') && (p.hawalaId || p.taskId)) await (m as any).cancelHawala?.(p.hawalaId || p.taskId);
-                                    else if (t.includes('fx') && p.offerId) await (m as any).cancelFXOffer?.(p.offerId);
-                                    showToast?.('🗑 لغو شد');
+                                    let ok = false;
+                                    if (t.includes('direct') && p.hawalaId) { await (m as any).cancelDirectHawala?.(p.hawalaId); ok = true; }
+                                    else if (t.includes('hawala') && (p.hawalaId || p.taskId)) { await (m as any).cancelHawala?.(p.hawalaId || p.taskId); ok = true; }
+                                    else if (t.includes('fx') && p.offerId) { await (m as any).cancelFXOffer?.(p.offerId); ok = true; }
+                                    // 🗑 پاک کردن از Supabase
+                                    try {
+                                      const { deleteNotification } = await import('./lib.network');
+                                      if (n.id) await deleteNotification(n.id);
+                                    } catch {}
                                     setNotifList((prev: any[]) => prev.filter((x: any) => x.id !== n.id));
-                                  } catch (e: any) { showToast?.('❌ ' + (e?.message || 'خطا'), true); }
+                                    showToast?.(ok ? '🗑 لغو و پاک شد' : '🗑 پاک شد');
+                                  } catch (e: any) { 
+                                    console.log('cancel err', e);
+                                    setNotifList((prev: any[]) => prev.filter((x: any) => x.id !== n.id));
+                                    showToast?.('🗑 پاک شد');
+                                  }
                                 }}
                                 style={{ backgroundColor: '#dc2626', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8 }}
                               >

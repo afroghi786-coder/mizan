@@ -42,30 +42,59 @@ export function unlockAudio() {
 }
 
 export function playNotifSound() {
-  // در WebView هم صدا پخش شود  // ⚠️ در WebView صدا پخش نمی‌شود
+  // ═══ وب: Web Audio API ═══
+  if (Platform.OS === 'web') {
+    try {
+      unlockAudio();
+      if (!_audioCtx || _playing) return;
+      _playing = true;
+      const t = _audioCtx.currentTime;
+      const o1 = _audioCtx.createOscillator();
+      const g1 = _audioCtx.createGain();
+      o1.connect(g1); g1.connect(_audioCtx.destination);
+      o1.frequency.value = 880;
+      o1.type = 'sine';
+      g1.gain.setValueAtTime(0.4, t);
+      g1.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+      o1.start(t); o1.stop(t + 0.4);
+      const o2 = _audioCtx.createOscillator();
+      const g2 = _audioCtx.createGain();
+      o2.connect(g2); g2.connect(_audioCtx.destination);
+      o2.frequency.value = 1320;
+      o2.type = 'sine';
+      g2.gain.setValueAtTime(0.4, t + 0.2);
+      g2.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+      o2.start(t + 0.2); o2.stop(t + 0.6);
+      setTimeout(() => { _playing = false; }, 800);
+    } catch (e) { _playing = false; }
+    return;
+  }
+
+  // ═══ APK: expo-notifications (صدا + لرزش) ═══
   try {
-    unlockAudio();
-    if (!_audioCtx || _playing) return;
-    _playing = true;
-    const t = _audioCtx.currentTime;
-    const o1 = _audioCtx.createOscillator();
-    const g1 = _audioCtx.createGain();
-    o1.connect(g1); g1.connect(_audioCtx.destination);
-    o1.frequency.value = 880;
-    o1.type = 'sine';
-    g1.gain.setValueAtTime(0.4, t);
-    g1.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
-    o1.start(t); o1.stop(t + 0.4);
-    const o2 = _audioCtx.createOscillator();
-    const g2 = _audioCtx.createGain();
-    o2.connect(g2); g2.connect(_audioCtx.destination);
-    o2.frequency.value = 1320;
-    o2.type = 'sine';
-    g2.gain.setValueAtTime(0.4, t + 0.2);
-    g2.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
-    o2.start(t + 0.2); o2.stop(t + 0.6);
-    setTimeout(() => { _playing = false; }, 800);
-  } catch (e) { _playing = false; }
+    const Notifications = require('expo-notifications');
+    if (Notifications && Notifications.scheduleNotificationAsync) {
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'اعلان',
+          sound: true,
+          vibrate: [200, 100, 200],
+        },
+        trigger: null,
+      }).catch((e: any) => {
+        console.log('notif sound err', e);
+        // fallback: لرزش
+        try { Vibration.vibrate([200, 100, 200]); } catch {}
+      });
+      console.log('🔔 playNotifSound APK');
+    } else {
+      // اگر expo-notifications نبود، فقط لرزش
+      Vibration.vibrate([200, 100, 200]);
+    }
+  } catch (e) {
+    console.log('playNotifSound APK err', e);
+    try { Vibration.vibrate([200, 100, 200]); } catch {}
+  }
 }
 
 export function vibrateNotif() {

@@ -11,7 +11,7 @@ import {
   saveDailyRateWithBase, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications, markRoomRead, listenMessages, sendMessage, fetchMessages} from './lib.network';
 import { emitHawalaUpdate } from './lib.events';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 
 
 const _isWebView = (() => {
@@ -130,18 +130,10 @@ const _safePlaySound = () => {
 
 let _notifSound: any = null;
 
-async function _loadNotifSound() {
-  if (_notifSound) return _notifSound;
-  try {
-    const { sound } = await Audio.Sound.createAsync(
-      require('./assets/sounds/notification.wav')
-    );
-    _notifSound = sound;
-    return sound;
-  } catch (e) { console.log('load sound err', e); return null; }
-}
 
-async function playNotifSound() {
+// ═══ پخش صدای beep با expo-audio ═══
+
+function playNotifSound() {
   // ═══ وب: Web Audio API ═══
   if (Platform.OS === 'web') {
     try {
@@ -169,11 +161,16 @@ async function playNotifSound() {
     return;
   }
 
-  // ═══ APK: expo-av با فایل صوتی ═══
+  // ═══ APK: expo-audio با فایل WAV ═══
   try {
-    const sound = await _loadNotifSound();
-    if (sound) {
-      await sound.replayAsync();
+    if (!_notifSound) {
+      const { AudioPlayer } = require('expo-audio');
+      if (AudioPlayer) {
+        _notifSound = new AudioPlayer(require('./assets/sounds/notification.wav'));
+      }
+    }
+    if (_notifSound) {
+      _notifSound.play();
       console.log('🔔 playNotifSound APK');
     }
   } catch (e) {

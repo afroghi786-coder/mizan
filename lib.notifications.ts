@@ -67,33 +67,71 @@ export function playNotifSound() {
       o2.start(t + 0.2); o2.stop(t + 0.6);
       setTimeout(() => { _playing = false; }, 800);
     } catch (e) { _playing = false; }
+  }
+  // APK: فقط لرزش
+  else {
+    try { Vibration.vibrate([200, 100, 200]); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════
+//  🔔 اعلان ماندگار با مشخصات پیام (مثل تلگرام)
+// ═══════════════════════════════════════════
+export function showNotifWithDetails(
+  title: string,
+  body: string,
+  opts: { sound?: boolean; vibrate?: boolean; channelId?: string } = {}
+) {
+  const { sound = true, vibrate = true, channelId = 'default' } = opts;
+
+  // ═══ وب ═══
+  if (Platform.OS === 'web') {
+    try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        const n = new Notification(title, { body, silent: false, tag: 'mizan-' + Date.now() });
+        setTimeout(() => { try { n.close(); } catch {} }, 30000);
+      }
+    } catch {}
+    // در وب، صدا را هم پخش کن
+    if (sound) {
+      try { playNotifSound(); } catch {}
+    }
     return;
   }
 
-  // ═══ APK: expo-notifications (صدا + لرزش) ═══
+  // ═══ APK: اعلان ماندگار ═══
   try {
     const Notifications = require('expo-notifications');
-    if (Notifications && Notifications.scheduleNotificationAsync) {
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'اعلان',
-          sound: true,
-          vibrate: [200, 100, 200],
-        },
-        trigger: null,
-      }).catch((e: any) => {
-        console.log('notif sound err', e);
-        // fallback: لرزش
-        try { Vibration.vibrate([200, 100, 200]); } catch {}
-      });
-      console.log('🔔 playNotifSound APK');
-    } else {
-      // اگر expo-notifications نبود، فقط لرزش
-      Vibration.vibrate([200, 100, 200]);
+    if (!Notifications || !Notifications.scheduleNotificationAsync) {
+      if (vibrate) { try { Vibration.vibrate([200, 100, 200]); } catch {} }
+      return;
     }
+
+    // اعلان با مشخصات + ماندگار
+    Notifications.scheduleNotificationAsync({
+      content: {
+        title: title || '💬 میزان',
+        body: body || '',
+        data: { ts: Date.now() },
+        sound: sound,
+        vibrate: vibrate ? [200, 100, 200] : undefined,
+        priority: 'max',
+        // ⚠️ گزینه‌های Android برای ماندگاری
+        sticky: true,
+        autoDismiss: false,
+        // اهمیت بالا (heads-up نمایش)
+        ...(Platform.OS === 'android' ? { channelId } : {}),
+      } as any,
+      trigger: null,
+    }).then(() => {
+      console.log('🔔 notif sent:', title, '-', body);
+    }).catch((e: any) => {
+      console.log('notif schedule err', e);
+      if (vibrate) { try { Vibration.vibrate([200, 100, 200]); } catch {} }
+    });
   } catch (e) {
-    console.log('playNotifSound APK err', e);
-    try { Vibration.vibrate([200, 100, 200]); } catch {}
+    console.log('showNotifWithDetails err', e);
+    if (vibrate) { try { Vibration.vibrate([200, 100, 200]); } catch {} }
   }
 }
 

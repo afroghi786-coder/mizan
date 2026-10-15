@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import SyncControl from './SyncControl';
 import ExchangeScreen from './ExchangeScreen';
 import PublicMarketScreen from './PublicMarketScreen';
-import { unlockAudio, playNotifSound, vibrateNotif, showBrowserNotif } from './lib.notifications';
+import { unlockAudio, playNotifSound, vibrateNotif, showBrowserNotif, showNotifWithDetails } from './lib.notifications';
 import ExpensesScreen from './ExpensesScreen';
 import EmployeesScreen from './EmployeesScreen';
 import LanguageModal from './LanguageModal';
@@ -611,9 +611,21 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
               hawala_expired: `⌛ حواله شما منقضی شد`,
             };
             const msg = texts[n.type] || '🔔 اعلان جدید';
-            if (gPrefs.notify_sound !== false) { try { playNotifSound(); } catch {} }
-            if (gPrefs.notify_vibrate !== false) { try { vibrateNotif(); } catch {} }
-            if (!_isWebView && gPrefs.notify_browser !== false) { try { showBrowserNotif('میزان | MIZAN', msg); } catch {} }
+            if (gPrefs.notify_sound !== false || gPrefs.notify_vibrate !== false) {
+              try {
+                const nType = n.type || '';
+                let title = '🔔 میزان';
+                if (nType.includes('direct')) title = '🔒 حواله خصوصی';
+                else if (nType.includes('hawala')) title = '📤 حواله جدید';
+                else if (nType.includes('fx')) title = '💱 معامله ارز';
+                else if (nType.includes('group')) title = '🌐 گروه';
+                showNotifWithDetails(title, msg, {
+                  sound: gPrefs.notify_sound !== false,
+                  vibrate: gPrefs.notify_vibrate !== false,
+                  channelId: 'default',
+                });
+              } catch {}
+            }
             showToast?.(msg);
           }
           setTimeout(() => { _gPlaying.current = false; }, 1500);
@@ -644,9 +656,15 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
           const sender = nw?.from_name || nw?.from_email?.split('@')[0] || 'کسی';
           const preview = (nw?.text || '').slice(0, 60);
           const msg = `💬 ${sender}: ${preview}`;
-          if (gPrefs.notify_sound !== false) { try { playNotifSound(); } catch {} }
-          if (gPrefs.notify_vibrate !== false) { try { vibrateNotif(); } catch {} }
-          if (!_isWebView && gPrefs.notify_browser !== false) { try { showBrowserNotif('میزان | پیام جدید', msg); } catch {} }
+          if (gPrefs.notify_sound !== false || gPrefs.notify_vibrate !== false) {
+            try {
+              showNotifWithDetails('💬 پیام جدید', msg, {
+                sound: gPrefs.notify_sound !== false,
+                vibrate: gPrefs.notify_vibrate !== false,
+                channelId: 'messages',
+              });
+            } catch {}
+          }
           showToast?.(msg);
           setTimeout(() => { _gPlaying.current = false; }, 1500);
         }

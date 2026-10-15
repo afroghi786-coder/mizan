@@ -1,6 +1,6 @@
 // LiveMarketScreen.tsx — بازار عمومی صرافان
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator, Switch } from 'react-native';
+import { Vibration, View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator, Switch } from 'react-native';
 import {
   initNetwork, loadNetSettings, saveNetSettings, getMyNetInfo,
   sendBroadcastHawala, claimHawala, sendFXOffer, claimFXOffer,
@@ -11,6 +11,7 @@ import {
   saveDailyRateWithBase, listenDailyRates,
   stopAllListeners, getAgents, NET_CITIES, fetchPreferences, fetchAllNotifications, markRoomRead, listenMessages, sendMessage, fetchMessages} from './lib.network';
 import { emitHawalaUpdate } from './lib.events';
+import { Audio } from 'expo-av';
 
 
 const _isWebView = (() => {
@@ -127,39 +128,79 @@ const _safePlaySound = () => {
   } catch {}
 };
 
-function playNotifSound() {
-  if (_isWebView) return;
+let _notifSound: any = null;
+
+async function _loadNotifSound() {
+  if (_notifSound) return _notifSound;
   try {
-    const ctx = _getAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === 'suspended') ctx.resume();
-    const t = ctx.currentTime;
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.frequency.value = 880;
-    o.type = 'sine';
-    g.gain.setValueAtTime(0.3, t);
-    g.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
-    o.start(t); o.stop(t + 0.4);
-    const o2 = ctx.createOscillator();
-    const g2 = ctx.createGain();
-    o2.connect(g2); g2.connect(ctx.destination);
-    o2.frequency.value = 1320;
-    o2.type = 'sine';
-    g2.gain.setValueAtTime(0.3, t + 0.2);
-    g2.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-    o2.start(t + 0.2); o2.stop(t + 0.5);
-  } catch (e) { console.log('playNotifSound err', e); }
+    const { sound } = await Audio.Sound.createAsync(
+      require('./assets/sounds/notification.wav')
+    );
+    _notifSound = sound;
+    return sound;
+  } catch (e) { console.log('load sound err', e); return null; }
+}
+
+async function playNotifSound() {
+  // ═══ وب: Web Audio API ═══
+  if (Platform.OS === 'web') {
+    try {
+      const ctx = _getAudioCtx();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 880;
+      o.type = 'sine';
+      g.gain.setValueAtTime(0.3, t);
+      g.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+      o.start(t); o.stop(t + 0.4);
+      const o2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.frequency.value = 1320;
+      o2.type = 'sine';
+      g2.gain.setValueAtTime(0.3, t + 0.2);
+      g2.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+      o2.start(t + 0.2); o2.stop(t + 0.5);
+    } catch (e) { console.log('playNotifSound web err', e); }
+    return;
+  }
+
+  // ═══ APK: expo-av با فایل صوتی ═══
+  try {
+    const sound = await _loadNotifSound();
+    if (sound) {
+      await sound.replayAsync();
+      console.log('🔔 playNotifSound APK');
+    }
+  } catch (e) {
+    console.log('playNotifSound APK err', e);
+    // اگر صدا نشد، لرزش
+    try { Vibration.vibrate([200, 100, 200]); } catch {}
+  }
 }
 
 function vibrateNotif() {
-  if (_isWebView) return;
+  // ═══ وب: navigator.vibrate ═══
+  if (Platform.OS === 'web') {
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).vibrate) {
+        (navigator as any).vibrate([200, 100, 200]);
+      }
+    } catch {}
+    return;
+  }
+  
+  // ═══ APK: Vibration نیتیو ═══
   try {
-    if (typeof navigator !== 'undefined' && (navigator as any).vibrate) {
-      (navigator as any).vibrate([200, 100, 200]);
-    }
-  } catch {}
+    console.log('📳 vibrateNotif APK');
+    Vibration.vibrate([200, 100, 200]);
+  } catch (e) {
+    console.log('vibrateNotif APK err', e);
+  }
 }
 
 function requestBrowserNotifPermission() {

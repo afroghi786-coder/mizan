@@ -27,19 +27,6 @@ const Voice: any = {
   onSpeechError: null,
 };
 
-// ─── Voice stub (پکیج حذف شده — بعداً اضافه می‌شود)
-const Voice: any = {
-  isAvailable: async () => false,
-  start: async () => {},
-  stop: async () => {},
-  cancel: async () => {},
-  destroy: async () => {},
-  removeAllListeners: () => {},
-  onSpeechStart: null,
-  onSpeechEnd: null,
-  onSpeechResults: null,
-  onSpeechError: null,
-};
 let recognition: any = null;
 
 // ═══════════════════════════════════════════════════════════

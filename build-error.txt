@@ -1,0 +1,4 @@
+CommandError: Unknown arguments: --verbose
+
+
+=== STDERR ===

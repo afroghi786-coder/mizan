@@ -306,13 +306,45 @@ export default function App() {
 
     // 📢 درخواست مجوز نوتیفیکیشن
     useEffect(() => {
-      (async () => {
-        try {
-          const { status } = await Notifications.requestPermissionsAsync();
-          if (status !== 'granted') console.log('Notification permission not granted');
-        } catch (e) { console.log('perm err', e); }
-      })();
-    }, []);
+    // 🔔 تنظیم صدای اعلان (کانال اندروید)
+    try {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
+
+      if (Platform.OS === 'android') {
+        Notifications.setNotificationChannelAsync('default', {
+          name: 'اعلان‌های میزان',
+          importance: Notifications.AndroidImportance.MAX,
+          sound: 'default',
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#7c3aed',
+          enableVibrate: true,
+        }).catch(e => console.log('channel err', e));
+
+        // کانال اضافه برای پیام‌های مهم
+        Notifications.setNotificationChannelAsync('messages', {
+          name: 'پیام‌های جدید',
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: 'default',
+          vibrationPattern: [0, 250, 250, 250],
+          enableVibrate: true,
+        }).catch(e => console.log('msg channel err', e));
+      }
+    } catch (e) { console.log('notif setup err', e); }
+
+    // 📢 درخواست مجوز
+    (async () => {
+      try {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') console.log('Notification permission not granted');
+      } catch (e) { console.log('perm err', e); }
+    })();
+  }, []);
 
   useEffect(() => { const t = setTimeout(() => setFontTimeout(true), 3000); return () => clearTimeout(t); }, []);
   const fontsReady = fontsLoaded || fontTimeout;

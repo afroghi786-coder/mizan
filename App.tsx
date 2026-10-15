@@ -38,6 +38,7 @@ import SuperAssistant from './SuperAssistant';
 import BotUI from './BotUI';
 import GlobalVoice from './GlobalVoice';
 import { registerCommands } from './CommandBus';
+import { runMigrationOnce } from './migration';
 
 // ═══ تنظیمات اعلان‌ها
 Notifications.setNotificationHandler({
@@ -328,6 +329,8 @@ export default function App() {
 
     // 📢 درخواست مجوز نوتیفیکیشن
     useEffect(() => {
+    // 🔄 یک بار انتقال داده‌های قدیمی
+    runMigrationOnce();
       (async () => {
         try {
           const { status } = await Notifications.requestPermissionsAsync();

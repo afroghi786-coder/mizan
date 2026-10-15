@@ -1,5 +1,5 @@
 // lib.fx.ts — ماژول کامل صرافی: حواله + صندوق + چک + کاردکس
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from 'expo-sqlite/kv-store';
 import { supabase } from './lib';
 import * as lib from './lib';
 

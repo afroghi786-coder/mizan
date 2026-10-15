@@ -1,5 +1,5 @@
 // lib.fx.trade.ts — ذخیره‌ی معامله + auto-sync به مشتریان/خریداران
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from 'expo-sqlite/kv-store';
 
 const TRADE_KEY = '@mizan_trades_v2';
 const CUST_KEY  = '@mizan_customers_v2';

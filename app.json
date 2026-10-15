@@ -42,7 +42,8 @@
           "icon": "./assets/icon.png",
           "color": "#7c3aed"
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "newArchEnabled": false
   }

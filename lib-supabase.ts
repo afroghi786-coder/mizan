@@ -1,5 +1,5 @@
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from 'expo-sqlite/kv-store';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = 'https://paslxvwlbojdzflbmyoh.supabase.co';

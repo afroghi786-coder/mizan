@@ -1,5 +1,5 @@
 // lib.boxes.ts — صندوق استاندارد
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from 'expo-sqlite/kv-store';
 
 const BOX_KEY = '@mizan_local_fx_boxes';
 const TX_KEY = '@mizan_local_fx_box_tx';

@@ -5,7 +5,7 @@ import {
   StyleSheet, ActivityIndicator, Modal, Switch, NativeModules,
   Platform, DeviceEventEmitter, Alert
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from 'expo-sqlite/kv-store';
 import {
   parseCommand, saveManual, getHistory, addHistory,
   getLearned, addLearned, clearLearned, ParseContext,

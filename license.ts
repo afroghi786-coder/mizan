@@ -1,5 +1,5 @@
 // license.ts — چک لایسنس، جدا از حالت داده
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
 
 const LICENSE_TS = '@mizan_last_license_check';

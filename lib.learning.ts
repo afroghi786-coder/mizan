@@ -1,5 +1,5 @@
 // lib.learning.ts — یادگیری و آموزش ربات
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 import { norm } from './lib.local.nlu';
 
 const LESSONS_KEY = '@mizan_bot_lessons_v1';

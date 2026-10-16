@@ -1,6 +1,6 @@
 // lib.ts — تقویم، تاریخ، دیتابیس Supabase، ابزارها
 import { createClient } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 
 // ═══════════════════════════════════════════════════
 // 🔌 Supabase

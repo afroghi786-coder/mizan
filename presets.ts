@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 
 const PRESET_KEY = '@mizan_preset';
 const TERMS_KEY = '@mizan_terms';

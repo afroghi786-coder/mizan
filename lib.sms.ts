@@ -1,5 +1,5 @@
 // lib.sms.ts — خواندن پیامک بانکی + تطبیق با فاکتورها
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 import { NativeModules, Platform } from 'react-native';
 
 const { SmsReader } = NativeModules;

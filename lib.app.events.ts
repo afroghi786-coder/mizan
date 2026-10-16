@@ -1,7 +1,7 @@
 // lib.app.events.ts — سیستم آگاهی لحظه‌ای
 // ربات از هر اتفاقی توی اپ باخبر می‌شه
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 
 // ═══════════════════════════════════════════
 // Event Types

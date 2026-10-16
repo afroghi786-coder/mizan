@@ -2,7 +2,7 @@
 import { registerScreen } from './lib.app.registry';
 import { getCalType, setCalType, saveCalType, loadCalType } from './lib';
 import { getThemeMode, setThemeMode } from './App';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 
 // این تابع از App.tsx صدا زده می‌شه و صفحه تنظیمات رو ثبت می‌کنه
 export function registerSettingsScreen(ctx: {

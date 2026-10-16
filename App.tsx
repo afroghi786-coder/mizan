@@ -33,7 +33,6 @@ import LearningScreen from './LearningScreen';
 import DateField from './lib.datefield';
 
 import { supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings } from './lib.offline';
-import { migrateAll } from './lib.migrate';
 import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 import SuperAssistant from './SuperAssistant';
 import BotUI from './BotUI';
@@ -346,16 +345,6 @@ export default function App() {
       } catch (e) { console.log('perm err', e); }
     })();
   }, []);
-  // 🗄️ Migration به SQLite (فقط یک بار)
-  useEffect(() => {
-    (async () => {
-      try {
-        const { migrateAll } = await import('./lib.migrate');
-        await migrateAll();
-      } catch (e) { console.log('[App] migration err:', e); }
-    })();
-  }, []);
-
 
   useEffect(() => { const t = setTimeout(() => setFontTimeout(true), 3000); return () => clearTimeout(t); }, []);
   const fontsReady = fontsLoaded || fontTimeout;

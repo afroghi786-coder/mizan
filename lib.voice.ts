@@ -3,7 +3,7 @@
 // 📱 گوشی: Vosk (آفلاین کامل)
 
 import { Platform, NativeModules, DeviceEventEmitter } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 
 // ─── Vosk (فقط روی گوشی)
 let Vosk: any = null;

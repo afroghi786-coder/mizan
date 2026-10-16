@@ -1,5 +1,5 @@
 // lib.manual.ts — دستیار هوشمند ورود دستی (آفلاین)
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from './lib.storage';
 
 const LEARNED_KEY = '@mizan_manual_learned_v1';
 const HISTORY_KEY = '@mizan_manual_history_v1';

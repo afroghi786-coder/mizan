@@ -1,0 +1,689 @@
+═══════════════════════════════════════════════════
+🔍 دیاگنوز کامل — ربات + اعلان + صدا
+═══════════════════════════════════════════════════
+
+═══ ۱. lib.network.ts — تابع notify() ═══
+async function notify(toEmail: string, type: string, payload: any = {}): Promise<void> {
+  if (!_sb || !toEmail) return;
+  try {
+    // چک تنظیمات کاربر
+    const { data: pref } = await _sb.from('net_preferences').select('*').eq('email', toEmail).single();
+    if (pref) {
+      if (type === 'fx_taken' && !pref.notify_fx_claim) return;
+      if (type === 'hawala_taken' && !pref.notify_hawala_claim) return;
+      if (type === 'direct_hawala' && !pref.notify_direct) return;
+      if ((type === 'fx_new') && !pref.notify_fx_new) return;
+      if ((type === 'hawala_new') && !pref.notify_hawala_new) return;
+    }
+    const { error } = await _sb.from('net_notifications').insert({ to_email: toEmail, type, payload: payload || {} });
+    if (error) console.log('[notify] insert error:', error.message);
+    else console.log('[notify] sent', type, 'to', toEmail);
+  } catch (e: any) { console.log('[notify] error:', e?.message); }
+}
+
+export async function fetchNotifications(): Promise<any[]> {
+  if (!_sb || !_myEmail) return [];
+  try {
+    const { data } = await _sb.from('net_notifications').select('*').eq('to_email', _myEmail).order('created_at', { ascending: false }).limit(30);
+    return data || [];
+  } catch { return []; }
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  if (!_sb) return;
+  try { await _sb.from('net_notifications').update({ is_read: true }).eq('id', id); } catch {}
+}
+
+// ═════════════════════════════════════════
+
+═══ ۲. lib.network.ts — sendMessage ═══
+export async function sendMessage(roomId: string, toEmail: string, text: string): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!text || !text.trim()) throw new Error('پیام خالی');
+  if (!roomId || !toEmail) throw new Error('اتاق یا مقصد نامشخص');
+  const { error } = await _sb.from('net_messages').insert({
+    room_id: roomId,
+    from_email: _myEmail,
+    from_name: _myName || _myEmail.split('@')[0],
+    to_email: toEmail,
+    text: text.trim().slice(0, 2000),
+    is_read: false,
+  });
+  if (error) { console.log('sendMessage error:', error.message); throw new Error(error.message); }
+    // 🔔 ساخت اعلان پیام با کانتکست حواله
+  try {
+    // استخراج hawalaId و code از room_id
+    let _hawalaId = '';
+    let _hawalaCode = '';
+    let _hawalaType = '';
+    let _beneficiaryName = '';
+    let _amount = 0;
+    let _currency = '';
+
+    if (roomId.startsWith('dh_')) {
+      _hawalaId = roomId.substring(3);
+      _hawalaType = 'direct';
+      const { data } = await _sb.from('net_direct_hawalas')
+        .select('code, beneficiary_name, amount, currency')
+        .eq('id', _hawalaId).single();
+      if (data) {
+        _hawalaCode = data.code || '';
+        _beneficiaryName = data.beneficiary_name || '';
+        _amount = data.amount || 0;
+        _currency = data.currency || '';
+      }
+    } else if (roomId.startsWith('hw_')) {
+      _hawalaId = roomId.substring(3);
+      _hawalaType = 'public';
+      const { data } = await _sb.from('net_hawalas')
+        .select('code, beneficiary_name, amount, currency')
+        .eq('id', _hawalaId).single();
+      if (data) {
+        _hawalaCode = data.code || '';
+        _beneficiaryName = data.beneficiary_name || '';
+        _amount = data.amount || 0;
+        _currency = data.currency || '';
+      }
+    } else if (roomId.startsWith('fx_')) {
+      _hawalaId = roomId.substring(3);
+      _hawalaType = 'fx';
+    }
+
+    // ✅ INSERT ساده — Trigger سرور خودش ت
+
+═══ ۳. همه notify() calls در lib.network.ts ═══
+  1. await notify(cur.seller_email, 'fx_taken', { offerId, from_email: _myEmail, from_name: _myName, from_city: _myCity, amount: cur.amount, currency: cur.currency })
+  2. await notify(h.toEmail, 'direct_hawala', {
+    hawalaId: h.id, code: _code,
+    from_email: _myEmail, from_name: _myName, from_city: _myCity,
+    amount: h.amount, currency: h.currency,
+    target
+  3. await notify(cur.from_email, 'direct_accepted', { hawalaId, code: cur.code, from_email: _myEmail, from_name: _myName, from_city: _myCity })
+  4. await notify(cur.from_email, 'direct_delivered', { hawalaId, code: cur.code, from_email: _myEmail, from_name: _myName, from_city: _myCity })
+  5. await notify(em, 'group_invite', { groupId, groupName: grp.name, from_name: _myName })
+  6. await notify(grp.owner_email, 'group_join', { groupId: grp.id, groupName: grp.name, from_name: _myName })
+  7. await notify(memberEmail, 'group_kick', { groupId, groupName: grp.name })
+
+═══ ۴. App.tsx — expo-notifications ═══
+  خط 3: import * as Notifications from 'expo-notifications';
+  خط 311: Notifications.setNotificationHandler({
+  خط 320: Notifications.setNotificationChannelAsync('default', {
+  خط 322: importance: Notifications.AndroidImportance.MAX,
+  خط 330: Notifications.setNotificationChannelAsync('messages', {
+  خط 332: importance: Notifications.AndroidImportance.HIGH,
+  خط 343: const { status } = await Notifications.requestPermissionsAsync();
+
+═══ ۵. lib.notifications.ts ═══
+📏 حجم: 5759 بایت
+// lib.notifications.ts — WebView-safe
+// ⚠️ هیچ API خطرناکی بدون چک اجرا نمی‌شود
+
+const _W = (typeof window !== 'undefined') ? window : null;
+const _N = (typeof navigator !== 'undefined') ? navigator : null;
+
+// تشخیص WebView (APK)
+const _isWebView = (() => {
+  try {
+    if (!_N) return false;
+    const ua = (_N.userAgent || '').toLowerCase();
+    if (ua.includes('wv') || ua.includes('webview')) return true;
+    if (typeof (_W as any)?.ReactNativeWebView !== 'undefined') return true;
+    // Android بدون Chrome Mobile معمولاً WebView است
+    if (ua.includes('android') && !ua.includes('chrome')) return true;
+    return false;
+  } catch { return false; }
+})();
+
+// در WebView: همه‌چیز غیرفعال
+let _audioCtx: any = null;
+let _unlocked = false;
+let _playing = false;
+
+export function unlockAudio() {
+  if (_isWebView) return;
+  try {
+    if (!_W) return;
+    const Ctx = (_W as any).AudioContext || (_W as any).webkitAudioContext;
+    if (!Ctx) return;
+    if (!_audioCtx) _audioCtx = new Ctx();
+    if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
+    if (!_unlocked && _audioCtx) {
+      const o = _audioCtx.createOscillator();
+      const g = _audioCtx.createGain();
+      g.gain.value = 0;
+      o.connect(g); g.connect(_audioCtx.destination);
+      o.start(); o.stop(_audioCtx.currentTime + 0.01);
+      _unlocked = true;
+    }
+  } catch (e) { /* silent */ }
+}
+
+export function playNotifSound() {
+  // ═══ وب: Web Audio API ═══
+  if (Platform.OS === 'web') {
+    try {
+      unlockAudio();
+      if (!_audioCtx || _playing) return;
+      _playing = true;
+      const t = _audioCtx.currentTime;
+      const o1 = _audioCtx.createOscillator();
+      const g1 = _audioCtx.createGain();
+      o1.connect(g1); g1.connect(_audioCtx.destination);
+      o1.frequency.value = 880;
+      o1.type = 'sine';
+      g1.gain.setValueAtTime(0.4, t);
+      g1.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+      o1.start(t); o1.stop(t + 0.4);
+      const o2 = _audioCtx.createOscillator();
+      const g2 = _audioCtx.createGain();
+      o2.connect(g2); g2.connect(_audioCtx.destination);
+      o2.frequency.value = 1320;
+      o2.type = 'sine';
+      g2.gain.setValueAtTime(0.4, t + 0.2);
+      g2.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+      o2.start(t + 0.2); o2.stop(t + 0.6);
+      setTimeout(() => { _playing = false; }, 800);
+    } catch (e) { _playing = false; }
+  }
+  // APK: فقط لرزش
+  else {
+    try { Vibration.vibrate([200, 100, 200]); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════
+//  🔔 اعلان ماندگار با مشخصات پیام (مثل تلگرام)
+// ═══════════════════════════════════════════
+export function showNotifWithDetails(
+  title: string,
+  body: string,
+  opts: { sound?: boolean; vibrate?: boolean; channelId?: string } = {}
+) {
+  const { sound = true, vibrate = true, channelId = 'default' } = opts;
+
+  // ═══ وب ═══
+  if (Platform.OS === 'web') {
+    try {
+      if (typeof Notification !== 'undefined
+
+═══ ۶. MainApplication.kt ═══
+package com.mezan786.mizan
+
+import android.app.Application
+import android.content.res.Configuration
+
+import com.facebook.react.PackageList
+import com.facebook.react.ReactApplication
+import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.ReactPackage
+import com.facebook.react.ReactHost
+import com.facebook.react.common.ReleaseLevel
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
+
+import expo.modules.ApplicationLifecycleDispatcher
+import expo.modules.ExpoReactHostFactory
+class MainApplication : Application(), ReactApplication {
+
+  override val reactHost: ReactHost by lazy {
+    ExpoReactHostFactory.getDefaultReactHost(
+      context = applicationContext,
+      packageList =
+        PackageList(this).packages.apply {
+        }
+    )
+  }
+
+  override fun onCreate() {
+    super.onCreate()
+    DefaultNewArchitectureEntryPoint.releaseLevel = try {
+      ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
+    } catch (e: IllegalArgumentException) {
+      ReleaseLevel.STABLE
+    }
+    loadReactNative(this)
+    ApplicationLifecycleDispatcher.onApplicationCreate(this)
+  }
+
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
+  }
+}
+
+
+═══ ۷. MainActivity.kt ═══
+package com.mezan786.mizan
+
+import android.os.Build
+import android.os.Bundle
+
+import com.facebook.react.ReactActivity
+import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
+import com.facebook.react.defaults.DefaultReactActivityDelegate
+
+import expo.modules.ReactActivityDelegateWrapper
+
+class MainActivity : ReactActivity() {
+  override fun onCreate(savedInstanceState: Bundle?) {
+    // Set the theme to AppTheme BEFORE onCreate to support
+    // coloring the background, status bar, and navigation bar.
+    // This is required for expo-splash-screen.
+    setTheme(R.style.AppTheme);
+    super.onCreate(null)
+  }
+
+  /**
+   * Returns the name of the main component registered from JavaScript. This is used to schedule
+   * rendering of the component.
+   */
+  override fun getMainComponentName(): String = "main"
+
+  /**
+   * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
+   * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
+   */
+  override fun createReactActivityDelegate(): ReactActivityDelegate {
+    return ReactActivityDelegateWrapper(
+          this,
+          BuildConfig.IS_NEW_ARCHITECTURE_ENABLED,
+          object : DefaultReactActivityDelegate(
+              this,
+              mainComponentName,
+              fabricEnabled
+          ){})
+  }
+
+  /**
+    * Align the back button behavior with Android S
+    * where moving root activities to background instead of finishing activities.
+    * @see <a href="https://developer.android.com/reference/android/app/Activity#onBackPressed()">onBackPressed</a>
+    */
+  override fun invokeDefaultOnBackPressed() {
+      if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
+          if (!moveTaskToBack(false)) {
+              // For non-root activities, use the default implementation to finish them.
+              super.invokeDefaultOnBackPressed()
+          }
+          return
+      }
+
+      // Use the default back button implementation on Android S
+      // because it's doing more than [Activity.moveTaskToBack] in fact.
+      super.invokeDefaultOnBackPressed()
+  }
+}
+
+
+═══ ۸. پوشه speech (Native Module) ═══
+⚠️ پوشه خالیه — فایل Java توش نیست!
+
+═══ ۹. lib.voice.ts ═══
+// lib.voice.ts — صدا روی وب + گوشی
+import { Platform, NativeModules, DeviceEventEmitter } from 'react-native';
+
+const { Speech } = NativeModules;
+
+// ─── تشخیص محیط
+export const isWeb = Platform.OS === 'web';
+export const isAndroid = Platform.OS === 'android';
+export const hasNativeSpeech = !!(Speech && isAndroid);
+
+// ═══════════════════════════════════════════
+// STT — تبدیل صدا به متن
+// ═══════════════════════════════════════════
+export function isSTTAvailable(): boolean {
+  if (hasNativeSpeech) return true;
+  if (isWeb && typeof window !== 'undefined') {
+    return !!(window.SpeechRecognition || (window as any).webkitSpeechRecognition);
+  }
+  return false;
+}
+
+export function startSTT(onPartial: (t: string) => void, onResult: (t: string) => void, onError: (e: string) => void): any {
+  // ─── گوشی
+  if (hasNativeSpeech) {
+    try {
+      Speech.startListening('fa-IR');
+      // listeners از DeviceEventEmitter میان
+      return { type: 'native' };
+    } catch (e: any) {
+      onError(e?.message || 'خطا');
+      return null;
+    }
+  }
+  
+  // ─── وب (Chrome/Edge)
+  if (isWeb && typeof window !== 'undefined') {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      onError('مرورگر شما از میکروفون پشتیبانی نمی‌کند (از Chrome استفاده کنید)');
+      return null;
+    }
+    
+    try {
+      const rec = new SR();
+      rec.lang = 'fa-IR';
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.maxAlternatives = 1;
+      
+      rec.onresult = (ev: any) => {
+        let finalText = '';
+        let interimText = '';
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          const transcript = ev.results[i][0].transcript;
+          if (ev.results[i].isFinal) finalText += transcript;
+          else interimText += transcript;
+        }
+        if (interimText) onPartial(interimText);
+        if (finalText) onResult(finalText.trim());
+      };
+      
+      rec.onerror = (ev: any) => {
+        let msg = 'خطا در میکروفون';
+        if (ev.error === 'not-allowed') msg = 'دسترسی میکروفون رد شد';
+        else if (ev.error === 'no-speech') msg = 'چیزی نشنیدم';
+        else if (ev.error === 'network') msg = 'نیاز به اینترنت برای تشخیص صدا';
+        else if (ev.error === 'language-not-supported') msg = 'فارسی پشتیبانی نمی‌شود';
+        onError(msg);
+      };
+      
+      rec.onend = () => {};
+      rec.start();
+      return { type: 'web', rec };
+    } catch (e: any) {
+      onError(e?.message || 'خطا');
+      return null;
+    }
+  }
+  
+  onError('دستگاه شما از میکروفون پشتیبانی نمی‌کند');
+  return null;
+}
+
+export function stopSTT(handle: any): void {
+  if (!handle) return;
+  if (handle.type === 'native' && hasNativeSpeech) {
+    try { Speech.stopListening(); } catch {}
+  }
+  if (handle.type === 'web' && handle.rec) {
+    try { handle.rec.stop(); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════
+// TTS — پاسخ صوتی
+// ═══════════════════════════════════════════
+export function speakText(text: string, lang: string = 'fa-IR'): void {
+  if (!text || !text.trim()) return;
+  
+  // ─── گوشی
+  if (hasNativeSpeech) {
+    try { Speech.speak(text, lang); } catch {}
+    return;
+  }
+  
+  // ─── وب (Chrome, Edge, Safari)
+  if (isWeb && typeof window !== 'undefined' && (window as any).speechSynthesis) {
+    try {
+      const synth = (window as any).speechSynthesis;
+      synth.cancel(); // قطع قبلی
+      
+      const u = new (window as any).SpeechSynthesisUtterance(text);
+      // سعی کن فارسی
+      const voices = synth.getVoices() || [];
+      const faVoice = voices.find((v: any) =>
+        v.lang?.toLowerCase().startsWith('fa') ||
+        v.lang?.toLowerCase().startsWith('ar') ||
+        v.name?.toLowerCase().includes('persian') ||
+        v.name?.toLowerCase().includes('farsi') ||
+        v.name?.toLowerCase().includes('arabic')
+      );
+      
+      if (faVoice) {
+        u.voice = faVoice;
+        u.lang = faVoice.lang;
+      } else {
+        u.lang = lang;
+      }
+      u.rate = 0.95;
+      u.pitch = 1.0;
+      u.volume = 1.0;
+      synth.speak(u);
+    } catch (e) { console.log('speak err:', e); }
+  }
+}
+
+export function stopSpeak(): void {
+  if (hasNativeSpeech) {
+    try { Speech.stopSpeaking?.(); } catch {}
+    return;
+  }
+  if (isWeb && typeof window !== 'undefined' && (window as any).speechSynthesis) {
+    try { (window as any).speechSynthesis.cancel(); } catch {}
+  }
+}
+
+// ─── لیست صداهای موجود (وب)
+export function getVoices(): any[] {
+  if (isWeb && typeof window !== 'undefined' && (window as any).speechSynthesis) {
+    return (window as any).speechSynthesis.getVoices() || [];
+  }
+  return [];
+}
+
+// ═══════════════════════════════════════════
+// Continuous Mode — میکروفون یکبار روشن بمونه
+// ═══════════════════════════════════════════
+let _continuous = false;
+let _continuousHandler: any = null;
+let _onContinuousResult: ((txt: string) => void) | null = null;
+let _onContinuousPartial: ((txt: string) => void) | null = null;
+
+export function setContinuousMode(on: boolean): void {
+  _continuous = on;
+  console.log('🎤 continuous:', on);
+}
+
+export function isContinuousMode(): boolean {
+  return _continuous;
+}
+
+export function startContinuous(
+  onResult: (txt: string) => void,
+  onPartial: (txt: string) => void,
+  onError: (err: string) => void
+): void {
+  _onContinuousResult = onResult;
+  _onContinuousPartial = onPartial;
+  _continuous = true;
+  
+  const startOnce = () => {
+    if (!_continuous) return;
+    _continuousHandler = startSTT(
+      (p) => { if (_onContinuousPartial) _onContinuousPartial(p); },
+      (t) => {
+        if (_onContinuousResult) _onContinuousResult(t);
+        // بعد از نتیجه، دوباره شروع کن
+        if (_continuous) {
+          setTimeout(() => startOnce(), 300);
+        }
+      },
+      (e) => {
+        if (onError) onError(e);
+        // بعد از خطا هم دوباره شروع کن
+        if (_continuous) {
+          setTimeout(() => startOnce(), 1500);
+        }
+      }
+    );
+  };
+  startOnce();
+}
+
+export function stopContinuous(): void {
+  _continuous = false;
+  _onContinuousResult = null;
+  _onContinuousPartial = null;
+  if (_continuousHandler) {
+    stopSTT(_continuousHandler);
+    _continuousHandler = null;
+  }
+}
+
+
+═══ ۱۰. پکیج‌های نصب‌شده مربوط به صدا ═══
+  ✅ expo-speech: ^57.0.3
+
+═══ ۱۱. gradle.properties ═══
+# Project-wide Gradle settings.
+
+# IDE (e.g. Android Studio) users:
+# Gradle settings configured through the IDE *will override*
+# any settings specified in this file.
+
+# For more details on how to configure your build environment visit
+# http://www.gradle.org/docs/current/userguide/build_environment.html
+
+# Specifies the JVM arguments used for the daemon process.
+# The setting is particularly useful for tweaking memory settings.
+# Default value: -Xmx512m -XX:MaxMetaspaceSize=256m
+org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+
+# When configured, Gradle will run in incubating parallel mode.
+# This option should only be used with decoupled projects. More details, visit
+# http://www.gradle.org/docs/current/userguide/multi_project_builds.html#sec:decoupled_projects
+org.gradle.parallel=true
+
+# AndroidX package structure to make it clearer which packages are bundled with the
+# Android operating system, and which are packaged with your app's APK
+# https://developer.android.com/topic/libraries/support-library/androidx-rn
+android.useAndroidX=true
+
+# Enable AAPT2 PNG crunching
+android.enablePngCrunchInReleaseBuilds=true
+
+# Use this property to specify which architecture you want to build.
+# You can also override it from the CLI using
+# ./gradlew <task> -PreactNativeArchitectures=x86_64
+reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
+
+# Use this property to enable support to the new architecture.
+# This will allow you to use TurboModules and the Fabric render in
+# your application. You should enable this flag either if you want
+# to write custom TurboModules/Fabric components OR use libraries that
+# are providing them.
+newArchEnabled=true
+
+# Use this property to enable or disable the Hermes JS engine.
+# If set to false, you will be using JSC instead.
+hermesEnabled=true
+
+# Use this property to enable edge-to-edge display support.
+# This allows your app to draw behind system bars for an immersive UI.
+# Note: Only works with ReactActivity and should not be used with custom Activity.
+edgeToEdgeEnabled=true
+
+# Enable GIF support in React Native images (~200 B increase)
+expo.gif.enabled=true
+# Enable webp support in React Native images (~85 KB increase)
+expo.webp.enabled=true
+# Enable animated webp support (~3.4 MB increase)
+# Disabled by default because iOS doesn't support animated webp
+expo.webp.animated=false
+
+# Enable network inspector
+EX_DEV_CLIENT_NETWORK_INSPECTOR=true
+
+# Use legacy packaging to compress native libraries in the resulting APK.
+expo.useLegacyPackaging=false
+
+expo.inlineModules.watchedDirectories=[]
+
+═══ ۱۲. android/build.gradle — SDK ═══
+
+═══ ۱۳. AndroidManifest.xml ═══
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+  <uses-permission android:name="android.permission.VIBRATE"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <queries>
+    <intent>
+      <action android:name="android.intent.action.VIEW"/>
+      <category android:name="android.intent.category.BROWSABLE"/>
+      <data android:scheme="https"/>
+    </intent>
+  </queries>
+  <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme" android:supportsRtl="true" android:enableOnBackInvokedCallback="false">
+    <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
+    <meta-data android:name="expo.modules.updates.ENABLE_BSDIFF_PATCH_SUPPORT" android:value="true"/>
+    <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
+    <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
+    <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|assetsPaths" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>
+
+═══ ۱۴. app.json ═══
+{
+  "expo": {
+    "name": "میزان",
+    "slug": "mizan",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.mezan786.mizan",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "22c7aaeb-2a8a-46c6-bd20-14eeefc5bc29"
+      }
+    },
+    "owner": "mezan786",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#7c3aed"
+        }
+      ]
+    ],
+    "newArchEnabled": false
+  }
+}
+
+═══════════════════════════════════════════════════
+✅ تمام
+═══════════════════════════════════════════════════

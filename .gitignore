@@ -45,3 +45,12 @@ ios/Pods/
 /dist
 /err.txt
 /out.txt
+# 📦 Vosk Models (downloaded by workflow)
+assets/model-fa-fa/
+assets/model-en-us/
+assets/model-ar-ar/
+assets/model-ps-ps/
+assets/models-cache/
+# 🔧 Android prebuild (workflow regenerates)
+android/app/src/main/assets/model-fa-fa/
+android/app/src/main/assets/model-en-us/

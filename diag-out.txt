@@ -1,0 +1,182 @@
+═══ ۱. lib.network.ts — notify() ═══
+async function notify(toEmail: string, type: string, payload: any = {}): Promise<void> {
+  if (!_sb || !toEmail) return;
+  try {
+    // چک تنظیمات کاربر
+    const { data: pref } = await _sb.from('net_preferences').select('*').eq('email', toEmail).single();
+    if (pref) {
+      if (type === 'fx_taken' && !pref.notify_fx_claim) return;
+      if (type === 'hawala_taken' && !pref.notify_hawala_claim) return;
+      if (type === 'direct_hawala' && !pref.notify_direct) return;
+      if ((type === 'fx_new') && !pref.notify_fx_new) return;
+      if ((type === 'hawala_new') && !pref.notify_hawala_new) return;
+    }
+    const { error } = await _sb.from('net_notifications').insert({ to_email: toEmail, type, payload: payload || {} });
+    if (error) console.log('[notify] insert error:', error.message);
+    else console.log('[notify] sent', type, 'to', toEmail);
+  } catch (e: any) { console.log('[notify] error:', e?.message); }
+}
+
+═══ ۲. lib.network.ts — sendMessage ═══
+export async function sendMessage(roomId: string, toEmail: string, text: string): Promise<any> {
+  if (!_sb || !_myEmail) throw new Error('متصل نیست');
+  if (!text || !text.trim()) throw new Error('پیام خالی');
+  if (!roomId || !toEmail) throw new Error('اتاق یا مقصد نامشخص');
+  const { error } = await _sb.from('net_messages').insert({
+    room_id: roomId,
+    from_email: _myEmail,
+    from_name: _myName || _myEmail.split('@')[0],
+    to_email: toEmail,
+    text: text.trim().slice(0, 2000),
+    is_read: false,
+  });
+  if (error) { console.log('sendMessage error:', error.message); throw new Error(error.message); }
+    // 🔔 ساخت اعلان پیام با کانتکست حواله
+  try {
+    // استخراج hawalaId و code از room_id
+    let _hawalaId = '';
+    let _hawalaCode = '';
+    let _hawalaType = '';
+    let _beneficiaryName = '';
+    let _amount = 0;
+    let _currency = '';
+
+    if (roomId.startsWith('dh_')) {
+      _hawalaId = roomId.substring(3);
+      _hawalaType = 'direct';
+      const { data } = await _sb.from('net_direct_hawalas')
+        .select('code, beneficiary_name, amount, currency')
+        .eq('id', _hawalaId).single();
+      if (data) {
+        _hawalaCode = data.code || '';
+        _beneficiaryName = data.beneficiary_name || '';
+        _amount = data.amount || 0;
+        _currency = data.currency || '';
+      }
+    } else if (roomId.startsWith('hw_')) {
+      _hawalaId = roomId.substring(3);
+      _hawalaType = 'public';
+      const { data } = await _sb.from('net_hawalas')
+        .select('code, beneficiary_name, amount, currency')
+        .eq('id', _hawalaId).single();
+      if (data) {
+        _hawalaCode = data.code || '';
+        _beneficiaryName = data.beneficiary_name || '';
+        _amount = data.amount || 0;
+        _curr
+
+═══ ۳. lib.network.ts — all notify() calls ═══
+  1. notify(toEmail: string, type: string, payload: any = {})
+  2. notify(cur.from_email, 'hawala_taken', { taskId, code: cur.code, from_name: _myName, amount: cur.amount, currency: cur.currency })
+  3. notify(cur.seller_email, 'fx_taken', { offerId, from_email: _myEmail, from_name: _myName, from_city: _myCity, amount: cur.amount, currency: cur.curren
+  4. notify(h.toEmail, 'direct_hawala', {
+    hawalaId: h.id, code: _code,
+    from_email: _myEmail, from_name: _myName, from_city: _myCity,
+    amount:
+  5. notify(cur.from_email, 'direct_accepted', { hawalaId, code: cur.code, from_email: _myEmail, from_name: _myName, from_city: _myCity })
+  6. notify(cur.from_email, 'direct_delivered', { hawalaId, code: cur.code, from_email: _myEmail, from_name: _myName, from_city: _myCity })
+  7. notify(em, 'group_invite', { groupId, groupName: grp.name, from_name: _myName })
+  8. notify(grp.owner_email, 'group_join', { groupId: grp.id, groupName: grp.name, from_name: _myName })
+  9. notify(memberEmail, 'group_kick', { groupId, groupName: grp.name })
+
+═══ ۴. App.tsx — expo-notifications usage ═══
+  خط 3: import * as Notifications from 'expo-notifications';
+  خط 311: Notifications.setNotificationHandler({
+  خط 320: Notifications.setNotificationChannelAsync('default', {
+  خط 322: importance: Notifications.AndroidImportance.MAX,
+  خط 330: Notifications.setNotificationChannelAsync('messages', {
+  خط 332: importance: Notifications.AndroidImportance.HIGH,
+  خط 343: const { status } = await Notifications.requestPermissionsAsync();
+
+═══ ۵. lib.notifications.ts ═══
+// lib.notifications.ts — WebView-safe
+// ⚠️ هیچ API خطرناکی بدون چک اجرا نمی‌شود
+
+const _W = (typeof window !== 'undefined') ? window : null;
+const _N = (typeof navigator !== 'undefined') ? navigator : null;
+
+// تشخیص WebView (APK)
+const _isWebView = (() => {
+  try {
+    if (!_N) return false;
+    const ua = (_N.userAgent || '').toLowerCase();
+    if (ua.includes('wv') || ua.includes('webview')) return true;
+    if (typeof (_W as any)?.ReactNativeWebView !== 'undefined') return true;
+    // Android بدون Chrome Mobile معمولاً WebView است
+    if (ua.includes('android') && !ua.includes('chrome')) return true;
+    return false;
+  } catch { return false; }
+})();
+
+// در WebView: همه‌چیز غیرفعال
+let _audioCtx: any = null;
+let _unlocked = false;
+let _playing = false;
+
+export function unlockAudio() {
+  if (_isWebView) return;
+  try {
+    if (!_W) return;
+    const Ctx = (_W as any).AudioContext || (_W as any).webkitAudioContext;
+    if (!Ctx) return;
+    if (!_audioCtx) _audioCtx = new Ctx();
+    if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
+    if (!_unlocked && _audioCtx) {
+      const o = _audioCtx.createOscillator();
+      const g = _audioCtx.createGain();
+      g.gain.value = 0;
+      o.connect(g); g.connect(_audioCtx.destination);
+      o.start(); o.stop(_audioCtx.currentTime + 0.01);
+      _unlocked = true;
+    }
+  } catch (e) { /* silent */ }
+}
+
+export function playNotifSound() {
+  // ═══ وب: Web Audio API ═══
+  if (Platform.OS === 'web') {
+    try {
+      unlockAudio();
+      if (!_audioCtx || _playing) return;
+      _playing = true;
+      const t = _audioCtx.currentTime;
+      const o1 = _audioCtx.createOscillator();
+      const g1 = _audioCtx.createGain();
+      o1.connect(g1); g1.connect(_audioCtx.destination);
+      o1.frequency.value = 880;
+      o1.type = 'sine';
+      g1.gain.setValueAtTime(0.4, t);
+      g1.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+      o1.start(t); o1.stop(t + 0.4);
+      const o2 = _audioCtx.createOscillator();
+      const g2 = _audioCtx.createGain();
+      o2.connect(g2); g2.connect(_audioCtx.destination);
+      o2.frequency.value = 1320;
+      o2.type = 'sine';
+      g2.gain.setValueAtTime(0.4, t + 0.2);
+      g2.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+      o2.start(t + 0.2); o2.stop(t + 0.6);
+      setTimeout(() => { _playing = false; }, 800);
+    } catch (e) { _playing = false; }
+  }
+  // APK: فقط لرزش
+  else {
+    try { Vibration.vibrate(
+
+═══ ۶. lib.sw.ts ═══
+// lib.sw.ts — Service Worker (فقط برای PWA — به‌صورت دستی فعال شود)
+// ⚠️ در WebView APK قابل استفاده نیست
+export async function registerSW(): Promise<any> {
+  // در WebView هیچ کاری نمی‌کند
+  try {
+    if (typeof navigator === 'undefined') return null;
+    if (!('serviceWorker' in navigator)) return null;
+    const reg = await navigator.serviceWorker.register('/mizan/sw.js', { scope: '/mizan/' });
+    return reg;
+  } catch (e) { return null; }
+}
+export async function subscribeToPush(_email: string): Promise<any> {
+  return { ok: false, error: 'manual only' };
+}
+export const VAPID_PUBLIC_KEY = '';
+

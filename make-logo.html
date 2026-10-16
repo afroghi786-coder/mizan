@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+<meta charset="UTF-8">
+<title>میزان - لوگو</title>
+<style>
+  body { background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: sans-serif; }
+  h1 { color: #fff; font-family: Tahoma; }
+  canvas { box-shadow: 0 10px 40px rgba(0,0,0,0.5); border-radius: 20px; }
+  button { margin-top: 20px; padding: 15px 40px; font-size: 18px; background: #7c3aed; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
+  button:hover { background: #6d28d9; }
+</style>
+</head>
+<body>
+<h1>پیش‌نمایش لوگو میزان</h1>
+<canvas id="icon" width="512" height="512"></canvas>
+<button onclick="download()">⬇️ دانلود لوگو</button>
+<script>
+const canvas = document.getElementById('icon');
+const ctx = canvas.getContext('2d');
+
+// پس‌زمینه گرادیانت
+const grad = ctx.createLinearGradient(0, 0, 512, 512);
+grad.addColorStop(0, '#0a1628');
+grad.addColorStop(1, '#1a2f4a');
+ctx.fillStyle = grad;
+ctx.fillRect(0, 0, 512, 512);
+
+// دایره طلایی
+ctx.beginPath();
+ctx.arc(256, 190, 130, 0, Math.PI * 2);
+const goldGrad = ctx.createRadialGradient(256, 190, 20, 256, 190, 130);
+goldGrad.addColorStop(0, '#f4d47c');
+goldGrad.addColorStop(1, '#d4af37');
+ctx.fillStyle = goldGrad;
+ctx.fill();
+ctx.strokeStyle = '#8b6914';
+ctx.lineWidth = 5;
+ctx.stroke();
+
+// ترازو
+ctx.strokeStyle = '#0a1628';
+ctx.lineWidth = 7;
+ctx.lineCap = 'round';
+
+// میله عمودی
+ctx.beginPath();
+ctx.moveTo(256, 120);
+ctx.lineTo(256, 240);
+ctx.stroke();
+
+// میله افقی
+ctx.beginPath();
+ctx.moveTo(165, 135);
+ctx.lineTo(347, 135);
+ctx.stroke();
+
+// کفه چپ
+ctx.beginPath();
+ctx.moveTo(165, 135);
+ctx.lineTo(130, 185);
+ctx.lineTo(200, 185);
+ctx.closePath();
+ctx.stroke();
+
+// کفه راست
+ctx.beginPath();
+ctx.moveTo(347, 135);
+ctx.lineTo(312, 185);
+ctx.lineTo(382, 185);
+ctx.closePath();
+ctx.stroke();
+
+// خطوط کفه‌ها
+ctx.beginPath();
+ctx.moveTo(130, 185);
+ctx.lineTo(200, 185);
+ctx.stroke();
+ctx.beginPath();
+ctx.moveTo(312, 185);
+ctx.lineTo(382, 185);
+ctx.stroke();
+
+// پایه
+ctx.beginPath();
+ctx.moveTo(210, 240);
+ctx.lineTo(302, 240);
+ctx.stroke();
+
+// متن "میزان"
+ctx.font = 'bold 110px "Tahoma", "Arial", sans-serif';
+ctx.fillStyle = '#ffffff';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillText('میزان', 256, 395);
+
+// زیرنویس MIZAN
+ctx.font = 'bold 26px "Arial", sans-serif';
+ctx.fillStyle = '#d4af37';
+ctx.fillText('M I Z A N', 256, 460);
+
+function download() {
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'icon.png';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 // 🎯 همون توابع قبلی، فقط سریع‌تر
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getDB } from './lib.db';
+import { getDB } from './libsqlite';
 
 function genId(prefix: string): string {
   return prefix + Date.now() + '_' + Math.random().toString(36).slice(2, 6);

@@ -3,7 +3,7 @@
 // 🎯 اگه خطا داد، AsyncStorage دست‌نخورده می‌مونه
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getDB, isMigrated, setMigrated } from './lib.db';
+import { getDB, isMigrated, setMigrated } from './libsqlite';
 
 // ═══════════════════════════════════════════
 // Migration صندوق‌ها

@@ -1,22 +1,35 @@
-// lib.storage.ts — آداپتر SQLite برای AsyncStorage
-// 🎯 همون API AsyncStorage — ولی با SQLite
-// 🎯 هیچ منطقی عوض نمی‌شه — فقط محل ذخیره
+// lib.storage.ts — آداپتر SQLite (گوشی) + AsyncStorage (وب)
+// 📱 گوشی: SQLite (۱۰۰ برابر سریع‌تر)
+// 💻 وب: AsyncStorage (سازگار با مرورگر)
+// 🎯 همون API AsyncStorage — منطق اپ دست‌نخورده
 
-import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 import RealAS from '@react-native-async-storage/async-storage';
 
-let _db: SQLite.SQLiteDatabase | null = null;
-let _initPromise: Promise<SQLite.SQLiteDatabase | null> | null = null;
+const isWeb = Platform.OS === 'web';
+
+if (isWeb) {
+  console.log('[storage] 🌐 وب — فقط AsyncStorage');
+}
+
+// ═══════════════════════════════════════════
+// گوشی → SQLite
+// ═══════════════════════════════════════════
+let _db: any = null;
+let _initPromise: Promise<any> | null = null;
 let _failed = false;
 
-async function getDb(): Promise<SQLite.SQLiteDatabase | null> {
+async function getDb(): Promise<any> {
+  if (isWeb) return null;  // ← وب: هیچی
   if (_failed) return null;
   if (_db) return _db;
   if (_initPromise) return _initPromise;
 
   _initPromise = (async () => {
     try {
+      const SQLite = require('expo-sqlite');
       const db = await SQLite.openDatabaseAsync('mizan_kv.db');
+
       await db.execAsync(`
         PRAGMA journal_mode = WAL;
         PRAGMA synchronous = NORMAL;
@@ -29,11 +42,12 @@ async function getDb(): Promise<SQLite.SQLiteDatabase | null> {
         );
         CREATE INDEX IF NOT EXISTS idx_kv_updated ON kv(updated_at);
       `);
+
       _db = db;
-      console.log('[storage] ✅ SQLite آماده — ' + new Date().toISOString());
+      console.log('[storage] 📱 SQLite آماده');
       return db;
     } catch (e) {
-      console.log('[storage] ⚠️ SQLite خطا — fallback AsyncStorage:', e);
+      console.log('[storage] ⚠️ SQLite خطا — fallback:', e);
       _failed = true;
       return null;
     }
@@ -43,7 +57,7 @@ async function getDb(): Promise<SQLite.SQLiteDatabase | null> {
 }
 
 // ═══════════════════════════════════════════
-// API — دقیقاً مثل AsyncStorage
+// API (کاملاً مثل AsyncStorage)
 // ═══════════════════════════════════════════
 const AsyncStorage = {
   async getItem(key: string): Promise<string | null> {
@@ -52,7 +66,8 @@ const AsyncStorage = {
     try {
       const row: any = await db.getFirstAsync('SELECT value FROM kv WHERE key = ?', [key]);
       if (row && row.value !== null && row.value !== undefined) return String(row.value);
-      // Lazy migration
+
+      // Lazy migration از AsyncStorage
       const v = await RealAS.getItem(key);
       if (v !== null) {
         await db.runAsync(
@@ -74,6 +89,8 @@ const AsyncStorage = {
         'INSERT OR REPLACE INTO kv (key, value, updated_at) VALUES (?, ?, ?)',
         [key, value, Date.now()]
       );
+      // بکاپ در AsyncStorage
+      try { await RealAS.setItem(key, value); } catch {}
     } catch (e) {
       await RealAS.setItem(key, value);
     }
@@ -134,6 +151,7 @@ const AsyncStorage = {
           );
         }
       });
+      try { await RealAS.multiSet(pairs); } catch {}
     } catch (e) {
       await RealAS.multiSet(pairs);
     }
@@ -178,9 +196,7 @@ const AsyncStorage = {
     }
   },
 
-  async flushGetRequests(): Promise<void> {
-    // no-op
-  },
+  async flushGetRequests(): Promise<void> {},
 };
 
 export default AsyncStorage;

@@ -12,6 +12,66 @@ const DURATIONS = [
 ];
 
 export default function AdminPanel({ showToast }: any) {
+  // __adminAuthV1__ — Auth State
+  const [session, setSession] = useState<any>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
+  // Auth effect
+  useEffect(() => {
+    try {
+      const sb = (require('./lib') as any).supabase;
+      if (!sb) { setAuthReady(true); return; }
+      sb.auth.getSession().then(({ data }: any) => {
+        setSession(data?.session || null);
+        setAuthReady(true);
+      });
+      const { data: sub } = sb.auth.onAuthStateChange((_e: any, sess: any) => {
+        setSession(sess);
+      });
+      return () => { try { sub?.subscription?.unsubscribe?.(); } catch {} };
+    } catch (e) {
+      console.log('auth effect err:', e);
+      setAuthReady(true);
+    }
+  }, []);
+
+  // Login handler
+  const doLogin = async () => {
+    if (!loginEmail || !loginPassword) {
+      setLoginError('ایمیل و رمز را وارد کن');
+      return;
+    }
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      const sb = (require('./lib') as any).supabase;
+      const { error } = await sb.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      });
+      if (error) throw error;
+    } catch (e: any) {
+      setLoginError(e?.message || 'خطا در ورود');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // Logout handler
+  const doLogout = async () => {
+    try {
+      const sb = (require('./lib') as any).supabase;
+      await sb.auth.signOut();
+      setSession(null);
+    } catch (e) {
+      console.log('logout err:', e);
+    }
+  };
+
   const [email, setEmail] = useState('');
   const [duration, setDuration] = useState('1m');
   const [extend, setExtend] = useState(false);
@@ -263,8 +323,127 @@ export default function AdminPanel({ showToast }: any) {
             const exp = l.expires_at ? new Date(l.expires_at) : null;
             const daysLeft = exp ? Math.floor((exp.getTime() - Date.now()) / (24 * 3600 * 1000)) : 0;
             const active = daysLeft > 0 && l.status === 'active';
-            return (
+            // __adminAuthV1__ — Auth Check
+  if (!authReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a1628', justifyContent: 'center', alignItems: 'center' }}>
+      {/* Logout */}
+      <TouchableOpacity
+        onPress={doLogout}
+        style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          backgroundColor: '#dc2626',
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          borderRadius: 10,
+          zIndex: 99999,
+          flexDirection: 'row-reverse',
+          alignItems: 'center',
+          gap: 6,
+          elevation: 8,
+        }}
+      >
+        <Text style={{ color: '#fff', fontSize: 16 }}>🚪</Text>
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>خروج</Text>
+      </TouchableOpacity>
+      <View style={{ height: 20 }} />
+
+        <Text style={{ color: '#fff', fontSize: 16 }}>در حال بررسی...</Text>
+      </View>
+    );
+  }
+
+  if (!session) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a1628', justifyContent: 'center', padding: 20 }}>
+        <View style={{ backgroundColor: '#0f2438', borderRadius: 16, padding: 24, maxWidth: 400, alignSelf: 'center', width: '100%' }}>
+          <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 }}>👑 پنل ادمین</Text>
+          <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>برای دسترسی، وارد شوید</Text>
+
+          <Text style={{ color: '#cbd5e1', fontSize: 13, marginBottom: 6, textAlign: 'right' }}>📧 ایمیل:</Text>
+          <TextInput
+            style={{ backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: '#334155', borderRadius: 10, padding: 12, fontSize: 14, textAlign: 'left', marginBottom: 14 }}
+            value={loginEmail}
+            onChangeText={(t) => { setLoginEmail(t); setLoginError(''); }}
+            placeholder="admin@example.com"
+            placeholderTextColor="#64748b"
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <Text style={{ color: '#cbd5e1', fontSize: 13, marginBottom: 6, textAlign: 'right' }}>🔑 رمز عبور:</Text>
+          <TextInput
+            style={{ backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: '#334155', borderRadius: 10, padding: 12, fontSize: 14, textAlign: 'left', marginBottom: 14 }}
+            value={loginPassword}
+            onChangeText={(t) => { setLoginPassword(t); setLoginError(''); }}
+            placeholder="••••••••"
+            placeholderTextColor="#64748b"
+            secureTextEntry
+          />
+
+          {loginError ? (
+            <Text style={{ color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 12 }}>❌ {loginError}</Text>
+          ) : null}
+
+          <TouchableOpacity
+            onPress={doLogin}
+            disabled={loginLoading}
+            style={{ backgroundColor: '#7c3aed', paddingVertical: 14, borderRadius: 10, alignItems: 'center' }}
+          >
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold' }}>
+              {loginLoading ? 'در حال ورود...' : '🔓 ورود'}
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ color: '#64748b', fontSize: 11, textAlign: 'center', marginTop: 16 }}>
+            فقط ادمین‌های مجاز می‌توانند وارد شوند
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // __adminAuthV1__ — Main return
+  return (
               <View key={i} style={s.listItem}>
+      {/* __adminLogoutAdded__ — دکمه خروج ادمین */}
+      <TouchableOpacity
+        onPress={async () => {
+          try {
+            const m = await import('./lib');
+            await m.supabase.auth.signOut();
+          } catch (e) {}
+          try { localStorage.clear(); } catch (e) {}
+          try { sessionStorage.clear(); } catch (e) {}
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        }}
+        style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          backgroundColor: '#dc2626',
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          borderRadius: 10,
+          zIndex: 99999,
+          flexDirection: 'row-reverse',
+          alignItems: 'center',
+          gap: 6,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 4,
+          elevation: 8,
+        }}
+      >
+        <Text style={{ color: '#fff', fontSize: 16 }}>🚪</Text>
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>خروج</Text>
+      </TouchableOpacity>
+
                 <View style={{ flex: 1 }}>
                   <Text style={s.listItemId} numberOfLines={1}>{l.user_id?.slice(0, 8)}...</Text>
                   <Text style={s.listItemPlan}>

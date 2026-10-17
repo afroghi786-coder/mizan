@@ -17,6 +17,7 @@
     "expo-print": "~57.0.2",
     "expo-sharing": "~57.0.22",
     "expo-speech": "^57.0.3",
+    "expo-speech-recognition": "^58.0.0",
     "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "firebase": "^9.23.0",

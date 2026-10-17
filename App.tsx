@@ -38,6 +38,7 @@ import SuperAssistant from './SuperAssistant';
 import BotUI from './BotUI';
 import GlobalVoice from './GlobalVoice';
 import { registerCommands } from './CommandBus';
+import ResetPasswordScreen from './ResetPasswordScreen';
 
 // ══════════════════════════════════════════════════════════
 //  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
@@ -163,7 +164,8 @@ async function getCustomerPreviousBalance(customerCode: string, currentInvoiceNu
     return { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
   }
 }
-// ══════════════════════════════════════════════════════════
+  // 🔐 تابع بازیابی رمز
+  // ══════════════════════════════════════════════════════════
 //  Dashboard Styles (دقیقاً مثل تصویر)
 // ══════════════════════════════════════════════════════════
 const dash = {
@@ -301,8 +303,49 @@ const dash = {
 //  ROOT
 // ══════════════════════════════════════════════════════════
 export default function App() {
+  // 🔐 حالت بازیابی رمز
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const check = () => {
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      if (
+        hash.includes('type=recovery') ||
+        search.includes('type=recovery') ||
+        hash.includes('access_token=') ||
+        (hash.includes('error=') && hash.includes('recovery'))
+      ) {
+        console.log('🔐 Recovery mode detected');
+        setIsRecoveryMode(true);
+      }
+    };
+    
+    check();
+    
+    try {
+      const { data: sub } = supabase.auth.onAuthStateChange((event: any) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('🔐 PASSWORD_RECOVERY event');
+          setIsRecoveryMode(true);
+        }
+      });
+      return () => { try { sub?.subscription?.unsubscribe?.(); } catch {} };
+    } catch {}
+  }, []);
+
+  // 🔐 اگه بازیابی رمز بود، فقط صفحه بازیابی نشون بده
+  if (isRecoveryMode) {
+    return <ResetPasswordScreen />;
+  }
+
+
   const [fontsLoaded] = useFonts({ Orbitron_900Black, Orbitron_700Bold, ShareTechMono_400Regular });
   const [fontTimeout, setFontTimeout] = useState(false);
+  // 🔐 Password Reset States
+          
 
     // 📢 درخواست مجوز نوتیفیکیشن
     useEffect(() => {
@@ -345,6 +388,29 @@ export default function App() {
       } catch (e) { console.log('perm err', e); }
     })();
   }, []);
+  // 🔐 تشخیص لینک بازیابی رمز (هم وب هم گوشی)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      if (hash.includes('type=recovery') || search.includes('type=recovery') || hash.includes('access_token=')) {
+        console.log('🔐 لینک بازیابی از طریق URL تشخیص داده شد');
+        setShowResetModal(true);
+      }
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('🔐 PASSWORD_RECOVERY event received');
+        setShowResetModal(true);
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
+
 
   useEffect(() => { const t = setTimeout(() => setFontTimeout(true), 3000); return () => clearTimeout(t); }, []);
   const fontsReady = fontsLoaded || fontTimeout;
@@ -3661,37 +3727,7 @@ function EL({ text, textKey, style, showIcon = true, children }: any) {
           </TouchableOpacity>
         )}
       </View>
-      {showEdit && (
-        <Modal visible transparent animationType="fade" onRequestClose={() => setShowEdit(false)}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 }}>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16 }}>
-              <EL textKey="✏️ ویرایش برچسب" style={{ fontWeight: 'bold', textAlign: 'right', marginBottom: 12, color: '#0f2438', fontSize: 15 }} />
-              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 6 }}>متن پیش‌فرض: {_raw}</Text>
-              <TextInput accessibilityLabel="متن جدید..."
-                value={tmp}
-                onChangeText={setTmp}
-                style={{ borderWidth: 2, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, textAlign: 'right', fontSize: 14, marginBottom: 12 }}
-                placeholder="متن جدید..."
-                placeholderTextColor="#94a3b8"
-              />
-              <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={async () => { await resetCustomLabel(_raw); setShowEdit(false); }}
-                  style={{ flex: 1, padding: 12, backgroundColor: '#64748b', borderRadius: 10, alignItems: 'center' }}
-                >
-                  <EL textKey="↩️ پیش‌فرض" style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={async () => { await setCustomLabel(_raw, tmp); setShowEdit(false); }}
-                  style={{ flex: 2, padding: 12, backgroundColor: '#059669', borderRadius: 10, alignItems: 'center' }}
-                >
-                  <EL textKey="💾 ذخیره" style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
+      
     </>
   );
 }
@@ -3708,7 +3744,19 @@ function LoginScreen({ showToast }: any) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('ایمیل معتبر وارد کن', true);
     setLoading(true);
     try {
-      const { error: e1 } = await supabase.auth.signInWithPassword({ email, password: pass });
+      // 📱 چک: آیا ایمیل زده یا شماره؟
+      let loginEmail = email.trim();
+      
+      if (!loginEmail.includes('@')) {
+        // شماره زده — تبدیل به ایمیل
+        const { data: fetchedEmail } = await supabase.rpc('get_email_by_phone', { p_phone: loginEmail });
+        if (!fetchedEmail) {
+          return showToast('❌ کاربری با این شماره یافت نشد. لطفاً با ایمیل وارد شوید.', true);
+        }
+        loginEmail = fetchedEmail;
+      }
+
+      const { error: e1 } = await supabase.auth.signInWithPassword({ email: loginEmail, password: pass });
       if (e1) {
         const { error: e2 } = await supabase.auth.signUp({ email, password: pass });
         if (e2) throw e2;
@@ -3720,6 +3768,8 @@ function LoginScreen({ showToast }: any) {
 
   return (
     <KeyboardAvoidingView style={[s.loginWrap, { backgroundColor: C.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      
+
       <View style={s.loginCard}>
         <Text style={s.loginLogo}>⚖️</Text>
         <Text style={s.loginTitle}>{t('میزان')}</Text>

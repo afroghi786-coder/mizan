@@ -81,69 +81,79 @@ export function isSTTAvailable(): boolean {
   return false;
 }
 
-export async function startSTT(
-  onPartial: (t: string) => void,
-  onResult: (t: string) => void,
-  onError: (e: string) => void
-): Promise<any> {
-  const lang = await getActiveVoiceLang();
+// ═══════════════════════════════════════════
+// STT با استفاده از Vosk (میکروفون آفلاین)
+// ═══════════════════════════════════════════
+let voskLoaded = false;
+let voskListening = false;
 
-  // ─── گوشی: Vosk
-  if (isAndroid && Vosk) {
+export async function startSTT(onPartial: (t: string) => void, onResult: (t: string) => void, onError: (e: string) => void): Promise<any> {
+  const lang = await getActiveVoiceLang();
+  
+  if (isAndroid) {
     try {
-      const ok = await ensureVoskModel(lang);
-      if (!ok) {
-        onError('مدل Vosk بارگذاری نشد. لطفاً اپ رو دوباره نصب کن.');
+      const Vosk = require('react-native-vosk').default;
+      if (!Vosk) {
+        onError('پکیج Vosk نصب نیست');
         return null;
       }
 
-      // listener ها
-      const subResult = Vosk.onResult((res: any) => {
-        const txt = res?.text || res?.result?.[0]?.text || '';
-        if (txt) onResult(txt);
+      // 1. لود کردن مدل
+      if (!voskLoaded) {
+        const modelName = mapLangToModel(lang);
+        console.log('⏳ Loading Vosk model:', modelName);
+        await Vosk.loadModel(modelName);
+        voskLoaded = true;
+        console.log('✅ Model loaded');
+      }
+
+      // 2. متصل کردن Event Listener ها
+      Vosk.onResult((res: any) => {
+        const text = typeof res === 'string' ? res : (res?.text || res?.result?.[0]?.text || '');
+        if (text) onResult(text);
       });
 
-      const subPartial = Vosk.onPartialResult((res: any) => {
-        const txt = res?.partial || '';
-        if (txt) onPartial(txt);
+      Vosk.onPartialResult((res: any) => {
+        const text = typeof res === 'string' ? res : (res?.partial || '');
+        if (text) onPartial(text);
       });
 
-      const subError = Vosk.onError((err: any) => {
-        onError(err?.message || 'خطای Vosk');
+      Vosk.onError((err: any) => {
+        const msg = typeof err === 'string' ? err : (err?.message || 'خطای Vosk');
+        onError(msg);
       });
 
+      // 3. شروع به گوش دادن
       await Vosk.start();
+      voskListening = true;
+      console.log('🎤 Vosk started listening');
 
       return {
         type: 'vosk',
         stop: async () => {
           try { await Vosk.stop(); } catch {}
-          try { subResult?.remove?.(); } catch {}
-          try { subPartial?.remove?.(); } catch {}
-          try { subError?.remove?.(); } catch {}
+          voskListening = false;
         }
       };
     } catch (e: any) {
-      onError(e?.message || 'خطا در Vosk');
+      console.log('Vosk error:', e);
+      onError(e?.message || 'خطا در راه‌اندازی Vosk');
       return null;
     }
   }
 
-  // ─── وب: Web Speech API
+  // وب (Web Speech API)
   if (isWeb && typeof window !== 'undefined') {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       onError('مرورگر از میکروفون پشتیبانی نمی‌کند (Chrome استفاده کن)');
       return null;
     }
-
     try {
       const rec = new SR();
       rec.lang = lang;
       rec.continuous = false;
       rec.interimResults = true;
-      rec.maxAlternatives = 1;
-
       rec.onresult = (ev: any) => {
         let finalText = '';
         let interimText = '';
@@ -155,17 +165,9 @@ export async function startSTT(
         if (interimText) onPartial(interimText);
         if (finalText) onResult(finalText.trim());
       };
-
       rec.onerror = (ev: any) => {
-        let msg = 'خطا در میکروفون';
-        if (ev.error === 'not-allowed') msg = 'دسترسی میکروفون رد شد';
-        else if (ev.error === 'no-speech') msg = 'چیزی نشنیدم';
-        else if (ev.error === 'network') msg = 'نیاز به اینترنت برای تشخیص صدا';
-        else if (ev.error === 'language-not-supported') msg = 'این زبان پشتیبانی نمی‌شود';
-        onError(msg);
+        onError(ev.error === 'not-allowed' ? 'دسترسی میکروفون رد شد' : 'خطای میکروفون');
       };
-
-      rec.onend = () => {};
       rec.start();
       return { type: 'web', rec, stop: () => { try { rec.stop(); } catch {} } };
     } catch (e: any) {

@@ -1,4 +1,4 @@
-// LicenseGate.tsx — نمایش قفل لایسنس
+// LicenseGate.tsx
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { checkLicense, LicenseInfo } from './license';
@@ -10,16 +10,24 @@ export default function LicenseGate({ children, showToast }: any) {
   const [showRequest, setShowRequest] = useState(false);
 
   const check = async () => {
-    setLoading(true);
     try {
       const r = await checkLicense();
       setInfo(r);
     } catch (e) {
       console.log(e);
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   };
 
-  useEffect(() => { check(); }, []);
+  useEffect(() => {
+    check();
+    // ⏰ چک دوره‌ای هر ۳۰ ثانیه
+    const iv = setInterval(() => {
+      check();
+    }, 30000);
+    return () => clearInterval(iv);
+  }, []);
 
   if (loading) {
     return (
@@ -44,30 +52,17 @@ export default function LicenseGate({ children, showToast }: any) {
             </Text>
           ) : null}
 
-          {info.daysSinceCheck > 0 ? (
-            <Text style={s.small}>
-              آخرین اتصال به سرور: {info.daysSinceCheck} روز پیش
-            </Text>
-          ) : null}
-
           <TouchableOpacity accessibilityLabel="تلاش مجدد" style={[s.btn, { backgroundColor: '#059669' }]} onPress={check}>
             <Text style={s.btnTxt}>🔄 تلاش مجدد</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity accessibilityLabel="درخواست لایسنس" style={[s.btn, { backgroundColor: '#1e3a8a', marginTop: 8 }]} onPress={() => setShowRequest(true)}>
+          <TouchableOpacity accessibilityLabel="درخواست لایسنس" style={[s.btn, { backgroundColor: '#7c3aed', marginTop: 10 }]} onPress={() => setShowRequest(true)}>
             <Text style={s.btnTxt}>📩 درخواست لایسنس</Text>
           </TouchableOpacity>
-
-          <Text style={s.hint}>
-            اگه قبلاً پرداخت کردی، یک بار اینترنت رو وصل کن و دوباره تلاش کن
-          </Text>
         </View>
-      <LicenseRequest
-        visible={showRequest}
-        onClose={() => setShowRequest(false)}
-        showToast={showToast}
-      />
-    </ScrollView>
+
+        <LicenseRequest visible={showRequest} onClose={() => setShowRequest(false)} showToast={showToast} />
+      </ScrollView>
     );
   }
 
@@ -75,15 +70,13 @@ export default function LicenseGate({ children, showToast }: any) {
 }
 
 const s = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#f5f7fa' },
-  loadingTxt: { marginTop: 12, color: '#64748b', fontSize: 13 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, alignItems: 'center' },
-  icon: { fontSize: 54, marginBottom: 12 },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#0f2438', marginBottom: 12 },
-  reason: { fontSize: 13, color: '#dc2626', textAlign: 'center', marginBottom: 16, lineHeight: 22 },
-  date: { fontSize: 12, color: '#64748b', marginBottom: 6 },
-  small: { fontSize: 11, color: '#94a3b8', marginBottom: 20 },
-  btn: { width: '100%', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 8 },
-  btnTxt: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  hint: { fontSize: 11, color: '#94a3b8', textAlign: 'center', marginTop: 16, lineHeight: 18 },
+  center: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#0f2438' },
+  card: { backgroundColor: '#1a2332', borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, borderWidth: 1, borderColor: '#334155' },
+  icon: { fontSize: 50, textAlign: 'center', marginBottom: 16 },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 10 },
+  reason: { fontSize: 14, color: '#cbd5e1', textAlign: 'center', marginBottom: 20 },
+  date: { fontSize: 13, color: '#d4af37', textAlign: 'center', marginBottom: 20 },
+  btn: { paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+  btnTxt: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  loadingTxt: { color: '#cbd5e1', marginTop: 10, fontSize: 14 },
 });

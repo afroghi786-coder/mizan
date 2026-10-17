@@ -1,10 +1,9 @@
-// license.ts — چک لایسنس، جدا از حالت داده
+// license.ts — چک لایسنس (نسخه ساده و ضدضربه)
 import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
 
 const LICENSE_TS = '@mizan_last_license_check';
 const LICENSE_DATA = '@mizan_license_data';
-const OFFLINE_MAX_DAYS = 7;
 
 export interface LicenseInfo {
   status: 'active' | 'expired' | 'suspended' | 'unknown';
@@ -16,7 +15,6 @@ export interface LicenseInfo {
   reason?: string;
 }
 
-// چک سرور (وقتی اینترنت هست)
 async function fetchLicenseFromServer(): Promise<any> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -30,21 +28,38 @@ async function fetchLicenseFromServer(): Promise<any> {
   } catch { return null; }
 }
 
-// تابع اصلی چک لایسنس
 export async function checkLicense(): Promise<LicenseInfo> {
   const now = Date.now();
-  const lastCheckStr = await AsyncStorage.getItem(LICENSE_TS);
-  const lastCheck = lastCheckStr ? parseInt(lastCheckStr) : 0;
-  const daysSince = lastCheck > 0 ? Math.floor((now - lastCheck) / (24 * 3600 * 1000)) : 0;
+  
+  // ۱. مشخص کردن کاربر فعلی
+  let currentUserId = '';
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    currentUserId = session?.user?.id || '';
+  } catch {}
 
-  // تلاش برای چک آنلاین
+  // ۲. خواندن اطلاعات محلی
+  let localData: any = null;
+  const localRaw = await AsyncStorage.getItem(LICENSE_DATA);
+  if (localRaw) {
+    try {
+      localData = JSON.parse(localRaw);
+      // اگر داده محلی مربوط به کاربر دیگری است، پاکش کن
+      if (currentUserId && localData.user_id && localData.user_id !== currentUserId) {
+        await AsyncStorage.removeItem(LICENSE_DATA);
+        localData = null;
+      }
+    } catch {}
+  }
+
+  // ۳. تلاش برای چک آنلاین
   const online = await fetchLicenseFromServer();
 
   if (online) {
     // آنلاین بود — آپدیت کن
     await AsyncStorage.setItem(LICENSE_TS, String(now));
     await AsyncStorage.setItem(LICENSE_DATA, JSON.stringify(online));
-
+    
     const expiresAt = online.expires_at ? new Date(online.expires_at).getTime() : 0;
     const isExpired = expiresAt > 0 && expiresAt < now;
     const isSuspended = online.status === 'suspended';
@@ -56,65 +71,54 @@ export async function checkLicense(): Promise<LicenseInfo> {
       lastCheck: now,
       daysSinceCheck: 0,
       isLocked: isSuspended || isExpired,
-      reason: isSuspended ? 'حساب شما معلق است' : isExpired ? 'اشتراک شما منقضی شده' : undefined,
+      reason: isSuspended ? 'حساب شما معلق است' : isExpired ? 'اشتراک شما به پایان رسیده' : undefined,
     };
   }
 
-  // آنلاین نبود — از کش بخون
-  const cachedStr = await AsyncStorage.getItem(LICENSE_DATA);
-  const cached = cachedStr ? JSON.parse(cachedStr) : null;
-
-  // اگه کش داریم → از کش استفاده کن
-  if (cached) {
-    const expiresAt = cached.expires_at ? new Date(cached.expires_at).getTime() : 0;
+  // ۴. آفلاین — از داده محلی استفاده کن
+  if (localData) {
+    const expiresAt = localData.expires_at ? new Date(localData.expires_at).getTime() : 0;
     const isExpired = expiresAt > 0 && expiresAt < now;
-    const isSuspended = cached.status === 'suspended';
+    const isSuspended = localData.status === 'suspended';
 
-    // اگه ۷ روز گذشته و چک نشده → قفل
-    if (daysSince >= OFFLINE_MAX_DAYS && !isExpired && !isSuspended) {
-      return {
-        status: cached.status || 'active',
-        plan: cached.plan,
-        expiresAt: cached.expires_at,
-        lastCheck,
-        daysSinceCheck: daysSince,
-        isLocked: true,
-        reason: daysSince + ' روزه به سرور وصل نشدی — یک بار اینترنت وصل کن',
-      };
-    }
+    const diffSec = Math.floor((expiresAt - now) / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHours = Math.floor(diffSec / 3600);
+    
+    let reason = undefined;
+    if (isExpired) reason = '⏰ اشتراک شما به پایان رسیده';
+    else if (diffSec > 0 && diffSec < 3600) reason = `⏳ ${diffMin} دقیقه تا پایان trial`;
+    else if (diffSec > 0 && diffSec < 86400) reason = `⏳ ${diffHours} ساعت تا پایان trial`;
 
     return {
       status: isSuspended ? 'suspended' : isExpired ? 'expired' : 'active',
-      plan: cached.plan,
-      expiresAt: cached.expires_at,
-      lastCheck,
-      daysSinceCheck: daysSince,
+      plan: localData.plan,
+      expiresAt: localData.expires_at,
+      lastCheck: now,
+      daysSinceCheck: 0,
       isLocked: isSuspended || isExpired,
-      reason: isSuspended ? 'حساب معلق' : isExpired ? 'اشتراک منقضی' : undefined,
+      reason: isSuspended ? 'حساب معلق' : reason,
     };
   }
 
-  // هیچ داده‌ای نیست — اولین بار
+  // ۵. نه آنلاین، نه محلی
   return {
     status: 'unknown',
-    lastCheck: 0,
+    lastCheck: now,
     daysSinceCheck: 0,
-    isLocked: true,
-    reason: 'اولین بار — لطفاً به اینترنت وصل شو',
+    isLocked: false,
   };
 }
 
-// چک سریع — فقط می‌گه قفله یا نه
 export async function isLicenseValid(): Promise<boolean> {
   const info = await checkLicense();
   return !info.isLocked;
 }
 
-// بعد از پرداخت — لایسنس رو فعال کن (local + server)
-export async function refreshLicenseAfterPayment() {
-  const fresh = await fetchLicenseFromServer();
-  if (fresh) {
-    await AsyncStorage.setItem(LICENSE_DATA, JSON.stringify(fresh));
-    await AsyncStorage.setItem(LICENSE_TS, String(Date.now()));
-  }
+// برای خروج (Logout)
+export async function clearLicenseCache(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(LICENSE_DATA);
+    await AsyncStorage.removeItem(LICENSE_TS);
+  } catch {}
 }

@@ -6,14 +6,7 @@ import { Platform, NativeModules, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from './lib.storage';
 
 // ─── Vosk (فقط روی گوشی)
-let Vosk: any = null;
-try {
-  if (Platform.OS === 'android') {
-    Vosk = require('react-native-vosk').default;
-  }
-} catch (e) {
-  console.log('[voice] Vosk not available:', e);
-}
+let Vosk: any = null; // disabled
 
 // ─── محیط
 export const isWeb = Platform.OS === 'web';
@@ -56,10 +49,10 @@ async function ensureVoskModel(lang: string): Promise<boolean> {
   try {
     // unload قبلی
     if (_voskLoaded) {
-      try { await Vosk.unload(); } catch {}
+      try { // disabled } catch {}
       _voskLoaded = false;
     }
-    await Vosk.loadModel(model);
+    // disabled
     _voskLoaded = true;
     _voskLoadedModel = model;
     console.log('[voice] Vosk model loaded:', model);
@@ -87,96 +80,29 @@ export function isSTTAvailable(): boolean {
 let voskLoaded = false;
 let voskListening = false;
 
-export async function startSTT(onPartial: (t: string) => void, onResult: (t: string) => void, onError: (e: string) => void): Promise<any> {
-  const lang = await getActiveVoiceLang();
-  
-  if (isAndroid) {
-    try {
-      const Vosk = require('react-native-vosk').default;
-      if (!Vosk) {
-        onError('پکیج Vosk نصب نیست');
-        return null;
-      }
-
-      // 1. لود کردن مدل
-      if (!voskLoaded) {
-        const modelName = mapLangToModel(lang);
-        console.log('⏳ Loading Vosk model:', modelName);
-        await Vosk.loadModel(modelName);
-        voskLoaded = true;
-        console.log('✅ Model loaded');
-      }
-
-      // 2. متصل کردن Event Listener ها
-      Vosk.onResult((res: any) => {
-        const text = typeof res === 'string' ? res : (res?.text || res?.result?.[0]?.text || '');
-        if (text) onResult(text);
-      });
-
-      Vosk.onPartialResult((res: any) => {
-        const text = typeof res === 'string' ? res : (res?.partial || '');
-        if (text) onPartial(text);
-      });
-
-      Vosk.onError((err: any) => {
-        const msg = typeof err === 'string' ? err : (err?.message || 'خطای Vosk');
-        onError(msg);
-      });
-
-      // 3. شروع به گوش دادن
-      await Vosk.start();
-      voskListening = true;
-      console.log('🎤 Vosk started listening');
-
-      return {
-        type: 'vosk',
-        stop: async () => {
-          try { await Vosk.stop(); } catch {}
-          voskListening = false;
-        }
-      };
-    } catch (e: any) {
-      console.log('Vosk error:', e);
-      onError(e?.message || 'خطا در راه‌اندازی Vosk');
-      return null;
-    }
-  }
-
-  // وب (Web Speech API)
+export async function startSTT(onPartial: any, onResult: any, onError: any): Promise<any> {
+  // 🛡 نسخه امن — فقط وب
   if (isWeb && typeof window !== 'undefined') {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      onError('مرورگر از میکروفون پشتیبانی نمی‌کند (Chrome استفاده کن)');
-      return null;
-    }
+    if (!SR) { onError('مرورگر پشتیبانی نمی‌کند'); return null; }
     try {
       const rec = new SR();
-      rec.lang = lang;
-      rec.continuous = false;
-      rec.interimResults = true;
+      rec.lang = await getActiveVoiceLang();
       rec.onresult = (ev: any) => {
-        let finalText = '';
-        let interimText = '';
+        let finalText = '', interimText = '';
         for (let i = ev.resultIndex; i < ev.results.length; i++) {
           const t = ev.results[i][0].transcript;
-          if (ev.results[i].isFinal) finalText += t;
-          else interimText += t;
+          if (ev.results[i].isFinal) finalText += t; else interimText += t;
         }
         if (interimText) onPartial(interimText);
         if (finalText) onResult(finalText.trim());
       };
-      rec.onerror = (ev: any) => {
-        onError(ev.error === 'not-allowed' ? 'دسترسی میکروفون رد شد' : 'خطای میکروفون');
-      };
+      rec.onerror = (ev: any) => onError(ev.error || 'خطا');
       rec.start();
       return { type: 'web', rec, stop: () => { try { rec.stop(); } catch {} } };
-    } catch (e: any) {
-      onError(e?.message || 'خطا');
-      return null;
-    }
+    } catch (e: any) { onError(e?.message || 'خطا'); return null; }
   }
-
-  onError('دستگاه شما از میکروفون پشتیبانی نمی‌کند');
+  onError('🎤 میکروفون روی گوشی غیرفعال شد (نسخه امن)');
   return null;
 }
 

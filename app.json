@@ -41,12 +41,6 @@
           "color": "#7c3aed"
         }
       ],
-      [
-        "react-native-vosk",
-        {
-          "microphonePermission": "برای دستیار صوتی، به میکروفون نیاز داریم."
-        }
-      ],
       "expo-sqlite"
     ],
     "newArchEnabled": false,

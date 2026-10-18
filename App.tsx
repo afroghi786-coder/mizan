@@ -1,6 +1,5 @@
 import React from 'react';
 
-import * as Notifications from 'expo-notifications';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -39,6 +38,25 @@ import GlobalVoice from './GlobalVoice';
 import { registerCommands } from './CommandBus';
 import ResetPasswordScreen from './ResetPasswordScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
+// Safely load expo-notifications (fix for Expo Go)
+let Notifications: any = null;
+try {
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.warn('⚠️ expo-notifications native module not found (Expo Go). Using mock.');
+  Notifications = {
+    setNotificationHandler: () => {},
+    getPermissionsAsync: async () => ({ status: 'undetermined' }),
+    requestPermissionsAsync: async () => ({ status: 'denied' }),
+    getExpoPushTokenAsync: async () => ({ data: '' }),
+    addNotificationReceivedListener: () => ({ remove: () => {} }),
+    addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+    setNotificationChannelAsync: async () => {},
+    scheduleNotificationAsync: async () => {},
+    dismissAllNotificationsAsync: async () => {},
+    cancelAllScheduledNotificationsAsync: async () => {},
+  };
+}
 
 // ADMINSCREEN_WEB_ONLY — پنل ادمین فقط روی وب
 let AdminScreen: any = null;
@@ -380,7 +398,7 @@ export default function App() {
     useEffect(() => {
     // 🔔 تنظیم صدای اعلان (کانال اندروید)
     try {
-      Notifications.setNotificationHandler({
+      Notifications?.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowAlert: true,
           shouldPlaySound: true,
@@ -389,9 +407,9 @@ export default function App() {
       });
 
       if (Platform.OS === 'android') {
-        Notifications.setNotificationChannelAsync('default', {
+        Notifications?.setNotificationChannelAsync('default', {
           name: 'اعلان‌های میزان',
-          importance: Notifications.AndroidImportance.MAX,
+          importance: Notifications?.AndroidImportance.MAX,
           sound: 'default',
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#7c3aed',
@@ -399,9 +417,9 @@ export default function App() {
         }).catch(e => console.log('channel err', e));
 
         // کانال اضافه برای پیام‌های مهم
-        Notifications.setNotificationChannelAsync('messages', {
+        Notifications?.setNotificationChannelAsync('messages', {
           name: 'پیام‌های جدید',
-          importance: Notifications.AndroidImportance.HIGH,
+          importance: Notifications?.AndroidImportance.HIGH,
           sound: 'default',
           vibrationPattern: [0, 250, 250, 250],
           enableVibrate: true,
@@ -412,7 +430,7 @@ export default function App() {
     // 📢 درخواست مجوز
     (async () => {
       try {
-        const { status } = await Notifications.requestPermissionsAsync();
+        const { status } = await Notifications?.requestPermissionsAsync();
         if (status !== 'granted') console.log('Notification permission not granted');
       } catch (e) { console.log('perm err', e); }
     })();

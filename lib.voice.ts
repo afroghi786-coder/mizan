@@ -141,8 +141,7 @@ export async function startSTT(
         interimResults: true,
         continuous: false,
         requiresOnDeviceRecognition: true,
-        androidRecognitionServicePackage: 'com.google.android.googlequicksearchbox',
-        addsPunctuation: false,
+                addsPunctuation: false,
       });
 
       console.log('🎤 Android STT started');

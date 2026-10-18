@@ -118,7 +118,15 @@ export async function startSTT(
 
       // خطا
       const errSub = ExpoSpeechRecognitionModule.addListener('error', (event: any) => {
-        try { onError(event?.error || 'خطای میکروفون'); } catch {}
+        try {
+          console.log('MIC_DETAIL', JSON.stringify(event));
+          const err = event?.error || 'خطا';
+          const msg = event?.message ? ' — ' + event.message : '';
+          if (err === 'no-speech') onError('چیزی نشنیدم، دوباره بگو');
+          else if (err === 'service-not-allowed') onError('سرویس گفتار گوشی اجازه نداد');
+          else if (err === 'language-not-supported') onError('زبان فارسی روی گوشی نصب نیست');
+          else onError(err + msg);
+        } catch {}
       });
       listeners.push(errSub);
 
@@ -132,7 +140,9 @@ export async function startSTT(
         lang,
         interimResults: true,
         continuous: false,
-        requiresOnDeviceRecognition: false,
+        requiresOnDeviceRecognition: true,
+        androidRecognitionServicePackage: 'com.google.android.googlequicksearchbox',
+        addsPunctuation: false,
       });
 
       console.log('🎤 Android STT started');

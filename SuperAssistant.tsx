@@ -606,7 +606,7 @@ const s = StyleSheet.create({
   quickBtn: { backgroundColor: '#1a2332', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#334155', flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   quickIcon: { fontSize: 16 },
   quickTxt: { color: '#cbd5e1', fontSize: 12 },
-  bottomBar: { padding: 10, paddingBottom: 30, backgroundColor: '#0f2438', borderTopWidth: 1, borderTopColor: '#334155', marginBottom: 10 },
+  bottomBar: { padding: 10, paddingBottom: 60, backgroundColor: '#0f2438', borderTopWidth: 1, borderTopColor: '#334155', marginBottom: 30 },
   inputRow: { flexDirection: 'row-reverse', gap: 8, alignItems: 'center' },
   inp: { flex: 1, backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: '#334155', borderRadius: 12, padding: 14, fontSize: 15, textAlign: 'right', minHeight: 54 },
   btn: { width: 54, height: 54, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
@@ -643,7 +643,7 @@ const s = StyleSheet.create({
   wizardBtnTxt: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   floatingMic: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 160,
     left: 20,
     width: 64,
     height: 64,

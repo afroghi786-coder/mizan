@@ -382,6 +382,6 @@ const s = StyleSheet.create({
   inp: { flex: 1, backgroundColor: '#1a2332', color: '#fff', borderWidth: 1, borderColor: '#334155', borderRadius: 10, padding: 10, fontSize: 14, textAlign: 'right' },
   btn: { width: 42, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   btnTxt: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  listen: { backgroundColor: '#7c3aed', padding: 8, borderRadius: 8, marginBottom: 6 },
+  listen: { backgroundColor: '#7c3aed', padding: 8, borderRadius: 8, marginBottom: 24 },
   listenTxt: { color: '#fff', fontSize: 13, textAlign: 'center' },
 });

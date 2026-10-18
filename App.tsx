@@ -340,7 +340,7 @@ export default function App() {
     
     const check = () => {
       const hash = ((window as any)?.location?.hash) || '';
-      const search = window.location.search || '';
+      const search = ((window as any)?.location?.search || '') || '';
       if (
         hash.includes('type=recovery') ||
         search.includes('type=recovery') ||
@@ -421,7 +421,7 @@ export default function App() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hash = ((window as any)?.location?.hash) || '';
-      const search = window.location.search || '';
+      const search = ((window as any)?.location?.search || '') || '';
       if (hash.includes('type=recovery') || search.includes('type=recovery') || hash.includes('access_token=')) {
         console.log('🔐 لینک بازیابی از طریق URL تشخیص داده شد');
         setShowResetModal(true);
@@ -478,7 +478,7 @@ export default function App() {
     const checkAdminUrl = () => {
       if (window && window.location) {
         const hash = ((window as any)?.location?.hash) || '';
-        const path = window.location.pathname || '';
+        const path = ((window as any)?.location?.pathname || '') || '';
         if (hash === '#admin' || hash === '#admin-panel' || path.endsWith('/admin')) {
           setIsAdmin(true);
         }

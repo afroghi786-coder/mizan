@@ -31,7 +31,7 @@ export default function ResetPasswordScreen() {
       setSuccess(true);
       setTimeout(() => {
         if (typeof window !== 'undefined') {
-          window.history.replaceState(null, '', window.location.pathname);
+          window.history.replaceState(null, '', ((window as any)?.location?.pathname || ''));
           window.location.reload();
         }
       }, 2500);

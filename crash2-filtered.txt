@@ -1,0 +1,90 @@
+10-18 13:23:47.095 21452 21497 I ReactNativeJS: 📱 AdminScreen skipped on mobile
+10-18 13:23:47.095 21452 21497 I ReactNativeJS: 📱 AdminPanel skipped on mobile — panel is web-only
+10-18 13:23:47.096 21452 21497 I ReactNativeJS: Running "main"
+10-18 13:23:47.112 21452 21497 E ReactNativeJS: { [TypeError: Cannot read property 'search' of undefined]
+10-18 13:23:47.112 21452 21497 E ReactNativeJS:   componentStack: '\n    at App (address at index.android.bundle:1:879604)\n    at RCTView (<anonymous>)\n    at View (address at index.android.bundle:1:722370)\n    at AppContainer (address at index.android.bundle:1:722188)',
+10-18 13:23:47.112 21452 21497 E ReactNativeJS:   isComponentError: true }
+10-18 13:23:47.113 21452 21497 I ReactNativeJS: [storage] 📱 SQLite آماده
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: FATAL EXCEPTION: mqt_v_native
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: Process: com.mezan786.mizan, PID: 21452
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: com.facebook.react.common.JavascriptException: TypeError: Cannot read property 'search' of undefined
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: This error is located at:
+10-18 13:23:47.121 21452 21498 E AndroidRuntime:     at App (address at index.android.bundle:1:879604)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime:     at RCTView (<anonymous>)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime:     at View (address at index.android.bundle:1:722370)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime:     at AppContainer (address at index.android.bundle:1:722188), stack:
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: check@1:1903702
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: anonymous@1:1372532
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: commitHookEffectListMount@1:635087
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: commitPassiveMountOnFiber@1:641534
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: commitPassiveMountOnFiber@1:641561
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: commitPassiveMountOnFiber@1:641509
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: commitPassiveMountOnFiber@1:641561
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: commitPassiveMountOnFiber@1:641509
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: commitPassiveMountOnFiber@1:641366
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: flushPassiveEffects@1:659886
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: anonymous@1:1312007
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at com.facebook.react.modules.core.ExceptionsManagerModule.reportException(ExceptionsManagerModule.kt:52)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at com.facebook.jni.NativeRunnable.run(Native Method)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at android.os.Handler.handleCallback(Handler.java:1039)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:117)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadHandler.dispatchMessage(MessageQueueThreadHandler.kt:21)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:263)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:360)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion.startNewBackgroundThread$lambda$0(MessageQueueThreadImpl.kt:152)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion.$r8$lambda$YYXYCFexeoKtAeDpeNYkxZZlpbA(MessageQueueThreadImpl.kt:0)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+10-18 13:23:47.121 21452 21498 E AndroidRuntime: 	at java.lang.Thread.run(Thread.java:1571)
+10-18 13:23:47.440 18500 21533 D RuntimeService: faultMessage {"eventId":"901001010","registerInfos":[""],"rawInfos":"{\"APPTYPE\":\"Third Party Application\",\"APPVERSION\":\"1.0.0\",\"F1NAME\":\"App (address at index.android.bundle:1:879604)\",\"F2NAME\":\"RCTView (<anonymous>)\",\"F3NAME\":\"Javascript:AppContainer (address at index.android.bundle:1:722188)\",\"FG\":\"Yes\",\"FINGERPRINT\":\"28f12fac4f217a284df23ece51500f61cdfca9b42ee9f9781f3e982f64442d13\",\"FLAG\":\"0x20c8be44\",\"INTTIMETYPE\":\"0800\",\"LIFETIME\":\"1s\",\"PID\":21452,\"PNAME\":\"com.mezan786.mizan\",\"REASON\":\"com.facebook.react.common.JavascriptException: TypeError: Cannot read property 'search' of undefined\",\"TRUSTSTACK\":[\"App (address at index.android.bundle:1:879604)\",\"RCTView (<anonymous>)\",\"View (address at index.android.bundle:1:722370)\",\"AppContainer (address at index.android.bundle:1:722188)\"]}"}
+10-18 13:23:51.275 21542 21581 I ReactNativeJS: 📱 AdminScreen skipped on mobile
+10-18 13:23:51.275 21542 21581 I ReactNativeJS: 📱 AdminPanel skipped on mobile — panel is web-only
+10-18 13:23:51.276 21542 21581 I ReactNativeJS: Running "main"
+10-18 13:23:51.297 21542 21581 E ReactNativeJS: { [TypeError: Cannot read property 'search' of undefined]
+10-18 13:23:51.297 21542 21581 E ReactNativeJS:   componentStack: '\n    at App (address at index.android.bundle:1:879604)\n    at RCTView (<anonymous>)\n    at View (address at index.android.bundle:1:722370)\n    at AppContainer (address at index.android.bundle:1:722188)',
+10-18 13:23:51.297 21542 21581 E ReactNativeJS:   isComponentError: true }
+10-18 13:23:51.298 21542 21581 I ReactNativeJS: [storage] 📱 SQLite آماده
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: FATAL EXCEPTION: mqt_v_native
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: Process: com.mezan786.mizan, PID: 21542
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: com.facebook.react.common.JavascriptException: TypeError: Cannot read property 'search' of undefined
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: This error is located at:
+10-18 13:23:51.313 21542 21582 E AndroidRuntime:     at App (address at index.android.bundle:1:879604)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime:     at RCTView (<anonymous>)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime:     at View (address at index.android.bundle:1:722370)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime:     at AppContainer (address at index.android.bundle:1:722188), stack:
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: check@1:1903702
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: anonymous@1:1372532
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: commitHookEffectListMount@1:635087
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: commitPassiveMountOnFiber@1:641534
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: commitPassiveMountOnFiber@1:641561
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: commitPassiveMountOnFiber@1:641509
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: commitPassiveMountOnFiber@1:641561
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: commitPassiveMountOnFiber@1:641509
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: recursivelyTraversePassiveMountEffects@1:640701
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: commitPassiveMountOnFiber@1:641366
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: flushPassiveEffects@1:659886
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: anonymous@1:1312007
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at com.facebook.react.modules.core.ExceptionsManagerModule.reportException(ExceptionsManagerModule.kt:52)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at com.facebook.jni.NativeRunnable.run(Native Method)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at android.os.Handler.handleCallback(Handler.java:1039)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:117)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadHandler.dispatchMessage(MessageQueueThreadHandler.kt:21)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:263)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:360)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion.startNewBackgroundThread$lambda$0(MessageQueueThreadImpl.kt:152)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion.$r8$lambda$YYXYCFexeoKtAeDpeNYkxZZlpbA(MessageQueueThreadImpl.kt:0)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at com.facebook.react.bridge.queue.MessageQueueThreadImpl$Companion$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+10-18 13:23:51.313 21542 21582 E AndroidRuntime: 	at java.lang.Thread.run(Thread.java:1571)
+10-18 13:23:51.629 18500 21612 D RuntimeService: faultMessage {"eventId":"901001010","registerInfos":[""],"rawInfos":"{\"APPTYPE\":\"Third Party Application\",\"APPVERSION\":\"1.0.0\",\"F1NAME\":\"App (address at index.android.bundle:1:879604)\",\"F2NAME\":\"RCTView (<anonymous>)\",\"F3NAME\":\"Javascript:AppContainer (address at index.android.bundle:1:722188)\",\"FG\":\"Yes\",\"FINGERPRINT\":\"28f12fac4f217a284df23ece51500f61cdfca9b42ee9f9781f3e982f64442d13\",\"FLAG\":\"0x20c8be44\",\"INTTIMETYPE\":\"0800\",\"LIFETIME\":\"1s\",\"PID\":21542,\"PNAME\":\"com.mezan786.mizan\",\"REASON\":\"com.facebook.react.common.JavascriptException: TypeError: Cannot read property 'search' of undefined\",\"TRUSTSTACK\":[\"App (address at index.android.bundle:1:879604)\",\"RCTView (<anonymous>)\",\"View (address at index.android.bundle:1:722370)\",\"AppContainer (address at index.android.bundle:1:722188)\"]}"}

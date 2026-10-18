@@ -39,6 +39,7 @@ import BotUI from './BotUI';
 import GlobalVoice from './GlobalVoice';
 import { registerCommands } from './CommandBus';
 import ResetPasswordScreen from './ResetPasswordScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // ══════════════════════════════════════════════════════════
 //  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
@@ -573,7 +574,9 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
         getState: () => ({ tab }),
       };
     } catch {}
-    return () => { try { delete (globalThis as any).__nav; } catch {} };
+    return (
+      <ErrorBoundary>      </ErrorBoundary>
+    ) => { try { delete (globalThis as any).__nav; } catch {} };
   }, [tab]);
 
   const navRef = React.useMemo(() => ({

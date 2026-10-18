@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#334155',
     marginBottom: 90,
-  , display: 'none' },
+    display: 'none' },
   input: {
     flex: 1, color: '#fff', fontSize: 14,
     backgroundColor: '#1e293b', borderRadius: 22,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#334155',
     marginBottom: 90,
-  , display: 'none' },
+    display: 'none' },
   micMini: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#7c3aed',

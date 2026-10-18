@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 //  👁 BotUI — قاب بصری ربات (Screen Portal + Chat + Mic)
 // ═══════════════════════════════════════════════════════════
+import { startSTT, stopSTT } from './lib.voice';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -205,10 +206,32 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
 
           <View style={styles.inputBar}>
             <TouchableOpacity
-              onPress={() => {
-                setListening(!listening);
-                showToast?.(listening ? 'میکروفون خاموش' : 'میکروفون روشن (روی APK)');
-              }}
+              onPress={async () => {
+        if (listening) {
+          setListening(false);
+          showToast?.('میکروفون خاموش شد');
+        } else {
+          setListening(true);
+          showToast?.('🎤 در حال گوش دادن...');
+          try {
+            await startSTT(
+              (partial) => {},
+              (finalText) => {
+                setListening(false);
+                showToast?.('📝 شنیدم: ' + finalText);
+                // اینجا متن به ربات ارسال می‌شود
+                if (typeof onSend === 'function') onSend(finalText);
+              },
+              (err) => {
+                setListening(false);
+                showToast?.('❌ خطا: ' + err);
+              }
+            );
+          } catch(e) {
+            setListening(false);
+          }
+        }
+      }}
               style={[styles.micBtn, listening && styles.micOn]}
             >
               <Text style={styles.micIcon}>{listening ? '⏹' : '🎤'}</Text>
@@ -277,9 +300,13 @@ const styles = StyleSheet.create({
   botText: { color: '#e2e8f0', fontSize: 14, lineHeight: 22 },
   meText:  { color: '#fff', fontSize: 14, lineHeight: 22 },
   inputBar: {
-    flexDirection: 'row-reverse', alignItems: 'center',
-    padding: 8, backgroundColor: '#0f2438',
-    borderTopWidth: 1, borderTopColor: '#334155',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#0f2438',
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    marginBottom: 90,
   },
   input: {
     flex: 1, color: '#fff', fontSize: 14,
@@ -313,9 +340,13 @@ const styles = StyleSheet.create({
   placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   placeholderText: { color: '#94a3b8', textAlign: 'center', fontSize: 13, lineHeight: 22 },
   inputBarMini: {
-    flexDirection: 'row-reverse', alignItems: 'center',
-    padding: 10, backgroundColor: '#0f2438',
-    borderTopWidth: 1, borderTopColor: '#334155',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#0f2438',
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    marginBottom: 90,
   },
   micMini: {
     width: 36, height: 36, borderRadius: 18,

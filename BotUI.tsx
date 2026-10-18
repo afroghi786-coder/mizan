@@ -28,6 +28,22 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
   const [screen, setScreen] = useState<string>('bot'); // bot | exchange | publicMarket | salesInvoice | ...
   const [sub, setSub] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const toggleBigMic = async () => {
+    if (listening) { stopContinuous(); setListening(false); showToast?.('میکروفون خاموش شد'); return; }
+    setListening(true);
+    showToast?.('🎤 در حال گوش دادن...');
+    await startContinuous(
+      (text) => {
+        try {
+          const g = (globalThis as any).__botSend;
+          if (typeof g === 'function') g(text);
+          speakText('شنیدم ' + text);
+        } catch {}
+      },
+      () => {},
+      (err) => { setListening(false); showToast?.('❌ ' + err); }
+    );
+  };
 
   const flowRef = useRef(new FlowEngine());
   const scrollRef = useRef<ScrollView>(null);
@@ -282,7 +298,15 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
             <Text style={{ color: '#94a3b8', flex: 1, fontSize: 12, textAlign: 'right' }}>
               برای گفتگو با ربات، «← ربات» را بزن
             </Text>
-          </View>
+          
+      {/* toggleBigMicBtn — میکروفون بزرگ شناور */}
+      <TouchableOpacity
+        onPress={toggleBigMic}
+        style={{ position: 'absolute', bottom: 160, right: 14, width: 72, height: 72, borderRadius: 36, backgroundColor: listening ? '#dc2626' : '#7c3aed', borderWidth: 2, borderColor: '#d4af37', justifyContent: 'center', alignItems: 'center', zIndex: 9999, elevation: 10 }}
+      >
+        <Text style={{ color: '#fff', fontSize: 32 }}>{listening ? '⏹' : '🎤'}</Text>
+      </TouchableOpacity>
+</View>
         </>
       )}
     </KeyboardAvoidingView>
@@ -307,7 +331,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#334155',
     marginBottom: 90,
-  },
+  , display: 'none' },
   input: {
     flex: 1, color: '#fff', fontSize: 14,
     backgroundColor: '#1e293b', borderRadius: 22,
@@ -347,7 +371,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#334155',
     marginBottom: 90,
-  },
+  , display: 'none' },
   micMini: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#7c3aed',

@@ -15,7 +15,6 @@ import { t, loadLang, getLang, isFirstTime } from './i18n';
 import { cl, loadCustomLabels, setCustomLabel, resetCustomLabel, subscribe as subscribeLabels } from './customLabels';
 import { loadPreset, getPreset, setPreset, term, PRESETS } from './presets';
 import LicenseGate from './LicenseGate';
-import AdminScreen from './AdminScreen';
 import LicenseNotification from './LicenseNotification';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Switch } from 'react-native';
@@ -40,6 +39,35 @@ import GlobalVoice from './GlobalVoice';
 import { registerCommands } from './CommandBus';
 import ResetPasswordScreen from './ResetPasswordScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+// ADMINSCREEN_WEB_ONLY — پنل ادمین فقط روی وب
+let AdminScreen: any = null;
+if (Platform.OS === 'web') {
+  try {
+    AdminScreen = require('./AdminScreen').default;
+    console.log('🖥️ AdminScreen loaded (web only)');
+  } catch (e: any) {
+    console.log('AdminScreen load failed:', e?.message || e);
+  }
+} else {
+  console.log('📱 AdminScreen skipped on mobile');
+}
+
+
+// ADMIN_WEB_ONLY_LOADER — پنل ادمین فقط روی وب بارگذاری می‌شود
+// روی گوشی (iOS/Android) این ماژول هرگز اجرا نمی‌شود
+let AdminPanel: any = null;
+if (Platform.OS === 'web') {
+  try {
+    AdminPanel = require('./AdminPanel').default;
+    console.log('🖥️ AdminPanel loaded (web only)');
+  } catch (e: any) {
+    console.log('AdminPanel load failed:', e?.message || e);
+  }
+} else {
+  console.log('📱 AdminPanel skipped on mobile — panel is web-only');
+}
+
 
 // ══════════════════════════════════════════════════════════
 //  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
@@ -505,7 +533,7 @@ export default function App() {
       />
       <View key={themeTick + '-' + langTick + '-' + presetTick} style={{ flex: 1 }}>
         {isAdmin
-          ? <AdminScreen showToast={showToast} />
+          ? ((Platform.OS === 'web' && AdminScreen) ? <AdminScreen showToast={showToast} /> : <View style={{ flex: 1, backgroundColor: '#0a1628', justifyContent: 'center', alignItems: 'center', padding: 24 }}><Text style={{ color: '#fff', fontSize: 17, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 }}>🖥️ پنل ادمین فقط روی وب</Text><Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center' }}>برای دسترسی به پنل ادمین، از مرورگر روی کامپیوتر وارد شوید</Text></View>)
           : !session
           ? <LoginScreen showToast={showToast} />
           : <LicenseGate showToast={showToast}>

@@ -117,15 +117,26 @@ export async function startSTT(
       listeners.push(resSub);
 
       // خطا
-      const errSub = ExpoSpeechRecognitionModule.addListener('error', (event: any) => {
+      const errSub = ExpoSpeechRecognitionModule.addListener('error', async (event: any) => {
         try {
-          console.log('MIC_DETAIL', JSON.stringify(event));
           const err = event?.error || 'خطا';
           const msg = event?.message ? ' — ' + event.message : '';
-          if (err === 'no-speech') onError('چیزی نشنیدم، دوباره بگو');
-          else if (err === 'service-not-allowed') onError('سرویس گفتار گوشی اجازه نداد');
-          else if (err === 'language-not-supported') onError('زبان فارسی روی گوشی نصب نیست');
-          else onError(err + msg);
+
+          if (err === 'language-not-supported') {
+            console.log('LANG_NOT_SUPPORTED — requesting download');
+            try {
+              await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({ locale: 'fa-IR' });
+              onError('مدل فارسی در حال دانلود است. چند لحظه صبر کنید و دوباره تلاش کنید.');
+            } catch (e) {
+              onError('زبان فارسی روی سرویس گفتار گوشی نصب نیست. از تنظیمات گوشی نصب کنید.');
+            }
+          } else if (err === 'no-speech') {
+            onError('چیزی نشنیدم، دوباره بگو');
+          } else if (err === 'service-not-allowed') {
+            onError('سرویس گفتار گوشی اجازه نداد');
+          } else {
+            onError(err + msg);
+          }
         } catch {}
       });
       listeners.push(errSub);
@@ -137,30 +148,7 @@ export async function startSTT(
       listeners.push(endSub);
 
       
-      // ─── STRATEGY: Check & Download Language Model ───
-      try {
-        const locales = await ExpoSpeechRecognitionModule.getSupportedLocales({
-                  });
-        console.log('SUPPORTED_LOCALES', JSON.stringify(locales));
-
-        const hasFa = Array.isArray(locales) && locales.some((l: string) =>
-          String(l).toLowerCase().startsWith('fa')
-        );
-
-        if (!hasFa) {
-          console.log('FA_MODEL_MISSING — Requesting download...');
-          // درخواست دانلود مدل آفلاین فارسی از سیستم
-          const dl = await ExpoSpeechRecognitionModule.androidTriggerOfflineModelDownload({
-            locale: 'fa-IR',
-          });
-          console.log('DOWNLOAD_REQUESTED', JSON.stringify(dl));
-          onError('مدل زبان فارسی در حال دانلود است. لطفاً چند لحظه صبر کنید و دوباره تلاش کنید.');
-          return null;
-        }
-      } catch (e: any) {
-        console.log('STRATEGY_CHECK_ERR', e?.message || String(e));
-      }
-      // ─── END STRATEGY ───
+      // pre-check removed — rely on device default service
 
       ExpoSpeechRecognitionModule.start({
         lang,

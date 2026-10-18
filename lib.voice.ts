@@ -1,13 +1,11 @@
-// lib.voice.ts — صدا با expo-speech-recognition (امن، بدون کرش)
+// lib.voice.ts — فقط وب (بدون میکروفون Native)
 import { Platform } from 'react-native';
 import AsyncStorage from './lib.storage';
-import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
 export const isWeb = Platform.OS === 'web';
 export const isAndroid = Platform.OS === 'android';
-export const hasNativeSpeech = isAndroid;
+export const hasNativeSpeech = false;  // 🚫 غیرفعال
 
-// ─── ذخیره زبان
 const LANG_KEY = '@mizan_voice_lang';
 
 export async function getActiveVoiceLang(): Promise<string> {
@@ -21,11 +19,7 @@ export async function setActiveVoiceLang(lang: string): Promise<void> {
   try { await AsyncStorage.setItem(LANG_KEY, lang); } catch {}
 }
 
-// ═══════════════════════════════════════════
-// STT — تشخیص گفتار
-// ═══════════════════════════════════════════
 export function isSTTAvailable(): boolean {
-  if (isAndroid) return true;
   if (isWeb && typeof window !== 'undefined') {
     return !!(window.SpeechRecognition || (window as any).webkitSpeechRecognition);
   }
@@ -39,56 +33,7 @@ export async function startSTT(
 ): Promise<any> {
   const lang = await getActiveVoiceLang();
 
-  // ─── گوشی: expo-speech-recognition
-  if (isAndroid) {
-    try {
-      // ۱. درخواست مجوز
-      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!perm.granted) {
-        onError('دسترسی به میکروفون داده نشد');
-        return null;
-      }
-
-      // ۲. لیسنرها
-      const subResult = ExpoSpeechRecognitionModule.addListener('result', (ev: any) => {
-        const text = ev?.results?.[0]?.transcript || '';
-        if (!text) return;
-        if (ev?.isFinal) onResult(text);
-        else onPartial(text);
-      });
-
-      const subError = ExpoSpeechRecognitionModule.addListener('error', (ev: any) => {
-        const msg = ev?.message || ev?.error || 'خطای میکروفون';
-        onError(msg);
-      });
-
-      // ۳. شروع
-      ExpoSpeechRecognitionModule.start({
-        lang,
-        interimResults: true,
-        continuous: false,
-        requiresOnDeviceRecognition: false,
-        addsPunctuation: false,
-      });
-
-      console.log('[voice] 🎤 started with lang:', lang);
-
-      return {
-        type: 'native',
-        stop: () => {
-          try { ExpoSpeechRecognitionModule.stop(); } catch {}
-          try { subResult?.remove?.(); } catch {}
-          try { subError?.remove?.(); } catch {}
-        }
-      };
-    } catch (e: any) {
-      console.log('[voice] start err:', e);
-      onError(e?.message || 'خطا در راه‌اندازی میکروفون');
-      return null;
-    }
-  }
-
-  // ─── وب: Web Speech API
+  // فقط وب
   if (isWeb && typeof window !== 'undefined') {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
@@ -127,20 +72,15 @@ export async function startSTT(
     }
   }
 
-  onError('دستگاه پشتیبانی نمی‌کند');
+  onError('🎤 میکروفون روی گوشی غیرفعال است');
   return null;
 }
 
 export async function stopSTT(handle: any): Promise<void> {
   if (!handle) return;
-  try {
-    if (handle.stop) handle.stop();
-  } catch {}
+  try { if (handle.stop) handle.stop(); } catch {}
 }
 
-// ═══════════════════════════════════════════
-// TTS — پاسخ صوتی
-// ═══════════════════════════════════════════
 export async function speakText(text: string, lang?: string): Promise<void> {
   if (!text || !text.trim()) return;
   const useLang = lang || await getActiveVoiceLang();
@@ -175,7 +115,6 @@ export function stopSpeak(): void {
   }
 }
 
-// ─── Continuous Mode
 let _continuous = false;
 let _contHandle: any = null;
 let _onResult: ((t: string) => void) | null = null;
@@ -191,19 +130,12 @@ export async function startContinuous(
   _onResult = onResult;
   _onPartial = onPartial;
   _continuous = true;
-
   const startOnce = async () => {
     if (!_continuous) return;
     _contHandle = await startSTT(
       (p) => { if (_onPartial) _onPartial(p); },
-      (t) => {
-        if (_onResult) _onResult(t);
-        if (_continuous) setTimeout(startOnce, 400);
-      },
-      (e) => {
-        onError(e);
-        if (_continuous) setTimeout(startOnce, 1500);
-      }
+      (t) => { if (_onResult) _onResult(t); if (_continuous) setTimeout(startOnce, 400); },
+      (e) => { onError(e); if (_continuous) setTimeout(startOnce, 1500); }
     );
   };
   await startOnce();

@@ -41,8 +41,7 @@
           "color": "#7c3aed"
         }
       ],
-      "expo-sqlite",
-      "expo-speech-recognition"
+      "expo-sqlite"
     ],
     "newArchEnabled": false,
     "splash": {

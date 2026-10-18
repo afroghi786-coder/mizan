@@ -28,10 +28,7 @@ export default function LocalBotScreen({ showToast, onExit }: any) {
   }, []);
 
   const startVoice = async () => {
-    if (!voiceAvailable) {
-      showToast?.('🎤 میکروفون در این محیط کار نمی‌کند', true);
-      return;
-    }
+    // mic lock removed
     setPartial('');
     sttHandle.current = startSTT(
       (partialTxt) => setPartial(partialTxt),

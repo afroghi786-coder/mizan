@@ -45,7 +45,7 @@ export default function SuperAssistant({ showToast, onExit, onNavigate }: any) {
   }, []);
 
   const startVoice = async () => {
-    if (!voiceAvailable) { showToast?.('🎤 روی این دستگاه نیست', true); return; }
+    // mic lock removed
     if (listening) {
       // اگه روشنه، خاموش کن
       stopContinuous();

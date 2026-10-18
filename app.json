@@ -21,7 +21,9 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE",
-        "android.permission.RECEIVE_BOOT_COMPLETED"
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "RECORD_AUDIO",
+        "INTERNET"
       ]
     },
     "web": {
@@ -41,7 +43,17 @@
           "color": "#7c3aed"
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "این برنامه به میکروفون نیاز دارد تا دستورات شما را بشنود",
+          "speechRecognitionPermission": "این برنامه به تشخیص گفتار نیاز دارد",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ]
     ],
     "newArchEnabled": true,
     "splash": {

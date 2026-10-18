@@ -53,7 +53,8 @@
             "com.google.android.googlequicksearchbox"
           ]
         }
-      ]
+      ],
+      "react-native-vosk"
     ],
     "newArchEnabled": true,
     "splash": {

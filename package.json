@@ -29,7 +29,8 @@
     "react-native-view-shot": "5.1.0",
     "react-native-web": "^0.21.2",
     "xlsx": "^0.18.5",
-    "expo-speech-recognition": "^3.1.0"
+    "expo-speech-recognition": "^3.1.0",
+    "react-native-vosk": "*"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

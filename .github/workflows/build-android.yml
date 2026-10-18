@@ -33,8 +33,32 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Cache Vosk model (Persian)
+        id: cache-vosk-fa
+        uses: actions/cache@v4
+        with:
+          path: assets/models-cache
+          key: vosk-fa-v1
+
+      - name: Download Vosk model (Persian)
+        if: steps.cache-vosk-fa.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p assets/models-cache
+          cd assets/models-cache
+          wget -q https://alphacephei.com/vosk/models/vosk-model-small-fa-0.42.zip
+          unzip -q vosk-model-small-fa-0.42.zip
+          rm vosk-model-small-fa-0.42.zip
+          mv vosk-model-small-fa-0.42 model-fa-fa
+          ls -la
+
       - name: Expo Prebuild
         run: npx expo prebuild --platform android --no-install
+
+      - name: Copy model to android assets
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp -r assets/models-cache/model-fa-fa android/app/src/main/assets/
+          ls -la android/app/src/main/assets/
 
       - name: Fix Gradle mirror
         run: |

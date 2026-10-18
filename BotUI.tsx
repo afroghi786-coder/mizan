@@ -12,6 +12,8 @@ import { parseIntent, FlowEngine, FLOWS, APP_KNOWLEDGE, unknownReply, helpText }
 // کامپوننت‌های واقعی اپ — اینجا import می‌شوند تا داخل قاب نمایش داده شوند
 import ExchangeScreen from './ExchangeScreen';
 import PublicMarketScreen from './PublicMarketScreen';
+import { parseMulti } from './lib.local.nlu';
+import { execute } from './lib.local.exec';
 
 // اگر این‌ها را نداری، این دو خط را کامنت کن:
 // import SalesScreen from './SalesScreen';
@@ -33,12 +35,25 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
     setListening(true);
     showToast?.('🎤 در حال گوش دادن...');
     await startContinuous(
-      (text) => {
+      async (text: string) => {
         try {
-          const g = (globalThis as any).__botSend;
-          if (typeof g === 'function') g(text);
-          speakText('شنیدم ' + text);
-        } catch {}
+          console.log('BOT_INPUT', text);
+          const cmds = parseMulti(text);
+          for (const cmd of cmds) {
+            try {
+              const res: any = await execute(cmd);
+              const reply = res?.reply || res?.message || 'انجام شد';
+              console.log('BOT_REPLY', reply);
+              speakText(String(reply));
+            } catch (e: any) {
+              console.log('BOT_EXEC_ERR', e?.message);
+              speakText('خطا در اجرا');
+            }
+          }
+        } catch (e: any) {
+          console.log('BOT_PARSE_ERR', e?.message);
+          speakText('متوجه نشدم');
+        }
       },
       () => {},
       (err) => { setListening(false); showToast?.('❌ ' + err); }

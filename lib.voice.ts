@@ -83,18 +83,28 @@ export async function startSTT(
 
     try {
       if (V.loadModel) await V.loadModel('model-fa-fa');
-      if (V.onResult) V.onResult((res: any) => {
-        const t = res?.text || res?.result?.[0]?.text || res?.transcript || '';
-        if (t) onResult(String(t).trim());
+      if (V.onFinalResult) V.onFinalResult((r: any) => {
+        try {
+          const t = typeof r === 'string' ? r : (r?.text || r?.result?.[0]?.text || '');
+          if (t) onResult(String(t).trim());
+        } catch (e) { console.log('VOSK_RESULT_ERR', e); }
       });
-      if (V.onPartialResult) V.onPartialResult((res: any) => {
-        const t = res?.text || res?.partial || '';
-        if (t) onPartial(String(t));
+      if (V.onResult) V.onResult((r: any) => {
+        try {
+          const t = typeof r === 'string' ? r : (r?.text || r?.result?.[0]?.text || '');
+          if (t) onResult(String(t).trim());
+        } catch (e) { console.log('VOSK_RESULT_ERR', e); }
+      });
+      if (V.onPartialResult) V.onPartialResult((r: any) => {
+        try {
+          const t = typeof r === 'string' ? r : (r?.text || r?.partial || '');
+          if (t) onPartial(String(t));
+        } catch (e) {}
       });
       if (V.onError) V.onError((e: any) => onError(String(e?.message || e || 'خطای Vosk')));
 
-      if (V.start) V.start();
-      else if (V.startListening) V.startListening();
+      if (V.start) await V.start();
+      else if (V.startListening) await V.startListening();
       else throw new Error('Vosk start method not found');
 
       console.log('VOSK_STARTED');

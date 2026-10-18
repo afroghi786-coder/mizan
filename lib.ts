@@ -8,13 +8,29 @@ import AsyncStorage from './lib.storage';
 const SUPABASE_URL = 'https://paslxvwlbojdzflbmyoh.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhc2x4dndsYm9qZHpmbGJteW9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjA5MTAsImV4cCI6MjEwNTQ5NjkxMH0.gOkwEyVlRi0C11277KxswLFiMFGf4c-ctMgsGLZQuk4';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
+let _sbClient: any = null;
+let _sbReady = false;
+function _initSB() {
+  if (_sbReady) return _sbClient;
+  _sbReady = true;
+  try {
+    _sbClient = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
   },
+});
+  } catch (e) {
+    console.log('[lib.ts] createClient failed:', e);
+    _sbClient = null;
+  }
+  return _sbClient;
+}
+export const _safeSupabase = _initSB();
+export const supabase: any = _safeSupabase || new Proxy({} as any, {
+  get() { return () => { throw new Error('Supabase not initialized'); }; },
 });
 
 // ═══════════════════════════════════════════════════

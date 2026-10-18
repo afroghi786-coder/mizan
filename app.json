@@ -43,7 +43,7 @@
       ],
       "expo-sqlite"
     ],
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",

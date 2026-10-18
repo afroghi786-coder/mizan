@@ -574,9 +574,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
         getState: () => ({ tab }),
       };
     } catch {}
-    return (
-      <ErrorBoundary>      </ErrorBoundary>
-    ) => { try { delete (globalThis as any).__nav; } catch {} };
+    return () => { try { delete (globalThis as any).__nav; } catch {} };
   }, [tab]);
 
   const navRef = React.useMemo(() => ({

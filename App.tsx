@@ -339,7 +339,7 @@ export default function App() {
     if (typeof window === 'undefined') return;
     
     const check = () => {
-      const hash = window.location.hash || '';
+      const hash = ((window as any)?.location?.hash) || '';
       const search = window.location.search || '';
       if (
         hash.includes('type=recovery') ||
@@ -420,7 +420,7 @@ export default function App() {
   // 🔐 تشخیص لینک بازیابی رمز (هم وب هم گوشی)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const hash = window.location.hash || '';
+      const hash = ((window as any)?.location?.hash) || '';
       const search = window.location.search || '';
       if (hash.includes('type=recovery') || search.includes('type=recovery') || hash.includes('access_token=')) {
         console.log('🔐 لینک بازیابی از طریق URL تشخیص داده شد');
@@ -477,7 +477,7 @@ export default function App() {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
     const checkAdminUrl = () => {
       if (window && window.location) {
-        const hash = window.location.hash || '';
+        const hash = ((window as any)?.location?.hash) || '';
         const path = window.location.pathname || '';
         if (hash === '#admin' || hash === '#admin-panel' || path.endsWith('/admin')) {
           setIsAdmin(true);

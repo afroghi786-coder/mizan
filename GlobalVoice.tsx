@@ -150,6 +150,15 @@ const SUBS: Record<string, string[]> = {
 };
 
 const FLOWS: { words: string[]; steps: any[] }[] = [
+  { words: ['مدیریت', 'داشبورد', 'خانه'], steps: [{t:'tab',v:'order'}] },
+  { words: ['کارمندان', 'کارمند'], steps: [{t:'tab',v:'employees'}] },
+  { words: ['هزینه‌ها', 'هزینه'], steps: [{t:'tab',v:'expenses'}] },
+  { words: ['تنظیمات', 'تنظیم'], steps: [{t:'tab',v:'settings'}] },
+  { words: ['صرافی'], steps: [{t:'tab',v:'exchange'}] },
+  { words: ['بازار عمومی', 'بازار'], steps: [{t:'tab',v:'publicMarket'}] },
+  { words: ['انبار'], steps: [{t:'tab',v:'inventory'}] },
+  { words: ['سود'], steps: [{t:'tab',v:'profit'}] },
+
   { words: ['فاکتور فروش', 'فروش جدید'], steps: [{t:'tab',v:'order'}, {t:'click',m:['فاکتور جدید','فاکتور فروش','فروش جدید','جدید','+']}] },
   { words: ['فاکتور خرید', 'خرید جدید'], steps: [{t:'tab',v:'purchase'}, {t:'click',m:['فاکتور جدید','فاکتور خرید','خرید جدید','جدید','+']}] },
   { words: ['معامله جدید'], steps: [{t:'sub',v:'form'}] },
@@ -372,6 +381,7 @@ export default function GlobalVoice({ showToast }: any) {
   };
 
   const reply = (text: string) => {
+    try { require('./lib.voice').speakText(text, 'fa-IR'); } catch(e) { console.log('TTS err:', e); }
     lastReplyTime.current = Date.now();
     setMessages((prev) => [...prev, { from: 'bot', text }]);
     speak(text);

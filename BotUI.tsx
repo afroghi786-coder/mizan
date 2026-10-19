@@ -31,33 +31,33 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
   const [sub, setSub] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const toggleBigMic = async () => {
-    if (listening) { stopContinuous(); setListening(false); showToast?.('میکروفون خاموش شد'); return; }
+    if (listening) {
+      try { stopContinuous(); } catch {}
+      setListening(false);
+      showToast?.('میکروفون خاموش شد');
+      return;
+    }
     setListening(true);
     showToast?.('🎤 در حال گوش دادن...');
-    await startContinuous(
-      async (text: string) => {
-        try {
-          console.log('BOT_INPUT', text);
-          const cmds = parseMulti(text);
-          for (const cmd of cmds) {
-            try {
-              const res: any = await execute(cmd);
-              const reply = res?.reply || res?.message || 'انجام شد';
-              console.log('BOT_REPLY', reply);
-              speakText(String(reply));
-            } catch (e: any) {
-              console.log('BOT_EXEC_ERR', e?.message);
-              speakText('خطا در اجرا');
-            }
-          }
-        } catch (e: any) {
-          console.log('BOT_PARSE_ERR', e?.message);
-          speakText('متوجه نشدم');
+    try {
+      await startContinuous(
+        (text) => {
+          try {
+            console.log('BOT_INPUT', text);
+            const g = (globalThis as any).__botSend;
+            if (typeof g === 'function') g(text);
+            speakText('شنیدم ' + text);
+          } catch (e) { console.log('BOT_SEND_ERR', e); }
+        },
+        () => {},
+        (err) => {
+          setListening(false);
+          showToast?.('❌ ' + err);
         }
-      },
-      () => {},
-      (err) => { setListening(false); showToast?.('❌ ' + err); }
-    );
+      );
+    } catch (e) {
+      setListening(false);
+    }
   };
 
   const flowRef = useRef(new FlowEngine());
@@ -315,6 +315,26 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
             </Text>
           
       {/* toggleBigMicBtn — میکروفون بزرگ شناور */}
+      <TouchableOpacity
+        onPress={toggleBigMic}
+        style={{
+          position: 'absolute',
+          bottom: 160,
+          right: 14,
+          width: 72,
+          height: 72,
+          borderRadius: 36,
+          backgroundColor: listening ? '#dc2626' : '#7c3aed',
+          borderWidth: 2,
+          borderColor: '#d4af37',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          elevation: 10,
+        }}
+      >
+        <Text style={{ color: '#fff', fontSize: 32 }}>{listening ? '⏹' : '🎤'}</Text>
+      </TouchableOpacity>
       <TouchableOpacity
         onPress={toggleBigMic}
         style={{ position: 'absolute', bottom: 160, right: 14, width: 72, height: 72, borderRadius: 36, backgroundColor: listening ? '#dc2626' : '#7c3aed', borderWidth: 2, borderColor: '#d4af37', justifyContent: 'center', alignItems: 'center', zIndex: 9999, elevation: 10 }}

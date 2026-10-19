@@ -580,6 +580,11 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const [showLang, setShowLang] = useState(false);
   const [curLang, setCurLang] = useState(getLang());
   const [tab, setTab] = useState('order');
+
+  useEffect(() => {
+    (globalThis as any).__nav = { setTab };
+    console.warn('NAV_BRIDGE_READY');
+  }, []);
   useEffect(() => {
     (globalThis as any).__nav = { setTab: (t: string) => { console.warn('NAV_SET', t); setTab(t as any); } };
     console.warn('NAV_READY');

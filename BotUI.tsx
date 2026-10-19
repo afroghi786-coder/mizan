@@ -351,15 +351,14 @@ const styles = StyleSheet.create({
   meBubble:  { alignSelf: 'flex-end',   backgroundColor: '#7c3aed' },
   botText: { color: '#e2e8f0', fontSize: 14, lineHeight: 22 },
   meText:  { color: '#fff', fontSize: 14, lineHeight: 22 },
-  inputBar: {
+  inputBar: { 
     flexDirection: 'row-reverse',
     alignItems: 'center',
     padding: 8,
     backgroundColor: '#0f2438',
     borderTopWidth: 1,
     borderTopColor: '#334155',
-    marginBottom: 90,
-    display: 'none' },
+    marginBottom: 90 },
   input: {
     flex: 1, color: '#fff', fontSize: 14,
     backgroundColor: '#1e293b', borderRadius: 22,
@@ -391,15 +390,14 @@ const styles = StyleSheet.create({
   screenTitle: { flex: 1, color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'right' },
   placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   placeholderText: { color: '#94a3b8', textAlign: 'center', fontSize: 13, lineHeight: 22 },
-  inputBarMini: {
+  inputBarMini: { 
     flexDirection: 'row-reverse',
     alignItems: 'center',
     padding: 10,
     backgroundColor: '#0f2438',
     borderTopWidth: 1,
     borderTopColor: '#334155',
-    marginBottom: 90,
-    display: 'none' },
+    marginBottom: 90 },
   micMini: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#7c3aed',

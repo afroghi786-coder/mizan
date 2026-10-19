@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════
 //  🤖 GlobalVoice — دو-حالته (وب + موبایل)
 // ═══════════════════════════════════════════════════════════
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { parseIntent } from './BotBrain';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
   StyleSheet, Platform, KeyboardAvoidingView, Animated,
@@ -403,88 +404,49 @@ export default function GlobalVoice({ showToast }: any) {
   //  مغز
   // ═══════════════════════════════════════════════════════════
   const runCommand = async (text: string) => {
-    console.warn('RUNCMD_ENTER', text);
     const t = (text || '').trim();
     if (!t) return;
+    console.warn('RUNCMD_ENTER', t);
+
+    // ۱. استفاده از مغز اصلی ربات
+    try {
+      const intent = parseIntent(t);
+      if (intent.type === 'goto') {
+        const nav = (globalThis as any).__nav;
+        if (nav?.setTab) {
+          nav.setTab(intent.tab);
+          if (intent.sub) setTimeout(() => nav.setSub?.(intent.sub), 200);
+          reply('باشه، رفتم به ' + (intent.tab));
+          return;
+        }
+      }
+      if (intent.type === 'cancel') { reply('لغو شد'); return; }
+    } catch (e) {
+      console.warn('BRAIN_ERR', e);
+    }
+
+    // ۲. اگر مغز چیزی نفهمید، به روش قدیمی (دکمه‌های صفحه) برمی‌گردیم
     const low = norm(t);
-    console.warn('RUNCMD_NORM', low);
-
-    if (low.includes('کمک') || low.includes('چیکار')) {
-      reply('بگو: فاکتور فروش، صندوق‌ها، مشتریان، حواله جدید، برو انبار.');
-      return;
-    }
-    if (low.includes('چی می بینی') || low.includes('چی میبینی') || low.includes('کجایم')) {
-      const labels = visibleLabels().map(x => x.label);
-      reply('(' + labels.length + '): ' + (labels.slice(0, 12).join('، ') || 'خالی'));
-      return;
-    }
-    if (low === 'لغو' || low === 'کنسل' || low.includes('لغو کن')) {
-      const b = findBestButton('لغو') || findBestButton('انصراف') || findBestButton('بستن');
-      if (b) { clickEl(b.el); reply('لغو شد.'); } else reply('لغوی نبود.');
-      return;
-    }
-    if (low === 'برگرد' || low === 'بازگشت' || low === 'عقب') {
-      const b = findBestButton('برگشت') || findBestButton('بازگشت');
-      if (b) { clickEl(b.el); reply('برگشتم.'); } else reply('دکمه برگشت نبود.');
-      return;
-    }
-    if (low === 'ثبت' || low === 'ثبت کن' || low === 'تایید' || low === 'ذخیره' || low === 'بله') {
-      const b = findBestButton('ثبت') || findBestButton('تایید') || findBestButton('ذخیره') || findBestButton('بله');
-      if (b) { clickEl(b.el); reply('ثبت شد.'); return; }
-      reply('دکمه ثبت نبود.');
-      return;
-    }
-
     let found = findBestButton(t);
     if (found) { clickEl(found.el); reply('زدم روی: ' + found.label); autoHideAfterAction(); return; }
 
     for (const flow of FLOWS) {
       for (const w of flow.words) {
         if (low === norm(w) || low.includes(norm(w))) {
-          console.warn('RUNCMD_FLOW', w);
-      reply('باشه، ' + w + ' ...');
+          reply('باشه، ' + w + ' ...');
           for (const step of flow.steps) {
-            if (step.t === 'tab') { const _r = goTab(step.v); console.warn('RUNCMD_GOTAB', step.v, _r); await wait(180); }
+            if (step.t === 'tab') { goTab(step.v); await wait(180); }
             else if (step.t === 'sub') { await goSub(step.v); await wait(200); }
             else if (step.t === 'click') {
-              let hit = null;
-              for (const m of step.m) { hit = findBestButton(m); if (hit) break; }
-              if (hit) { clickEl(hit.el); await wait(120); }
+              const b = findBestButton(step.m);
+              if (b) { clickEl(b.el); await wait(150); }
             }
           }
-          reply('✅ ' + w + ' آماده شد.');
-          autoHideAfterAction();
           return;
         }
       }
     }
-
-    for (const key of Object.keys(TABS)) {
-      for (const w of TABS[key]) {
-        if (low === norm(w) || low === 'برو ' + norm(w) || low.includes('برو ' + norm(w))) {
-          goTab(key); reply('رفتم ' + w); autoHideAfterAction(); return;
-        }
-      }
-    }
-
-    for (const key of Object.keys(SUBS)) {
-      for (const w of SUBS[key]) {
-        if (low === norm(w) || low.includes(norm(w))) {
-          await goSub(key); reply('رفتم ' + w); autoHideAfterAction(); return;
-        }
-      }
-    }
-
-    const words = t.split(/\s+/).filter(w => w.length >= 3).sort((a, b) => b.length - a.length);
-    for (const w of words) {
-      const f = findBestButton(w);
-      if (f) { clickEl(f.el); reply('زدم روی: ' + f.label); autoHideAfterAction(); return; }
-    }
-
-    const inp = findBestInput();
-    if (inp) { fillEl(inp, t); reply('نوشتم: ' + t); return; }
-
-    reply('«' + t + '» رو نفهمیدم.');
+    reply('متوجه نشدم.');
   };
 
   const handleUserInput = (t: string) => {

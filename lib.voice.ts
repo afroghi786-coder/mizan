@@ -35,6 +35,18 @@ function getVosk(): any {
 }
 
 // --- Common ---
+// تبدیل متن به هم ریخته Vosk به فارسی درست
+function fixEncoding(str: string): string {
+  if (!str) return '';
+  try {
+    // تلاش اول: باگ ویندوز/اندروید
+    const fixed = decodeURIComponent(escape(str));
+    return fixed;
+  } catch (e) {
+    return str;
+  }
+}
+
 export async function getActiveVoiceLang(): Promise<string> {
   try { const v = await AsyncStorage.getItem(LANG_KEY); return v || 'fa'; }
   catch { return 'fa'; }
@@ -144,14 +156,14 @@ export async function startSTT(
     if (V.onFinalResult) {
       const sub = V.onFinalResult((r: any) => {
         const t = typeof r === 'string' ? r : '';
-            if (t && t.trim()) { console.warn('VOSK_FINAL_TEXT', t.trim()); onResult(t.trim()); }
+            if (t && t.trim()) { const fixed = fixEncoding(t.trim()); console.warn('VOSK_FINAL_TEXT_FIXED', fixed); onResult(fixed); }
       });
       if (sub) voskSubs.push(sub);
     }
     if (V.onPartialResult) {
       const sub = V.onPartialResult((r: any) => {
         const t = typeof r === 'string' ? r : '';
-            if (t) { console.warn('VOSK_PARTIAL_TEXT', t); onPartial(t); }
+            if (t) { const fixed = fixEncoding(t); console.warn('VOSK_PARTIAL_FIXED', fixed); onPartial(fixed); }
       });
       if (sub) voskSubs.push(sub);
     }
@@ -189,11 +201,11 @@ export async function speakText(text: string, lang?: string): Promise<void> {
     try {
       const synth = (window as any).speechSynthesis; synth.cancel();
       const u = new (window as any).SpeechSynthesisUtterance(text);
-      u.lang = useLang; u.rate = 0.95; synth.speak(u);
+      u.lang = useLang === 'fa-IR' ? 'fa' : useLang; u.rate = 0.95; synth.speak(u);
     } catch {}
     return;
   }
-  if (isAndroid) { try { require('expo-speech').speak(text, { language: useLang, rate: 0.95 }); } catch {} }
+  if (isAndroid) { try { require('expo-speech').speak(text, { language: useLang === 'fa-IR' ? 'fa' : useLang, rate: 0.95 }); } catch {} }
 }
 
 export function stopSpeak(): void {

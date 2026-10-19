@@ -580,6 +580,12 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const [showLang, setShowLang] = useState(false);
   const [curLang, setCurLang] = useState(getLang());
   const [tab, setTab] = useState('order');
+  useEffect(() => {
+    (globalThis as any).__nav = { setTab: (t: string) => { console.warn('NAV_SET', t); setTab(t as any); } };
+    console.warn('NAV_READY');
+    setTimeout(() => { try { require('./lib.voice').speakText('سیستم آماده است', 'fa-IR'); } catch(e) { console.warn('TTS_STARTUP_ERR', e); } }, 1500);
+  }, []);
+
 
   // 📖 دفترچه فرمان‌های تب‌های اصلی
   useEffect(() => {
@@ -615,10 +621,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   // 🌉 ثبت Navigator برای ربات
   useEffect(() => {
     try {
-      (globalThis as any).__nav = {
-        setTab: (t: string) => setTab(t as any),
-        getState: () => ({ tab }),
-      };
+      
     } catch {}
     return () => { try { delete (globalThis as any).__nav; } catch {} };
   }, [tab]);

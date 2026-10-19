@@ -11,6 +11,7 @@ import {
 // ─── کتابخانه‌های صدا (import استاتیک)
 import * as Speech from 'expo-speech';
 import { startSTT, stopSTT } from './lib.voice';
+import { speakText as _speakTTS } from './lib.voice';
 
 const isWeb = Platform.OS === 'web';
 
@@ -381,7 +382,7 @@ export default function GlobalVoice({ showToast }: any) {
   };
 
   const reply = (text: string) => {
-    try { require('./lib.voice').speakText(text, 'fa-IR'); } catch(e) { console.log('TTS err:', e); }
+    try { _speakTTS(text, 'fa-IR'); } catch(e) { console.warn("TTS_ERR", e); }
     lastReplyTime.current = Date.now();
     setMessages((prev) => [...prev, { from: 'bot', text }]);
     speak(text);
@@ -401,9 +402,11 @@ export default function GlobalVoice({ showToast }: any) {
   //  مغز
   // ═══════════════════════════════════════════════════════════
   const runCommand = async (text: string) => {
+    console.warn('RUNCMD_ENTER', text);
     const t = (text || '').trim();
     if (!t) return;
     const low = norm(t);
+    console.warn('RUNCMD_NORM', low);
 
     if (low.includes('کمک') || low.includes('چیکار')) {
       reply('بگو: فاکتور فروش، صندوق‌ها، مشتریان، حواله جدید، برو انبار.');
@@ -437,9 +440,10 @@ export default function GlobalVoice({ showToast }: any) {
     for (const flow of FLOWS) {
       for (const w of flow.words) {
         if (low === norm(w) || low.includes(norm(w))) {
-          reply('باشه، ' + w + ' ...');
+          console.warn('RUNCMD_FLOW', w);
+      reply('باشه، ' + w + ' ...');
           for (const step of flow.steps) {
-            if (step.t === 'tab') { goTab(step.v); await wait(180); }
+            if (step.t === 'tab') { const _r = goTab(step.v); console.warn('RUNCMD_GOTAB', step.v, _r); await wait(180); }
             else if (step.t === 'sub') { await goSub(step.v); await wait(200); }
             else if (step.t === 'click') {
               let hit = null;

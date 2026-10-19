@@ -39,25 +39,18 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
     }
     setListening(true);
     showToast?.('🎤 در حال گوش دادن...');
-    try {
-      await startContinuous(
-        (text) => {
-          try {
-            console.log('BOT_INPUT', text);
-            const g = (globalThis as any).__botSend;
-            if (typeof g === 'function') g(text);
-            speakText('شنیدم ' + text);
-          } catch (e) { console.log('BOT_SEND_ERR', e); }
-        },
-        () => {},
-        (err) => {
-          setListening(false);
-          showToast?.('❌ ' + err);
-        }
-      );
-    } catch (e) {
-      setListening(false);
-    }
+    await startContinuous(
+      (text) => {
+        console.warn('BOT_INPUT', text);
+        speakText('شنیدم ' + text);
+      },
+      () => {},
+      (err) => {
+        console.warn('BIG_MIC_ERR', err);
+        setListening(false);
+        showToast?.('⚠️ ' + err);
+      }
+    );
   };
 
   const flowRef = useRef(new FlowEngine());

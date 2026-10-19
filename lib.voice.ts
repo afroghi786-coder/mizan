@@ -1,27 +1,26 @@
-// lib.voice.ts — Vosk offline (Android) + web fallback
+// lib.voice.ts — Vosk offline (Android) + Web fallback
 import { Platform } from 'react-native';
 import AsyncStorage from './lib.storage';
 
 export const isWeb = Platform.OS === 'web';
 export const isAndroid = Platform.OS === 'android';
-export const hasNativeSpeech = isAndroid;
 
 const LANG_KEY = '@mizan_voice_lang';
 
-let _Vosk: any = null;
-let _voskTried = false;
-let _voskSubs: any[] = [];
-function getVosk() {
-  if (_voskTried) return _Vosk;
-  _voskTried = true;
+let VoskModule: any = null;
+let VoskLoaded = false;
+let subs: any[] = [];
+
+function getVosk(): any {
+  if (VoskModule) return VoskModule;
   try {
     const mod = require('react-native-vosk');
-    _Vosk = mod?.default || mod;
-    console.log('VOSK_LOADED', _Vosk ? Object.keys(_Vosk) : 'null');
+    VoskModule = mod?.default || mod;
+    console.warn('VOSK_LOADED', VoskModule ? Object.keys(VoskModule) : 'null');
   } catch (e) {
-    console.log('VOSK_LOAD_FAIL', e);
+    console.warn('VOSK_LOAD_FAIL', e);
   }
-  return _Vosk;
+  return VoskModule;
 }
 
 export async function getActiveVoiceLang(): Promise<string> {
@@ -37,7 +36,6 @@ export function isSTTAvailable(): boolean {
   }
   return isAndroid;
 }
-
 export async function requestMicPermission(): Promise<boolean> {
   if (!isAndroid) return true;
   try {
@@ -75,97 +73,84 @@ export async function startSTT(
     } catch (e: any) { onError(e?.message || 'خطا'); return null; }
   }
 
-  if (isAndroid) {
-    const perm = await requestMicPermission();
-    if (!perm) { onError('دسترسی میکروفون داده نشد'); return null; }
+  // اندروید
+  if (!isAndroid) { onError('میکروفون در دسترس نیست'); return null; }
 
-    const V = getVosk();
-    if (!V) { onError('موتور آفلاین Vosk لود نشد (نیاز به rebuild دارد)'); return null; }
+  const perm = await requestMicPermission();
+  if (!perm) { onError('دسترسی میکروفون داده نشد'); return null; }
 
-    // پاک کردن listenerهای قبلی
-    if (_voskSubs && _voskSubs.length) {
-      _voskSubs.forEach((sub: any) => { try { sub?.remove?.(); } catch {} });
-      _voskSubs = [];
+  const V = getVosk();
+  if (!V) { onError('Vosk لود نشد — نیاز به rebuild دارد'); return null; }
+
+  // پاک کردن listenerهای قبلی
+  subs.forEach(s => { try { s?.remove?.(); } catch {} });
+  subs = [];
+
+  try {
+    if (!VoskLoaded) {
+      console.warn('VOSK_LOADING_MODEL...');
+      await V.loadModel('model-fa-fa');
+      VoskLoaded = true;
+      console.warn('VOSK_MODEL_LOADED');
     }
-
-    try {
-      console.log('VOSK_LOADING_MODEL...');
-      if (V.loadModel) await V.loadModel('model-fa-fa');
-      console.log('VOSK_MODEL_LOADED');
-    } catch (e: any) {
-      console.log('VOSK_MODEL_ERR', e?.message || String(e));
-      onError('مدل Vosk لود نشد: ' + (e?.message || ''));
-      return null;
-    }
-
-    try {
-      if (V.onFinalResult) {
-        const sub = V.onFinalResult((r: any) => {
-          try {
-            const t = typeof r === 'string' ? r : (r?.text || '');
-            if (t && t.trim()) { console.log('VOSK_FINAL', t); onResult(String(t).trim()); }
-          } catch (e) { console.log('VOSK_RESULT_ERR', e); }
-        });
-        if (sub) _voskSubs.push(sub);
-      }
-      if (V.onResult) {
-        const sub = V.onResult((r: any) => {
-          try {
-            const t = typeof r === 'string' ? r : (r?.text || '');
-            if (t && t.trim()) { console.log('VOSK_RESULT', t); onResult(String(t).trim()); }
-          } catch (e) { console.log('VOSK_RESULT_ERR', e); }
-        });
-        if (sub) _voskSubs.push(sub);
-      }
-      if (V.onPartialResult) {
-        const sub = V.onPartialResult((r: any) => {
-          try {
-            const t = typeof r === 'string' ? r : (r?.text || '');
-            if (t) onPartial(String(t));
-          } catch {}
-        });
-        if (sub) _voskSubs.push(sub);
-      }
-      if (V.onError) {
-        const sub = V.onError((e: any) => {
-          try {
-            console.log('VOSK_ERROR', e);
-            onError(String(e?.message || e || 'خطای Vosk'));
-          } catch {}
-        });
-        if (sub) _voskSubs.push(sub);
-      }
-
-      console.log('VOSK_STARTING...');
-      if (V.start) await V.start();
-      else if (V.startListening) await V.startListening();
-      else throw new Error('start method not found');
-
-      console.log('VOSK_STARTED');
-
-      return {
-        type: 'vosk',
-        stop: () => {
-          try {
-            if (_voskSubs && _voskSubs.length) {
-              _voskSubs.forEach((sub: any) => { try { sub?.remove?.(); } catch {} });
-              _voskSubs = [];
-            }
-            if (V.stop) V.stop();
-            else if (V.stopListening) V.stopListening();
-            console.log('VOSK_STOPPED');
-          } catch {}
-        },
-      };
-    } catch (e: any) {
-      console.log('VOSK_START_ERR', e?.message || String(e));
-      onError('Vosk start failed: ' + (e?.message || ''));
-      return null;
-    }
+  } catch (e: any) {
+    console.warn('VOSK_MODEL_ERR', e?.message || String(e));
+    onError('مدل Vosk لود نشد: ' + (e?.message || ''));
+    return null;
   }
 
-  onError('میکروفون در دسترس نیست');
-  return null;
+  try {
+    if (V.onFinalResult) {
+      const sub = V.onFinalResult((r: any) => {
+        const t = typeof r === 'string' ? r : '';
+        if (t && t.trim()) { console.warn('VOSK_FINAL', t); onResult(t.trim()); }
+      });
+      if (sub) subs.push(sub);
+    }
+    if (V.onResult) {
+      const sub = V.onResult((r: any) => {
+        const t = typeof r === 'string' ? r : '';
+        if (t && t.trim()) { console.warn('VOSK_RESULT', t); onResult(t.trim()); }
+      });
+      if (sub) subs.push(sub);
+    }
+    if (V.onPartialResult) {
+      const sub = V.onPartialResult((r: any) => {
+        const t = typeof r === 'string' ? r : '';
+        if (t) onPartial(t);
+      });
+      if (sub) subs.push(sub);
+    }
+    if (V.onError) {
+      const sub = V.onError((e: any) => {
+        console.warn('VOSK_ERROR', e);
+        onError(String(e));
+      });
+      if (sub) subs.push(sub);
+    }
+
+    console.warn('VOSK_STARTING...');
+    await V.start();
+    console.warn('VOSK_STARTED');
+
+    return {
+      type: 'vosk',
+      stop: () => {
+        try {
+          if (V.stop) V.stop();
+          if (V.unload) V.unload();
+        } catch {}
+        subs.forEach(s => { try { s?.remove?.(); } catch {} });
+        subs = [];
+        VoskLoaded = false;
+        console.warn('VOSK_STOPPED');
+      }
+    };
+  } catch (e: any) {
+    console.warn('VOSK_START_ERR', e?.message || String(e));
+    onError('Vosk start failed: ' + (e?.message || ''));
+    return null;
+  }
 }
 
 export async function stopSTT(handle: any): Promise<void> {
@@ -209,11 +194,21 @@ export async function startContinuous(
   onError: (e: string) => void
 ): Promise<void> {
   _onResult = onResult; _onPartial = onPartial; _onError = onError; _continuous = true;
-  _handle = await startSTT(
-    (p) => { if (_onPartial) _onPartial(p); },
-    (t) => { if (_onResult) _onResult(t); },
-    (e) => { if (_onError) _onError(e); }
-  );
+  const startOnce = async () => {
+    if (!_continuous) return;
+    _handle = await startSTT(
+      (p) => { if (_onPartial) _onPartial(p); },
+      (t) => {
+        if (_onResult) _onResult(t);
+        if (_continuous) setTimeout(startOnce, 300);
+      },
+      (e) => {
+        if (_onError) _onError(e);
+        _continuous = false;
+      }
+    );
+  };
+  await startOnce();
 }
 
 export function stopContinuous(): void {

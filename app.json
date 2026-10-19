@@ -55,7 +55,8 @@
         }
       ],
       "react-native-vosk",
-      "./plugins/withVoskNoCompress"
+      "./plugins/withVoskNoCompress",
+      "expo-asset"
     ],
     "newArchEnabled": true,
     "splash": {

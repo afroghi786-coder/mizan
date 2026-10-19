@@ -1,4 +1,4 @@
-// lib.voice.ts — Vosk offline (Android) + Web fallback
+// lib.voice.ts — Whisper (اصلی) + Vosk (پشتیبان)
 import { Platform } from 'react-native';
 import AsyncStorage from './lib.storage';
 
@@ -7,9 +7,34 @@ export const isAndroid = Platform.OS === 'android';
 
 const LANG_KEY = '@mizan_voice_lang';
 
+// --- Whisper ---
+let whisperCtx: any = null;
+let whisperLoading = false;
+
+async function getWhisperCtx() {
+  if (whisperCtx) return whisperCtx;
+  if (whisperLoading) return null;
+  whisperLoading = true;
+  try {
+    console.warn('WHISPER_INIT...');
+    const { initWhisper } = require('whisper.rn');
+    whisperCtx = await initWhisper({
+      filePath: require('../../assets/ggml-tiny.bin'),
+    });
+    console.warn('WHISPER_READY');
+    whisperLoading = false;
+    return whisperCtx;
+  } catch (e: any) {
+    console.warn('WHISPER_INIT_FAIL', e?.message || String(e));
+    whisperLoading = false;
+    return null;
+  }
+}
+
+// --- Vosk (پشتیبان) ---
 let VoskModule: any = null;
 let VoskLoaded = false;
-let subs: any[] = [];
+let voskSubs: any[] = [];
 
 function getVosk(): any {
   if (VoskModule) return VoskModule;
@@ -23,9 +48,10 @@ function getVosk(): any {
   return VoskModule;
 }
 
+// --- Common ---
 export async function getActiveVoiceLang(): Promise<string> {
-  try { const v = await AsyncStorage.getItem(LANG_KEY); return v || 'fa-IR'; }
-  catch { return 'fa-IR'; }
+  try { const v = await AsyncStorage.getItem(LANG_KEY); return v || 'fa'; }
+  catch { return 'fa'; }
 }
 export async function setActiveVoiceLang(lang: string): Promise<void> {
   try { await AsyncStorage.setItem(LANG_KEY, lang); } catch {}
@@ -56,7 +82,7 @@ export async function startSTT(
     if (!SR) { onError('مرورگر پشتیبانی نمی‌کند'); return null; }
     try {
       const rec = new SR();
-      rec.lang = await getActiveVoiceLang();
+      rec.lang = await getActiveVoiceLang() === 'fa' ? 'fa-IR' : 'fa-IR';
       rec.continuous = false; rec.interimResults = true;
       rec.onresult = (ev: any) => {
         let f = '', i = '';
@@ -73,77 +99,89 @@ export async function startSTT(
     } catch (e: any) { onError(e?.message || 'خطا'); return null; }
   }
 
-  // اندروید
   if (!isAndroid) { onError('میکروفون در دسترس نیست'); return null; }
-
   const perm = await requestMicPermission();
   if (!perm) { onError('دسترسی میکروفون داده نشد'); return null; }
 
+  // ۱. اول Whisper
+  const wh = await getWhisperCtx();
+  if (wh) {
+    try {
+      console.warn('WHISPER_STARTING...');
+      const { stop, promise } = await wh.transcribeRealtime({
+        language: 'fa',
+        onTranscribe: (data: any) => {
+          try {
+            if (data?.isFinished) {
+              const txt = (data.result || '').trim();
+              if (txt) { console.warn('WHISPER_RESULT', txt); onResult(txt); }
+            } else if (data?.result) {
+              onPartial(data.result);
+            }
+          } catch (e) { console.warn('WHISPER_CB_ERR', e); }
+        },
+        onError: (err: any) => {
+          console.warn('WHISPER_ERR', err);
+          onError('خطای Whisper: ' + String(err));
+        },
+      });
+      console.warn('WHISPER_STARTED');
+      return { type: 'whisper', stop: () => { try { stop(); } catch {} } };
+    } catch (e: any) {
+      console.warn('WHISPER_START_ERR', e?.message || String(e));
+      // اگر Whisper خطا داد، می‌رویم سراغ Vosk
+    }
+  }
+
+  // ۲. پشتیبان: Vosk
+  console.warn('FALLBACK_TO_VOSK');
   const V = getVosk();
-  if (!V) { onError('Vosk لود نشد — نیاز به rebuild دارد'); return null; }
+  if (!V) { onError('هیچ موتور گفتاری کار نکرد'); return null; }
 
-  // پاک کردن listenerهای قبلی
-  subs.forEach(s => { try { s?.remove?.(); } catch {} });
-  subs = [];
-
-  try {
-    if (!VoskLoaded) {
+  if (!VoskLoaded) {
+    try {
       console.warn('VOSK_LOADING_MODEL...');
       await V.loadModel('model-fa-fa');
       VoskLoaded = true;
       console.warn('VOSK_MODEL_LOADED');
+    } catch (e: any) {
+      console.warn('VOSK_MODEL_ERR', e?.message || String(e));
+      onError('Vosk هم لود نشد: ' + (e?.message || ''));
+      return null;
     }
-  } catch (e: any) {
-    console.warn('VOSK_MODEL_ERR', e?.message || String(e));
-    onError('مدل Vosk لود نشد: ' + (e?.message || ''));
-    return null;
   }
 
   try {
+    voskSubs.forEach((s: any) => { try { s?.remove?.(); } catch {} });
+    voskSubs = [];
+
     if (V.onFinalResult) {
       const sub = V.onFinalResult((r: any) => {
         const t = typeof r === 'string' ? r : '';
-        if (t && t.trim()) { console.warn('VOSK_FINAL', t); onResult(t.trim()); }
+        if (t && t.trim()) onResult(t.trim());
       });
-      if (sub) subs.push(sub);
-    }
-    if (V.onResult) {
-      const sub = V.onResult((r: any) => {
-        const t = typeof r === 'string' ? r : '';
-        if (t && t.trim()) { console.warn('VOSK_RESULT', t); onResult(t.trim()); }
-      });
-      if (sub) subs.push(sub);
+      if (sub) voskSubs.push(sub);
     }
     if (V.onPartialResult) {
       const sub = V.onPartialResult((r: any) => {
         const t = typeof r === 'string' ? r : '';
         if (t) onPartial(t);
       });
-      if (sub) subs.push(sub);
+      if (sub) voskSubs.push(sub);
     }
     if (V.onError) {
-      const sub = V.onError((e: any) => {
-        console.warn('VOSK_ERROR', e);
-        onError(String(e));
-      });
-      if (sub) subs.push(sub);
+      const sub = V.onError((e: any) => onError(String(e)));
+      if (sub) voskSubs.push(sub);
     }
 
-    console.warn('VOSK_STARTING...');
-    await V.start();
+    if (V.start) await V.start();
     console.warn('VOSK_STARTED');
-
     return {
       type: 'vosk',
       stop: () => {
-        try {
-          if (V.stop) V.stop();
-          if (V.unload) V.unload();
-        } catch {}
-        subs.forEach(s => { try { s?.remove?.(); } catch {} });
-        subs = [];
-        VoskLoaded = false;
-        console.warn('VOSK_STOPPED');
+        try { if (V.stop) V.stop(); } catch {}
+        voskSubs.forEach((s: any) => { try { s?.remove?.(); } catch {} });
+        voskSubs = [];
       }
     };
   } catch (e: any) {
@@ -160,7 +198,7 @@ export async function stopSTT(handle: any): Promise<void> {
 
 export async function speakText(text: string, lang?: string): Promise<void> {
   if (!text || !text.trim()) return;
-  const useLang = lang || await getActiveVoiceLang();
+  const useLang = lang || ((await getActiveVoiceLang()) === 'fa' ? 'fa-IR' : 'en-US');
   if (isWeb && typeof window !== 'undefined' && (window as any).speechSynthesis) {
     try {
       const synth = (window as any).speechSynthesis; synth.cancel();
@@ -180,39 +218,33 @@ export function stopSpeak(): void {
   if (isAndroid) { try { require('expo-speech').stop(); } catch {} }
 }
 
-let _continuous = false;
+let _cont = false;
 let _handle: any = null;
-let _onResult: ((t: string) => void) | null = null;
-let _onPartial: ((t: string) => void) | null = null;
-let _onError: ((e: string) => void) | null = null;
+let _onR: ((t: string) => void) | null = null;
+let _onP: ((t: string) => void) | null = null;
+let _onE: ((e: string) => void) | null = null;
 
-export function isContinuousMode(): boolean { return _continuous; }
+export function isContinuousMode(): boolean { return _cont; }
 
 export async function startContinuous(
   onResult: (t: string) => void,
   onPartial: (t: string) => void,
   onError: (e: string) => void
 ): Promise<void> {
-  _onResult = onResult; _onPartial = onPartial; _onError = onError; _continuous = true;
-  const startOnce = async () => {
-    if (!_continuous) return;
+  _onR = onResult; _onP = onPartial; _onE = onError; _cont = true;
+  const once = async () => {
+    if (!_cont) return;
     _handle = await startSTT(
-      (p) => { if (_onPartial) _onPartial(p); },
-      (t) => {
-        if (_onResult) _onResult(t);
-        if (_continuous) setTimeout(startOnce, 300);
-      },
-      (e) => {
-        if (_onError) _onError(e);
-        _continuous = false;
-      }
+      (p) => { if (_onP) _onP(p); },
+      (t) => { if (_onR) _onR(t); if (_cont) setTimeout(once, 300); },
+      (e) => { if (_onE) _onE(e); _cont = false; }
     );
   };
-  await startOnce();
+  await once();
 }
 
 export function stopContinuous(): void {
-  _continuous = false; _onResult = null; _onPartial = null; _onError = null;
+  _cont = false; _onR = null; _onP = null; _onE = null;
   if (_handle) { stopSTT(_handle); _handle = null; }
 }
 

@@ -347,6 +347,7 @@ export default function GlobalVoice({ showToast }: any) {
   };
 
   const startRecognitionNative = async () => {
+    console.warn('NATIVE_MIC_START_CALLED');
     try {
       setStatus('🎤 در حال آماده‌سازی...');
       await startSTT(

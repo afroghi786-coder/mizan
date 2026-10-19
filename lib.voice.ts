@@ -12,27 +12,13 @@ let whisperCtx: any = null;
 let whisperLoading = false;
 
 async function getWhisperCtx() {
-  if (whisperCtx) return whisperCtx;
-  if (whisperLoading) return null;
-  whisperLoading = true;
-  try {
-    console.warn('WHISPER_INIT...');
-    const { initWhisper } = require('whisper.rn');
-    whisperCtx = await initWhisper({
-      filePath: require('./assets/ggml-tiny.bin'),
-    });
-    console.warn('WHISPER_READY');
-    whisperLoading = false;
-    return whisperCtx;
-  } catch (e: any) {
-    console.warn('WHISPER_INIT_FAIL', e?.message || String(e));
-    whisperLoading = false;
-    return null;
-  }
+  console.warn('WHISPER_DISABLED_FOR_NOW');
+  return null;
 }
 
 // --- Vosk (پشتیبان) ---
 let VoskModule: any = null;
+let _voskIsRunning = false;
 let VoskLoaded = false;
 let voskSubs: any[] = [];
 
@@ -158,14 +144,14 @@ export async function startSTT(
     if (V.onFinalResult) {
       const sub = V.onFinalResult((r: any) => {
         const t = typeof r === 'string' ? r : '';
-        if (t && t.trim()) onResult(t.trim());
+            if (t && t.trim()) { console.warn('VOSK_FINAL_TEXT', t.trim()); onResult(t.trim()); }
       });
       if (sub) voskSubs.push(sub);
     }
     if (V.onPartialResult) {
       const sub = V.onPartialResult((r: any) => {
         const t = typeof r === 'string' ? r : '';
-        if (t) onPartial(t);
+            if (t) { console.warn('VOSK_PARTIAL_TEXT', t); onPartial(t); }
       });
       if (sub) voskSubs.push(sub);
     }

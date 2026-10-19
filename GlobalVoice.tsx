@@ -10,6 +10,7 @@ import {
 
 // ─── کتابخانه‌های صدا (import استاتیک)
 import * as Speech from 'expo-speech';
+import { startSTT, stopSTT } from './lib.voice';
 
 const isWeb = Platform.OS === 'web';
 
@@ -336,15 +337,24 @@ export default function GlobalVoice({ showToast }: any) {
   };
 
   const startRecognitionNative = async () => {
-    
     try {
-      const available = await Voice.isAvailable();
-      if (!available) { setStatus('❌ STT گوشی نیست'); return; }
+      setStatus('🎤 در حال آماده‌سازی...');
+      await startSTT(
+        (partial) => { setTranscript(partial); },
+        (text) => {
+          setTranscript('');
+          setMessages((prev) => [...prev, { from: 'me', text: '🎤 ' + text }]);
+          setTimeout(() => runCommand(text), 20);
+        },
+        (err) => {
+          setStatus('⚠️ ' + err);
+          setListening(false);
+        }
+      );
       setStatus('🎤 آماده');
-      await Voice.start('fa-IR');
       setListening(true);
     } catch (e: any) {
-      setStatus('⚠️ ' + e.message);
+      setStatus('⚠️ ' + (e?.message || 'خطا'));
       setListening(false);
     }
   };
@@ -355,7 +365,7 @@ export default function GlobalVoice({ showToast }: any) {
       try { recognition?.stop(); recognition?.abort?.(); } catch {}
       recognition = null;
     } else {
-      try { await Voice?.stop(); await Voice?.cancel(); } catch {}
+      try { await stopSTT(null); } catch {}
     }
     setListening(false);
     setStatus('');

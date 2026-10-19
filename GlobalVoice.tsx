@@ -410,7 +410,13 @@ export default function GlobalVoice({ showToast }: any) {
     if (t.includes('خرید')) { (globalThis as any).__nav?.setTab('purchase'); reply('تب خرید باز شد'); return; }
     if (t.includes('صرافی')) { (globalThis as any).__nav?.setTab('exchange'); reply('تب صرافی باز شد'); return; }
   
-    const t = (text || '').trim();
+    
+    if (t.includes('مدیریت')) { (globalThis as any).__nav?.setTab('mgr'); reply('تب مدیریت باز شد'); return; }
+    if (t.includes('فروش')) { (globalThis as any).__nav?.setTab('order'); reply('تب فروش باز شد'); return; }
+    if (t.includes('خرید')) { (globalThis as any).__nav?.setTab('purchase'); reply('تب خرید باز شد'); return; }
+    if (t.includes('صرافی')) { (globalThis as any).__nav?.setTab('exchange'); reply('تب صرافی باز شد'); return; }
+  
+    
     if (!t) return;
     console.warn('RUNCMD_ENTER', t);
 

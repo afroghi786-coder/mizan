@@ -19,7 +19,7 @@ async function getWhisperCtx() {
     console.warn('WHISPER_INIT...');
     const { initWhisper } = require('whisper.rn');
     whisperCtx = await initWhisper({
-      filePath: require('../../assets/ggml-tiny.bin'),
+      filePath: require('./assets/ggml-tiny.bin'),
     });
     console.warn('WHISPER_READY');
     whisperLoading = false;

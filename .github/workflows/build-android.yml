@@ -36,13 +36,28 @@ jobs:
       - name: Download Whisper model (tiny)
         run: |
           mkdir -p assets
-          echo "📦 دانلود مدل Whisper tiny..."
           wget -q https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin -O assets/ggml-tiny.bin
           ls -la assets/ggml-tiny.bin
-          echo "✅ مدل آماده شد"
+
+      - name: Download Vosk model (Persian) and create uuid
+        run: |
+          mkdir -p assets/models-cache
+          cd assets/models-cache
+          wget -q https://alphacephei.com/vosk/models/vosk-model-small-fa-0.42.zip
+          unzip -q vosk-model-small-fa-0.42.zip
+          rm vosk-model-small-fa-0.42.zip
+          mv vosk-model-small-fa-0.42 model-fa-fa
+          echo "mizan-fa-model-v1" > model-fa-fa/uuid
+          ls -la model-fa-fa/
 
       - name: Expo Prebuild
         run: npx expo prebuild --platform android --no-install
+
+      - name: Copy models to Android assets
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp -r assets/models-cache/model-fa-fa android/app/src/main/assets/
+          ls -la android/app/src/main/assets/model-fa-fa/
 
       - name: Fix Gradle mirror
         run: |

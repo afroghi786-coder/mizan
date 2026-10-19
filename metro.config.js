@@ -19,5 +19,6 @@ config.resolver.extraNodeModules = {
 
 // پسوندهای اضافی
 config.resolver.sourceExts = [...(config.resolver.sourceExts || []), 'cjs', 'mjs'];
+config.resolver.assetExts = [...(config.resolver.assetExts || []), 'bin'];
 
 module.exports = config;

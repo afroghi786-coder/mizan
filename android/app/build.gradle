@@ -82,6 +82,11 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
+    // VOSK_NOCOMPRESS
+    aaptOptions {
+        noCompress "model-fa-fa", "model-en-us", "uuid", "mdl", "conf", "fst", "int", "dubm", "ie", "mat", "stats", "lookup", "mdef", "pcheck", "targets"
+    }
+
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion

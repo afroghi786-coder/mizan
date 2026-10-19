@@ -55,20 +55,7 @@
         }
       ],
       "react-native-vosk",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "aaptOptions": {
-              "noCompress": [
-                "model-fa-fa",
-                "model-en-us",
-                "vosk-model"
-              ]
-            }
-          }
-        }
-      ]
+      "./plugins/withVoskNoCompress"
     ],
     "newArchEnabled": true,
     "splash": {

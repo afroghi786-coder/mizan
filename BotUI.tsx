@@ -74,6 +74,56 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
 
   // ─── پردازش پیام کاربر
   const handleUserText = (raw: string) => {
+    // COMPLETE_NAV_MAP_V2
+    const _t = String(text || input || '').trim();
+    const navTargets = [
+      // ─── تب‌های اصلی
+      { keys: ['مدیریت', 'مدیر'], tab: 'mgr' },
+      { keys: ['فروش', 'سفارش', 'داشبورد', 'خانه'], tab: 'order' },
+      { keys: ['خرید', 'فاکتور خرید'], tab: 'purchase' },
+      { keys: ['صرافی'], tab: 'exchange' },
+      { keys: ['بازار عمومی', 'بازار'], tab: 'publicMarket' },
+      { keys: ['انبار', 'موجودی'], tab: 'inventory' },
+      { keys: ['هزینه', 'هزینه‌ها'], tab: 'expenses' },
+      { keys: ['کارمند', 'کارمندان'], tab: 'employees' },
+      { keys: ['سود', 'درآمد'], tab: 'profit' },
+      { keys: ['بانک', 'پیامک'], tab: 'bankMatch' },
+      { keys: ['تنظیمات'], tab: 'settings' },
+      
+      // ─── زیرتب‌های صرافی
+      { keys: ['صندوق', 'صندوق‌ها', 'کارتکس', 'کاردکس'], tab: 'exchange', sub: 'boxes' },
+      { keys: ['حواله', 'حواله‌جات'], tab: 'exchange', sub: 'hawalas' },
+      { keys: ['چک', 'چک‌ها'], tab: 'exchange', sub: 'checks' },
+      { keys: ['مشتری', 'مشتریان', 'اشخاص'], tab: 'exchange', sub: 'customers' },
+      { keys: ['شریک', 'شرکا', 'خریداران'], tab: 'exchange', sub: 'partners' },
+      { keys: ['معاملات', 'لیست معاملات'], tab: 'exchange', sub: 'list' },
+      { keys: ['بازار زنده'], tab: 'exchange', sub: 'liveMarket' },
+      { keys: ['گروه', 'شبکه', 'شبکه‌های من'], tab: 'exchange', sub: 'myGroups' },
+    ];
+
+    for (const nt of navTargets) {
+      let matched = false;
+      for (const k of nt.keys) {
+        if (_t.includes(k)) { matched = true; break; }
+      }
+      if (matched) {
+        try {
+          const nav = (globalThis as any).__nav;
+          if (nav && typeof nav.setTab === 'function') {
+            nav.setTab(nt.tab);
+            if (nt.sub) {
+              setTimeout(() => {
+                try { (globalThis as any).__exchangeSetSub?.(nt.sub); } catch (e) {}
+              }, 200);
+            }
+            try { botSay('باشه، می‌رم ' + nt.keys[0]); } catch (e) {}
+            // onExit removed
+            return;
+          }
+        } catch (e) {}
+      }
+    }
+
     const text = raw.trim();
     if (!text) return;
     push('me', text);
@@ -266,7 +316,30 @@ export default function BotUI({ showToast, onExit, onOpenLearning }: any) {
               onChangeText={setInput}
               placeholder="بگو یا بنویس..."
               placeholderTextColor="#64748b"
-              onSubmitEditing={() => { handleUserText(input); setInput(''); }}
+              onSubmitEditing={() => {
+                const _t = input.trim();
+                if (!_t) return;
+                const _map: Record<string, string> = { 
+                  'مدیریت': 'mgr', 'مدیر': 'mgr',
+                  'فروش': 'order', 'سفارش': 'order', 'داشبورد': 'order', 
+                  'خرید': 'purchase', 'صرافی': 'exchange', 
+                  'بازار': 'publicMarket', 'انبار': 'inventory', 
+                  'هزینه': 'expenses', 'کارمند': 'employees', 
+                  'سود': 'profit', 'بانک': 'bankMatch', 'تنظیمات': 'settings'
+                };
+                let _matched = false;
+                for (const [_k, _v] of Object.entries(_map)) {
+                  if (_t.includes(_k)) {
+                    try { (globalThis as any).__nav?.setTab(_v); } catch(e){}
+                    _matched = true;
+                    break;
+                  }
+                }
+                if (!_matched) {
+                  try { handleUserText(input); } catch(e){}
+                }
+                setInput('');
+              }}
               returnKeyType="send"
             />
             <TouchableOpacity

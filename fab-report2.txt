@@ -1,0 +1,129 @@
+
+════════ App.tsx ════════
+[صراف] 122: { text: 'انصراف', style: 'cancel', onPress: () => resolve(false) },
+[setTab] 594: (globalThis as any).__nav = { setTab: (t: string) => { console.warn('NAV_SET', t); setTab(t as any); } };
+[setTab] 603: 'صرافی':        () => setTab('exchange'),
+[صراف] 603: 'صرافی':        () => setTab('exchange'),
+[setTab] 604: 'صراف':         () => setTab('exchange'),
+[صراف] 604: 'صراف':         () => setTab('exchange'),
+[setTab] 605: 'بازار عمومی':  () => setTab('publicMarket'),
+[setTab] 606: 'بازار':        () => setTab('publicMarket'),
+[setTab] 607: 'سفارش':        () => setTab('order'),
+[setTab] 608: 'فروش':         () => setTab('order'),
+[setTab] 609: 'خانه':         () => setTab('order'),
+[setTab] 610: 'داشبورد':      () => setTab('order'),
+[setTab] 611: 'خرید':         () => setTab('purchase'),
+[setTab] 612: 'انبار':        () => setTab('inventory'),
+[setTab] 613: 'موجودی':       () => setTab('inventory'),
+[setTab] 614: 'هزینه‌ها':     () => setTab('expenses'),
+[setTab] 615: 'هزینه':        () => setTab('expenses'),
+[setTab] 616: 'کارمندان':     () => setTab('employees'),
+[setTab] 617: 'کارمند':       () => setTab('employees'),
+[setTab] 618: 'سود':          () => setTab('profit'),
+[setTab] 619: 'درآمد':        () => setTab('profit'),
+[setTab] 620: 'بانک':         () => setTab('bankMatch'),
+[setTab] 621: 'پیامک':        () => setTab('bankMatch'),
+[setTab] 622: 'آموزش':        () => setTab('botLearning'),
+[setTab] 623: 'دستیار':       () => setTab('manualEntry'),
+[setTab] 624: 'ربات':         () => setTab('aiAssistant'),
+[setTab] 625: 'مدیریت':       () => setTab('mgr'),
+[setTab] 626: 'پرینت':        () => setTab('print'),
+[setTab] 640: setTab: (t: string) => setTab(t as any),
+[صراف] 812: { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
+[setTab] 821: if (t === 'order' || !isLocked(t)) { setTab(t); return; }
+[setTab] 892: {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
+[setTab] 951: setTab(pendingTab);
+[setTab] 959: onPress={() => setTab('order')}
+[setTab] 967: onPress={() => setTab('order')}
+[صراف] 994: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={onClose}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
+[صراف] 2583: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditItem(null)}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
+[صراف] 3674: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditing(null)}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
+
+════════ ExchangeScreen.tsx ════════
+[صراف] 6: // ExchangeScreen.tsx — صرافی با Dashboard + جدول ردیفی
+[صراف] 135: // 📖 دفترچه فرمان‌های صرافی
+[صندوق] 142: 'صندوق‌ها':      () => setSub('boxes'),
+[صندوق] 143: 'صندوق ها':      () => setSub('boxes'),
+[صندوق] 144: 'صندوق':         () => setSub('boxes'),
+[صراف] 185: // ① صراف فرستنده (از صرافان)
+[صراف] 192: // ④ صراف اجراکننده (از صرافان)
+[صراف] 347: // ═══ انتخاب صراف از لیست ═══
+[صراف] 360: // ═══ تلفن صراف → جستجو ═══
+[صراف] 443: if (buyerPhone.length < 10) return showToast('تلفن صراف الزامی (۱۱ رقم)', true);
+[صراف] 444: if (!fBuyerName && !fPartner) return showToast('نام صراف الزامی', true);
+[صراف] 457: // صراف
+[صندوق] 495: // ⭐ اعمال خودکار روی صندوق‌ها
+[صراف] 585: // ═══ جستجو در مشتریان + صرافان + fxCustomers ═══
+[صراف] 612: // ═══ معاملات (صراف یا مشتری) ═══
+[صندوق] 631: // ═══ تراکنش‌های صندوق ═══
+[صراف] 704: <Text style={s.profitLbl}>💰 سود خالص صرافی</Text>
+[صندوق] 751: { k: 'boxes', l: '📦 صندوق‌ها' },
+[صراف] 756: { k: 'partners', l: '🏢 صرافان' },
+[صراف] 777: <Text style={[s.th, { width: 110 }]}>کد صراف</Text>
+[صراف] 778: <Text style={[s.th, { width: 110 }]}>نام صراف</Text>
+[صراف] 779: <Text style={[s.th, { width: 100 }]}>تلفن صراف</Text>
+[صراف] 780: <Text style={[s.th, { width: 100 }]}>بانک صراف</Text>
+[صراف] 781: <Text style={[s.th, { width: 110 }]}>صاحب حساب صراف</Text>
+[صراف] 842: <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#065f46' }}>🏢 اطلاعات صراف</Text>
+[صراف] 846: <Text style={s.lbl}>👤 نام صراف (کلیک = انتخاب از لیست)</Text>
+[صراف] 848: <Text style={{ color: fBuyerName ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>{fBuyerName || '🔍 انتخاب از لیست صرافان...'}</Text>
+[صراف] 851: <Text style={s.lbl}>📞 تلفن صراف *</Text>
+[صندوق] 1004: {/* ═══════ صندوق‌ها ═══════ */}
+[صندوق] 1189: <Text style={s.dLbl}>📦 صندوق</Text>
+[صندوق] 1227: <Text style={[s.secT, { marginTop: 16 }]}>📦 صندوق‌های طرف حساب ({stmtData.boxes_for_person.length})</Text>
+[صندوق] 1232: <Text style={[s.th, { width: 100 }]}>کد صندوق</Text>
+[صندوق] 1233: <Text style={[s.th, { width: 180 }]}>نام صندوق</Text>
+[صندوق] 1260: {/* جمع کل صندوق‌های طرف بر اساس ارز */}
+[صندوق] 1262: <Text style={{ color: '#d4af37', fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>💰 جمع کل موجودی صندوق‌های {stmtCustomer.name} بر اساس ارز</Text>
+[صراف] 1293: <Text style={[s.th, { width: 100 }]}>صراف</Text>
+[صندوق] 1403: {/* ═══ صندوق‌ها کامل ═══ */}
+[صندوق] 1404: <Text style={[s.secT, { marginTop: 16 }]}>📦 صندوق‌ها ({stmtData.boxTxCount})</Text>
+[صندوق] 1406: <Text style={s.empty}>تراکنش صندوقی ثبت نشده</Text>
+[صندوق] 1414: <Text style={[s.th, { width: 130 }]}>صندوق</Text>
+[صندوق] 1459: <View style={s.sumRow}><Text style={s.sumLbl}>📦 تراکنش‌های صندوق</Text><Text style={s.sumVal}>{stmtData.boxTxCount}</Text></View>
+[صراف] 1541: <View style={s.mHead}><Text style={s.mTitle}>{custEditId ? '✏️ ویرایش' : (custModalIsSarraf ? '➕ صراف جدید' : '👤 مشتری جدید')}</Text><TouchableOpacity onPress={() => { setCustModal(false); setCustModalIsSarraf(false); }}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+[صراف] 1548: <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => { setCustModal(false); setCustModalIsSarraf(false); }}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+[صراف] 1558: <View style={s.mHead}><Text style={s.mTitle}>{partnerEditId ? '✏️ ویرایش' : '➕ صراف جدید'}</Text><TouchableOpacity onPress={() => setPartnerModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+[صراف] 1563: <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setPartnerModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+[صراف] 1579: {/* ─── ① صراف فرستنده ─── */}
+[صراف] 1581: <Text style={hawSec.title}>① 🏢 صراف فرستنده (از صرافان)</Text>
+[صراف] 1584: {hawForm.sender_exchange_name ? `🏢 ${hawForm.sender_exchange_name}  (${hawForm.sender_exchange_code || '—'})` : '🔍 انتخاب صراف فرستنده...'}
+[صراف] 1673: {/* ─── ④ صراف اجراکننده ─── */}
+[صراف] 1675: <Text style={hawSec.title}>④ 🏢 صراف اجراکننده (از صرافان)</Text>
+[صراف] 1678: {hawForm.executor_exchange_name ? `🏢 ${hawForm.executor_exchange_name}  (${hawForm.executor_exchange_code || '—'})` : '🔍 انتخاب صراف اجراکننده...'}
+[صراف] 1816: <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setHawModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+[صراف] 1850: {/* ═══ مودال انتخاب صراف (فرستنده یا اجراکننده) ═══ */}
+[صراف] 1854: <Text style={s.mTitle}>{hawPick === 'executor' ? '④ صراف اجراکننده' : '① صراف فرستنده'} ({(fxBuyers || []).length})</Text>
+[صراف] 1859: <Text style={s.empty}>هنوز صرافی در تب صرافان نیست</Text>
+[صندوق] 1886: {/* ═══ Modal صندوق ═══ */}
+[صندوق] 1888: {/* ═══ Modal انتخاب صاحب صندوق ═══ */}
+[صندوق] 1892: <Text style={s.mTitle}>👤 انتخاب صاحب صندوق ({(fxBuyers || []).length})</Text>
+[صراف] 1896: {(fxBuyers || []).length === 0 ? <Text style={s.empty}>هنوز صرافی ثبت نشده — اول از تب صرافان اضافه کن</Text> : (fxBuyers || []).map((b: any) => (
+[صندوق] 1898: setBoxForm((f: any) => ({ ...f, owner_code: b.code, owner_name: b.name, name: f.name || ('صندوق ' + (CUR[f.currency]?.name || '') + ' — ' + b.name) }));
+[صندوق] 1912: {/* ═══ Modal انتخاب صاحب صندوق ═══ */}
+[صندوق] 1916: <Text style={s.mTitle}>👤 انتخاب صاحب صندوق ({(fxBuyers || []).length})</Text>
+[صراف] 1920: {(fxBuyers || []).length === 0 ? <Text style={s.empty}>هنوز صرافی ثبت نشده — اول از تب صرافان اضافه کن</Text> : (fxBuyers || []).map((b: any) => (
+[صندوق] 1922: setBoxForm((f: any) => ({ ...f, owner_code: b.code, owner_name: b.name, name: f.name || ('صندوق ' + (CUR[f.currency]?.name || '') + ' — ' + b.name) }));
+[صندوق] 1937: <View style={s.mHead}><Text style={s.mTitle}>{boxEditId ? '✏️ ویرایش صندوق' : '➕ صندوق جدید'}</Text><TouchableOpacity onPress={() => setBoxModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+[صندوق] 1940: <TextInput accessibilityLabel="مثلاً: صندوق دالر" style={s.inp} value={boxForm.name} onChangeText={v => setBoxForm({ ...boxForm, name: v })} placeholder="مثلاً: صندوق دالر" />
+[صندوق] 1949: <Text style={s.lbl}>صاحب صندوق مالک (اختیاری)</Text>
+[صراف] 1960: <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setBoxModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+[صندوق] 1976: <View style={s.mHead}><Text style={s.mTitle}>🔄 انتقال بین صندوق‌ها</Text><TouchableOpacity onPress={() => setTrModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+[صندوق] 1978: <Text style={s.lbl}>از صندوق *</Text>
+[صندوق] 1986: <Text style={s.lbl}>به صندوق *</Text>
+[صراف] 2001: <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setTrModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+[صندوق] 2003: if (!trForm.from_box || !trForm.to_box) return showToast('صندوق‌ها را انتخاب کن', true);
+[صندوق] 2004: if (trForm.from_box === trForm.to_box) return showToast('صندوق مبدأ و مقصد یکسان', true);
+[صراف] 2056: <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCkModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+[صراف] 2077: //  PartyList — جدول ردیفی مشتریان/صرافان
+[صراف] 2088: const title = isBuyer ? 'صرافان' : 'مشتریان';
+[صراف] 2150: <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{`افزودن ${isBuyer ? 'صراف' : 'مشتری'} جدید`}</Text>
+[صراف] 2173: <Text style={{ color: '#94a3b8', fontSize: 13 }}>{`هنوز ${isBuyer ? 'صرافی' : 'مشتری‌ای'} ثبت نشده`}</Text>
+[صراف] 2202: <Text style={s.mTitle}>{`${editId ? 'ویرایش' : 'افزودن'} ${isBuyer ? 'صراف' : 'مشتری'}`}</Text>
+[صراف] 2234: <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
+[صراف] 2235: <Text style={s.btnTxt}>انصراف</Text>
+
+════════ BotUI.tsx ════════
+[setTab] 133: nav.setTab(tab);
+[صراف] 279: 'صرافی': 'exchange',
+[setTab] 295: try { (globalThis as any).__nav?.setTab(_target); } catch(e){}

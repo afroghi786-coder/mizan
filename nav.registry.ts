@@ -1,11 +1,5 @@
-export type Group = 'main' | 'dashboard' | 'plusCreate' | 'plusManage' | 'plusTools';
-export type NavItem = {
-  key: string;
-  label: { fa: string; ps: string };
-  aliases: string[];
-  icon: string;
-  group: Group;
-};
+export type Group = 'main' | 'dashboard' | 'plusCreate' | 'plusTools';
+export type NavItem = { key: string; label: { fa: string; ps: string }; aliases: string[]; icon: string; group: Group };
 
 export const NAV: NavItem[] = [
   { key: 'dashboard', label: { fa: 'داشبورد', ps: 'ډشبورډ' }, aliases: ['داشبورد', 'خانه'], icon: '🏠', group: 'main' },
@@ -22,20 +16,15 @@ export const NAV: NavItem[] = [
   { key: 'manualEntry', label: { fa: 'دستیار', ps: 'لاسنیوی' }, aliases: ['دستیار'], icon: '✍️', group: 'dashboard' },
   { key: 'settings', label: { fa: 'تنظیمات', ps: 'تنظیمات' }, aliases: ['تنظیمات'], icon: '⚙️', group: 'dashboard' },
 
-  { key: 'purchase', label: { fa: 'خرید', ps: 'پیرود' }, aliases: ['خرید', 'فاکتور خرید'], icon: '🧾', group: 'plusCreate' },
-  { key: 'order', label: { fa: 'فروش', ps: 'پلور' }, aliases: ['فروش', 'سفارش'], icon: '🧮', group: 'plusCreate' },
-  { key: 'exchange:form', label: { fa: 'معامله جدید', ps: 'نوی معامله' }, aliases: ['معامله جدید', 'معامله نو'], icon: '➕', group: 'plusCreate' },
-  { key: 'exchange:hawalas', label: { fa: 'حواله جدید', ps: 'نوی حواله' }, aliases: ['حواله', 'حواله جدید'], icon: '📤', group: 'plusCreate' },
-  { key: 'exchange:checks', label: { fa: 'چک جدید', ps: 'نوی چک' }, aliases: ['چک', 'چک جدید'], icon: '🧾', group: 'plusCreate' },
-  { key: 'exchange:customers', label: { fa: 'مشتری جدید', ps: 'نوی پیرودونکی' }, aliases: ['مشتری', 'مشتری جدید'], icon: '👤', group: 'plusCreate' },
-  { key: 'expenses', label: { fa: 'هزینه جدید', ps: 'نوی لګښت' }, aliases: ['هزینه جدید'], icon: '💸', group: 'plusCreate' },
-  { key: 'employees', label: { fa: 'کارمند جدید', ps: 'نوی کارکوونکی' }, aliases: ['کارمند جدید'], icon: '👥', group: 'plusCreate' },
-
-  { key: 'mgr', label: { fa: 'مدیریت', ps: 'مدیریت' }, aliases: ['مدیریت'], icon: '📋', group: 'plusManage' },
-  { key: 'profit', label: { fa: 'سود', ps: 'ګټه' }, aliases: ['سود'], icon: '📈', group: 'plusManage' },
-  { key: 'inventory', label: { fa: 'انبار', ps: 'ګدام' }, aliases: ['انبار'], icon: '📦', group: 'plusManage' },
-  { key: 'bankMatch', label: { fa: 'بانک', ps: 'بانک' }, aliases: ['بانک'], icon: '🏦', group: 'plusManage' },
-
+  { key: 'order', label: { fa: 'فروش جدید', ps: 'نوی پلور' }, aliases: ['فروش جدید'], icon: '🧮', group: 'plusCreate' },
+  { key: 'purchase', label: { fa: 'خرید جدید', ps: 'نوی پیرود' }, aliases: ['خرید جدید'], icon: '🧾', group: 'plusCreate' },
+  { key: 'exchange:form', label: { fa: 'معامله جدید', ps: 'نوی معامله' }, aliases: ['معامله جدید'], icon: '➕', group: 'plusCreate' },
+  { key: 'exchange:hawalas', label: { fa: 'حواله جدید', ps: 'نوی حواله' }, aliases: ['حواله جدید'], icon: '📤', group: 'plusCreate' },
+  { key: 'exchange:checks', label: { fa: 'چک جدید', ps: 'نوی چک' }, aliases: ['چک جدید'], icon: '🧾', group: 'plusCreate' },
+  { key: 'exchange:customers', label: { fa: 'مشتری جدید', ps: 'نوی پیرودونکی' }, aliases: ['مشتری جدید'], icon: '👤', group: 'plusCreate' },
+  { key: 'exchange:partners', label: { fa: 'صراف جدید', ps: 'نوی صراف' }, aliases: ['صراف جدید'], icon: '🤝', group: 'plusCreate' },
+  { key: 'exchange:boxes', label: { fa: 'صندوق جدید', ps: 'نوی صندوق' }, aliases: ['صندوق جدید'], icon: '🗃️', group: 'plusCreate' },
+  
   { key: 'botLearning', label: { fa: 'آموزش ربات', ps: 'روزنه' }, aliases: ['آموزش'], icon: '🎓', group: 'plusTools' },
   { key: 'manualEntry', label: { fa: 'دستیار', ps: 'لاسنیوی' }, aliases: ['دستیار'], icon: '✍️', group: 'plusTools' },
   { key: 'settings', label: { fa: 'تنظیمات', ps: 'تنظیمات' }, aliases: ['تنظیمات'], icon: '⚙️', group: 'plusTools' },

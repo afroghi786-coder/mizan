@@ -880,7 +880,11 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'purchase' && <PurchaseScreen showToast={showToast} />}
       {tab === 'print' && <PrintScreen showToast={showToast} />}
       {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />}
-      {tab === 'settings' && <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />}
+      {tab === 'settings' && (
+        <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ paddingBottom: 120 }}>
+          <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />
+        </ScrollView>
+      )}
       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
@@ -891,10 +895,23 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}
-      <TouchableOpacity activeOpacity={0.85} onPress={() => setPlus(true)} style={{ position: 'absolute', bottom: 74, alignSelf: 'center', width: 60, height: 60, borderRadius: 30, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center', elevation: 8, zIndex: 50 }}>
+      <TouchableOpacity activeOpacity={0.85} onPress={() => setPlus(true)} style={{ position: 'absolute', bottom: 30, alignSelf: 'center', width: 56, height: 56, borderRadius: 28, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center', elevation: 10, zIndex: 999, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
         <Text style={{ color: '#fff', fontSize: 30, lineHeight: 34 }}>＋</Text>
       </TouchableOpacity>
-      <PlusMenu visible={plus} onClose={() => setPlus(false)} lang={curLang === 'ps' ? 'ps' : 'fa'} onPick={(n: any) => { setPlus(false); const k = String(n.key); const run = (tabKey: string, sub?: string) => { try { if (tabKey === 'order' || tabKey === 'purchase') { (globalThis as any).__openNewPending = tabKey; (globalThis as any).__openNewForm?.(tabKey); } } catch {} requestTab(tabKey); if (sub) setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); }; if (k.includes(':')) { const [tabKey, sub] = k.split(':'); run(tabKey, sub); } else { run(k); } }} />
+      <PlusMenu visible={plus} onClose={() => setPlus(false)} lang={curLang === 'ps' ? 'ps' : 'fa'} onPick={(n: any) => { 
+          setPlus(false); 
+          const k = String(n.key); 
+          const [tabKey, sub] = k.includes(':') ? k.split(':') : [k, undefined]; 
+          (globalThis as any).__openNewPending = tabKey; 
+          requestTab(tabKey); 
+          if (sub) setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); 
+          setTimeout(() => { 
+            try { 
+              const h = (globalThis as any).__newFormHandlers?.[tabKey]; 
+              if (typeof h === 'function') h(); 
+            } catch {} 
+          }, 400); 
+        }} />
             <GlobalVoice
         showToast={showToast}
         renderScreen={(name: string) => {
@@ -1177,6 +1194,14 @@ function DCard({ i, l, v, c }: any) {
 function SalesScreen({ showToast }: any) {
   const S = getS();
   const [view, setView] = useState<'list' | 'form' | 'invoice' | 'reprint'>('list');
+  useEffect(() => {
+    const g = globalThis as any;
+    const h = () => setView('form');
+    g.__newFormHandlers = g.__newFormHandlers || {};
+    g.__newFormHandlers['order'] = h;
+    if (g.__openNewPending === 'order') { g.__openNewPending = null; h(); }
+    return () => { try { delete g.__newFormHandlers['order']; } catch {} };
+  }, []);
   useEffect(() => {
     const g = globalThis as any;
     const h = () => setView('form');
@@ -1773,6 +1798,14 @@ function getS() {
 // ══════════════════════════════════════════════════════════
 function PurchaseScreen({ showToast }: any) {
   const [view, setView] = useState<'list' | 'form'>('list');
+  useEffect(() => {
+    const g = globalThis as any;
+    const h = () => setView('form');
+    g.__newFormHandlers = g.__newFormHandlers || {};
+    g.__newFormHandlers['purchase'] = h;
+    if (g.__openNewPending === 'purchase') { g.__openNewPending = null; h(); }
+    return () => { try { delete g.__newFormHandlers['purchase']; } catch {} };
+  }, []);
   useEffect(() => {
     const g = globalThis as any;
     const h = () => setView('form');

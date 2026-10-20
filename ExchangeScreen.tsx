@@ -182,14 +182,14 @@ export default function ExchangeScreen({ showToast }: any) {
   const [hawCurSearch, setHawCurSearch] = useState('');
   const [hawForm, setHawForm] = useState<any>({
     direction: 'send',
-    // ① صراف فرستنده (از خریداران)
+    // ① صراف فرستنده (از صرافان)
     sender_exchange_code: '', sender_exchange_name: '',
     // ② فرستنده واقعی (از مشتریان)
     sender_code: '', sender_name: '', sender_phone: '', sender_address: '',
     // ③ ذی‌نفع (از مشتریان)
     beneficiary_code: '', beneficiary_name: '', beneficiary_phone: '',
     beneficiary_city: '', beneficiary_bank: '', beneficiary_holder: '',
-    // ④ صراف اجراکننده (از خریداران)
+    // ④ صراف اجراکننده (از صرافان)
     executor_exchange_code: '', executor_exchange_name: '',
     // ⑤ مالی
     from_currency: 'AFN', to_currency: 'AFN',
@@ -259,6 +259,19 @@ export default function ExchangeScreen({ showToast }: any) {
   const [showOwnerPick, setShowOwnerPick] = useState(false);
   const [custModal, setCustModal] = useState(false);
   const [partnerModal, setPartnerModal] = useState(false);
+
+  useEffect(() => {
+    (globalThis as any).__exchangeOpenPartnerForm = () => {
+      setSub('partners');
+      setCustModalIsSarraf(true);
+      setCustEditId(null);
+      setCustForm({ name: '', phone: '', bank: '', holder_name: '', holder_code: '', notes: '' });
+      setCustModal(true);
+    };
+    return () => { delete (globalThis as any).__exchangeOpenPartnerForm; };
+  }, []);
+
+  const [custModalIsSarraf, setCustModalIsSarraf] = useState(false);
   const [custForm, setCustForm] = useState<any>({ name: '', phone: '', bank: '', holder_name: '', holder_code: '', notes: '' });
   const [partnerForm, setPartnerForm] = useState<any>({ name: '', phone: '', notes: '' });
   const [custEditId, setCustEditId] = useState<string | null>(null);
@@ -331,7 +344,7 @@ export default function ExchangeScreen({ showToast }: any) {
     }
   };
 
-  // ═══ انتخاب خریدار از لیست ═══
+  // ═══ انتخاب صراف از لیست ═══
   const pickPartner = (b: any) => {
     setFPartner(b.code || '');
     setFBuyerName(b.name || '');
@@ -344,7 +357,7 @@ export default function ExchangeScreen({ showToast }: any) {
     setShowPartnerPick(false);
   };
 
-  // ═══ تلفن خریدار → جستجو ═══
+  // ═══ تلفن صراف → جستجو ═══
   const onBuyerPhoneChange = (v: string) => {
     const p = v.replace(/[^\d]/g, '').slice(0, 11);
     setFBuyerPhone(p);
@@ -427,8 +440,8 @@ export default function ExchangeScreen({ showToast }: any) {
   const submit = async () => {
     const buyerPhone = fBuyerPhone.replace(/[^\d]/g, '');
     const custPhone = fPhone.replace(/[^\d]/g, '');
-    if (buyerPhone.length < 10) return showToast('تلفن خریدار الزامی (۱۱ رقم)', true);
-    if (!fBuyerName && !fPartner) return showToast('نام خریدار الزامی', true);
+    if (buyerPhone.length < 10) return showToast('تلفن صراف الزامی (۱۱ رقم)', true);
+    if (!fBuyerName && !fPartner) return showToast('نام صراف الزامی', true);
     if (custPhone.length < 10) return showToast('شماره تماس مشتری الزامی', true);
     if (!fCustName) return showToast('نام مشتری الزامی', true);
     const fq = parse(fFromQty), tq = parse(fToQty), r = parse(fRate);
@@ -441,7 +454,7 @@ export default function ExchangeScreen({ showToast }: any) {
     const payload: any = {
       invoice_number: fInvoice,
       trade_type: fType,
-      // خریدار
+      // صراف
       buyer_code: fPartner || ('B_' + buyerPhone),
       buyer_name: buyerName,
       buyer_phone: buyerPhone,
@@ -569,7 +582,7 @@ export default function ExchangeScreen({ showToast }: any) {
     const key = String(q || '').trim().toLowerCase();
     if (!key) return;
 
-    // ═══ جستجو در مشتریان + خریداران + fxCustomers ═══
+    // ═══ جستجو در مشتریان + صرافان + fxCustomers ═══
     const allPeople = [
       ...(customers || []),
       ...(fxCustomers || []),
@@ -596,7 +609,7 @@ export default function ExchangeScreen({ showToast }: any) {
     }
     setStmtCustomer(cust);
 
-    // ═══ معاملات (خریدار یا مشتری) ═══
+    // ═══ معاملات (صراف یا مشتری) ═══
     const myTrades = trades.filter((t: any) =>
       t.customer_code === cust.code ||
       t.buyer_code === cust.code ||
@@ -740,10 +753,10 @@ export default function ExchangeScreen({ showToast }: any) {
             { k: 'ledger', l: '📊 کاردکس' },
             { k: 'statement', l: '🖨️ پرینت حساب' },
             { k: 'customers', l: '👥 مشتریان' },
-            { k: 'partners', l: '🏢 خریداران' },
+            { k: 'partners', l: '🏢 صرافان' },
             { k: 'liveMarket', l: '📡 بازار زنده' },
             { k: 'myGroups', l: '🌐 شبکه‌های من' },
-          ].map(x => (
+          ].filter((v, i, a) => a.findIndex(t => t.l === v.l) === i).map(x => (
             <TouchableOpacity key={x.k} onPress={() => { if (x.k === 'form' && sub !== 'form') { openNew(); return; } setSub(x.k as any); }} style={[s.sub, sub === x.k && s.subActive]}>
               <Text style={[s.subTxt, sub === x.k && s.subTxtActive]}>{x.l}</Text>
             </TouchableOpacity>
@@ -761,11 +774,11 @@ export default function ExchangeScreen({ showToast }: any) {
                   <Text style={[s.th, { width: 36 }]}>#</Text>
                   <Text style={[s.th, { width: 100 }]}>فاکتور</Text>
                   <Text style={[s.th, { width: 85 }]}>تاریخ</Text>
-                  <Text style={[s.th, { width: 110 }]}>کد خریدار</Text>
-                  <Text style={[s.th, { width: 110 }]}>نام خریدار</Text>
-                  <Text style={[s.th, { width: 100 }]}>تلفن خریدار</Text>
-                  <Text style={[s.th, { width: 100 }]}>بانک خریدار</Text>
-                  <Text style={[s.th, { width: 110 }]}>صاحب حساب خریدار</Text>
+                  <Text style={[s.th, { width: 110 }]}>کد صراف</Text>
+                  <Text style={[s.th, { width: 110 }]}>نام صراف</Text>
+                  <Text style={[s.th, { width: 100 }]}>تلفن صراف</Text>
+                  <Text style={[s.th, { width: 100 }]}>بانک صراف</Text>
+                  <Text style={[s.th, { width: 110 }]}>صاحب حساب صراف</Text>
                   <Text style={[s.th, { width: 110 }]}>کد مشتری</Text>
                   <Text style={[s.th, { width: 120 }]}>نام مشتری</Text>
                   <Text style={[s.th, { width: 100 }]}>تلفن مشتری</Text>
@@ -826,16 +839,16 @@ export default function ExchangeScreen({ showToast }: any) {
 
             <View style={{ backgroundColor: '#ecfdf5', borderRadius: 10, padding: 10, marginTop: 12, marginBottom: 12, borderWidth: 1, borderColor: '#a7f3d0' }}>
               <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#065f46' }}>🏢 اطلاعات خریدار</Text>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#065f46' }}>🏢 اطلاعات صراف</Text>
                 {fBuyerStatus ? <Text style={{ fontSize: 11, fontWeight: 'bold', color: fBuyerStatus.indexOf('قبلی') >= 0 ? '#059669' : '#ea580c' }}>{fBuyerStatus}</Text> : null}
               </View>
 
-              <Text style={s.lbl}>👤 نام خریدار (کلیک = انتخاب از لیست)</Text>
+              <Text style={s.lbl}>👤 نام صراف (کلیک = انتخاب از لیست)</Text>
               <TouchableOpacity style={s.inp} onPress={() => setShowPartnerPick(true)}>
-                <Text style={{ color: fBuyerName ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>{fBuyerName || '🔍 انتخاب از لیست خریداران...'}</Text>
+                <Text style={{ color: fBuyerName ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>{fBuyerName || '🔍 انتخاب از لیست صرافان...'}</Text>
               </TouchableOpacity>
 
-              <Text style={s.lbl}>📞 تلفن خریدار *</Text>
+              <Text style={s.lbl}>📞 تلفن صراف *</Text>
               <TextInput accessibilityLabel="09..." style={s.inp} value={fBuyerPhone} onChangeText={onBuyerPhoneChange} keyboardType="phone-pad" maxLength={11} placeholder="09..." placeholderTextColor="#94a3b8" />
 
               {fPartner ? <View style={{ backgroundColor: '#d1fae5', padding: 6, borderRadius: 6, marginTop: 4 }}><Text style={{ color: '#065f46', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>🆔 {fPartner}</Text></View> : null}
@@ -1277,7 +1290,7 @@ export default function ExchangeScreen({ showToast }: any) {
                         <Text style={[s.th, { width: 36 }]}>#</Text>
                         <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
                         <Text style={[s.th, { width: 100 }]}>فاکتور</Text>
-                        <Text style={[s.th, { width: 100 }]}>خریدار</Text>
+                        <Text style={[s.th, { width: 100 }]}>صراف</Text>
                         <Text style={[s.th, { width: 120 }]}>مشتری</Text>
                         <Text style={[s.th, { width: 110 }]}>از ارز</Text>
                         <Text style={[s.th, { width: 110 }]}>مقدار</Text>
@@ -1525,14 +1538,14 @@ export default function ExchangeScreen({ showToast }: any) {
       {/* مشتری */}
       <Modal visible={custModal} transparent animationType="slide">
         <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
-          <View style={s.mHead}><Text style={s.mTitle}>{custEditId ? '✏️ ویرایش' : '➕ مشتری جدید'}</Text><TouchableOpacity onPress={() => setCustModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={s.mHead}><Text style={s.mTitle}>{custEditId ? '✏️ ویرایش' : (custModalIsSarraf ? '➕ صراف جدید' : '👤 مشتری جدید')}</Text><TouchableOpacity onPress={() => { setCustModal(false); setCustModalIsSarraf(false); }}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 16 }}>
             <Text style={s.lbl}>نام *</Text><TextInput style={s.inp} value={custForm.name} onChangeText={v => setCustForm({ ...custForm, name: v })} />
             <Text style={s.lbl}>تلفن *</Text><TextInput style={s.inp} value={custForm.phone} onChangeText={v => setCustForm({ ...custForm, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} />
             <Text style={s.lbl}>بانک</Text><TextInput style={s.inp} value={custForm.bank} onChangeText={v => setCustForm({ ...custForm, bank: v })} />
             <Text style={s.lbl}>صاحب حساب</Text><TextInput style={s.inp} value={custForm.holder_name} onChangeText={v => setCustForm({ ...custForm, holder_name: v })} />
             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
-              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setCustModal(false)}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => { setCustModal(false); setCustModalIsSarraf(false); }}><Text style={s.btnTxt}>انصراف</Text></TouchableOpacity>
               <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#7c3aed', flex: 2 }]} onPress={submitCustomer}><Text style={s.btnTxt}>💾 ذخیره</Text></TouchableOpacity>
             </View>
           </View>
@@ -1542,7 +1555,7 @@ export default function ExchangeScreen({ showToast }: any) {
       {/* شریک */}
       <Modal visible={partnerModal} transparent animationType="slide">
         <View style={s.mBg}><ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
-          <View style={s.mHead}><Text style={s.mTitle}>{partnerEditId ? '✏️ ویرایش' : '➕ شریک جدید'}</Text><TouchableOpacity onPress={() => setPartnerModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
+          <View style={s.mHead}><Text style={s.mTitle}></Text><TouchableOpacity onPress={() => setPartnerModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
           <View style={{ padding: 16 }}>
             <Text style={s.lbl}>نام *</Text><TextInput style={s.inp} value={partnerForm.name} onChangeText={v => setPartnerForm({ ...partnerForm, name: v })} />
             <Text style={s.lbl}>تلفن</Text><TextInput style={s.inp} value={partnerForm.phone} onChangeText={v => setPartnerForm({ ...partnerForm, phone: v.replace(/[^\d]/g, '').slice(0, 11) })} keyboardType="phone-pad" maxLength={11} />
@@ -1565,7 +1578,7 @@ export default function ExchangeScreen({ showToast }: any) {
 
             {/* ─── ① صراف فرستنده ─── */}
             <View style={hawSec.box}>
-              <Text style={hawSec.title}>① 🏢 صراف فرستنده (از خریداران)</Text>
+              <Text style={hawSec.title}>① 🏢 صراف فرستنده (از صرافان)</Text>
               <TouchableOpacity style={s.inp} onPress={() => { setHawSenderSearch(''); setHawPick('sender_ex'); }}>
                 <Text style={{ color: hawForm.sender_exchange_name ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
                   {hawForm.sender_exchange_name ? `🏢 ${hawForm.sender_exchange_name}  (${hawForm.sender_exchange_code || '—'})` : '🔍 انتخاب صراف فرستنده...'}
@@ -1659,7 +1672,7 @@ export default function ExchangeScreen({ showToast }: any) {
 
             {/* ─── ④ صراف اجراکننده ─── */}
             <View style={hawSec.box}>
-              <Text style={hawSec.title}>④ 🏢 صراف اجراکننده (از خریداران)</Text>
+              <Text style={hawSec.title}>④ 🏢 صراف اجراکننده (از صرافان)</Text>
               <TouchableOpacity style={s.inp} onPress={() => { setHawSenderSearch(''); setHawPick('executor'); }}>
                 <Text style={{ color: hawForm.executor_exchange_name ? '#0f2438' : '#94a3b8', textAlign: 'right' }}>
                   {hawForm.executor_exchange_name ? `🏢 ${hawForm.executor_exchange_name}  (${hawForm.executor_exchange_code || '—'})` : '🔍 انتخاب صراف اجراکننده...'}
@@ -1843,7 +1856,7 @@ export default function ExchangeScreen({ showToast }: any) {
           </View>
           <ScrollView style={{ maxHeight: 400, padding: 10 }} keyboardShouldPersistTaps="handled">
             {(fxBuyers || []).length === 0 ? (
-              <Text style={s.empty}>هنوز خریداری در تب خریداران نیست</Text>
+              <Text style={s.empty}>هنوز صرافی در تب صرافان نیست</Text>
             ) : (fxBuyers || []).map((b: any) => (
               <TouchableOpacity
                 key={b.id || b.code}
@@ -1880,7 +1893,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <TouchableOpacity onPress={() => setShowOwnerPick(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ maxHeight: 400, padding: 10 }}>
-            {(fxBuyers || []).length === 0 ? <Text style={s.empty}>هنوز خریداری ثبت نشده — اول از تب خریداران اضافه کن</Text> : (fxBuyers || []).map((b: any) => (
+            {(fxBuyers || []).length === 0 ? <Text style={s.empty}>هنوز صرافی ثبت نشده — اول از تب صرافان اضافه کن</Text> : (fxBuyers || []).map((b: any) => (
               <TouchableOpacity key={b.id || b.code} onPress={() => {
                 setBoxForm((f: any) => ({ ...f, owner_code: b.code, owner_name: b.name, name: f.name || ('صندوق ' + (CUR[f.currency]?.name || '') + ' — ' + b.name) }));
                 setShowOwnerPick(false);
@@ -1904,7 +1917,7 @@ export default function ExchangeScreen({ showToast }: any) {
             <TouchableOpacity onPress={() => setShowOwnerPick(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ maxHeight: 400, padding: 10 }}>
-            {(fxBuyers || []).length === 0 ? <Text style={s.empty}>هنوز خریداری ثبت نشده — اول از تب خریداران اضافه کن</Text> : (fxBuyers || []).map((b: any) => (
+            {(fxBuyers || []).length === 0 ? <Text style={s.empty}>هنوز صرافی ثبت نشده — اول از تب صرافان اضافه کن</Text> : (fxBuyers || []).map((b: any) => (
               <TouchableOpacity key={b.id || b.code} onPress={() => {
                 setBoxForm((f: any) => ({ ...f, owner_code: b.code, owner_name: b.name, name: f.name || ('صندوق ' + (CUR[f.currency]?.name || '') + ' — ' + b.name) }));
                 setShowOwnerPick(false);
@@ -2061,7 +2074,7 @@ export default function ExchangeScreen({ showToast }: any) {
 
 
 // ═══════════════════════════════════════════
-//  PartyList — جدول ردیفی مشتریان/خریداران
+//  PartyList — جدول ردیفی مشتریان/صرافان
 // ═══════════════════════════════════════════
 function PartyList({ type, showToast }: any) {
   const [data, setData] = useState<any[]>([]);
@@ -2072,7 +2085,7 @@ function PartyList({ type, showToast }: any) {
   const [saving, setSaving] = useState(false);
 
   const isBuyer = type === 'buyer';
-  const title = isBuyer ? 'خریداران' : 'مشتریان';
+  const title = isBuyer ? 'صرافان' : 'مشتریان';
   const color = isBuyer ? '#059669' : '#1e3a8a';
   const prefix = isBuyer ? 'B_' : 'X_';
 
@@ -2134,7 +2147,7 @@ function PartyList({ type, showToast }: any) {
     <View>
       <TouchableOpacity onPress={openNew} style={{ backgroundColor: color, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 10, marginBottom: 12, flexDirection: 'row-reverse', justifyContent: 'center', gap: 8 }}>
         <Text style={{ color: '#fff', fontSize: 15 }}>➕</Text>
-        <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{`افزودن ${isBuyer ? 'خریدار' : 'مشتری'} جدید`}</Text>
+        <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{`افزودن ${isBuyer ? 'صراف' : 'مشتری'} جدید`}</Text>
       </TouchableOpacity>
 
       <TextInput accessibilityLabel="جستجو: کد، نام، تلفن، بانک..." style={s.inp} value={q} onChangeText={setQ} placeholder="جستجو: کد، نام، تلفن، بانک..." placeholderTextColor="#94a3b8" />
@@ -2157,7 +2170,7 @@ function PartyList({ type, showToast }: any) {
 
           {filtered.length === 0 ? (
             <View style={{ padding: 40, alignItems: 'center', backgroundColor: '#fff' }}>
-              <Text style={{ color: '#94a3b8', fontSize: 13 }}>{`هنوز ${isBuyer ? 'خریداری' : 'مشتری‌ای'} ثبت نشده`}</Text>
+              <Text style={{ color: '#94a3b8', fontSize: 13 }}>{`هنوز ${isBuyer ? 'صرافی' : 'مشتری‌ای'} ثبت نشده`}</Text>
             </View>
           ) : filtered.map((x: any, i: number) => (
             <View key={x.id || i} style={[ptStyles.row, i % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
@@ -2186,7 +2199,7 @@ function PartyList({ type, showToast }: any) {
         <View style={s.mBg}>
           <ScrollView style={s.mBox} keyboardShouldPersistTaps="handled">
             <View style={[s.mHead, { backgroundColor: color }]}>
-              <Text style={s.mTitle}>{`${editId ? 'ویرایش' : 'افزودن'} ${isBuyer ? 'خریدار' : 'مشتری'}`}</Text>
+              <Text style={s.mTitle}>{`${editId ? 'ویرایش' : 'افزودن'} ${isBuyer ? 'صراف' : 'مشتری'}`}</Text>
               <TouchableOpacity onPress={() => setModal(false)}><Text style={{ color: '#fff', fontSize: 26 }}>×</Text></TouchableOpacity>
             </View>
             <View style={{ padding: 16 }}>

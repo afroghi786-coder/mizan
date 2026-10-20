@@ -403,7 +403,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
       <Modal visible={boxModal} transparent animationType="slide" onRequestClose={() => setBoxModal(false)}>
         <View style={s.mBg}><View style={s.mBox}>
           <View style={[s.mHead, { backgroundColor: '#7c3aed' }]}>
-            <Text style={s.mTitle}>{boxForm.id || boxForm.local_id ? '✏️ ویرایش صندوق' : '➕ صندوق جدید'}</Text>
+            <Text style={s.mTitle}></Text>
             <TouchableOpacity onPress={() => setBoxModal(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
           </View>
           <ScrollView style={{ padding: 14, maxHeight: 500 }}>

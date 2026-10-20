@@ -32,6 +32,9 @@ export default function PlusMenu({ visible, onClose, onPick, lang = 'fa' }: {
                     <Text style={s.label}>{i.label[lang]}</Text>
                   </TouchableOpacity>
                 ))}
+                {/* form_box_hardcoded */}
+                
+                
               </View>
             </View>
           ) : null)}

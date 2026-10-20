@@ -580,6 +580,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const [showLang, setShowLang] = useState(false);
   const [curLang, setCurLang] = useState(getLang());
   const [tab, setTab] = useState('order');
+  useEffect(() => { console.log('TAB_NOW:', tab); }, [tab]);
 
   useEffect(() => {
     (globalThis as any).__nav = { setTab };
@@ -628,7 +629,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     try {
       
     } catch {}
-    return () => { try { delete (globalThis as any).__nav; } catch {} };
+    /* cleanup __nav حذف شد */
   }, [tab]);
 
   const navRef = React.useMemo(() => ({
@@ -887,7 +888,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
       {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
-      {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} />}
+      {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
       {tab === 'botLearning' && <LearningScreen showToast={showToast} />}
       {tab === 'manualEntry' && <ManualEntryScreen showToast={showToast} />}
       {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}

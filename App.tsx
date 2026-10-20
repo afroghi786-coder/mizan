@@ -1,3 +1,5 @@
+import DashboardScreen from './components/DashboardScreen';
+import PlusMenu from './components/PlusMenu';
 import React from 'react';
 
 
@@ -579,7 +581,9 @@ function getTabPins(settings: any): Record<string, string> {
 function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const [showLang, setShowLang] = useState(false);
   const [curLang, setCurLang] = useState(getLang());
-  const [tab, setTab] = useState('order');
+  const [tab, setTab] = useState('dashboard');
+  const [plus, setPlus] = useState(false);
+  useEffect(() => { (globalThis as any).__newFormHandlers = (globalThis as any).__newFormHandlers || {}; }, []);
   useEffect(() => { console.log('TAB_NOW:', tab); }, [tab]);
 
   useEffect(() => {
@@ -804,20 +808,11 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
 
     const tabs = [
-    { key: 'order', icon: '🛒', label: term('sale'), color: '#1e3a8a' },
-    { key: 'purchase', icon: '🛍️', label: term('purchase'), color: '#166534' },
-    { key: 'print', icon: '🖨️', label: t('پرینت'), color: '#6c3483' },
-    { key: 'mgr', icon: '📋', label: t('مدیریت'), color: '#c0392b' },
-    { key: 'profit', icon: '💹', label: term('profit'), color: '#065f46' },
-    { key: 'inventory', icon: '📦', label: term('inventory'), color: '#0f5132' },
+    { key: 'dashboard', icon: '🏠', label: t('داشبورد'), color: '#0e7490' },
     { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
-    { key: 'publicMarket', icon: '🏛️', label: 'بازار', color: '#0891b2' },
-    { key: 'aiAssistant', icon: '🤖', label: 'ربات', color: '#10b981' },
-    { key: 'botLearning', icon: '🎓', label: 'آموزش', color: '#f59e0b' },
-    { key: 'manualEntry', icon: '🤖', label: 'دستیار', color: '#7c3aed' },
-    { key: 'bankMatch', icon: '🏦', label: 'بانک', color: '#f59e0b' },
-    { key: 'expenses', icon: '🧾', label: t('هزینه‌ها'), color: '#dc2626' },
-    { key: 'employees', icon: '💼', label: t('کارمندان'), color: '#7c3aed' },
+    { key: 'publicMarket', icon: '🛒', label: t('بازار عمومی'), color: '#7c3aed' },
+    { key: 'employees', icon: '👥', label: t('کارمندان'), color: '#4c1d95' },
+    { key: 'expenses', icon: '💸', label: t('هزینه‌ها'), color: '#7f1d1d' },
   ];
 
   const tabPins = getTabPins(settings);
@@ -880,10 +875,12 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       </ScrollView>
       )}
       <View key={`tab-${tab}-${langTick || 0}`} style={{ flex: 1 }}>
+      {tab === 'dashboard' && <DashboardScreen lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabKey); setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); } else { requestTab(k); } }} />}
       {tab === 'order' && <SalesScreen showToast={showToast} />}
       {tab === 'purchase' && <PurchaseScreen showToast={showToast} />}
       {tab === 'print' && <PrintScreen showToast={showToast} />}
       {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />}
+      {tab === 'settings' && <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />}
       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
@@ -894,6 +891,10 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}
+      <TouchableOpacity activeOpacity={0.85} onPress={() => setPlus(true)} style={{ position: 'absolute', bottom: 74, alignSelf: 'center', width: 60, height: 60, borderRadius: 30, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center', elevation: 8, zIndex: 50 }}>
+        <Text style={{ color: '#fff', fontSize: 30, lineHeight: 34 }}>＋</Text>
+      </TouchableOpacity>
+      <PlusMenu visible={plus} onClose={() => setPlus(false)} lang={curLang === 'ps' ? 'ps' : 'fa'} onPick={(n: any) => { setPlus(false); const k = String(n.key); const run = (tabKey: string, sub?: string) => { try { if (tabKey === 'order' || tabKey === 'purchase') { (globalThis as any).__openNewPending = tabKey; (globalThis as any).__openNewForm?.(tabKey); } } catch {} requestTab(tabKey); if (sub) setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); }; if (k.includes(':')) { const [tabKey, sub] = k.split(':'); run(tabKey, sub); } else { run(k); } }} />
             <GlobalVoice
         showToast={showToast}
         renderScreen={(name: string) => {
@@ -1176,6 +1177,22 @@ function DCard({ i, l, v, c }: any) {
 function SalesScreen({ showToast }: any) {
   const S = getS();
   const [view, setView] = useState<'list' | 'form' | 'invoice' | 'reprint'>('list');
+  useEffect(() => {
+    const g = globalThis as any;
+    const h = () => setView('form');
+    g.__newFormHandlers = g.__newFormHandlers || {};
+    g.__newFormHandlers.order = h;
+    if (g.__openNewPending === 'order') { g.__openNewPending = null; h(); }
+    return () => { try { delete g.__newFormHandlers.order; } catch {} };
+  }, []);
+  useEffect(() => {
+    const open = (t: string) => { if (t === 'order') setView('form'); };
+    (globalThis as any).__openNewForm = open;
+    const pending = (globalThis as any).__openNewPending;
+    if (pending === 'order') { (globalThis as any).__openNewPending = null; setView('form'); }
+    return () => { try { delete (globalThis as any).__openNewForm; } catch {} };
+  }, []);
+
   const [settings, setSettings] = useState<Settings>({});
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1756,6 +1773,22 @@ function getS() {
 // ══════════════════════════════════════════════════════════
 function PurchaseScreen({ showToast }: any) {
   const [view, setView] = useState<'list' | 'form'>('list');
+  useEffect(() => {
+    const g = globalThis as any;
+    const h = () => setView('form');
+    g.__newFormHandlers = g.__newFormHandlers || {};
+    g.__newFormHandlers.purchase = h;
+    if (g.__openNewPending === 'purchase') { g.__openNewPending = null; h(); }
+    return () => { try { delete g.__newFormHandlers.purchase; } catch {} };
+  }, []);
+  useEffect(() => {
+    const open = (t: string) => { if (t === 'purchase') setView('form'); };
+    (globalThis as any).__openNewForm = open;
+    const pending = (globalThis as any).__openNewPending;
+    if (pending === 'purchase') { (globalThis as any).__openNewPending = null; setView('form'); }
+    return () => { try { delete (globalThis as any).__openNewForm; } catch {} };
+  }, []);
+
   const [list, setList] = useState<any[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -2550,7 +2583,7 @@ function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }:
     { k: 'search', l: '🔍 جستجو و ویرایش' },
     { k: 'reports', l: '📊 گزارشات' },
     { k: 'preset', l: '🎨 نوع کسب‌وکار' },
-    { k: 'settings', l: '⚙️ تنظیمات' },
+    
     { k: 'sources', l: '🌿 منابع' },
   ];
   return (
@@ -2566,7 +2599,7 @@ function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }:
       {sub === 'newOrder' && <NewOrderSection showToast={showToast} />}
       {sub === 'search' && <SearchSection showToast={showToast} />}
       {sub === 'reports' && <ReportsSection showToast={showToast} />}
-      {sub === 'settings' && <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reload} />}
+      {/* Settings moved to main tab */}
       {sub === 'preset' && <PresetSection showToast={showToast} />}
       {sub === 'sources' && <SourcesSection showToast={showToast} />}
       <PinModal

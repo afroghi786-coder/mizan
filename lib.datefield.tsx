@@ -1,6 +1,6 @@
-// lib.datefield.tsx — DateField component (بازنویسی کامل)
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native';
+// lib.datefield.tsx — DateField با کشوی تقویم، دکمه بالا/پایین و پرش خودکار
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal } from 'react-native';
 import { parseDateAny, toStorageDateFull, getCalType, pad2, g2j, g2h, j2g, h2g } from './lib';
 
 export type CalType = 'jalali' | 'gregorian' | 'hijri';
@@ -12,45 +12,31 @@ const C = {
   get textMut() { return getTheme() === 'dark' ? '#94a3b8' : '#64748b'; },
   get border()  { return getTheme() === 'dark' ? '#334155' : '#e2e8f0'; },
   get input()   { return getTheme() === 'dark' ? '#1a2332' : '#ffffff'; },
+  get card()    { return getTheme() === 'dark' ? '#0f2438' : '#f8fafc'; },
+};
+
+const CAL_LABELS: Record<CalType, string> = {
+  jalali: 'شمسی',
+  gregorian: 'میلادی',
+  hijri: 'قمری',
 };
 
 const s = StyleSheet.create({
-  dateBox: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    gap: 4,
-  },
-  dateInp: {
-    textAlign: 'center',
-    fontSize: 13,
-    paddingVertical: 4,
-    paddingHorizontal: 2,
-  },
-  dateSep: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginHorizontal: 1,
-  },
-  typeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 'auto',
-  },
-  typeBtnTxt: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
+  dateBox: { flexDirection: 'row-reverse', alignItems: 'center', borderWidth: 1, borderRadius: 8, paddingHorizontal: 4, paddingVertical: 2, gap: 1 },
+  dateInp: { textAlign: 'center', fontSize: 13, paddingVertical: 2, paddingHorizontal: 1 },
+  dateSep: { fontSize: 13, textAlign: 'center', marginHorizontal: 0 },
+  arrowBtn: { paddingHorizontal: 4, paddingVertical: 0 },
+  arrowTxt: { fontSize: 8, fontWeight: 'bold' },
+  typeBtn: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, marginRight: 'auto', marginLeft: 4 },
+  typeBtnTxt: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
 });
 
 export function DateField({ value, onChange, compact, defaultToToday }: any) {
   const [type, setType] = useState<CalType>(getCalType());
   const [g, setG] = useState<Date | null>(value ? parseDateAny(value) : (defaultToToday ? new Date() : null));
   const [fields, setFields] = useState({ y: '', m: '', d: '', h: '00', n: '00', s: '00' });
+  const [showPicker, setShowPicker] = useState(false);
+  const refs = useRef<Record<string, any>>({});
 
   useEffect(() => {
     if (!g) { setFields({ y: '', m: '', d: '', h: '00', n: '00', s: '00' }); return; }
@@ -74,44 +60,88 @@ export function DateField({ value, onChange, compact, defaultToToday }: any) {
     onChange?.(toStorageDateFull(gg));
   };
 
-  const F = ({ v, k, w, ph }: any) => (
-    <TextInput
-      accessibilityLabel={'date_' + k}
-      style={[s.dateInp, { width: w || 44, color: C.text }, compact && { fontSize: 11 }]}
-      value={v}
-      onChangeText={(t) => apply({ ...fields, [k]: t.replace(/\D/g, '').slice(0, k === 'y' ? 4 : 2) })}
-      keyboardType="numeric"
-      placeholder={ph}
-      placeholderTextColor={C.textMut}
-    />
+  const goNext = (k: string) => {
+    const order = ['y', 'm', 'd', 'h', 'n', 's'];
+    const idx = order.indexOf(k);
+    if (idx >= 0 && idx < order.length - 1) {
+      const ref = refs.current[order[idx + 1]];
+      if (ref && ref.focus) setTimeout(() => ref.focus(), 30);
+    }
+  };
+
+  const inc = (k: string) => {
+    const cur = parseInt((fields as any)[k], 10) || 0;
+    const max = k === 'y' ? 9999 : (k === 'm' ? 12 : (k === 'd' ? 31 : 59));
+    const nv = Math.min(cur + 1, max);
+    apply({ ...fields, [k]: k === 'y' ? String(nv) : pad2(nv) });
+  };
+
+  const dec = (k: string) => {
+    const cur = parseInt((fields as any)[k], 10) || 0;
+    const nv = Math.max(cur - 1, 0);
+    apply({ ...fields, [k]: k === 'y' ? String(nv) : pad2(nv) });
+  };
+
+  const renderField = (k: 'y'|'m'|'d'|'h'|'n'|'s', w: number, ph: string, maxLen: number) => (
+    <View style={{ alignItems: 'center' }}>
+      <TouchableOpacity onPress={() => inc(k)} style={s.arrowBtn}>
+        <Text style={[s.arrowTxt, { color: C.textMut }]}>▲</Text>
+      </TouchableOpacity>
+      <TextInput
+        ref={(ref: any) => { refs.current[k] = ref; }}
+        accessibilityLabel={'date_' + k}
+        style={[s.dateInp, { width: w, color: C.text }, compact && { fontSize: 11 }]}
+        value={(fields as any)[k]}
+        onChangeText={(t) => {
+          const cleaned = t.replace(/\D/g, '').slice(0, maxLen);
+          apply({ ...fields, [k]: cleaned });
+          if (cleaned.length >= maxLen) setTimeout(() => goNext(k), 60);
+        }}
+        keyboardType="numeric"
+        placeholder={ph}
+        placeholderTextColor={C.textMut}
+      />
+      <TouchableOpacity onPress={() => dec(k)} style={s.arrowBtn}>
+        <Text style={[s.arrowTxt, { color: C.textMut }]}>▼</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
-    <View style={[s.dateBox, { backgroundColor: C.input, borderColor: C.border }, compact && { paddingVertical: 3 }]}>
-      <F v={fields.y} k="y" w={compact ? 52 : 60} ph="YYYY" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>/</Text>
-      <F v={fields.m} k="m" ph="MM" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>/</Text>
-      <F v={fields.d} k="d" ph="DD" />
-      <Text style={[s.dateSep, { width: 8, color: C.textMut }]}> </Text>
-      <F v={fields.h} k="h" ph="HH" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>:</Text>
-      <F v={fields.n} k="n" ph="MM" />
-      <Text style={[s.dateSep, { color: C.textMut }]}>:</Text>
-      <F v={fields.s} k="s" ph="SS" />
-      <TouchableOpacity
-        accessibilityLabel="نوع تاریخ"
-        style={[s.typeBtn, { backgroundColor: C.border }]}
-        onPress={() => {
-          const next = type === 'jalali' ? 'gregorian' : type === 'gregorian' ? 'hijri' : 'jalali';
-          setType(next);
-        }}
-      >
-        <Text style={[s.typeBtnTxt, { color: C.text }]}>
-          {type === 'jalali' ? 'شمسی' : type === 'gregorian' ? 'میلادی' : 'قمری'}
-        </Text>
-      </TouchableOpacity>
-    </View>
+    <>
+      <View style={[s.dateBox, { backgroundColor: C.input, borderColor: C.border }, compact && { paddingVertical: 1 }]}>
+        {renderField('y', compact ? 44 : 52, 'YYYY', 4)}
+        <Text style={[s.dateSep, { color: C.textMut }]}>/</Text>
+        {renderField('m', 30, 'MM', 2)}
+        <Text style={[s.dateSep, { color: C.textMut }]}>/</Text>
+        {renderField('d', 30, 'DD', 2)}
+        <Text style={[s.dateSep, { width: 4, color: C.textMut }]}> </Text>
+        {renderField('h', 30, 'HH', 2)}
+        <Text style={[s.dateSep, { color: C.textMut }]}>:</Text>
+        {renderField('n', 30, 'MM', 2)}
+        <Text style={[s.dateSep, { color: C.textMut }]}>:</Text>
+        {renderField('s', 30, 'SS', 2)}
+
+        <TouchableOpacity accessibilityLabel="تغییر تقویم" style={s.typeBtn} onPress={() => setShowPicker(true)}>
+          <Text style={s.typeBtnTxt}>{CAL_LABELS[type]} ▼</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Modal transparent visible={showPicker} onRequestClose={() => setShowPicker(false)} animationType="fade">
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowPicker(false)}>
+          <View style={{ backgroundColor: C.card, borderRadius: 14, width: 260, padding: 6, borderWidth: 2, borderColor: '#d4af37' }}>
+            <Text style={{ color: C.text, fontSize: 14, fontWeight: 'bold', textAlign: 'right', padding: 12, borderBottomWidth: 1, borderBottomColor: C.border }}>انتخاب تقویم</Text>
+            {(['jalali', 'gregorian', 'hijri'] as const).map((opt) => (
+              <TouchableOpacity key={opt} onPress={() => { setType(opt); setShowPicker(false); }} style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: type === opt ? 'rgba(124,58,237,0.15)' : 'transparent' }}>
+                <Text style={{ color: type === opt ? '#7c3aed' : C.text, fontSize: 15, textAlign: 'right', fontWeight: type === opt ? 'bold' : 'normal' }}>
+                  {type === opt ? '✓ ' : ''}{CAL_LABELS[opt]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 }
 

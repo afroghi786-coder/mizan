@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // LocalBotScreen.tsx — ربات محلی (آفلاین)
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -214,7 +215,7 @@ export default function LocalBotScreen({ showToast, onExit }: any) {
                             {isDep ? '➕' : '➖'} {(Number(t.amount) || 0).toLocaleString('en-US')}
                           </Text>
                           <Text style={s.txDesc}>{t.description || ''}</Text>
-                          <Text style={s.txDate}>{t.date ? new Date(t.date).toLocaleDateString('fa-IR') : ''}</Text>
+                          <Text style={s.txDate}>{t.date ? displayDateOnly(t.date) : ''}</Text>
                         </View>
                       );
                     })}
@@ -246,7 +247,7 @@ export default function LocalBotScreen({ showToast, onExit }: any) {
               <View>
                 <Text style={s.pName}>فاکتور {panel.invoice.invoice}</Text>
                 <Text style={s.pSub}>👤 {panel.invoice.name}</Text>
-                <Text style={s.pSub}>📅 {panel.invoice.date ? new Date(panel.invoice.date).toLocaleDateString('fa-IR') : ''}</Text>
+                <Text style={s.pSub}>📅 {panel.invoice.date ? displayDateOnly(panel.invoice.date) : ''}</Text>
                 <View style={s.balBox}>
                   <Text style={s.balLbl}>جمع کل</Text>
                   <Text style={s.balNum}>{(Number(panel.invoice.total) || 0).toLocaleString('en-US')}</Text>

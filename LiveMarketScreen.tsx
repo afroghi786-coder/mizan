@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // LiveMarketScreen.tsx — بازار عمومی صرافان
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Vibration, View, Text, ScrollView, TouchableOpacity, Modal, TextInput, StyleSheet, ActivityIndicator, Switch } from 'react-native';
@@ -1500,7 +1501,7 @@ const openChatWith = async (roomId: string, peerEmail: string, peerName: string,
                     {msg}
                   </Text>
                   <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'right', marginTop: 4 }}>
-                    {n.created_at ? new Date(n.created_at).toLocaleString('fa-IR') : ''}
+                    {n.created_at ? displayDate(n.created_at) : ''}
                   </Text>
                 {(() => {
                         const p = n.payload || {};
@@ -2410,7 +2411,7 @@ onPress={async () => {
                     <Text style={s.cardAmt}>{FLAG[item.currency] || '💱'} {fmt(item.amount)} {item.currency}</Text>
                     <Text style={s.cardRow}>💹 نرخ: {fmt(item.rate, 4)}</Text>
                     <Text style={{ color: '#94a3b8', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
-                      {item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}
+                      {item.created_at ? displayDate(item.created_at) : ''}
                     </Text>
                   </View>
                 );
@@ -2421,7 +2422,7 @@ onPress={async () => {
                     <Text style={s.cardAmt}>{FLAG[item.currency] || '💱'} {fmt(item.amount)} {item.currency} → {NET_CITIES[item.target_city] || item.target_city}</Text>
                     <Text style={s.cardRow}>👤 {item.beneficiary_name || item.beneficiaryName}</Text>
                     <Text style={{ color: '#94a3b8', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
-                      {item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}
+                      {item.created_at ? displayDate(item.created_at) : ''}
                     </Text>
                   </View>
                 );

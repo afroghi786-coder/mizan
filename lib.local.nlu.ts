@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // lib.local.nlu.ts — فهم زبان محلی (بدون AI ابری)
 export function norm(s: string): string {
   return String(s || '')

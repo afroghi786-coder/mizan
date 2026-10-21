@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // lib.manual.ts — دستیار هوشمند ورود دستی (آفلاین)
 import AsyncStorage from './lib.storage';
 

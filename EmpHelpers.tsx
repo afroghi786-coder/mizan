@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // EmpHelpers.tsx — فیش حقوقی و خروجی‌ها
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import * as Print from 'expo-print';

@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // lib.learning.intents.ts — لیست intent های قابل آموزش
 export const LEARNABLE_INTENTS = [
   { id: 'open_box', label: '📦 باز کردن صندوق', example: 'صندوق احمد' },

@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // lib.events.ts — Event bus سراسری (وب + موبایل)
 const _listeners: Set<Function> = new Set();
 

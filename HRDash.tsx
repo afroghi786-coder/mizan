@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // HRDash.tsx — داشبورد حرفه‌ای منابع انسانی
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 

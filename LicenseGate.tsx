@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // LicenseGate.tsx
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
@@ -48,7 +49,7 @@ export default function LicenseGate({ children, showToast }: any) {
 
           {info.expiresAt ? (
             <Text style={s.date}>
-              📅 تاریخ انقضا: {new Date(info.expiresAt).toLocaleDateString('fa-IR')}
+              📅 تاریخ انقضا: {displayDateOnly(info.expiresAt)}
             </Text>
           ) : null}
 

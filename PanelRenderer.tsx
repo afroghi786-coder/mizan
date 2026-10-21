@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // PanelRenderer.tsx — نمایش‌دهنده پنل‌ها توی اتاق ربات
 import React, { useState } from 'react';
 import {
@@ -125,7 +126,7 @@ export default function PanelRenderer({ panel, onAction, onItemClick, onClose }:
                   </Text>
                   <Text style={s.txDesc} numberOfLines={1}>{tx.description || ''}</Text>
                   <Text style={s.txDate}>
-                    {tx.date ? new Date(tx.date).toLocaleDateString('fa-IR') : ''}
+                    {tx.date ? displayDateOnly(tx.date) : ''}
                   </Text>
                 </View>
               );
@@ -272,7 +273,7 @@ export default function PanelRenderer({ panel, onAction, onItemClick, onClose }:
         <View style={s.subInfo}>
           <Text style={s.subTxt}>👤 {inv.name}</Text>
           {inv.phone ? <Text style={s.subTxt}>📞 {inv.phone}</Text> : null}
-          {inv.date ? <Text style={s.subTxt}>📅 {new Date(inv.date).toLocaleDateString('fa-IR')}</Text> : null}
+          {inv.date ? <Text style={s.subTxt}>📅 {displayDateOnly(inv.date)}</Text> : null}
         </View>
         
         <View style={s.balBox}>

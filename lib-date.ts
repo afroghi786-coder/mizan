@@ -84,3 +84,8 @@ export function parseDateAny(v: string | Date | null | undefined): Date | null {
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
+
+
+export function displayDateOnly(input: any, type?: CalType): string {
+  return displayDate(input, type).split(' ')[0];
+}

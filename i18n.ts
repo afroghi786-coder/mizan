@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // i18n.ts — سیستم چندزبانه با دیکشنری کامل
 import AsyncStorage from './lib.storage';
 import { clRaw } from './customLabels';

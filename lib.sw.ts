@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // lib.sw.ts — Service Worker (فقط برای PWA — به‌صورت دستی فعال شود)
 // ⚠️ در WebView APK قابل استفاده نیست
 export async function registerSW(): Promise<any> {

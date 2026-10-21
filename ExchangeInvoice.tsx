@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // ExchangeInvoice.tsx — فاکتور A5 صرافی
 import { useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';

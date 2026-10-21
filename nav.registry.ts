@@ -9,6 +9,7 @@ export const NAV: NavItem[] = [
   { key: 'expenses', label: { fa: 'هزینه‌ها', ps: 'لګښتونه' }, aliases: ['هزینه', 'هزینه‌ها'], icon: '💸', group: 'main' },
 
   { key: 'mgr', label: { fa: 'مدیریت', ps: 'مدیریت' }, aliases: ['مدیریت', 'مدیر'], icon: '📋', group: 'dashboard' },
+  { key: 'print', label: { fa: 'پرینت حساب', ps: 'پرینت حساب' }, aliases: ['پرینت'], icon: '🖨️', group: 'dashboard' },
   { key: 'profit', label: { fa: 'سود', ps: 'ګټه' }, aliases: ['سود', 'درآمد'], icon: '📈', group: 'dashboard' },
   { key: 'inventory', label: { fa: 'انبار', ps: 'ګدام' }, aliases: ['انبار', 'موجودی'], icon: '📦', group: 'dashboard' },
   { key: 'bankMatch', label: { fa: 'بانک و پیامک', ps: 'بانک' }, aliases: ['بانک', 'پیامک'], icon: '🏦', group: 'dashboard' },

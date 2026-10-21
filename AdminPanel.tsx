@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // AdminPanel.tsx — پنل ادمین کامل با ۳ تب
 import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Modal } from 'react-native';;
@@ -665,7 +666,7 @@ export default function AdminPanel({ showToast }: any) {
                     {isPending ? '⏳ در انتظار' : isApproved ? '✅ تأیید شده' : '❌ رد شده'}
                   </Text>
                   <Text style={s.reqDate}>
-                    {r.requested_at ? new Date(r.requested_at).toLocaleDateString('fa-IR') : ''}
+                    {r.requested_at ? displayDateOnly(r.requested_at) : ''}
                   </Text>
                 </View>
 

@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 import { registerRootComponent } from 'expo';
 
 import App from './App';

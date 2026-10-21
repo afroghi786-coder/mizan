@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, ActivityIndicator } from 'react-native';
 
@@ -244,7 +245,7 @@ export default function ExchangeBell({ showToast, onBack }: any) {
                   <View key={nt.id || i} style={{ backgroundColor: isUnread ? '#1e3a5f' : '#0f172a', padding: 12, borderRadius: 10, marginBottom: 10, borderRightWidth: 4, borderRightColor: isUnread ? '#f59e0b' : '#334155' }}>
                     <Text style={{ color: '#fff', fontSize: 13, textAlign: 'right', fontWeight: isUnread ? 'bold' : 'normal', lineHeight: 20 }}>{getInfo(nt)}</Text>
                     <Text style={{ color: '#94a3b8', fontSize: 10, textAlign: 'right', marginTop: 4 }}>
-                      {nt.created_at ? new Date(nt.created_at).toLocaleString('fa-IR') : ''}
+                      {nt.created_at ? displayDate(nt.created_at) : ''}
                     </Text>
 
                     <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>

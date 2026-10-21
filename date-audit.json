@@ -1,0 +1,415 @@
+{
+  "dateFields": [
+    {
+      "file": "App.tsx",
+      "ln": 33,
+      "line": "import DateField from './lib.datefield';"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2001,
+      "line": "<DateField value={payDate} onChange={setPayDate} compact defaultToToday />"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 3025,
+      "line": "<View style={{ width: 340, paddingHorizontal: 3 }}><DateField value={r.depositDate} onChange={(v: string) => updRow(i, 'depositDate', v)} compact /></View>"
+    },
+    {
+      "file": "BoxesScreen.tsx",
+      "ln": 3,
+      "line": "import DateField from './lib.datefield';;"
+    },
+    {
+      "file": "BoxesScreen.tsx",
+      "ln": 428,
+      "line": "<DateField value={boxForm.opening_date || toStorageDateFull(new Date())} onChange={(v: string) => setBoxForm((f: any) => ({ ...f, opening_date: v }))} compact defaultToToday />"
+    },
+    {
+      "file": "BoxesScreen.tsx",
+      "ln": 522,
+      "line": "<DateField value={transferForm.date || toStorageDateFull(new Date())} onChange={(v: string) => setTransferForm((f: any) => ({ ...f, date: v }))} compact defaultToToday />"
+    },
+    {
+      "file": "ExchangeScreen.tsx",
+      "ln": 838,
+      "line": "<DateField value={fDate} onChange={setFDate} defaultToToday />"
+    },
+    {
+      "file": "ExchangeScreen.tsx",
+      "ln": 1802,
+      "line": "<DateField value={hawForm.date} onChange={(v: string) => setHawForm({ ...hawForm, date: v })} compact defaultToToday />"
+    },
+    {
+      "file": "ExchangeScreen.tsx",
+      "ln": 1999,
+      "line": "<DateField value={trForm.date} onChange={(v: string) => setTrForm({ ...trForm, date: v })} compact defaultToToday />"
+    },
+    {
+      "file": "ExchangeScreen.tsx",
+      "ln": 2046,
+      "line": "<DateField value={ckForm.due_date} onChange={(v: string) => setCkForm({ ...ckForm, due_date: v })} compact defaultToToday />"
+    }
+  ],
+  "dateInputs": [
+    {
+      "file": "App.tsx",
+      "ln": 3021,
+      "line": "<View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType=\"numeric\" editable={!r._deleted} /></View>"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 3023,
+      "line": "<View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.payment || '')} onChangeText={(v) => updRow(i, 'payment', parseNum(v))} keyboardType=\"numeric\" editable={!r._deleted} /></View>"
+    },
+    {
+      "file": "BoxesScreen.tsx",
+      "ln": 288,
+      "line": "<TextInput style={s.inp} value={String(txForm.amount || '')} onChangeText={v => setTxForm((f: any) => ({ ...f, amount: v.replace(/[^\\d.-]/g, '') }))} keyboardType=\"numeric\" placeholder=\"0\" placeholderTextColor=\"#94a3b8\" />"
+    },
+    {
+      "file": "BoxesScreen.tsx",
+      "ln": 290,
+      "line": "<TextInput style={s.inp} value={txForm.date || ''} onChangeText={v => setTxForm((f: any) => ({ ...f, date: v }))} placeholderTextColor=\"#94a3b8\" />"
+    },
+    {
+      "file": "BoxesScreen.tsx",
+      "ln": 426,
+      "line": "<TextInput style={s.inp} value={String(boxForm.opening || '')} onChangeText={v => setBoxForm((f: any) => ({ ...f, opening: v.replace(/[^\\d.-]/g, '') }))} keyboardType=\"numeric\" placeholder=\"0\" placeholderTextColor=\"#94a3b8\" />"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 218,
+      "line": "<TextInput accessibilityLabel=\"1405/08/15\" style={s.inp} value={form.start_date} onChangeText={v => setForm({ ...form, start_date: v })} placeholder=\"1405/08/15\" />"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 340,
+      "line": "<TextInput style={s.inp} value={form.date} onChangeText={v => setForm({ ...form, date: v })} />"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 544,
+      "line": "<View style={{ flex: 1 }}><Text style={s.lbl}>مبلغ پرداخت</Text><TextInput style={s.inp} value={String(form.payment)} onChangeText={v => upd('payment', v)} keyboardType=\"numeric\" /></View>"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 545,
+      "line": "<View style={{ flex: 1 }}><Text style={s.lbl}>تاریخ پرداخت</Text><TextInput style={s.inp} value={form.payment_date} onChangeText={v => upd('payment_date', v)} /></View>"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 650,
+      "line": "<TextInput style={s.inp} value={String(form.installments)} onChangeText={v => setForm({ ...form, installments: v.replace(/[^\\d]/g, '') })} keyboardType=\"numeric\" />"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 652,
+      "line": "<TextInput style={s.inp} value={String(form.monthly_amount)} onChangeText={v => setForm({ ...form, monthly_amount: v.replace(/[^\\d]/g, '') })} keyboardType=\"numeric\" />"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 654,
+      "line": "<TextInput style={s.inp} value={form.date} onChangeText={v => setForm({ ...form, date: v })} />"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 741,
+      "line": "<View style={{ flex: 1 }}><Text style={s.lbl}>از تاریخ</Text><TextInput style={s.inp} value={form.from_date} onChangeText={v => setForm({ ...form, from_date: v })} /></View>"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 742,
+      "line": "<View style={{ flex: 1 }}><Text style={s.lbl}>تا تاریخ</Text><TextInput style={s.inp} value={form.to_date} onChangeText={v => setForm({ ...form, to_date: v })} /></View>"
+    },
+    {
+      "file": "ExchangeScreen.tsx",
+      "ln": 113,
+      "line": "<TextInput style={[s.dateInp, { width: w || 44 }, compact && { fontSize: 11 }]} value={v} onChangeText={(t) => apply({ ...fields, [k]: t.replace(/\\D/g, '').slice(0, k === 'y' ? 4 : 2) })} keyboardType=\"numeric\" placeholder={ph} placeholderTextColor=\"#94a3b8\" />"
+    },
+    {
+      "file": "ExchangeScreen.tsx",
+      "ln": 835,
+      "line": "<TextInput style={s.inp} value={fInvoice} onChangeText={setFInvoice} editable={!editId} />"
+    },
+    {
+      "file": "ExchangeScreen.tsx",
+      "ln": 1995,
+      "line": "<TextInput style={s.inp} value={String(trForm.amount)} onChangeText={v => setTrForm({ ...trForm, amount: v.replace(/[^\\d]/g, '') })} keyboardType=\"numeric\" />"
+    },
+    {
+      "file": "ExchangeScreen.tsx",
+      "ln": 1997,
+      "line": "<TextInput style={s.inp} value={String(trForm.rate)} onChangeText={v => setTrForm({ ...trForm, rate: v })} keyboardType=\"numeric\" />"
+    },
+    {
+      "file": "ExpensesScreen.tsx",
+      "ln": 269,
+      "line": "<TextInput accessibilityLabel=\"مثلاً: شرکت برق، آقای احمدی\" style={s.inp} value={form.receiver_name || ''} onChangeText={v => setForm({ ...form, receiver_name: v })} placeholder=\"مثلاً: شرکت برق، آقای احمدی\" />"
+    },
+    {
+      "file": "ExpensesScreen.tsx",
+      "ln": 273,
+      "line": "<TextInput accessibilityLabel=\"1405/08/15\" style={[s.dateInp, { flex: 2 }]} value={form.payment_date || ''} onChangeText={v => setForm({ ...form, payment_date: v })} placeholder=\"1405/08/15\" />"
+    },
+    {
+      "file": "ExpensesScreen.tsx",
+      "ln": 275,
+      "line": "<TextInput accessibilityLabel=\"HH\" style={[s.dateInp, { flex: 1, textAlign: 'center' }]} value={form.payment_time_h || ''} onChangeText={v => setForm({ ...form, payment_time_h: v.replace(/[^\\d]/g, '').slice(0, 2) })} placeholder=\"HH\" maxLength={2} />"
+    },
+    {
+      "file": "ExpensesScreen.tsx",
+      "ln": 277,
+      "line": "<TextInput accessibilityLabel=\"MM\" style={[s.dateInp, { flex: 1, textAlign: 'center' }]} value={form.payment_time_m || ''} onChangeText={v => setForm({ ...form, payment_time_m: v.replace(/[^\\d]/g, '').slice(0, 2) })} placeholder=\"MM\" maxLength={2} />"
+    }
+  ],
+  "displays": [
+    {
+      "file": "AdminPanel.tsx",
+      "ln": 668,
+      "line": "{r.requested_at ? new Date(r.requested_at).toLocaleDateString('fa-IR') : ''}"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 1318,
+      "line": "timeString: displayDate(r.date_reg),"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 1351,
+      "line": "timeString: displayDate(r.date_reg),"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2136,
+      "line": "timeString: displayDate(new Date()),"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2158,
+      "line": "'#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice,"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2163,
+      "line": "'تاریخ واریز': displayDateOnly(r.depositDate), 'باربری': r.shipping, 'شرح': r.desc,"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2171,
+      "line": "'#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'فاکتور دستی': r.manualInv,"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2176,
+      "line": "'تاریخ واریز': displayDateOnly(r.depositDate), 'شرح': r.desc,"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2184,
+      "line": "'#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور فروش': r.invoice,"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2187,
+      "line": "'تاریخ واریز': displayDateOnly(r.depositDate),"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2268,
+      "line": "<Text style={{ width: 75, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{displayDateOnly(r.date)}</Text>"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2280,
+      "line": "<Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.depositDate ? displayDateOnly(r.depositDate) : '—'}</Text>"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2322,
+      "line": "<Text style={{ width: 75, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{displayDateOnly(r.date)}</Text>"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2334,
+      "line": "<Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.depositDate ? displayDateOnly(r.depositDate) : '—'}</Text>"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2370,
+      "line": "<Text style={{ width: 75, color: '#1e3a5f', fontSize: 9, textAlign: 'center' }}>{displayDateOnly(r.date)}</Text>"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 2378,
+      "line": "<Text style={{ width: 80, color: '#475569', fontSize: 9, textAlign: 'center' }}>{r.depositDate ? displayDateOnly(r.depositDate) : '—'}</Text>"
+    },
+    {
+      "file": "App.tsx",
+      "ln": 3127,
+      "line": "<Text style={[s.tdCell, { width: 130, color: C.text, fontSize: 11 }]}>{displayDateOnly(r.date)}</Text>"
+    },
+    {
+      "file": "BoxesScreen.tsx",
+      "ln": 132,
+      "line": "description: txForm.description || '', date: txForm.date || new Date().toLocaleDateString('fa-IR'),"
+    },
+    {
+      "file": "BoxesScreen.tsx",
+      "ln": 162,
+      "line": "date: transferForm.date || new Date().toLocaleDateString('fa-IR'),"
+    },
+    {
+      "file": "EmpHelpers.tsx",
+      "ln": 34,
+      "line": "<div>📆 صدور: ${new Date().toLocaleDateString('fa-IR')}</div>"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 24,
+      "line": "const today = () => new Date().toLocaleDateString('fa-IR');"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 376,
+      "line": "month: new Date().toLocaleDateString('fa-IR').slice(0, 7),"
+    },
+    {
+      "file": "EmployeesScreen.tsx",
+      "ln": 762,
+      "line": "const [month, setMonth] = useState(new Date().toLocaleDateString('fa-IR').slice(0, 7));"
+    },
+    {
+      "file": "ExchangeBell.tsx",
+      "ln": 247,
+      "line": "{nt.created_at ? new Date(nt.created_at).toLocaleString('fa-IR') : ''}"
+    },
+    {
+      "file": "ExpensesScreen.tsx",
+      "ln": 17,
+      "line": "const today = () => new Date().toLocaleDateString('fa-IR');"
+    },
+    {
+      "file": "HRDash.tsx",
+      "ln": 9,
+      "line": "const todayStr = t.toLocaleDateString('fa-IR');"
+    },
+    {
+      "file": "HRDash.tsx",
+      "ln": 31,
+      "line": "const ds = d.toLocaleDateString('fa-IR');"
+    },
+    {
+      "file": "lib-date.ts",
+      "ln": 57,
+      "line": "export function displayDate(input: string | Date | null, type: CalType = 'jalali'): string {"
+    },
+    {
+      "file": "lib.fx.trade.ts",
+      "ln": 50,
+      "line": "const invoice_number = item.invoice_number || ('FX-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + String(all.length + 1).padStart(3, '0'));"
+    },
+    {
+      "file": "lib.manual.ts",
+      "ln": 787,
+      "line": "const d = new Date(r.timestamp || Date.now()).toLocaleString('fa-IR');"
+    },
+    {
+      "file": "lib.offline.ts",
+      "ln": 551,
+      "line": "date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),"
+    },
+    {
+      "file": "lib.offline.ts",
+      "ln": 580,
+      "line": "date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),"
+    },
+    {
+      "file": "lib.ts",
+      "ln": 191,
+      "line": "displayDate(v, t).split(' ')[0] || '';"
+    },
+    {
+      "file": "LicenseGate.tsx",
+      "ln": 51,
+      "line": "📅 تاریخ انقضا: {new Date(info.expiresAt).toLocaleDateString('fa-IR')}"
+    },
+    {
+      "file": "LicenseNotification.tsx",
+      "ln": 87,
+      "line": "{expiresAt ? displayDateOnly(expiresAt) : '—'}"
+    },
+    {
+      "file": "LiveMarketScreen.tsx",
+      "ln": 1108,
+      "line": "<Text style={s.dashDate}>{now.toLocaleDateString('fa-IR')}</Text>"
+    },
+    {
+      "file": "LiveMarketScreen.tsx",
+      "ln": 1503,
+      "line": "{n.created_at ? new Date(n.created_at).toLocaleString('fa-IR') : ''}"
+    },
+    {
+      "file": "LiveMarketScreen.tsx",
+      "ln": 2413,
+      "line": "{item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}"
+    },
+    {
+      "file": "LiveMarketScreen.tsx",
+      "ln": 2424,
+      "line": "{item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}"
+    },
+    {
+      "file": "LocalBotScreen.tsx",
+      "ln": 217,
+      "line": "<Text style={s.txDate}>{t.date ? new Date(t.date).toLocaleDateString('fa-IR') : ''}</Text>"
+    },
+    {
+      "file": "LocalBotScreen.tsx",
+      "ln": 249,
+      "line": "<Text style={s.pSub}>📅 {panel.invoice.date ? new Date(panel.invoice.date).toLocaleDateString('fa-IR') : ''}</Text>"
+    },
+    {
+      "file": "ManualEntryScreen.tsx",
+      "ln": 323,
+      "line": "return d.toLocaleDateString('fa-IR') + ' ' + d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });"
+    },
+    {
+      "file": "PanelRenderer.tsx",
+      "ln": 128,
+      "line": "{tx.date ? new Date(tx.date).toLocaleDateString('fa-IR') : ''}"
+    },
+    {
+      "file": "PanelRenderer.tsx",
+      "ln": 275,
+      "line": "{inv.date ? <Text style={s.subTxt}>📅 {new Date(inv.date).toLocaleDateString('fa-IR')}</Text> : null}"
+    },
+    {
+      "file": "SmsMatchScreen.tsx",
+      "ln": 82,
+      "line": "return d.toLocaleDateString('fa-IR') + ' ' + d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });"
+    }
+  ],
+  "libFunctions": [
+    {
+      "file": "lib.ts",
+      "ln": 138,
+      "line": "export async function saveCalType(t: CalType) {"
+    },
+    {
+      "file": "lib.ts",
+      "ln": 146,
+      "line": "export function parseDateAny(v: any): Date | null {"
+    },
+    {
+      "file": "lib.ts",
+      "ln": 161,
+      "line": "export function toStorageDate(d: any): string {"
+    },
+    {
+      "file": "lib.ts",
+      "ln": 166,
+      "line": "export function toStorageDateFull(d: any): string {"
+    }
+  ]
+}

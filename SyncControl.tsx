@@ -1,3 +1,4 @@
+import { displayDate, displayDateOnly } from './lib-date';
 // SyncControl.tsx — کلید Online/Offline + مودال sync
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ActivityIndicator } from 'react-native';

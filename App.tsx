@@ -872,7 +872,19 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
             {isLocked(t.key) && <Text style={s.lock}>🔒</Text>}
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      
+            <TouchableOpacity 
+              key="plus_tab" 
+              accessibilityLabel="ایجاد سریع" 
+              accessibilityRole="button" 
+              onPress={() => setPlus(true)} 
+              activeOpacity={0.7} 
+              style={[s.tab, { backgroundColor: '#10b981', borderColor: '#d4af37' }]}
+            >
+              <Text style={s.tabIcon}>➕</Text>
+              <Text style={[s.tabLbl, { color: '#fff', fontWeight: 'bold' }]}>ایجاد</Text>
+            </TouchableOpacity>
+          </ScrollView>
       )}
       <View key={`tab-${tab}-${langTick || 0}`} style={{ flex: 1 }}>
       {tab === 'dashboard' && <DashboardScreen lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabKey); setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); } else { requestTab(k); } }} />}
@@ -895,8 +907,12 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
       {tab === 'employees' && <EmployeesScreen showToast={showToast} />}
-      <TouchableOpacity activeOpacity={0.85} onPress={() => setPlus(true)} style={{ position: 'absolute', bottom: 30, alignSelf: 'center', width: 56, height: 56, borderRadius: 28, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center', elevation: 10, zIndex: 999, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
-        <Text style={{ color: '#fff', fontSize: 30, lineHeight: 34 }}>＋</Text>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => setPlus(true)}
+        style={{ display: 'none' }}
+      >
+        <Text style={{ color: '#fff', fontSize: 32, fontWeight: 'bold', lineHeight: 34 }}>+</Text>
       </TouchableOpacity>
       <PlusMenu visible={plus} onClose={() => setPlus(false)} lang={curLang === 'ps' ? 'ps' : 'fa'} onPick={(n: any) => { 
           setPlus(false); 
@@ -948,6 +964,9 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
         }}
         showToast={showToast}
       />
+      
+      
+      {/* دکمه برگشت صرافی (کپی از بازار عمومی) */}
       {tab === 'exchange' && (
         <TouchableOpacity
           onPress={() => setTab('order')}
@@ -956,6 +975,8 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
           <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', lineHeight: 30 }}>←</Text>
         </TouchableOpacity>
       )}
+
+
       {tab === 'publicMarket' && (
         <TouchableOpacity
           onPress={() => setTab('order')}

@@ -2,7 +2,7 @@
 // ربات از هر اتفاقی توی اپ باخبر می‌شه
 
 import AsyncStorage from './lib.storage';
-
+import { getCurrencySync } from './lib.currency';
 // ═══════════════════════════════════════════
 // Event Types
 // ═══════════════════════════════════════════
@@ -86,7 +86,7 @@ export function emit(type: AppEventType, data: any = {}, userMessage?: string): 
 // ═══════════════════════════════════════════
 function getEventMessage(type: AppEventType, d: any): string {
   switch (type) {
-    case 'invoice_created': return `🧾 فاکتور ${d.invoice || d.code || ''} ثبت شد (${(d.amount || 0).toLocaleString?.() || d.amount} افغانی)`;
+    case 'invoice_created': return `🧾 فاکتور ${d.invoice || d.code || ''} ثبت شد (${(d.amount || 0).toLocaleString?.() || d.amount} ${getCurrencySync().label || 'افغانی'})`;
     case 'invoice_paid': return `💰 فاکتور ${d.invoice || ''} پرداخت شد`;
     case 'invoice_deleted': return `🗑 فاکتور ${d.invoice || ''} حذف شد`;
     case 'purchase_created': return `🛍️ خرید ثبت شد`;

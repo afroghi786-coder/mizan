@@ -5,7 +5,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { captureRef } from 'react-native-view-shot';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-
+import { buildStandardHtml, shareHtmlAsPdf, exportExcel, numToWords, currencyLabel, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
 const fmt = (n: any) => (Number(n) || 0).toLocaleString('en-US');
 
 export default function ExchangeInvoice({ invoice, onBack, onNew, showToast }: any) {
@@ -15,6 +15,13 @@ export default function ExchangeInvoice({ invoice, onBack, onNew, showToast }: a
   const customer = invoice.customer || {};
   const buyerSummary = invoice.buyerSummary || { count: 0, totalFrom: 0, totalTo: 0, profit: 0 };
   const customerSummary = invoice.customerSummary || { count: 0, totalFrom: 0, totalTo: 0, profit: 0 };
+  // === Standard fields (world-class receipt) ===
+  const _serial = 'FX-' + String(t.date || '').replace(/[^0-9]/g, '').slice(0, 8) + '-' + String(t.invoice_number || '—');
+  const _tracking = 'TRK-' + String(t.invoice_number || Date.now()).replace(/[^A-Z0-9]/gi, '').slice(-8).toUpperCase();
+  const _fromCurLabel = currencyLabel(t.from_currency);
+  const _toCurLabel = currencyLabel(t.to_currency);
+  const _amountInWords = numToWords(Number(t.to_qty) || 0) + ' ' + _toCurLabel;
+  const _settlementStatus = t.payment_method === 'cash' ? '✅ نقدی — تسویه شده' : '🏦 بانکی — تسویه شده';
 
   const capture = async (mode: 'share' | 'print') => {
     try {
@@ -27,77 +34,80 @@ export default function ExchangeInvoice({ invoice, onBack, onNew, showToast }: a
 
   const exportPDF = async () => {
     try {
-      const html = `
-<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
-<style>
-  @page { size: A5 portrait; margin: 8mm; }
-  body { font-family: Tahoma; direction: rtl; color: #0f2438; font-size: 11px; }
-  .head { display: flex; justify-content: space-between; border-bottom: 3px double #0f2438; padding-bottom: 6px; margin-bottom: 10px; }
-  .brand { font-size: 16px; font-weight: bold; }
-  .slogan { font-size: 9px; color: #1e3a5f; }
-  .title { text-align: center; font-size: 14px; font-weight: bold; background: #065f46; color: #fff; padding: 6px; margin: 10px 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 8px; }
-  td, th { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: right; }
-  th { background: #f1f5f9; font-weight: bold; width: 25%; }
-  .green { color: #059669; font-weight: bold; }
-  .red { color: #dc2626; font-weight: bold; }
-  .sum { background: #fef3c7; }
-  .net { background: #d1fae5; font-size: 12px; text-align: center; font-weight: bold; padding: 8px; margin: 8px 0; border: 2px solid #059669; }
-  .footer { margin-top: 12px; padding-top: 6px; border-top: 1px solid #d4af37; text-align: center; font-size: 9px; }
-</style></head><body>
+      var _p = [];
+      _p.push('<div class="info"><b>🆔 شماره سند:</b> ' + _serial + ' &nbsp;|&nbsp; <b>🔑 کد رهگیری:</b> ' + _tracking + '<br><b>📅 تاریخ:</b> ' + (displayDate(t.date) || t.date || '—') + ' ' + (t.payment_time || '') + ' &nbsp;|&nbsp; <b>🧾 فاکتور:</b> ' + (t.invoice_number || '—') + '</div>');
 
-<div class="head">
-  <div><div class="brand">⚖️ میزان</div><div class="slogan">صرافی — حساب‌ها دقیق، معاملات امن</div></div>
-  <div style="text-align:left;">
-    <div>📅 ${t.date || ''} ${t.payment_time || ''}</div>
-    <div>🧾 ${t.invoice_number || ''}</div>
-  </div>
-</div>
+      _p.push('<div class="title">🏢 خریدار و مشتری</div>');
+      _p.push('<table>');
+      _p.push('<tr><th>🏢 خریدار</th><td>' + (buyer.name || '—') + '</td><th>📞 تلفن</th><td>' + (buyer.phone || '—') + '</td></tr>');
+      _p.push('<tr><th>🆔 کد خریدار</th><td>' + (buyer.code || '—') + '</td><th>🏦 بانک</th><td>' + (t.bank || '—') + '</td></tr>');
+      _p.push('<tr><th>👤 مشتری</th><td>' + (customer.name || '—') + '</td><th>📞 تلفن</th><td>' + (customer.phone || '—') + '</td></tr>');
+      _p.push('<tr><th>🆔 کد مشتری</th><td>' + (customer.code || '—') + '</td><th>👤 صاحب حساب</th><td>' + (t.holder_name || '—') + '</td></tr>');
+      _p.push('</table>');
 
-<div class="title">رسید معامله ارز ${t.trade_type === 'buy' ? '(خرید)' : '(فروش)'}</div>
+      _p.push('<div class="title">💱 جزئیات معامله</div>');
+      _p.push('<table>');
+      _p.push('<tr><th>📤 از ارز</th><td class="red">' + fmt(t.from_qty) + ' ' + _fromCurLabel + '</td><th>📥 به ارز</th><td class="green">' + fmt(t.to_qty) + ' ' + _toCurLabel + '</td></tr>');
+      _p.push('<tr><th>💹 نرخ تبدیل</th><td>' + fmt(t.rate) + '</td><th>💵 روش پرداخت</th><td>' + (t.payment_method === 'cash' ? 'نقدی' : 'بانکی') + '</td></tr>');
+      _p.push('</table>');
 
-<table>
-  <tr><th>🏢 خریدار</th><td>${buyer.name || '—'}</td><th>📞 تلفن</th><td>${buyer.phone || '—'}</td></tr>
-  <tr><th>🆔 کد خریدار</th><td>${buyer.code || '—'}</td><th>🏦 بانک</th><td>${t.bank || '—'}</td></tr>
-  <tr><th>👤 مشتری</th><td>${customer.name || '—'}</td><th>📞 تلفن</th><td>${customer.phone || '—'}</td></tr>
-  <tr><th>🆔 کد مشتری</th><td>${customer.code || '—'}</td><th>👤 صاحب حساب</th><td>${t.holder_name || '—'}</td></tr>
-</table>
+      if (buyerSummary.count > 0) {
+        _p.push('<div class="title">💰 خلاصه مالی خریدار</div>');
+        _p.push('<table>');
+        _p.push('<tr><th>📊 تعداد معاملات</th><td>' + fmt(buyerSummary.count) + '</td><th>📤 جمع مبالغ</th><td class="red">' + fmt(buyerSummary.totalFrom) + '</td></tr>');
+        _p.push('<tr><th>📥 جمع دریافتی</th><td class="green">' + fmt(buyerSummary.totalTo) + '</td><th>💰 سود</th><td class="green">' + fmt(buyerSummary.profit) + '</td></tr>');
+        _p.push('</table>');
+      }
+      if (customerSummary.count > 0) {
+        _p.push('<div class="title">💰 خلاصه مالی مشتری</div>');
+        _p.push('<table>');
+        _p.push('<tr><th>📊 تعداد معاملات</th><td>' + fmt(customerSummary.count) + '</td><th>📤 جمع مبالغ</th><td class="red">' + fmt(customerSummary.totalFrom) + '</td></tr>');
+        _p.push('<tr><th>📥 جمع دریافتی</th><td class="green">' + fmt(customerSummary.totalTo) + '</td><th>💰 سود</th><td class="green">' + fmt(customerSummary.profit) + '</td></tr>');
+        _p.push('</table>');
+      }
 
-<div class="title">💱 جزئیات معامله</div>
-<table>
-  <tr><th>📤 از ارز</th><td class="red">${fmt(t.from_qty)} ${t.from_currency}</td><th>📥 به ارز</th><td class="green">${fmt(t.to_qty)} ${t.to_currency}</td></tr>
-  <tr><th>💹 نرخ تبدیل</th><td>${fmt(t.rate)}</td><th>💵 روش پرداخت</th><td>${t.payment_method === 'cash' ? 'نقدی' : 'بانکی'}</td></tr>
-</table>
+      _p.push('<div class="net">🎯 این معامله — ' + fmt(t.from_qty) + ' ' + _fromCurLabel + ' ← ' + fmt(t.to_qty) + ' ' + _toCurLabel + '</div>');
+      _p.push('<div class="net-words">💵 مبلغ به حروف: ' + _amountInWords + '</div>');
+      _p.push('<table style="margin-top:6px"><tr><th>✅ وضعیت تسویه</th><td style="text-align:center;font-weight:bold;color:#065f46">' + _settlementStatus + '</td></tr></table>');
+      _p.push(mizanSignaturesHtml(['امضای خریدار', 'امضای مشتری', 'مهر شرکت']));
+      _p.push(mizanComputerNoteHtml());
 
-<div class="title">💰 خلاصه مالی خریدار</div>
-<table>
-  <tr><th>📊 تعداد معاملات با خریدار</th><td>${fmt(buyerSummary.count)}</td></tr>
-  <tr><th>📤 جمع مبالغ</th><td class="red">${fmt(buyerSummary.totalFrom)}</td></tr>
-  <tr><th>📥 جمع دریافتی</th><td class="green">${fmt(buyerSummary.totalTo)}</td></tr>
-  <tr class="sum"><th>💰 سود از این خریدار</th><td class="green">${fmt(buyerSummary.profit)}</td></tr>
-</table>
+      var html = buildStandardHtml('رسید معامله ارز ' + (t.trade_type === 'buy' ? '(خرید)' : '(فروش)'), _p.join(''), '🧾 ' + (t.invoice_number || ''));
+      html = html.replace('</head>', '<style>@page{size:A5;margin:8mm}</style></head>');
 
-<div class="title">💰 خلاصه مالی مشتری</div>
-<table>
-  <tr><th>📊 تعداد معاملات با مشتری</th><td>${fmt(customerSummary.count)}</td></tr>
-  <tr><th>📤 جمع مبالغ</th><td class="red">${fmt(customerSummary.totalFrom)}</td></tr>
-  <tr><th>📥 جمع دریافتی</th><td class="green">${fmt(customerSummary.totalTo)}</td></tr>
-  <tr class="sum"><th>💰 سود از این مشتری</th><td class="green">${fmt(customerSummary.profit)}</td></tr>
-</table>
-
-<div class="net">🎯 این معامله — ${fmt(t.from_qty)} ${t.from_currency} به ${fmt(t.to_qty)} ${t.to_currency}</div>
-
-<div class="footer">
-  📞 کفش تاج: ________________<br>
-  با تشکر از اعتماد شما 🙏
-</div>
-
-</body></html>`;
-      const { uri } = await Print.printToFileAsync({ html });
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
-      showToast('✅ PDF آماده شد');
+      var r = await shareHtmlAsPdf(html, 'fx-invoice-' + (t.invoice_number || Date.now()) + '.pdf');
+      showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+    } catch (e: any) { showToast(e.message, true); }
+  }
+  const exportExcelBtn = async () => {
+    try {
+      var _rows = [
+        { 'بخش': 'سند', 'عنوان': 'شماره سند', 'مقدار': _serial },
+        { 'بخش': 'سند', 'عنوان': 'کد رهگیری', 'مقدار': _tracking },
+        { 'بخش': 'سند', 'عنوان': 'تاریخ', 'مقدار': (displayDate(t.date) || t.date || '') },
+        { 'بخش': 'سند', 'عنوان': 'شماره فاکتور', 'مقدار': t.invoice_number || '' },
+        { 'بخش': 'خریدار', 'عنوان': 'نام', 'مقدار': buyer.name || '' },
+        { 'بخش': 'خریدار', 'عنوان': 'کد', 'مقدار': buyer.code || '' },
+        { 'بخش': 'خریدار', 'عنوان': 'تلفن', 'مقدار': buyer.phone || '' },
+        { 'بخش': 'مشتری', 'عنوان': 'نام', 'مقدار': customer.name || '' },
+        { 'بخش': 'مشتری', 'عنوان': 'کد', 'مقدار': customer.code || '' },
+        { 'بخش': 'مشتری', 'عنوان': 'تلفن', 'مقدار': customer.phone || '' },
+        { 'بخش': 'معامله', 'عنوان': 'از مقدار', 'مقدار': Number(t.from_qty) || 0 },
+        { 'بخش': 'معامله', 'عنوان': 'از ارز', 'مقدار': _fromCurLabel },
+        { 'بخش': 'معامله', 'عنوان': 'به مقدار', 'مقدار': Number(t.to_qty) || 0 },
+        { 'بخش': 'معامله', 'عنوان': 'به ارز', 'مقدار': _toCurLabel },
+        { 'بخش': 'معامله', 'عنوان': 'نرخ', 'مقدار': Number(t.rate) || 0 },
+        { 'بخش': 'معامله', 'عنوان': 'روش پرداخت', 'مقدار': t.payment_method === 'cash' ? 'نقدی' : 'بانکی' },
+        { 'بخش': 'معامله', 'عنوان': 'بانک', 'مقدار': t.bank || '' },
+        { 'بخش': 'معامله', 'عنوان': 'صاحب حساب', 'مقدار': t.holder_name || '' },
+        { 'بخش': 'معامله', 'عنوان': 'مبلغ به حروف', 'مقدار': _amountInWords },
+        { 'بخش': 'وضعیت', 'عنوان': 'تسویه', 'مقدار': _settlementStatus },
+      ];
+      var r = await exportExcel([{ name: 'رسید صرافی', data: _rows }], 'fx-invoice-' + (t.invoice_number || Date.now()) + '.xlsx');
+      showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
     } catch (e: any) { showToast(e.message, true); }
   };
+;
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#f5f7fa' }} contentContainerStyle={{ padding: 10, paddingBottom: 60 }}>
@@ -115,6 +125,7 @@ export default function ExchangeInvoice({ invoice, onBack, onNew, showToast }: a
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.small}>📅 {t.date || ''} {t.payment_time || ''}</Text>
             <Text style={s.small}>🧾 {t.invoice_number || ''}</Text>
+            <Text style={[s.small, { color: '#0891b2', fontWeight: 'bold' }]}>🔑 {_tracking}</Text>
           </View>
         </View>
 
@@ -176,7 +187,13 @@ export default function ExchangeInvoice({ invoice, onBack, onNew, showToast }: a
         </View>
 
         <View style={s.netBox}>
-          <Text style={s.netTxt}>🎯 این معامله — {fmt(t.from_qty)} {t.from_currency} ← {fmt(t.to_qty)} {t.to_currency}</Text>
+          <Text style={s.netTxt}>🎯 این معامله — {fmt(t.from_qty)} {_fromCurLabel} ← {fmt(t.to_qty)} {_toCurLabel}</Text>
+        </View>
+        <View style={{ marginTop: 6, padding: 8, backgroundColor: '#d1fae5', borderRadius: 6, alignItems: 'center' }}>
+          <Text style={{ color: '#065f46', fontWeight: 'bold', fontSize: 11 }}>{_settlementStatus}</Text>
+        </View>
+        <View style={{ marginTop: 6, padding: 8, backgroundColor: '#fffbeb', borderRadius: 6, borderWidth: 1, borderColor: '#fcd34d' }}>
+          <Text style={{ color: '#92400e', fontSize: 11, textAlign: 'center' }}>💵 به حروف: <Text style={{ fontWeight: 'bold' }}>{_amountInWords}</Text></Text>
         </View>
 
         <View style={s.footer}>
@@ -195,6 +212,9 @@ export default function ExchangeInvoice({ invoice, onBack, onNew, showToast }: a
         </TouchableOpacity>
         <TouchableOpacity accessibilityLabel="PDF" style={[s.btn, { backgroundColor: '#8e44ad', flex: 1, minWidth: 90 }]} onPress={exportPDF}>
           <Text style={s.btnTxt}>📄 PDF</Text>
+        </TouchableOpacity>
+        <TouchableOpacity accessibilityLabel="اکسل" style={[s.btn, { backgroundColor: '#059669', flex: 1, minWidth: 90 }]} onPress={exportExcelBtn}>
+          <Text style={s.btnTxt}>📊 اکسل</Text>
         </TouchableOpacity>
       </View>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>

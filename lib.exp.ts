@@ -1,18 +1,27 @@
-// lib.exp.ts — هزینه‌ها (استاندارد)
+// lib.exp.ts — هزینه‌ها (استاندارد آفلاین/آنلاین)
 import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
+import { getMode, enqueue } from './lib.offline';
 
 const K = (k: string) => '@mizan_local_' + k;
 const gid = () => 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
 const pad = (n: number) => String(n).padStart(2, '0');
 
 async function readLocal(key: string): Promise<any[]> {
-  try { const r = await AsyncStorage.getItem(K(key)); if (!r) return []; const p = JSON.parse(r); return Array.isArray(p) ? p : []; } catch { return []; }
+  try {
+    const r = await AsyncStorage.getItem(K(key));
+    if (!r) return [];
+    const p = JSON.parse(r);
+    return Array.isArray(p) ? p : [];
+  } catch { return []; }
 }
-async function writeLocal(key: string, list: any[]) { await AsyncStorage.setItem(K(key), JSON.stringify(list)); }
+async function writeLocal(key: string, list: any[]) {
+  await AsyncStorage.setItem(K(key), JSON.stringify(list));
+}
 
 async function fetchAll(table: string, key: string): Promise<any[]> {
   const local = await readLocal(key);
+  if (getMode() === 'offline') return local;
   try {
     const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
     if (error || !data || !data.length) return local;
@@ -23,23 +32,41 @@ async function fetchAll(table: string, key: string): Promise<any[]> {
   } catch { return local; }
 }
 
-async function saveItem(table: string, key: string, item: any): Promise<any> {
+async function saveItem(table: string, key: string, item: any, op: 'createExpense' | 'updateExpense'): Promise<any> {
   const list = await readLocal(key);
   const idx = list.findIndex(x => (x.local_id || x.id) === (item.local_id || item.id));
   const newList = idx >= 0 ? list.map((x, i) => i === idx ? { ...x, ...item } : x) : [item, ...list];
   await writeLocal(key, newList);
+
   const clean: any = { ...item };
-  delete clean.user_id; delete clean.id;
-  setTimeout(async () => {
-    try { await supabase.from(table).upsert(clean, { onConflict: 'local_id' }); } catch {}
-  }, 0);
+  delete clean.user_id;
+  delete clean.id;
+
+  if (getMode() === 'online') {
+    try {
+      await supabase.from(table).upsert(clean, { onConflict: 'local_id' });
+    } catch {
+      await enqueue(op, item);
+    }
+  } else {
+    await enqueue(op, item);
+  }
   return item;
 }
 
 async function removeById(table: string, key: string, id: string) {
   const list = await readLocal(key);
   await writeLocal(key, list.filter(x => x.local_id !== id && x.id !== id));
-  try { await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+
+  if (getMode() === 'online') {
+    try {
+      await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+    } catch {
+      await enqueue('deleteExpense', id);
+    }
+  } else {
+    await enqueue('deleteExpense', id);
+  }
 }
 
 export const getExpenses = () => fetchAll('expenses', 'expenses');
@@ -55,7 +82,8 @@ export async function createExpense(p: any): Promise<any> {
   });
   const inv = p.invoice_number || ('EX-' + ds + '-' + (maxN + 1));
   const item = { ...p, invoice_number: inv, local_id: gid(), created_at: new Date().toISOString() };
-  return saveItem('expenses', 'expenses', item);
+  return saveItem('expenses', 'expenses', item, 'createExpense');
 }
-export const updateExpense = (id: string, p: any) => saveItem('expenses', 'expenses', { ...p, local_id: id });
+
+export const updateExpense = (id: string, p: any) => saveItem('expenses', 'expenses', { ...p, local_id: id }, 'updateExpense');
 export const deleteExpense = (id: string) => removeById('expenses', 'expenses', id);

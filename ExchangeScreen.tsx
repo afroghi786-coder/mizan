@@ -1,3 +1,4 @@
+import DateField from './lib.datefield';
 import LiveMarketScreen from './LiveMarketScreen';
 import GroupsScreen from './GroupsScreen';
 import { getBoxTxsByCounterparty, getBoxSummaryForPerson, backfillBoxTxs, getBoxesForPerson } from './lib.boxes';
@@ -86,7 +87,7 @@ function genInvoiceNumber(trades: any[]): string {
   return 'FX-' + ds + '-' + (maxN + 1);
 }
 
-function DateField({ value, onChange, compact, defaultToToday }: any) {
+function _OldDateField({ value, onChange, compact, defaultToToday }: any) {
   const [type, setType] = useState<any>(getCalType());
   const [g, setG] = useState<Date | null>(value ? parseDateAny(value) : (defaultToToday ? new Date() : null));
   const [fields, setFields] = useState({ y: '', m: '', d: '', h: '00', n: '00', s: '00' });
@@ -685,6 +686,8 @@ export default function ExchangeScreen({ showToast }: any) {
   const timeStr = pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
 
   return (
+      <>
+
     <View style={{ flex: 1 }}>
       <ScrollView style={s.page} contentContainerStyle={{ padding: 10, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
 
@@ -788,7 +791,7 @@ export default function ExchangeScreen({ showToast }: any) {
                   <Text style={[s.th, { width: 100 }]}>به ارز</Text>
                   <Text style={[s.th, { width: 90 }]}>نرخ</Text>
                   <Text style={[s.th, { width: 100 }]}>سود</Text>
-                  <Text style={[s.th, { width: 100 }]}>عملیات</Text>
+                  <Text style={[s.th, { width: 130 }]}>عملیات</Text>
                 </View>
                 {/* Rows */}
                 {trades.length === 0 ? (
@@ -814,7 +817,16 @@ export default function ExchangeScreen({ showToast }: any) {
                       <Text style={[s.td, { width: 100, color: '#34d399' }]}>{CUR[t.to_currency]?.flag}{fmt(t.to_qty, CUR[t.to_currency]?.dec)}</Text>
                       <Text style={[s.td, { width: 90, color: '#fbbf24', fontSize: 10 }]}>{fmt(t.rate, 4)}</Text>
                       <Text style={[s.td, { width: 100, color: profitCol, fontWeight: 'bold' }]}>{fmt(t.profit, 0)}</Text>
-                      <View style={[s.td, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                      <View style={[s.td, { width: 130, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                        <TouchableOpacity onPress={() => {
+                          setShowInvoice({
+                            trade: t,
+                            buyer: { code: t.buyer_code || t.partner_code || '', name: t.buyer_name || t.partner_name || '', phone: t.buyer_phone || '' },
+                            customer: { code: t.customer_code || '', name: t.customer_name || '', phone: t.customer_phone || '' },
+                            buyerSummary: { count: 1, totalFrom: Number(t.from_qty) || 0, totalTo: Number(t.to_qty) || 0, profit: Number(t.profit) || 0 },
+                            customerSummary: { count: 1, totalFrom: Number(t.from_qty) || 0, totalTo: Number(t.to_qty) || 0, profit: Number(t.profit) || 0 }
+                          });
+                        }} style={s.iconBtn} accessibilityLabel="فاکتور"><Text>🧾</Text></TouchableOpacity>
                         <TouchableOpacity onPress={() => openEdit(t)} style={s.iconBtn}><Text>✏️</Text></TouchableOpacity>
                         <TouchableOpacity onPress={async () => { await deleteTrade(t.id || t.local_id); await reload(); showToast('🗑 حذف شد'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
                       </View>
@@ -2067,7 +2079,18 @@ export default function ExchangeScreen({ showToast }: any) {
       </Modal>
 
     </View>
-  );
+        <Modal visible={!!showInvoice} animationType="slide" onRequestClose={() => setShowInvoice(null)}>
+        {showInvoice && (
+          <ExchangeInvoice
+            invoice={showInvoice}
+            onBack={() => setShowInvoice(null)}
+            onNew={() => { setShowInvoice(null); openNew(); }}
+            showToast={showToast}
+          />
+        )}
+      </Modal>
+      </>
+    );
 }
 
 // ═══ Styles ═══

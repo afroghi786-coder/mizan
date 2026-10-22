@@ -273,11 +273,61 @@ export async function createProduct(p: Product) {
   const { error } = await supabase.from('products').insert(rest);
   if (error) throw new Error(error.message);
 }
-export async function updateProduct(id: string, p: Partial<Product>) {
-  const { error } = await supabase.from('products').update(p).eq('id', id);
+export async function updateProduct(idOrPayload: any, pArg?: any) {
+  // ۲ حالت: (id, p) از UI، یا ({id, code, p}) از صف سینک
+  let id: any, code: any, data: any;
+  if (pArg !== undefined) {
+    id = idOrPayload; data = pArg; code = pArg?.code;
+  } else {
+    id = idOrPayload?.id; code = idOrPayload?.code;
+    data = idOrPayload?.p || idOrPayload;
+  }
+
+  const isLocal = !id || String(id).startsWith('l_') || String(id).startsWith('_');
+
+  // اگر id سروری نداریم، با code پیدا کن
+  let targetId = id;
+  if (isLocal && code) {
+    const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+    targetId = found?.[0]?.id;
+  }
+
+  if (!targetId) {
+    if (code) {
+      const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+      targetId = found?.[0]?.id;
+    }
+  }
+
+  if (!targetId) throw new Error('id یا code سروری لازم است');
+
+  const clean: any = { ...data };
+  delete clean.id; delete clean._localId; delete clean.local_id;
+  if (Object.keys(clean).length === 0) return;
+
+  const { error } = await supabase.from('products').update(clean).eq('id', targetId);
   if (error) throw new Error(error.message);
 }
-export async function deleteProduct(id: string) {
+export async function deleteProduct(idOrPayload: any) {
+  // ۲ حالت: id رشته‌ای از UI، یا ({id, code}) از صف سینک
+  let id: any, code: any;
+  if (typeof idOrPayload === 'string') {
+    id = idOrPayload;
+  } else if (idOrPayload && typeof idOrPayload === 'object') {
+    id = idOrPayload.id; code = idOrPayload.code;
+  }
+
+  const isLocal = !id || String(id).startsWith('l_') || String(id).startsWith('_');
+
+  if (code) {
+    const { error } = await supabase.from('products').delete().eq('code', code);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  if (isLocal) return; // بدون code قابل حذف از سرور نیست
+  if (!id) return;
+
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
@@ -676,50 +726,79 @@ export async function getProfitByModel() {
 export async function getInventory() {
   const settings = await getSettings();
   const threshold = settings.inventory_threshold ?? 5;
-
-  const [{ data: pData }, { data: sData }, products] = await Promise.all([
-    supabase.from('purchases').select('model_code, model_name, quantity, price_unit'),
-    supabase.from('sales').select('model_code, model_name, quantity'),
+  const [{ data: pData }, { data: sData }, { data: aData }, products] = await Promise.all([
+    supabase.from('purchases').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+    supabase.from('sales').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+    supabase.from('stock_adjustments').select('model_code, adjustment'),
     getProducts(),
   ]);
-
+  const adjustmentMap: Record<string, number> = {};
+  (aData || []).forEach((r: any) => {
+    const c = String(r.model_code || '').trim();
+    if (!c) return;
+    adjustmentMap[c] = (adjustmentMap[c] || 0) + (Number(r.adjustment) || 0);
+  });
   const productMap: Record<string, Product> = {};
   products.forEach((p) => { productMap[p.code] = p; });
-
   const models: Record<string, any> = {};
+  const nowTs = Date.now();
   (pData || []).forEach((r: any) => {
     const c = String(r.model_code || '').trim();
     if (!c) return;
-    if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, lastPrice: 0 };
-    models[c].bought += Number(r.quantity) || 0;
+    if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+    const qty = Number(r.quantity) || 0;
+    const price = Number(r.price_unit) || 0;
+    models[c].bought += qty;
+    models[c].boughtValue += qty * price;
     if (r.model_name) models[c].name = r.model_name;
-    const p = Number(r.price_unit) || 0;
-    if (p > 0) models[c].lastPrice = p;
+    if (price > 0) models[c].lastPrice = price;
+    const d = parseDateAny(r.date_factor || r.date_reg);
+    if (d && d.getTime() > models[c].lastPurchaseTime) models[c].lastPurchaseTime = d.getTime();
   });
   (sData || []).forEach((r: any) => {
     const c = String(r.model_code || '').trim();
     if (!c) return;
-    if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, lastPrice: 0 };
-    models[c].sold += Number(r.quantity) || 0;
+    if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+    const qty = Number(r.quantity) || 0;
+    const price = Number(r.price_unit) || 0;
+    models[c].sold += qty;
+    if (price > 0) models[c].lastSalePrice = price;
     if (r.model_name && !models[c].name) models[c].name = r.model_name;
+    const d = parseDateAny(r.date_factor || r.date_reg);
+    if (d && d.getTime() > models[c].lastSaleTime) models[c].lastSaleTime = d.getTime();
   });
   products.forEach((p) => {
     if (!models[p.code]) {
-      models[p.code] = { code: p.code, name: p.name, bought: 0, sold: 0, lastPrice: p.price || 0 };
+      models[p.code] = { code: p.code, name: p.name, bought: 0, sold: 0, boughtValue: 0, lastPrice: p.price || 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
     }
   });
-
   const list = Object.values(models).map((m: any) => {
-    const stock = m.bought - m.sold;
+    const adj = adjustmentMap[m.code] || 0;
+    const stock = m.bought - m.sold + adj;
     let status: string = 'ok';
     if (stock < 0) status = 'negative';
     else if (stock === 0) status = 'out';
     else if (stock < threshold) status = 'low';
+    const unitCost = m.bought > 0 ? Math.round(m.boughtValue / m.bought) : 0;
+    const totalValue = stock * unitCost;
+    const potentialRevenue = stock * (m.lastSalePrice || 0);
+    const lastPurchaseDate = m.lastPurchaseTime ? new Date(m.lastPurchaseTime) : null;
+    const lastSaleDate = m.lastSaleTime ? new Date(m.lastSaleTime) : null;
+    const daysSinceLastSale = lastSaleDate ? Math.floor((nowTs - m.lastSaleTime) / 86400000) : null;
+    const daysSincePurchase = lastPurchaseDate ? Math.floor((nowTs - m.lastPurchaseTime) / 86400000) : null;
     return {
       ...m,
       currentQty: stock,
+      adjustment: adj,
       shelf: productMap[m.code]?.shelf || '',
       status,
+      unitCost,
+      totalValue,
+      potentialRevenue,
+      lastPurchaseDate: lastPurchaseDate ? lastPurchaseDate.toISOString() : '',
+      lastSaleDate: lastSaleDate ? lastSaleDate.toISOString() : '',
+      daysSinceLastSale,
+      daysSincePurchase,
     };
   });
   const order: Record<string, number> = { negative: 0, out: 1, low: 2, ok: 3 };
@@ -733,6 +812,15 @@ export async function getInventory() {
     lowStock: list.filter((m: any) => m.status === 'low').length,
     outOfStock: list.filter((m: any) => m.status === 'out').length,
     negative: list.filter((m: any) => m.status === 'negative').length,
+    totalValue: list.reduce((a: number, m: any) => a + m.totalValue, 0),
+    potentialRevenue: list.reduce((a: number, m: any) => a + m.potentialRevenue, 0),
+    topByValue: list.slice().sort((a: any, b: any) => b.totalValue - a.totalValue).slice(0, 5).map((m: any) => ({ code: m.code, name: m.name, value: m.totalValue, qty: m.currentQty })),
+    agingBuckets: {
+      healthy: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale <= 30).length,
+      slow: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale > 30 && m.daysSinceLastSale <= 60).length,
+      verySlow: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale > 60 && m.daysSinceLastSale <= 90).length,
+      dead: list.filter((m: any) => m.currentQty > 0 && (m.daysSinceLastSale === null || m.daysSinceLastSale > 90)).length,
+    },
   };
   return { list, stats, threshold };
 }
@@ -747,14 +835,25 @@ export async function getSettings(): Promise<Settings> {
   return s;
 }
 export async function updateSettings(s: Settings) {
-  const { data } = await supabase.from('settings').select('id').limit(1);
-  if (data && data[0]) {
-    const { error } = await supabase.from('settings').update(s).eq('id', data[0].id);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase.from('settings').insert(s);
-    if (error) throw new Error(error.message);
+  let clean: any = { ...s };
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { data } = await supabase.from('settings').select('id').limit(1);
+    const op = data && data[0]
+      ? await supabase.from('settings').update(clean).eq('id', data[0].id)
+      : await supabase.from('settings').insert(clean);
+    if (!op.error) return;
+    const msg = String(op.error.message || '');
+    const m = msg.match(/Could not find the '([^']+)' column|column "([^"]+)" of relation "[^"]+" does not exist/i);
+    const missing = m && (m[1] || m[2]);
+    if (missing && clean[missing] !== undefined) {
+      clean = { ...clean };
+      delete clean[missing];
+      console.log('[updateSettings] stripped missing column:', missing);
+      continue;
+    }
+    throw new Error(msg);
   }
+  throw new Error('settings upload failed after retries');
 }
 
 
@@ -827,5 +926,160 @@ export async function createFxPartner(p: any) {
   const { error } = await supabase.from('fx_partners').insert({
     code: p.code, name: p.name, phone: p.phone || '', notes: p.notes || '', local_id: p.local_id || '',
   });
+  if (error) throw new Error(error.message);
+}
+
+
+// ═══════════════════════════════════════════
+//  updateSale / updatePurchase — برای سینک ویرایش آفلاین
+// ═══════════════════════════════════════════
+export async function updateSale(payload: { invoiceNumber: string; rows: any[] }) {
+  const { invoiceNumber, rows } = payload || {};
+  if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+  const { error: delErr } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+  if (delErr) throw delErr;
+  if (rows && rows.length) {
+    const { error } = await supabase.from('sales').insert(rows);
+    if (error) throw error;
+  }
+}
+
+export async function updatePurchase(payload: { invoiceNumber: string; rows: any[] }) {
+  const { invoiceNumber, rows } = payload || {};
+  if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+  const { error: delErr } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+  if (delErr) throw delErr;
+  if (rows && rows.length) {
+    const { error } = await supabase.from('purchases').insert(rows);
+    if (error) throw error;
+  }
+}
+
+
+// ═══════════════════════════════════════════
+//  updateExpense / deleteExpense — برای سینک صف هزینه‌ها
+// ═══════════════════════════════════════════
+export async function updateExpense(p: any) {
+  const id = p?.local_id || p?.id;
+  if (!id) throw new Error('local_id لازم است');
+  const clean: any = { ...p };
+  delete clean.id; delete clean.user_id;
+  const { error: delErr } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (delErr) throw delErr;
+  const { error } = await supabase.from('expenses').insert(clean);
+  if (error) throw error;
+}
+
+export async function deleteExpense(id: string) {
+  if (!id) throw new Error('id لازم است');
+  const { error } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw error;
+}
+
+
+// ═══════════════════════════════════════════
+//  Sync helpers for employees module (offline queue)
+// ═══════════════════════════════════════════
+async function _empUpsert(table: string, p: any) {
+  const id = p?.local_id || p?.id;
+  if (!id) throw new Error('local_id لازم');
+  let clean: any = { ...p };
+  delete clean.id; delete clean.user_id;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { error: delErr } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+    if (delErr) throw delErr;
+    const { error } = await supabase.from(table).insert(clean);
+    if (!error) return;
+    const m = error.message.match(/Could not find the '([^']+)' column|column "([^"]+)" of relation "[^"]+" does not exist/i);
+    const missing = m && (m[1] || m[2]);
+    if (missing && clean[missing] !== undefined) {
+      clean = { ...clean };
+      delete clean[missing];
+      console.log('[upload] stripped missing column:', missing);
+      continue;
+    }
+    throw error;
+  }
+  throw new Error('upload failed after retries');
+}
+async function _empDelete(table: string, id: string) {
+  if (!id) throw new Error('id لازم');
+  const { error } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw error;
+}
+async function _empCreate(table: string, p: any) {
+  let clean: any = { ...p };
+  delete clean.id; delete clean.user_id;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { error } = await supabase.from(table).insert(clean);
+    if (!error) return;
+    const m = error.message.match(/Could not find the '([^']+)' column|column "([^"]+)" of relation "[^"]+" does not exist/i);
+    const missing = m && (m[1] || m[2]);
+    if (missing && clean[missing] !== undefined) {
+      clean = { ...clean };
+      delete clean[missing];
+      console.log('[upload] stripped missing column:', missing);
+      continue;
+    }
+    throw error;
+  }
+  throw new Error('upload failed after retries');
+}
+
+export const updateEmployee = (p: any) => _empUpsert('employees', p);
+export const deleteEmployee = (id: string) => _empDelete('employees', id);
+
+export const updateAttendance = (p: any) => _empUpsert('attendance', p);
+export const deleteAttendance = (id: string) => _empDelete('attendance', id);
+
+export const createLeave = (p: any) => _empCreate('employee_leaves', p);
+export const updateLeave = (p: any) => _empUpsert('employee_leaves', p);
+export const deleteLeave = (id: string) => _empDelete('employee_leaves', id);
+
+export const createSalaryPayment = (p: any) => _empCreate('salary_payments', p);
+export const updateSalaryPayment = (p: any) => _empUpsert('salary_payments', p);
+export const deleteSalaryPayment = (id: string) => _empDelete('salary_payments', id);
+
+export const createLoan = (p: any) => _empCreate('employee_loans', p);
+export const updateLoan = (p: any) => _empUpsert('employee_loans', p);
+export const deleteLoan = (id: string) => _empDelete('employee_loans', id);
+
+export const createBatch = (p: any) => _empCreate('payroll_batches', p);
+export const updateBatch = (p: any) => _empUpsert('payroll_batches', p);
+export const deleteBatch = (id: string) => _empDelete('payroll_batches', id);
+
+// ═══════════════════════════════════════════
+//  getInventoryByModel — کاردکس مدل (خرید/فروش)
+// ═══════════════════════════════════════════
+export async function getInventoryByModel(code: string) {
+  const c = String(code || '').trim();
+  if (!c) return { purchases: [], sales: [] };
+  const [{ data: pData, error: pErr }, { data: sData, error: sErr }] = await Promise.all([
+    supabase.from('purchases').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+    supabase.from('sales').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+  ]);
+  if (pErr) console.log('[getInventoryByModel] purchases err:', pErr.message);
+  if (sErr) console.log('[getInventoryByModel] sales err:', sErr.message);
+  return { purchases: pData || [], sales: sData || [] };
+}
+// ═══════════════════════════════════════════
+//  Stock Adjustments
+// ═══════════════════════════════════════════
+export async function getStockAdjustments(code?: string) {
+  let q: any = supabase.from('stock_adjustments').select('*').order('created_at', { ascending: false });
+  if (code) q = q.eq('model_code', String(code).trim());
+  const { data, error } = await q;
+  if (error) { console.log('[getStockAdjustments]', error.message); return []; }
+  return data || [];
+}
+export async function createStockAdjustment(p: any) {
+  const clean: any = { ...p };
+  delete clean.id; delete clean.user_id;
+  const { error } = await supabase.from('stock_adjustments').insert(clean);
+  if (error) throw new Error(error.message);
+  return clean;
+}
+export async function deleteStockAdjustment(id: string) {
+  const { error } = await supabase.from('stock_adjustments').delete().or('local_id.eq.' + id + ',id.eq.' + id);
   if (error) throw new Error(error.message);
 }

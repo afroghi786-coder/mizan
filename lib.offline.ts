@@ -39,7 +39,7 @@ export async function getQueue(): Promise<any[]> {
   const raw = await AsyncStorage.getItem(QUEUE);
   return raw ? JSON.parse(raw) : [];
 }
-async function enqueue(op: string, payload: any) {
+export async function enqueue(op: string, payload: any) {
   const q = await getQueue();
   q.push({ op, payload, ts: Date.now() });
   await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
@@ -47,17 +47,34 @@ async function enqueue(op: string, payload: any) {
 export async function getQueueCount() { return (await getQueue()).length; }
 export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
 
-export async function syncToServer(): Promise<{ ok: number; fail: number }> {
+export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
   const q = await getQueue();
   const remaining: any[] = [];
   let ok = 0, fail = 0;
-  for (const item of q) {
+  const total = q.length;
+  for (let i = 0; i < q.length; i++) {
+    const item = q[i];
+    if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
     try {
       await (lib as any)[item.op](item.payload);
       ok++;
-    } catch (e) {
-      remaining.push(item);
-      fail++;
+    } catch (e: any) {
+      const msg = String(e?.message || e || '');
+      const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+      if (isDup) { ok++; } else {
+        const attempts = (item.attempts || 0) + 1;
+        if (attempts >= 5) {
+          remaining.push({ ...item, attempts, lastError: msg, failed: true });
+        } else {
+          remaining.push({ ...item, attempts, lastError: msg });
+        }
+        fail++;
+      }
+    }
+    if (onProgress) onProgress(i + 1, total);
+    if ((i + 1) % 20 === 0) {
+      await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+      await new Promise(r => setTimeout(r, 10));
     }
   }
   await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
@@ -66,13 +83,17 @@ export async function syncToServer(): Promise<{ ok: number; fail: number }> {
 
 export async function pullFromServer() {
   try {
-    const [products, sales, purchases, settings] = await Promise.all([
+    const [products, salesGrouped, purchasesGrouped, sales, purchases, settings] = await Promise.all([
       lib.getProducts(),
+      lib.getSalesGrouped(),
+      lib.getPurchasesGrouped(),
       lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
       lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
       lib.getSettings(),
     ]);
     await setLocal('products', products);
+    await setLocal('sales_grouped', salesGrouped);
+    await setLocal('purchases_grouped', purchasesGrouped);
     await setLocal('sales', sales.data || []);
     await setLocal('purchases', purchases.data || []);
     await setLocal('settings', settings);
@@ -97,7 +118,8 @@ async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T>
 }
 
 export async function getProducts() {
-  return cachedRead('products', () => lib.getProducts());
+  try { return await cachedRead('products', () => lib.getProducts()); }
+  catch { return []; }
 }
 export async function createProduct(p: any) {
   const list: any[] = (await getLocal('products')) || [];
@@ -112,21 +134,49 @@ export async function createProduct(p: any) {
 }
 export async function updateProduct(id: string, p: any) {
   const list: any[] = (await getLocal('products')) || [];
-  const idx = list.findIndex((x: any) => x.id === id);
+  const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+  const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
   if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+
+  // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
+  const q = await getQueue();
+  const createIdx = q.findIndex((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+  if (createIdx >= 0) {
+    const newQ = q.slice();
+    newQ[createIdx] = { ...newQ[createIdx], payload: { ...newQ[createIdx].payload, ...p } };
+    await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+    console.log('[updateProduct] updated pending createProduct in queue');
+    return;
+  }
+
+  const payload = { id, code, p };
   if (MODE === 'online') {
-    try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', { id, p }); }
+    try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
   } else {
-    await enqueue('updateProduct', { id, p });
+    await enqueue('updateProduct', payload);
   }
 }
 export async function deleteProduct(id: string) {
   const list: any[] = (await getLocal('products')) || [];
-  await setLocal('products', list.filter((x: any) => x.id !== id));
+  const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
+  const code = found?.code;
+  await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+
+  // اگر این محصول هنوز در صف createProduct است → از صف حذف کن (چیزی برای حذف از سرور نیست)
+  const q = await getQueue();
+  const hasCreate = q.some((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+  if (hasCreate) {
+    const newQ = q.filter((it: any) => !(it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code))));
+    await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+    console.log('[deleteProduct] removed pending createProduct from queue');
+    return;
+  }
+
+  const payload = { id, code };
   if (MODE === 'online') {
-    try { await lib.deleteProduct(id); } catch { await enqueue('deleteProduct', id); }
+    try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
   } else {
-    await enqueue('deleteProduct', id);
+    await enqueue('deleteProduct', payload);
   }
 }
 
@@ -139,6 +189,8 @@ export async function createSale(payload: any) {
   return payload.invoiceNumber;
 }
 export async function deleteSale(inv: string) {
+  const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+  await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
   if (MODE === 'online') {
     try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
   } else {
@@ -147,6 +199,8 @@ export async function deleteSale(inv: string) {
 }
 
 export async function deletePurchase(inv: string) {
+  const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+  await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
   if (MODE === 'online') {
     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
   } else {
@@ -166,11 +220,142 @@ export async function updateSettings(s: any) {
   }
 }
 
-export async function getInventory() {
-  return cachedRead('inventory', () => lib.getInventory());
+async function computeLocalInventory() {
+  const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+    getLocal<any[]>('products'),
+    getLocal<any[]>('sales'),
+    getLocal<any[]>('purchases'),
+    getLocal<any>('settings'),
+    getLocal<any[]>('stock_adjustments'),
+  ]);
+  const products = productsRaw || [];
+  let sales = salesRaw || [];
+  let purchases = purchasesRaw || [];
+  const settings = (settingsRaw as any) || {};
+  const threshold = settings.inventory_threshold ?? 5;
+  const adjAll = (adjRaw || []).slice();
+  const q = await getQueue();
+  for (const item of q) {
+    if (item.op === 'createSale' && item.payload?.rows) sales = sales.concat(item.payload.rows);
+    if (item.op === 'createPurchase' && item.payload?.rows) purchases = purchases.concat(item.payload.rows);
+    if (item.op === 'createStockAdjustment' && item.payload) adjAll = adjAll.concat([item.payload]);
+  }
+  const adjustmentMap: Record<string, number> = {};
+  adjAll.forEach(function(r: any) {
+    const c = String(r.model_code || '').trim();
+    if (!c) return;
+    adjustmentMap[c] = (adjustmentMap[c] || 0) + (Number(r.adjustment) || 0);
+  });
+  const productMap: Record<string, any> = {};
+  products.forEach((p: any) => { productMap[p.code] = p; });
+  const models: Record<string, any> = {};
+  const nowTs = Date.now();
+  const _pda = (lib && lib.parseDateAny) ? lib.parseDateAny : function(d: any) { return d ? new Date(d) : null; };
+  (purchases || []).forEach((r: any) => {
+    const c = String(r.model_code || '').trim();
+    if (!c) return;
+    if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+    const qty = Number(r.quantity) || 0;
+    const price = Number(r.price_unit) || 0;
+    models[c].bought += qty;
+    models[c].boughtValue += qty * price;
+    if (r.model_name) models[c].name = r.model_name;
+    if (price > 0) models[c].lastPrice = price;
+    const d = _pda(r.date_factor || r.date_reg);
+    if (d && d.getTime() > models[c].lastPurchaseTime) models[c].lastPurchaseTime = d.getTime();
+  });
+  (sales || []).forEach((r: any) => {
+    const c = String(r.model_code || '').trim();
+    if (!c) return;
+    if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+    const qty = Number(r.quantity) || 0;
+    const price = Number(r.price_unit) || 0;
+    models[c].sold += qty;
+    if (price > 0) models[c].lastSalePrice = price;
+    if (r.model_name && !models[c].name) models[c].name = r.model_name;
+    const d = _pda(r.date_factor || r.date_reg);
+    if (d && d.getTime() > models[c].lastSaleTime) models[c].lastSaleTime = d.getTime();
+  });
+  products.forEach((p: any) => {
+    if (!models[p.code]) {
+      models[p.code] = { code: p.code, name: p.name, bought: 0, sold: 0, boughtValue: 0, lastPrice: p.price || 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+    }
+  });
+  const list = Object.values(models).map((m: any) => {
+    const adj = adjustmentMap[m.code] || 0;
+    const stock = m.bought - m.sold + adj;
+    let status = 'ok';
+    if (stock < 0) status = 'negative';
+    else if (stock === 0) status = 'out';
+    else if (stock < threshold) status = 'low';
+    const unitCost = m.bought > 0 ? Math.round(m.boughtValue / m.bought) : 0;
+    const totalValue = stock * unitCost;
+    const potentialRevenue = stock * (m.lastSalePrice || 0);
+    const lastPurchaseDate = m.lastPurchaseTime ? new Date(m.lastPurchaseTime) : null;
+    const lastSaleDate = m.lastSaleTime ? new Date(m.lastSaleTime) : null;
+    const daysSinceLastSale = lastSaleDate ? Math.floor((nowTs - m.lastSaleTime) / 86400000) : null;
+    const daysSincePurchase = lastPurchaseDate ? Math.floor((nowTs - m.lastPurchaseTime) / 86400000) : null;
+    return { ...m, currentQty: stock, adjustment: adj, shelf: productMap[m.code]?.shelf || '', status, unitCost, totalValue, potentialRevenue, lastPurchaseDate: lastPurchaseDate ? lastPurchaseDate.toISOString() : '', lastSaleDate: lastSaleDate ? lastSaleDate.toISOString() : '', daysSinceLastSale, daysSincePurchase };
+  });
+  const order: Record<string, number> = { negative: 0, out: 1, low: 2, ok: 3 };
+  list.sort((a: any, b: any) => {
+    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    return String(a.name).localeCompare(String(b.name), 'fa');
+  });
+  const stats = {
+    totalModels: list.length,
+    totalQty: list.reduce((a: number, m: any) => a + m.currentQty, 0),
+    lowStock: list.filter((m: any) => m.status === 'low').length,
+    outOfStock: list.filter((m: any) => m.status === 'out').length,
+    negative: list.filter((m: any) => m.status === 'negative').length,
+    totalValue: list.reduce((a: number, m: any) => a + m.totalValue, 0),
+    potentialRevenue: list.reduce((a: number, m: any) => a + m.potentialRevenue, 0),
+    topByValue: list.slice().sort((a: any, b: any) => b.totalValue - a.totalValue).slice(0, 5).map((m: any) => ({ code: m.code, name: m.name, value: m.totalValue, qty: m.currentQty })),
+    agingBuckets: {
+      healthy: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale <= 30).length,
+      slow: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale > 30 && m.daysSinceLastSale <= 60).length,
+      verySlow: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale > 60 && m.daysSinceLastSale <= 90).length,
+      dead: list.filter((m: any) => m.currentQty > 0 && (m.daysSinceLastSale === null || m.daysSinceLastSale > 90)).length,
+    },
+  };
+  return { list, stats, threshold };
 }
-export async function getDashboardStats(r: string, f: string) {
-  return cachedRead(`stats_${r}_${f}`, () => lib.getDashboardStats(r, f));
+
+export async function getInventory() {
+  try {
+    if (MODE === 'online') {
+      try {
+        const fresh = await lib.getInventory();
+        await setLocal('inventory', fresh);
+        return fresh;
+      } catch (e) {
+        console.log('[getInventory] online failed, using local:', e);
+      }
+    }
+    return await computeLocalInventory();
+  } catch (e) {
+    console.log('[getInventory] error:', e);
+    return { list: [], stats: {}, threshold: 5 };
+  }
+}
+export async function getDashboardStats(r, f) {
+  if (MODE === "online") {
+    try {
+      var fresh = await lib.getDashboardStats(r, f);
+      await setLocal("stats_" + r + "_" + f, fresh);
+      return fresh;
+    } catch (e) {
+      console.log("[getDashboardStats] online failed, using local:", e);
+    }
+  }
+  try {
+    return await computeLocalDashboardStats(r, f);
+  } catch (e) {
+    console.log("[getDashboardStats] local error:", e);
+    var cached = await getLocal("stats_" + r + "_" + f);
+    if (cached) return cached;
+    return { totalSales: 0, totalPurchases: 0, customerPaid: 0, customerDebt: 0, supplierPaid: 0, supplierDebt: 0, profit: 0, models: [], estimatedCount: 0, defaultMargin: 0.1, rangeLabel: r };
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -178,7 +363,15 @@ export async function getDashboardStats(r: string, f: string) {
 // ═══════════════════════════════════════════
 
 export async function getUnpaidInvoices() {
-  return cachedRead('unpaid_invoices', () => lib.getUnpaidInvoices());
+  try {
+    var grouped = await getSalesGrouped();
+    var unpaid = grouped.filter(function(g) { return (g.paid || 0) === 0; });
+    await setLocal("unpaid_invoices", unpaid);
+    return unpaid;
+  } catch (e) {
+    console.log("[getUnpaidInvoices] err:", e);
+    return (await getLocal("unpaid_invoices")) || [];
+  }
 }
 
 
@@ -596,7 +789,7 @@ export async function getInvoiceDetail(invoiceNumber: string) {
 // ═══════════════════════════════════════════
 //  updateInvoiceInQueue — ویرایش آفلاین
 // ═══════════════════════════════════════════
-export async function updateInvoiceInQueue(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+export async function updateInvoiceInQueue_original(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
   const queue = await getQueue();
   const op = type === 'sales' ? 'createSale' : 'createPurchase';
   let found = false;
@@ -1022,4 +1215,390 @@ export async function updateFxTrade(localId: string, p: any) {
   if (MODE === 'online') {
     try { await lib.supabase.from('fx_trades').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
   }
+}
+
+
+// ═══════════════════════════════════════════
+//  updateInvoiceInQueue — wrapper با fallback برای synced
+// ═══════════════════════════════════════════
+export async function updateInvoiceInQueue(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+  try {
+    await updateInvoiceInQueue_original(invoiceNumber, type, rows);
+  } catch (e) {
+    console.log('updateInvoiceInQueue_original error:', e);
+  }
+  const q = await getQueue();
+  const createOp = type === 'sales' ? 'createSale' : 'createPurchase';
+  const updateOp = type === 'sales' ? 'updateSale' : 'updatePurchase';
+  const hasCreate = q.some((item: any) => item.op === createOp && item.payload?.invoiceNumber === invoiceNumber);
+  const hasUpdate = q.some((item: any) => item.op === updateOp && item.payload?.invoiceNumber === invoiceNumber);
+  if (!hasCreate && !hasUpdate) {
+    const newQ = [...q, { op: updateOp, payload: { invoiceNumber, rows }, ts: Date.now() }];
+    await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+  } else if (hasUpdate) {
+    const newQ = q.map((item: any) => {
+      if (item.op === updateOp && item.payload?.invoiceNumber === invoiceNumber) {
+        return { ...item, payload: { invoiceNumber, rows } };
+      }
+      return item;
+    });
+    await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+  }
+}
+
+
+// Queue details + retry + clear failed
+export async function getQueueDetails() {
+  var q = await getQueue();
+  return q.map(function(item, i) {
+    var p = item.payload;
+    var label = "";
+    if (typeof p === "string") { label = p; }
+    else if (p && typeof p === "object") {
+      label = p.invoiceNumber || p.invoice_number || p.code || p.name || p.id || p.local_id || "";
+    }
+    return { index: i, op: item.op, ts: item.ts || 0, attempts: item.attempts || 0, lastError: item.lastError || "", failed: !!item.failed, label: String(label).slice(0, 40) };
+  });
+}
+export async function retryFailed() {
+  var q = await getQueue();
+  var count = 0;
+  var newQ = q.map(function(item) {
+    if (item.failed) { count++; return Object.assign({}, item, { failed: false, attempts: 0, lastError: "" }); }
+    return item;
+  });
+  await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+  return count;
+}
+export async function clearFailedItems() {
+  var q = await getQueue();
+  var before = q.length;
+  var newQ = q.filter(function(item) { return !item.failed; });
+  await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+  return before - newQ.length;
+}
+// === Dashboard local compute (offline + queue merge) ===
+function _localPad2(n) { return String(n).padStart(2, "0"); }
+
+async function computeLocalDashboardStats(range, filter) {
+  if (!range) range = "month";
+  if (!filter) filter = "both";
+  var settings = (await getLocal("settings")) || {};
+  var margin = settings.profit_margin != null ? settings.profit_margin : 0.10;
+
+  var localPurchases = (await getLocal("purchases")) || [];
+  var localSales = (await getLocal("sales")) || [];
+
+  var q = await getQueue();
+  var queuePurchases = [];
+  var queueSales = [];
+  for (var qi = 0; qi < q.length; qi++) {
+    var item = q[qi];
+    if (!item.payload || !item.payload.items) continue;
+    if (item.op !== "createPurchase" && item.op !== "createSale") continue;
+    var target = item.op === "createPurchase" ? queuePurchases : queueSales;
+    var baseDate = item.payload.date || new Date(item.ts || Date.now()).toISOString();
+    for (var ii = 0; ii < item.payload.items.length; ii++) {
+      var it = item.payload.items[ii];
+      var qty = Number(it.quantity) || 0;
+      var pu = Number(it.price_unit != null ? it.price_unit : it.priceUnit) || 0;
+      target.push({
+        model_code: it.model_code != null ? it.model_code : (it.modelCode || ""),
+        model_name: it.model_name != null ? it.model_name : (it.modelName || ""),
+        quantity: qty,
+        price_unit: pu,
+        payment: Number(it.payment) || 0,
+        date_factor: it.date_factor != null ? it.date_factor : (it.dateFactor || baseDate),
+        date_reg: it.date_reg != null ? it.date_reg : (it.dateReg || baseDate),
+        amount: qty * pu,
+        balance: 0
+      });
+    }
+  }
+  var pData = queuePurchases.concat(localPurchases);
+  var sData = queueSales.concat(localSales);
+
+  var parseDateAny = (lib && lib.parseDateAny) ? lib.parseDateAny : function(d) { return d ? new Date(d) : null; };
+  var DASH_LBL = (lib && lib.DASH_RANGE_LABELS) ? lib.DASH_RANGE_LABELS : {};
+
+  var now = new Date();
+  var startDate = null;
+  if (range === "today") startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  else if (range === "month") startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  else if (range === "year") startDate = new Date(now.getFullYear(), 0, 1);
+  else if (range === "last6months") startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  var inRange = function(d) {
+    if (!startDate) return true;
+    var dt = parseDateAny(d);
+    return !!dt && dt >= startDate && dt <= now;
+  };
+
+  var purchaseByCode = {};
+  var purchaseNames = {};
+  var totalPurchases = 0, supplierPaid = 0, supplierDebt = 0;
+  pData.forEach(function(r) {
+    var pDate = parseDateAny(r.date_factor) || parseDateAny(r.date_reg);
+    var code = String(r.model_code || "").trim();
+    var name = String(r.model_name || "").trim();
+    var price = Number(r.price_unit) || 0;
+    if (code && pDate && price > 0) {
+      if (!purchaseByCode[code]) purchaseByCode[code] = [];
+      purchaseByCode[code].push({ date: pDate.getTime(), price: price });
+    }
+    if (code && name) purchaseNames[code] = name;
+    if (filter !== "sales" && inRange(r.date_factor)) {
+      totalPurchases += Number(r.amount || (r.quantity * r.price_unit)) || 0;
+      supplierPaid += Number(r.payment) || 0;
+      supplierDebt += Number(r.balance) || 0;
+    }
+  });
+  Object.keys(purchaseByCode).forEach(function(k) {
+    purchaseByCode[k].sort(function(a, b) { return a.date - b.date; });
+  });
+
+  var findPurchaseForSale = function(code, saleTime) {
+    var arr = purchaseByCode[code];
+    if (!arr || !arr.length) return { price: 0, source: "unknown" };
+    var sd = new Date(saleTime);
+    var saleYM = sd.getFullYear() + "/" + _localPad2(sd.getMonth() + 1);
+    for (var k = arr.length - 1; k >= 0; k--) {
+      var pd = new Date(arr[k].date);
+      var ym = pd.getFullYear() + "/" + _localPad2(pd.getMonth() + 1);
+      if (ym === saleYM && arr[k].date <= saleTime) return { price: arr[k].price, source: "same-month" };
+    }
+    var lastBefore = null;
+    for (var k2 = 0; k2 < arr.length; k2++) {
+      if (arr[k2].date <= saleTime) lastBefore = arr[k2];
+      else break;
+    }
+    if (lastBefore) return { price: lastBefore.price, source: "historical" };
+    return { price: 0, source: "unknown" };
+  };
+
+  var totalSales = 0, customerPaid = 0, totalProfit = 0;
+  var modelProfits = {};
+  sData.forEach(function(r) {
+    var saleDate = parseDateAny(r.date_factor) || parseDateAny(r.date_reg);
+    if (!saleDate) return;
+    if (!inRange(r.date_factor)) return;
+    var code = String(r.model_code || "").trim();
+    var name = String(r.model_name || "").trim();
+    var qty = Number(r.quantity) || 0;
+    var price = Number(r.price_unit) || 0;
+    var lineTotal = qty * price;
+    var payment = Number(r.payment) || 0;
+    if (filter !== "purchase") {
+      totalSales += lineTotal;
+      customerPaid += payment;
+      var info = findPurchaseForSale(code, saleDate.getTime());
+      var rowProfit = (info.price > 0 && qty > 0 && price > 0) ? (price - info.price) * qty : 0;
+      totalProfit += rowProfit;
+      if (code) {
+        if (!modelProfits[code]) {
+          modelProfits[code] = { code: code, name: name || purchaseNames[code] || "—", purchasePrice: info.price, priceSource: info.source, totalQty: 0, totalSales: 0, totalProfit: 0, estimated: false };
+        }
+        var m = modelProfits[code];
+        m.totalQty += qty; m.totalSales += lineTotal; m.totalProfit += rowProfit;
+        if (name) m.name = name;
+        if (info.price > 0) { m.purchasePrice = info.price; m.priceSource = info.source; }
+      }
+    }
+  });
+
+  var models = Object.values(modelProfits);
+  var estimatedCount = 0;
+  if (filter !== "purchase") {
+    models.forEach(function(m) {
+      if ((!m.purchasePrice || m.purchasePrice <= 0) && m.totalQty > 0 && m.totalSales > 0) {
+        var avgSale = m.totalSales / m.totalQty;
+        var estUnit = avgSale * margin;
+        m.purchasePrice = avgSale - estUnit;
+        m.totalProfit = estUnit * m.totalQty;
+        m.priceSource = "estimated";
+        m.estimated = true;
+        totalProfit += m.totalProfit;
+        estimatedCount++;
+      }
+    });
+  }
+  models.sort(function(a, b) { return b.totalProfit - a.totalProfit; });
+
+  return {
+    totalSales: totalSales, totalPurchases: totalPurchases, customerPaid: customerPaid,
+    customerDebt: totalSales - customerPaid,
+    supplierPaid: supplierPaid, supplierDebt: supplierDebt,
+    profit: totalProfit,
+    models: models, estimatedCount: estimatedCount,
+    defaultMargin: margin,
+    rangeLabel: DASH_LBL[range] || range
+  };
+}
+// ═══════════════════════════════════════════
+//  getInventoryByModel — کاردکس مدل (آفلاین + آنلاین + صف)
+// ═══════════════════════════════════════════
+export async function getInventoryByModel(code: string) {
+  const c = String(code || '').trim();
+  if (!c) return { purchases: [], sales: [] };
+
+  if (MODE === 'online') {
+    try {
+      const fresh = await lib.getInventoryByModel(c);
+      return { purchases: fresh.purchases, sales: fresh.sales };
+    } catch (e) {
+      console.log('[getInventoryByModel] online failed, using local:', e);
+    }
+  }
+
+  const localPurchases = (await getLocal<any[]>('purchases')) || [];
+  const localSales = (await getLocal<any[]>('sales')) || [];
+
+  var pAll = localPurchases.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+  var sAll = localSales.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+
+  const q = await getQueue();
+  for (const item of q) {
+    if (item.op !== 'createPurchase' && item.op !== 'createSale') continue;
+    const rows = (item.payload && (item.payload.items || item.payload.rows)) || [];
+    for (const r of rows) {
+      const rCode = String(r.model_code || r.modelCode || '').trim();
+      if (rCode !== c) continue;
+      const normalized = {
+        invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+        customer_name: item.payload.customerName || '',
+        customer_phone: item.payload.customerPhone || '',
+        customer_code: item.payload.customerCode || '',
+        supplier_name: item.payload.supplierName || '',
+        supplier_phone: item.payload.supplierPhone || '',
+        supplier_code: item.payload.supplierCode || '',
+        model_code: rCode,
+        model_name: r.model_name || r.modelName || '',
+        quantity: Number(r.quantity) || 0,
+        price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+        payment: Number(r.payment) || 0,
+        balance: 0,
+        date_factor: r.date_factor || r.dateFactor || item.payload.date || new Date(item.ts || Date.now()).toISOString(),
+        date_reg: r.date_reg || r.dateReg || item.payload.date || new Date(item.ts || Date.now()).toISOString(),
+        description: r.description || '',
+        _pending: true,
+      };
+      if (item.op === 'createPurchase') pAll = pAll.concat([normalized]);
+      else sAll = sAll.concat([normalized]);
+    }
+  }
+
+  pAll.sort(function(a: any, b: any) {
+    const da = new Date(a.date_factor || a.date_reg || a.created_at || 0).getTime();
+    const db = new Date(b.date_factor || b.date_reg || b.created_at || 0).getTime();
+    return da - db;
+  });
+  sAll.sort(function(a: any, b: any) {
+    const da = new Date(a.date_factor || a.date_reg || a.created_at || 0).getTime();
+    const db = new Date(b.date_factor || b.date_reg || b.created_at || 0).getTime();
+    return da - db;
+  });
+
+  const adjs = (await getLocal<any[]>('stock_adjustments')) || [];
+  const myAdjs = adjs.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+  return { purchases: pAll, sales: sAll, adjustments: myAdjs };
+}
+// ═══════════════════════════════════════════
+//  Stock Adjustments (offline + queue)
+// ═══════════════════════════════════════════
+export async function getStockAdjustments(code?: string) {
+  let list = (await getLocal<any[]>('stock_adjustments')) || [];
+  if (MODE === 'online') {
+    try {
+      const fresh = await lib.getStockAdjustments(code);
+      if (fresh && fresh.length) {
+        await setLocal('stock_adjustments', fresh);
+        list = fresh;
+      }
+    } catch (e) { console.log('[getStockAdjustments] online failed:', e); }
+  }
+  const q = await getQueue();
+  const pending: any[] = [];
+  for (const item of q) {
+    if (item.op === 'createStockAdjustment' && item.payload) pending.push(item.payload);
+  }
+  let all = pending.concat(list);
+  if (code) {
+    const c = String(code).trim();
+    all = all.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+  }
+  return all;
+}
+export async function createStockAdjustment(p: any) {
+  const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || new Date().toISOString() };
+  const list = (await getLocal<any[]>('stock_adjustments')) || [];
+  await setLocal('stock_adjustments', [item, ...list]);
+  if (MODE === 'online') {
+    try { await lib.createStockAdjustment(item); }
+    catch { await enqueue('createStockAdjustment', item); }
+  } else {
+    await enqueue('createStockAdjustment', item);
+  }
+  return item;
+}
+export async function deleteStockAdjustment(id: string) {
+  const list = (await getLocal<any[]>('stock_adjustments')) || [];
+  await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
+  if (MODE === 'online') {
+    try { await lib.deleteStockAdjustment(id); }
+    catch { await enqueue('deleteStockAdjustment', id); }
+  } else {
+    await enqueue('deleteStockAdjustment', id);
+  }
+}
+// ═══════════════════════════════════════════
+//  Report helpers (offline + queue merge)
+// ═══════════════════════════════════════════
+export async function getSalesRowsForReport(code: string) {
+  const c2 = String(code || '').trim();
+  if (!c2) return { customer: [], triang: [] };
+  if (MODE === 'online') {
+    try {
+      const [r1, r2] = await Promise.all([
+        lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+        lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+      ]);
+      return { customer: r1.data || [], triang: r2.data || [] };
+    } catch (e) { console.log('[getSalesRowsForReport] online fail:', e); }
+  }
+  const cachedSales = (await getLocal<any[]>('sales')) || [];
+  const customer = cachedSales.filter(function(r: any) { return r.customer_code === c2; });
+  const triang = cachedSales.filter(function(r: any) { return r.account_holder_code === c2; });
+  const q = await getQueue();
+  for (const item of q) {
+    if (item.op !== 'createSale') continue;
+    const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+    for (const r of rows) {
+      const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', customer_name: item.payload.customerName || '', customer_code: item.payload.customerCode || '', customer_phone: item.payload.customerPhone || '', account_holder: item.payload.holderName || '', account_holder_code: item.payload.holderCode || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+      if (row.customer_code === c2) customer.push(row);
+      if (row.account_holder_code === c2) triang.push(row);
+    }
+  }
+  return { customer: customer, triang: triang };
+}
+export async function getPurchasesRowsForReport(code: string) {
+  const c2 = String(code || '').trim();
+  if (!c2) return { supplier: [] };
+  if (MODE === 'online') {
+    try {
+      const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+      return { supplier: r.data || [] };
+    } catch (e) { console.log('[getPurchasesRowsForReport] online fail:', e); }
+  }
+  const cached = (await getLocal<any[]>('purchases')) || [];
+  const supplier = cached.filter(function(r: any) { return r.supplier_code === c2; });
+  const q = await getQueue();
+  for (const item of q) {
+    if (item.op !== 'createPurchase') continue;
+    const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+    for (const r of rows) {
+      const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', supplier_name: item.payload.supplierName || '', supplier_code: item.payload.supplierCode || '', supplier_phone: item.payload.supplierPhone || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+      if (row.supplier_code === c2) supplier.push(row);
+    }
+  }
+  return { supplier: supplier };
 }

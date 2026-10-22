@@ -1,4 +1,8 @@
+import { captureRef } from 'react-native-view-shot';
+import { Alert } from 'react-native';
+import { Platform } from 'react-native';
 import React from 'react';
+import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, currencyLabel, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
 import { toStorageDateFull } from './lib';;
 import DateField from './lib.datefield';;
 // BoxesScreen.tsx — صندوق استاندارد با کاردکس و تراکنش
@@ -169,15 +173,81 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
     finally { setSaving(false); }
   };
 
-  const printKardex = async () => {
-    if (!selectedBox) return;
+  const buildKardexHtml = () => {
+    if (!selectedBox) return '';
+    const dec = CUR[selectedBox.currency]?.dec || 2;
+    const curLbl = currencyLabel(selectedBox.currency);
+    const first = kardex.length > 0 ? kardex[0] as any : null;
+    const last = kardex.length > 0 ? kardex[kardex.length - 1] as any : null;
+    const opening = first ? (Number(first.running) || 0) - (Number(first.in) || 0) + (Number(first.out) || 0) : 0;
+    let totalIn = 0, totalOut = 0;
+    kardex.forEach((r: any) => { totalIn += Number(r.in) || 0; totalOut += Number(r.out) || 0; });
+    const closing = last ? (Number(last.running) || 0) : 0;
+    const period = (first && last && first.date && last.date) ? (first.date + ' تا ' + last.date) : '—';
+    const serial = 'KX-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (selectedBox.code || 'X');
+    const rows = kardex.map((r: any, i: number) => '<tr><td>' + (i + 1) + '</td><td>' + (r.date || '—') + '</td><td>' + (r.code || '—') + '</td><td>' + (r.type_label || '—') + '</td><td>' + (r.description || '—') + '</td><td>' + (r.in ? fmt(r.in, dec) : '—') + '</td><td>' + (r.out ? fmt(r.out, dec) : '—') + '</td><td>' + fmt(r.running, dec) + '</td></tr>').join('');
+    const totalsRow = '<tr class="total"><td colspan="5" style="text-align:left;font-weight:bold">جمع کل</td><td style="color:#059669;font-weight:bold">' + fmt(totalIn, dec) + '</td><td style="color:#dc2626;font-weight:bold">' + fmt(totalOut, dec) + '</td><td style="font-weight:bold">' + fmt(closing, dec) + '</td></tr>';
+    const info = '<div class="info">' +
+      '<b>🆔 کد:</b> ' + (selectedBox.code || '—') + ' &nbsp;|&nbsp; ' +
+      '<b>💱 ارز:</b> ' + (selectedBox.currency || '—') + ' (' + curLbl + ') &nbsp;|&nbsp; ' +
+      '<b>👤 صاحب:</b> ' + (selectedBox.owner_name || '—') +
+      '<br><b>📅 دوره:</b> ' + period +
+      '<br><b>📄 شماره سند:</b> ' + serial +
+      '</div>';
+    const summary = '<div class="info">' +
+      '<b>💰 مانده اول دوره:</b> ' + fmt(opening, dec) + ' ' + curLbl + ' &nbsp;|&nbsp; ' +
+      '<b>📥 جمع ورودی:</b> ' + fmt(totalIn, dec) + ' ' + curLbl + ' &nbsp;|&nbsp; ' +
+      '<b>📤 جمع خروجی:</b> ' + fmt(totalOut, dec) + ' ' + curLbl +
+      '<br><b>💵 مانده آخر دوره:</b> ' + fmt(closing, dec) + ' ' + curLbl +
+      '</div>';
+    const table = '<table><tr><th>#</th><th>تاریخ</th><th>سند</th><th>نوع</th><th>شرح</th><th>ورودی</th><th>خروجی</th><th>مانده</th></tr>' + rows + totalsRow + '</table>';
+    const netWords = '<div class="net-words">مانده آخر دوره به حروف: ' + numToWords(closing) + ' ' + curLbl + '</div>';
+    const body = info + summary + table + netWords + mizanSignaturesHtml() + mizanComputerNoteHtml();
+    return buildStandardHtml('کاردکس صندوق ' + selectedBox.name, body, '📦 ' + selectedBox.code);
+  };
+  const exportKardexExcel = async () => {
     try {
-      const rows = kardex.map((r: any, i: number) => `<tr><td>${i+1}</td><td>${r.date||'—'}</td><td>${r.code||'—'}</td><td>${r.type_label||'—'}</td><td>${r.description||'—'}</td><td>${r.in?fmt(r.in,CUR[selectedBox.currency]?.dec||2):'—'}</td><td>${r.out?fmt(r.out,CUR[selectedBox.currency]?.dec||2):'—'}</td><td>${fmt(r.running,CUR[selectedBox.currency]?.dec||2)}</td></tr>`).join('');
-      const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>@page{size:A4 portrait;margin:10mm}body{font-family:Tahoma;direction:rtl;color:#0f2438;font-size:11px}h2{text-align:center}.info{margin:10px 0;background:#f8fafc;padding:8px;border-radius:6px}table{width:100%;border-collapse:collapse;font-size:10px}td,th{border:1px solid #cbd5e1;padding:4px 6px;text-align:center}th{background:#0f2438;color:#fff}tr:nth-child(even){background:#f8fafc}</style></head><body><h2>📦 کاردکس صندوق ${selectedBox.name}</h2><div class="info">🆔 کد: ${selectedBox.code} | 💱 ارز: ${selectedBox.currency} | 👤 صاحب: ${selectedBox.owner_name||'—'}<br>💰 مانده فعلی: ${fmt(balances[selectedBox.id||selectedBox.local_id]||0, CUR[selectedBox.currency]?.dec||2)}</div><table><tr><th>#</th><th>تاریخ</th><th>سند</th><th>نوع</th><th>شرح</th><th>ورودی</th><th>خروجی</th><th>مانده</th></tr>${rows}</table></body></html>`;
-      const { uri } = await Print.printToFileAsync({ html });
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
-      showToast?.('✅ کاردکس آماده شد');
+      const data = kardex.map((r: any, i: number) => ({
+        '#': i + 1, 'تاریخ': r.date || '', 'سند': r.code || '', 'نوع': r.type_label || '',
+        'شرح': r.description || '', 'ورودی': r.in || 0, 'خروجی': r.out || 0, 'مانده': r.running || 0
+      }));
+      const r = await exportExcel([{ name: 'کاردکس', data }], 'kardex-' + (selectedBox?.code || 'box') + '-' + Date.now() + '.xlsx');
+      showToast?.(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
     } catch (e: any) { showToast?.('خطا: ' + e.message, true); }
+  };
+  const printKardex = async () => {
+    if (!selectedBox) { showToast?.('صندوقی انتخاب نشده', true); return; }
+    const html = buildKardexHtml();
+    if (!html) return;
+    if (Platform.OS === 'web') { const r = await printHtml(html); showToast?.(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); return; }
+    Alert.alert('خروجی کاردکس', 'نوع خروجی را انتخاب کنید', [
+      { text: '📷 تصویر / اشتراک', onPress: shareKardexAsImage },
+      { text: 'PDF / اشتراک', onPress: async () => { const r = await shareHtmlAsPdf(html, 'kardex-' + selectedBox.code + '-' + Date.now() + '.pdf'); showToast?.(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } },
+      { text: 'چاپ', onPress: async () => { const r = await printHtml(html); showToast?.(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } },
+      { text: 'اکسل', onPress: exportKardexExcel },
+      { text: 'لغو', style: 'cancel' }
+    ]);
+  };;
+  const kardexImageRef = useRef<any>(null);
+  const [imageCaptureMode, setImageCaptureMode] = useState(false);
+  const shareKardexAsImage = async () => {
+    if (!selectedBox) { showToast?.('صندوقی انتخاب نشده', true); return; }
+    setImageCaptureMode(true);
+    await new Promise(function(r){ setTimeout(r, 400); });
+    try {
+      if (!kardexImageRef.current) throw new Error('ref null');
+      const uri = await captureRef(kardexImageRef.current, { format: 'jpg', quality: 0.95 });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', dialogTitle: 'اشتراک تصویر کاردکس' });
+        showToast?.('✅ تصویر آماده شد');
+      } else {
+        showToast?.('اشتراک پشتیبانی نمی‌شود', true);
+      }
+    } catch (e: any) {
+      showToast?.('خطا: ' + (e?.message || ''), true);
+    } finally {
+      setImageCaptureMode(false);
+    }
   };
 
   // ═══ کادر جزئیات صندوق ═══
@@ -287,7 +357,7 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
               <Text style={s.lbl}>مبلغ *</Text>
               <TextInput style={s.inp} value={String(txForm.amount || '')} onChangeText={v => setTxForm((f: any) => ({ ...f, amount: v.replace(/[^\d.-]/g, '') }))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
               <Text style={s.lbl}>تاریخ</Text>
-              <TextInput style={s.inp} value={txForm.date || ''} onChangeText={v => setTxForm((f: any) => ({ ...f, date: v }))} placeholderTextColor="#94a3b8" />
+              <DateField value={txForm.date} onChange={(v: string) => setTxForm((f: any) => ({ ...f, date: v }))} compact defaultToToday />
               <Text style={s.lbl}>طرف حساب (اختیاری)</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: 4 }}>
                 {(buyers || []).slice(0, 20).map((b: any) => (
@@ -531,6 +601,71 @@ export default function BoxesScreen({ showToast, buyers, filterName }: any) {
           </ScrollView>
         </View></View>
       </Modal>
+      {/* Hidden branded kardex for image capture */}
+      <Modal visible={imageCaptureMode} transparent animationType="none">
+        <View style={{ position: 'absolute', left: -9999, top: 0 }}>
+          <View ref={kardexImageRef} collapsable={false} style={IMG.container}>
+            <View style={IMG.brand}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 22 }}>⚖️</Text>
+                <View>
+                  <Text style={IMG.brandTitle}>میزان</Text>
+                  <Text style={IMG.brandSlogan}>حساب‌ها دقیق، معاملات امن، ذهن آسوده.</Text>
+                </View>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={IMG.brandMeta}>📦 {selectedBox?.code || ''}</Text>
+                <Text style={IMG.brandMeta}>💱 {selectedBox?.currency || ''}</Text>
+              </View>
+            </View>
+            <Text style={IMG.title}>کاردکس صندوق {selectedBox?.name || ''}</Text>
+            <View style={IMG.info}>
+              <Text style={IMG.infoTxt}>👤 صاحب: {selectedBox?.owner_name || '—'}</Text>
+              <Text style={IMG.infoTxt}>💰 مانده فعلی: {fmt(balances[selectedBox?.id || selectedBox?.local_id] || 0, CUR[selectedBox?.currency]?.dec || 2)} {selectedBox?.currency || ''}</Text>
+              <Text style={IMG.infoTxt}>📅 {new Date().toLocaleDateString('fa-IR')}</Text>
+            </View>
+            <View style={IMG.thead}>
+              <Text style={[IMG.th, { width: 30 }]}>#</Text>
+              <Text style={[IMG.th, { width: 80 }]}>تاریخ</Text>
+              <Text style={[IMG.th, { width: 80 }]}>سند</Text>
+              <Text style={[IMG.th, { width: 70 }]}>نوع</Text>
+              <Text style={[IMG.th, { flex: 1 }]}>شرح</Text>
+              <Text style={[IMG.th, { width: 80 }]}>ورودی</Text>
+              <Text style={[IMG.th, { width: 80 }]}>خروجی</Text>
+              <Text style={[IMG.th, { width: 90 }]}>مانده</Text>
+            </View>
+            {kardex.map(function(r: any, i: number) {
+              return (
+                <View key={i} style={[IMG.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                  <Text style={[IMG.td, { width: 30 }]}>{i + 1}</Text>
+                  <Text style={[IMG.td, { width: 80 }]}>{r.date || '—'}</Text>
+                  <Text style={[IMG.td, { width: 80 }]}>{r.code || '—'}</Text>
+                  <Text style={[IMG.td, { width: 70 }]}>{r.type_label || '—'}</Text>
+                  <Text style={[IMG.td, { flex: 1, textAlign: 'right' }]}>{r.description || '—'}</Text>
+                  <Text style={[IMG.td, { width: 80, color: '#059669' }]}>{r.in ? fmt(r.in, CUR[selectedBox?.currency]?.dec || 2) : '—'}</Text>
+                  <Text style={[IMG.td, { width: 80, color: '#dc2626' }]}>{r.out ? fmt(r.out, CUR[selectedBox?.currency]?.dec || 2) : '—'}</Text>
+                  <Text style={[IMG.td, { width: 90, fontWeight: 'bold' }]}>{fmt(r.running, CUR[selectedBox?.currency]?.dec || 2)}</Text>
+                </View>
+              );
+            })}
+            {kardex.length > 0 && (
+              <View style={IMG.summary}>
+                <Text style={IMG.summaryLine}>💰 مانده اول دوره: {fmt((Number((kardex[0] as any)?.running)||0) - (Number((kardex[0] as any)?.in)||0) + (Number((kardex[0] as any)?.out)||0), CUR[selectedBox?.currency]?.dec || 2)} {selectedBox?.currency || ''}</Text>
+                <Text style={IMG.summaryLine}>📥 جمع ورودی: {fmt(kardex.reduce((a: number, r: any) => a + (Number(r.in)||0), 0), CUR[selectedBox?.currency]?.dec || 2)} {selectedBox?.currency || ''}</Text>
+                <Text style={IMG.summaryLine}>📤 جمع خروجی: {fmt(kardex.reduce((a: number, r: any) => a + (Number(r.out)||0), 0), CUR[selectedBox?.currency]?.dec || 2)} {selectedBox?.currency || ''}</Text>
+                <Text style={[IMG.summaryLine, { fontWeight: 'bold', borderTopWidth: 1, borderTopColor: '#cbd5e1', paddingTop: 4, marginTop: 4 }]}>💵 مانده آخر دوره: {fmt(Number((kardex[kardex.length-1] as any)?.running)||0, CUR[selectedBox?.currency]?.dec || 2)} {selectedBox?.currency || ''}</Text>
+              </View>
+            )}
+            <View style={IMG.signs}>
+              <View style={IMG.signBox}><Text style={IMG.signTxt}>امضای صاحب حساب</Text></View>
+              <View style={IMG.signBox}><Text style={IMG.signTxt}>امضای مدیر مالی</Text></View>
+              <View style={IMG.signBox}><Text style={IMG.signTxt}>مهر شرکت</Text></View>
+            </View>
+            <Text style={IMG.compNote}>⚖️ این سند به‌صورت خودکار توسط سیستم میزان تولید شده است.</Text>
+            <Text style={IMG.footer}>میزان — کاردکس خودکار</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -566,3 +701,25 @@ const s = StyleSheet.create({
   pickName: { color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'right' },
   pickSub: { color: '#94a3b8', fontSize: 11, marginTop: 4, textAlign: 'right' },
 });
+const IMG = StyleSheet.create({
+  container: { backgroundColor: '#ffffff', padding: 14, width: 720, borderRadius: 8 },
+  brand: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 3, borderBottomColor: '#d4af37', paddingBottom: 10, marginBottom: 10 },
+  brandTitle: { fontSize: 22, fontWeight: 'bold', color: '#0f2438' },
+  brandSlogan: { fontSize: 10, color: '#64748b' },
+  brandMeta: { fontSize: 11, color: '#64748b', fontWeight: 'bold' },
+  title: { fontSize: 16, fontWeight: 'bold', color: '#0f2438', textAlign: 'center', marginVertical: 8 },
+  info: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 8, marginBottom: 10 },
+  infoTxt: { fontSize: 12, color: '#0f2438', textAlign: 'right', marginVertical: 2 },
+  thead: { flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 },
+  th: { color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 3 },
+  trow: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 5 },
+  td: { fontSize: 10, color: '#0f2438', textAlign: 'center', paddingHorizontal: 3 },
+  footer: { fontSize: 9, color: '#94a3b8', textAlign: 'center', marginTop: 10 },
+  summary: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 8, marginVertical: 8 },
+  summaryLine: { fontSize: 11, color: '#0f2438', textAlign: 'right', marginVertical: 1 },
+  signs: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 14, gap: 8 },
+  signBox: { flex: 1, borderTopWidth: 1, borderTopColor: '#94a3b8', paddingTop: 4, alignItems: 'center', minHeight: 30 },
+  signTxt: { fontSize: 9, color: '#475569' },
+  compNote: { fontSize: 8, color: '#94a3b8', textAlign: 'center', marginTop: 6, fontStyle: 'italic' },
+});
+

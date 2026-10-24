@@ -406,6 +406,7 @@ export async function generatePurchaseInvoiceNumber(manualInvoice: string): Prom
 export async function createSale(payload: {
   invoiceNumber: string; customerCode: string; customerName: string;
   customerPhone: string; customerAddress: string; shipping: string; items: SaleItem[];
+  receiverName?: string; receiverCode?: string; receiverBank?: string; receiverAccount?: string;
 }) {
   const now = new Date();
   const rows = payload.items.map((it, idx) => ({
@@ -414,19 +415,24 @@ export async function createSale(payload: {
     customer_name: payload.customerName,
     customer_phone: normPhone(payload.customerPhone),
     customer_address: payload.customerAddress || '',
+    receiver_name: payload.receiverName || '',
+    receiver_code: payload.receiverCode || '',
+    receiver_bank: payload.receiverBank || '',
+    receiver_account: payload.receiverAccount || '',
     shipping: payload.shipping,
     model_code: it.modelCode || '',
     model_name: it.modelName,
+    shelf: it.shelf || '',
     quantity: it.quantity,
     price_unit: it.priceUnit,
-    payment: idx === 0 ? (it.payment || 0) : 0,
-    deposit_date: it.depositDate || '',
-    bank_name: it.bankName || '',
-    account_holder: it.accountHolder || '',
-    account_holder_code: it.accountHolderCode || '',
-    description: it.description || '',
-    date_factor: toStorageDate(now),
-    date_reg: toStorageDateFull(now),
+    payment: idx === 0 ? (payload.paymentAmount !== undefined ? payload.paymentAmount : (it.payment || 0)) : 0,
+    deposit_date: idx === 0 ? (payload.payDate || it.depositDate || '') : '',
+    bank_name: idx === 0 ? (payload.receiverBank || it.bankName || '') : '',
+    account_holder: idx === 0 ? (payload.receiverName || it.accountHolder || '') : '',
+    account_holder_code: idx === 0 ? (payload.receiverCode || it.accountHolderCode || '') : '',
+    description: idx === 0 ? (payload.note || it.description || '') : (it.description || ''),
+    date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+    date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
   }));
   const { error } = await supabase.from('sales').insert(rows);
   if (error) throw new Error(error.message);
@@ -475,13 +481,21 @@ export async function searchAllInvoices(q: string) {
         `${r.invoice} ${r.name || ''} ${r.phone || ''}`.toLowerCase().includes(query));
   return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
 }
-export async function getInvoiceDetail(invoiceNumber: string) {
+export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+  const table = type === 'purchase' ? 'purchases' : 'sales';
   const { data, error } = await supabase
-    .from('sales').select('*')
+    .from(table).select('*')
     .eq('invoice_number', invoiceNumber)
     .order('created_at');
   if (error) throw new Error(error.message);
-  return data || [];
+  if (data && data.length > 0) return data;
+  // اگر در جدول اصلی نبود، جدول دیگر را امتحان کن
+  if (!type) {
+    const otherTable = table === 'sales' ? 'purchases' : 'sales';
+    const { data: d2 } = await supabase.from(otherTable).select('*').eq('invoice_number', invoiceNumber).order('created_at');
+    return d2 || [];
+  }
+  return [];
 }
 
 // ═══════════════════════════════════════════════════
@@ -521,8 +535,8 @@ export async function createPurchase(payload: any) {
       account_holder: payload.payerName || '',
       payer_code: payload.payerCode || '',
       receiver: payload.receiverAccount || '',
-      date_factor: toStorageDate(now),
-      date_reg: toStorageDateFull(now),
+      date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+      date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
     });
     if (error) throw new Error(error.message);
     return finalInvoiceNumber;
@@ -548,8 +562,8 @@ export async function createPurchase(payload: any) {
     account_holder: idx === 0 ? (payload.payerName || '') : '',
     payer_code: idx === 0 ? (payload.payerCode || '') : '',
     receiver: idx === 0 ? (payload.receiverAccount || '') : '',
-    date_factor: toStorageDate(now),
-    date_reg: toStorageDateFull(now),
+    date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+    date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
   }));
   const { error } = await supabase.from('purchases').insert(rows);
   if (error) throw new Error(error.message);
@@ -593,10 +607,31 @@ export async function getDashboardStats(range: string = 'month', filter: string 
 
   const now = new Date();
   let startDate: Date | null = null;
-  if (range === 'today') startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  else if (range === 'month') startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-  else if (range === 'year') startDate = new Date(now.getFullYear(), 0, 1);
-  else if (range === 'last6months') startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const calType = getCalType();
+  
+  if (range === 'today') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (range === 'month') {
+    try {
+      if (calType === 'jalali') {
+        const [jy, jm] = g2j(now.getFullYear(), now.getMonth() + 1, now.getDate());
+        const g = j2g(jy, jm, 1);
+        startDate = new Date(g.y, g.m - 1, g.d);
+      } else if (calType === 'hijri') {
+        const h = g2h(now);
+        const g = h2g(h.y, h.m, 1);
+        startDate = new Date(g.y, g.m - 1, g.d);
+      } else {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+    } catch (e) {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+  } else if (range === 'year') {
+    startDate = new Date(now.getFullYear(), 0, 1); // برای سال، معمولاً سال میلادی مبناست، اگر نیاز شد تغییر می‌دهیم
+  } else if (range === 'last6months') {
+    startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  }
 
   const inRange = (d: any) => {
     if (!startDate) return true;
@@ -936,10 +971,36 @@ export async function createFxPartner(p: any) {
 export async function updateSale(payload: { invoiceNumber: string; rows: any[] }) {
   const { invoiceNumber, rows } = payload || {};
   if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+  
+  // دریافت اطلاعات قبلی برای حفظ متادیتا (مشتری، تاریخ و...)
+  const { data: oldRows, error: fetchErr } = await supabase.from('sales').select('*').eq('invoice_number', invoiceNumber).limit(1);
+  if (fetchErr) throw fetchErr;
+  if (!oldRows || oldRows.length === 0) throw new Error('فاکتور اصلی در سرور پیدا نشد');
+  
+  const template = oldRows[0];
+  const cleanRows = rows.filter((r: any) => !r._deleted).map((r: any) => {
+    const merged = { ...template };
+    delete merged.id; delete merged.created_at; // اجازه بده تا سرور رکورد جدید بسازد
+    merged.model_code = r.modelCode || '';
+    merged.model_name = r.modelName || '';
+    merged.quantity = Number(r.quantity) || 0;
+    merged.price_unit = Number(r.priceUnit) || 0;
+    merged.payment = Number(r.payment) || 0;
+    merged.amount = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
+    merged.description = r.description || '';
+    if (r.dateFactor) merged.date_factor = r.dateFactor;
+    if (r.dateReg) merged.date_reg = r.dateReg;
+    if (r.bankName) merged.bank_name = r.bankName;
+    if (r.accountHolder) merged.account_holder = r.accountHolder;
+    if (r.accountHolderCode) merged.account_holder_code = r.accountHolderCode;
+    if (r.depositDate) merged.deposit_date = r.depositDate;
+    return merged;
+  });
+
   const { error: delErr } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
   if (delErr) throw delErr;
-  if (rows && rows.length) {
-    const { error } = await supabase.from('sales').insert(rows);
+  if (cleanRows.length) {
+    const { error } = await supabase.from('sales').insert(cleanRows);
     if (error) throw error;
   }
 }
@@ -947,10 +1008,31 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[] }
 export async function updatePurchase(payload: { invoiceNumber: string; rows: any[] }) {
   const { invoiceNumber, rows } = payload || {};
   if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+  
+  const { data: oldRows, error: fetchErr } = await supabase.from('purchases').select('*').eq('invoice_number', invoiceNumber).limit(1);
+  if (fetchErr) throw fetchErr;
+  if (!oldRows || oldRows.length === 0) throw new Error('فاکتور اصلی در سرور پیدا نشد');
+  
+  const template = oldRows[0];
+  const cleanRows = rows.filter((r: any) => !r._deleted).map((r: any) => {
+    const merged = { ...template };
+    delete merged.id; delete merged.created_at;
+    merged.model_code = r.modelCode || '';
+    merged.model_name = r.modelName || '';
+    merged.quantity = Number(r.quantity) || 0;
+    merged.price_unit = Number(r.priceUnit) || 0;
+    merged.payment = Number(r.payment) || 0;
+    merged.amount = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
+    merged.description = r.description || '';
+    if (r.dateFactor) merged.date_factor = r.dateFactor;
+    if (r.dateReg) merged.date_reg = r.dateReg;
+    return merged;
+  });
+
   const { error: delErr } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
   if (delErr) throw delErr;
-  if (rows && rows.length) {
-    const { error } = await supabase.from('purchases').insert(rows);
+  if (cleanRows.length) {
+    const { error } = await supabase.from('purchases').insert(cleanRows);
     if (error) throw error;
   }
 }
@@ -1081,5 +1163,171 @@ export async function createStockAdjustment(p: any) {
 }
 export async function deleteStockAdjustment(id: string) {
   const { error } = await supabase.from('stock_adjustments').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+// ═══════════════════════════════════════════
+//  Parties — طرف‌حساب‌ها (تأمین‌کننده/مشتری/هر دو)
+// ═══════════════════════════════════════════
+export async function getParties(type?: string) {
+  let q: any = supabase.from('parties').select('*').order('name', { ascending: true });
+  if (type) q = q.in('type', [type, 'both']);
+  const { data, error } = await q;
+  if (error) { console.log('[getParties]', error.message); return []; }
+  return data || [];
+}
+
+export async function createParty(p: any) {
+  const clean: any = { ...p };
+  delete clean.id; delete clean.user_id;
+  if (!clean.local_id) clean.local_id = 'party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  if (!clean.created_at) clean.created_at = new Date().toISOString();
+  clean.updated_at = new Date().toISOString();
+  const { data, error } = await supabase.from('parties').insert(clean).select().single();
+  if (error) throw new Error(error.message);
+  return data || clean;
+}
+
+export async function updateParty(idOrPayload: any, pArg?: any) {
+  const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
+  const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
+  if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+  const clean: any = { ...payload };
+  delete clean.id; delete clean.user_id;
+  clean.updated_at = new Date().toISOString();
+  const { error } = await supabase.from('parties').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+  return clean;
+}
+
+export async function deleteParty(idOrPayload: any) {
+  const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+  if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+  const { error } = await supabase.from('parties').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+
+export async function lookupPartyByPhone(phone: string) {
+  const p = String(phone || '').replace(/[^0-9]/g, '');
+  if (!p) return null;
+  const { data } = await supabase.from('parties').select('*').eq('phone', p).limit(1);
+  return (data && data[0]) || null;
+}
+
+export async function lookupPartyByName(name: string) {
+  const n = String(name || '').trim();
+  if (!n) return null;
+  const { data } = await supabase.from('parties').select('*').eq('name', n).limit(1);
+  return (data && data[0]) || null;
+}
+// ═══════════════════════════════════════════
+//  Partners & Bank Accounts & Transactions
+// ═══════════════════════════════════════════
+export async function getPartners() {
+  const { data, error } = await supabase.from('partners').select('*').order('code', { ascending: true });
+  if (error) { console.log('[getPartners]', error.message); return []; }
+  return data || [];
+}
+export async function createPartner(p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  if (!clean.local_id) clean.local_id = 'pt_' + Date.now();
+  const { error } = await supabase.from('partners').insert(clean);
+  if (error) throw new Error(error.message);
+  return clean;
+}
+export async function updatePartner(id: string, p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  const { error } = await supabase.from('partners').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+export async function deletePartner(id: string) {
+  const { error } = await supabase.from('partners').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+
+export async function getPartnerBankAccounts(partnerCode: string) {
+  const { data, error } = await supabase.from('partner_bank_accounts').select('*').eq('partner_code', partnerCode);
+  if (error) { console.log('[getPBA]', error.message); return []; }
+  return data || [];
+}
+export async function createPartnerBankAccount(p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  if (!clean.local_id) clean.local_id = 'pba_' + Date.now();
+  const { error } = await supabase.from('partner_bank_accounts').insert(clean);
+  if (error) throw new Error(error.message);
+  return clean;
+}
+export async function updatePartnerBankAccount(id: string, p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  const { error } = await supabase.from('partner_bank_accounts').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+export async function deletePartnerBankAccount(id: string) {
+  const { error } = await supabase.from('partner_bank_accounts').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+
+export async function getPartnerTransactions(partnerCode: string) {
+  const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+  if (error) { console.log('[getPT]', error.message); return []; }
+  return data || [];
+}
+export async function createPartnerTransaction(p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  if (!clean.local_id) clean.local_id = 'ptx_' + Date.now();
+  const { error } = await supabase.from('partner_transactions').insert(clean);
+  if (error) throw new Error(error.message);
+  return clean;
+}
+export async function deletePartnerTransaction(id: string) {
+  const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+// ═══════════════════════════════════════════
+//  Banks
+// ═══════════════════════════════════════════
+export async function getBanks() {
+  const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+  if (error) { console.log('[getBanks]', error.message); return []; }
+  return data || [];
+}
+export async function createBank(p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+  const { error } = await supabase.from('banks').insert(clean);
+  if (error) throw new Error(error.message);
+  return clean;
+}
+export async function updateBank(id: string, p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+export async function deleteBank(id: string) {
+  const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+
+// ═══════════════════════════════════════════
+//  Shippings
+// ═══════════════════════════════════════════
+export async function getShippings() {
+  const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+  if (error) { console.log('[getShippings]', error.message); return []; }
+  return data || [];
+}
+export async function createShipping(p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  if (!clean.local_id) clean.local_id = 'ship_' + Date.now();
+  const { error } = await supabase.from('shippings').insert(clean);
+  if (error) throw new Error(error.message);
+  return clean;
+}
+export async function updateShipping(id: string, p: any) {
+  const clean = { ...p }; delete clean.id; delete clean.user_id;
+  const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+  if (error) throw new Error(error.message);
+}
+export async function deleteShipping(id: string) {
+  const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
   if (error) throw new Error(error.message);
 }

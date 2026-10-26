@@ -19,6 +19,6 @@ config.resolver.extraNodeModules = {
 
 // پسوندهای اضافی
 config.resolver.sourceExts = [...(config.resolver.sourceExts || []), 'cjs', 'mjs'];
-config.resolver.assetExts = [...(config.resolver.assetExts || []), 'bin'];
+config.resolver.assetExts = Array.from(new Set([...(config.resolver.assetExts || []), 'bin', 'wasm']));
 
 module.exports = config;

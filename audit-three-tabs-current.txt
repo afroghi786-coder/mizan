@@ -1,0 +1,616 @@
+══════════ getLedgerData در lib.offline.ts ══════════
+
+─── lib.offline.ts — getLedgerData (خط 1747) ───
+1747: export async function getLedgerData(): Promise<any[]> {
+1748:   const _pda = (lib && (lib as any).parseDateAny) ? (lib as any).parseDateAny : function(d: any) { return d ? new Date(d) : null; };
+1749:   let allSales: any[] = [];
+1750:   let allPurchases: any[] = [];
+1751: 
+1752:   if (MODE === 'online') {
+1753:     try {
+1754:       const [sRes, pRes] = await Promise.all([
+1755:         lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+1756:         lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+1757:       ]);
+1758:       if (sRes && sRes.data && sRes.data.length) allSales = sRes.data;
+1759:       if (pRes && pRes.data && pRes.data.length) allPurchases = pRes.data;
+1760:     } catch (e) { console.log('[getLedgerData] online fail:', e); }
+1761:   }
+1762: 
+1763:   if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
+1764:   if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
+1765: 
+1766:   const q = await getQueue();
+1767:   for (const item of q) {
+1768:     // حذف آفلاین فروش
+1769:     if (item.op === 'deleteSale' && item.payload) {
+1770:       const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+1771:       if (inv) allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+1772:       continue;
+1773:     }
+1774:     // حذف آفلاین خرید
+1775:     if (item.op === 'deletePurchase' && item.payload) {
+1776:       const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+1777:       if (inv) allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+1778:       continue;
+1779:     }
+1780:     // ویرایش آفلاین فروش سینک‌شده
+1781:     if (item.op === 'updateSale' && item.payload) {
+1782:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+1783:       if (!inv) continue;
+1784:       const meta = item.payload.meta || {};
+1785:       const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+1786:       allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+1787:       for (const r of (item.payload.rows || [])) {
+1788:         if (r._deleted) continue;
+1789:         const qty = Number(r.quantity) || 0;
+1790:         const price = Number(r.priceUnit != null ? r.priceUnit : r.price_unit) || 0;
+1791:         allSales.push({
+1792:           customer_code: meta.code || '',
+1793:           customer_name: meta.name || '',
+1794:           customer_phone: meta.phone || '',
+1795:           account_holder_code: r.accountHolderCode || '',
+1796:           account_holder: r.accountHolder || '',
+1797:           quantity: qty,
+1798:           price_unit: price,
+1799:           payment: Number(r.payment) || 0,
+1800:           total: qty * price,
+1801:           model_code: r.modelCode || '',
+1802:           model_name: r.modelName || '',
+1803:           invoice_number: inv,
+1804:           manual_invoice: '',
+1805:           date_factor: r.dateFactor || r.depositDate || baseDate,
+1806:           date_reg: r.dateReg || baseDate,
+1807:           bank_name: r.bankName || '',
+1808:           deposit_date: r.depositDate || '',
+1809:           shipping: meta.shipping || '',
+1810:           description: r.description || '',
+1811:           payer_code: r.accountHolderCode || '',
+1812:           _pending: true,
+1813:         });
+1814:       }
+1815:       continue;
+1816:     }
+1817:     // ویرایش آفلاین خرید سینک‌شده
+1818:     if (item.op === 'updatePurchase' && item.payload) {
+1819:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+1820:       if (!inv) continue;
+1821:       const meta = item.payload.meta || {};
+1822:       const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+1823:       allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+1824:       for (const r of (item.payload.rows || [])) {
+1825:         if (r._deleted) continue;
+1826:         const qty = Number(r.quantity) || 0;
+1827:         const price = Number(r.priceUnit != null ? r.priceUnit : r.price_unit) || 0;
+1828:         allPurchases.push({
+1829:           supplier_code: meta.code || '',
+1830:           supplier_name: meta.name || '',
+1831:           supplier_phone: meta.phone || '',
+1832:           quantity: qty,
+1833:           price_unit: price,
+1834:           payment: Number(r.payment) || 0,
+1835:           total: qty * price,
+1836:           model_code: r.modelCode || '',
+1837:           model_name: r.modelName || '',
+1838:           invoice_number: inv,
+1839:           manual_invoice: meta.manualInv || '',
+1840:           date_factor: r.dateFactor || r.depositDate || baseDate,
+1841:           date_reg: r.dateReg || baseDate,
+1842:           bank_name: r.bankName || '',
+1843:           deposit_date: r.depositDate || '',
+1844:           shipping: meta.shipping || '',
+1845:           description: r.description || '',
+1846:           payer_code: r.payerCode || r.accountHolderCode || '',
+1847:           _pending: true,
+1848:         });
+1849:       }
+1850:       continue;
+1851:     }
+1852:     if (item.op === 'createSale' && item.payload) {
+1853:       const rows = item.payload.rows || item.payload.items || [];
+1854:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+1855:       for (const r of rows) {
+1856:         allSales.push({
+1857:           customer_code: item.payload.customerCode || item.payload.customer_code || '',
+1858:           customer_name: item.payload.customerName || item.payload.customer_name || '',
+1859:           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
+1860:           account_holder_code: item.payload.holderCode || item.payload.account_holder_code || '',
+1861:           account_holder: item.payload.holderName || item.payload.account_holder || '',
+1862:           quantity: Number(r.quantity) || 0,
+1863:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+1864:           payment: Number(r.payment) || 0,
+1865:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+1866:           model_code: r.model_code || r.modelCode || '',
+1867:           model_name: r.model_name || r.modelName || '',
+1868:           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+1869:           manual_invoice: '',
+1870:           date_factor: r.date_factor || r.dateFactor || baseDate,
+1871:           date_reg: r.date_reg || r.dateReg || baseDate,
+1872:           bank_name: item.payload.bank || '',
+1873:           deposit_date: item.payload.depositDate || '',
+1874:           shipping: item.payload.shipping || '',
+1875:           description: r.description || '',
+1876:           payer_code: item.payload.holderCode || '',
+1877:           _pending: true,
+1878:         });
+1879:       }
+1880:     }
+1881:     if (item.op === 'createPurchase' && item.payload) {
+1882:       const rows = item.payload.rows || item.payload.items || [];
+1883:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+1884:       for (const r of rows) {
+1885:         allPurchases.push({
+1886:           supplier_code: item.payload.supplierCode || item.payload.supplier_code || '',
+1887:           supplier_name: item.payload.supplierName || item.payload.supplier_name || '',
+1888:           supplier_phone: item.payload.supplierPhone || item.payload.supplier_phone || '',
+1889:           quantity: Number(r.quantity) || 0,
+1890:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+1891:           payment: Number(r.payment) || 0,
+1892:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+1893:           model_code: r.model_code || r.modelCode || '',
+1894:           model_name: r.model_name || r.modelName || '',
+1895:           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+1896:           manual_invoice: item.payload.manualInvoice || '',
+1897:           date_factor: r.date_factor || r.dateFactor || baseDate,
+1898:           date_reg: r.date_reg || r.dateReg || baseDate,
+1899:           bank_name: item.payload.bank || '',
+1900:           deposit_date: item.payload.depositDate || '',
+1901:           shipping: item.payload.shipping || '',
+1902:           description: r.description || '',
+1903:           payer_code: item.payload.payerCode || '',
+1904:           _pending: true,
+1905:         });
+1906:       }
+1907:     }
+1908:   }
+1909: 
+1910:   const normPhone = function(p: any) { return String(p || '').replace(/[^\d]/g, ''); };
+1911:   const makeKey = function(name: string, code: string, phone: string): string | null {
+1912:     const np = normPhone(phone);
+1913:     if (np && np.length >= 7) return 'P:' + np;
+1914:     if (code) return 'C:' + String(code).trim();
+1915:     if (name) return 'N:' + String(name).trim();
+1916:     return null;
+1917:   };
+1918: 
+1919:   const accounts: Record<string, any> = {};
+1920:   const getOrCreate = function(name: string, code: string, phone: string) {
+1921:     const key = makeKey(name, code, phone);
+1922:     if (!key) return null;
+1923:     if (!accounts[key]) accounts[key] = { key: key, names: {}, codes: {}, phones: {}, transactions: [] };
+1924:     if (name) accounts[key].names[name] = true;
+1925:     if (code) accounts[key].codes[code] = true;
+1926:     if (phone) accounts[key].phones[phone] = true;
+1927:     return accounts[key];
+1928:   };
+1929: 
+1930:   allSales.forEach(function(s: any) {
+1931:     const code = String(s.customer_code || '').trim();
+1932:     const name = String(s.customer_name || '').trim();
+1933:     const phone = String(s.customer_phone || '').trim();
+1934:     const acc = getOrCreate(name, code, phone);
+1935:     if (!acc) return;
+1936: 
+1937:     const qty = Number(s.quantity) || 0;
+1938:     const price = Number(s.price_unit) || 0;
+1939:     const total = Number(s.total) || (qty * price);
+1940:     const payment = Number(s.payment) || 0;
+1941: 
+1942:     const common = {
+1943:       date: s.date_factor || s.date_reg || s.created_at || '',
+1944:       invoice: s.invoice_number || '',
+1945:       manualInvoice: s.manual_invoice || '',
+1946:       modelCode: s.model_code || '',
+1947:       modelName: s.model_name || '',
+1948:       bank: s.bank_name || '',
+1949:       holder: s.account_holder || '',
+1950:       holderCode: s.account_holder_code || '',
+1951:       depositDate: s.deposit_date || '',
+1952:       shipping: s.shipping || '',
+1953:       description: s.description || '',
+1954:     };
+1955: 
+1956:     if (total > 0) {
+1957:       acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0 });
+1958:     }
+1959:     if (payment > 0) {
+1960:       acc.transactions.push({ ...common, type: 'payment_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: 0, credit: payment, description: 'دریافت وجه' });
+1961: 
+1962:       const hCode = String(s.account_holder_code || '').trim();
+1963:       const hName = String(s.account_holder || '').trim();
+1964:       if (hCode && hCode !== code) {
+1965:         const hAcc = getOrCreate(hName, hCode, '');
+1966:         if (hAcc) {
+1967:           hAcc.transactions.push({
+1968:             ...common, type: 'triangular_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0,
+1969:             description: 'دریافت مثلثی از طرف ' + name,
+1970:           });
+1971:         }
+1972:       }
+1973:     }
+1974:   });
+1975: 
+1976:   allPurchases.forEach(function(p: any) {
+1977:     const code = String(p.supplier_code || '').trim();
+1978:     const name = String(p.supplier_name || '').trim();
+1979:     const phone = String(p.supplier_phone || '').trim();
+1980:     const acc = getOrCreate(name, code, phone);
+1981:     if (!acc) return;
+1982: 
+1983:     const qty = Number(p.quantity) || 0;
+1984:     const price = Number(p.price_unit) || 0;
+1985:     const total = Number(p.total) || (qty * price);
+1986:     const payment = Number(p.payment) || 0;
+1987: 
+1988:     const common = {
+1989:       date: p.date_factor || p.date_reg || p.created_at || '',
+1990:       invoice: p.invoice_number || '',
+1991:       manualInvoice: p.manual_invoice || '',
+1992:       modelCode: p.model_code || '',
+1993:       modelName: p.model_name || '',
+1994:       bank: p.bank_name || '',
+1995:       holder: p.account_holder || '',
+1996:       holderCode: p.payer_code || '',
+1997:       depositDate: p.deposit_date || '',
+1998:       shipping: p.shipping || '',
+1999:       description: p.description || '',
+2000:     };
+2001: 
+2002:     if (total > 0) {
+2003:       acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit: total });
+2004:     }
+2005:     if (payment > 0) {
+2006:       acc.transactions.push({ ...common, type: 'payment_sent', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0, description: 'پرداخت به تأمین‌کننده' });
+2007:     }
+2008:   });
+2009: 
+2010:   const result: any[] = [];
+2011:   Object.keys(accounts).forEach(function(k) {
+2012:     const acc = accounts[k];
+2013:     let debit = 0, credit = 0;
+2014:     acc.transactions.forEach(function(t: any) { debit += (t.debit || 0); credit += (t.credit || 0); });
+2015:     const balance = debit - credit;
+2016:     const trans = acc.transactions.slice().sort(function(a: any, b: any) {
+2017:       const da = _pda(a.date), db = _pda(b.date);
+2018:       return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+2019:     });
+2020:     let run = 0;
+2021:     trans.forEach(function(t: any) { run += (t.debit || 0) - (t.credit || 0); t.runningBalance = run; });
+2022:     let hasSale = false;
+2023:     let hasPurchase = false;
+2024:     trans.forEach(function(t: any) {
+2025:       if (t.type === 'sale') hasSale = true;
+2026:       if (t.type === 'purchase') hasPurchase = true;
+2027:     });
+2028:     const typeStr = (hasSale && hasPurchase) ? 'مشتری/تأمین‌کننده' : hasSale ? 'مشتری' : hasPurchase ? 'تأمین‌کننده' : '—';
+2029:     result.push({
+2030:       key: acc.key,
+2031:       name: Object.keys(acc.names)[0] || '—',
+2032:       code: Object.keys(acc.codes)[0] || '—',
+2033:       phone: Object.keys(acc.phones)[0] || '—',
+2034:       allNames: Object.keys(acc.names),
+2035:       allCodes: Object.keys(acc.codes),
+2036:       allPhones: Object.keys(acc.phones),
+2037:       transactions: trans,
+2038:       totalDebit: debit,
+2039:       totalCredit: credit,
+2040:       balance: balance,
+2041:       type: typeStr,
+2042:     });
+2043:   });
+2044:   // ═══ حساب شرکا در دفتر معین ═══
+2045:   // ═══ یک ردیف خلاصه برای هر شریک ═══
+2046:   // ═══ یک ردیف خلاصه برای هر شریک ═══
+2047:   // ═══ نقشه اسناد مبنا برای غنی‌سازی سطح ۳ ═══
+2048:   const _srcMaps: any = { sales: {}, purchases: {}, expenses: {}, salaries: {}, loans: {} };
+2049:   (allSales || []).forEach((s: any) => { const k = s.invoice_number || s.invoice; if (k) _srcMaps.sales[k] = s; });
+2050:   (allPurchases || []).forEach((p: any) => { const k = p.invoice_number || p.invoice; if (k) _srcMaps.purchases[k] = p; });
+2051:   let _allExpenses: any[] = [];
+2052:   let _allSalaries: any[] = [];
+2053:   let _allLoans: any[] = [];
+2054:   try { _allExpenses = await getExpenses(); } catch {}
+2055:   try { _allSalaries = await getSalaryPayments(); } catch {}
+2056:   try { _allLoans = await getLoans(); } catch {}
+2057:   _allExpenses.forEach((e: any) => { const k = e.local_id || e.id || e.invoice_number; if (k) _srcMaps.expenses[k] = e; });
+2058:   _allSalaries.forEach((s: any) => { const k = s.local_id || s.id || s.invoice_number; if (k) _srcMaps.salaries[k] = s; });
+2059:   _allLoans.forEach((l: any) => { const k = l.local_id || l.id; if (k) _srcMaps.loans[k] = l; });
+2060: 
+2061:   function _srcInfo(t: any) {
+2062:     const st = String(t.source_type || t.sourceType || '').toLowerCase();
+2063:     const sid = String(t.source_id || t.sourceId || t.invoice || '');
+2064:     if (!sid) return null;
+2065:     if (st === 'sale') {
+2066:       const s = _srcMaps.sales[sid]; if (!s) return null;
+2067:       return { kind: 'sale', invoice: s.invoice_number || sid, date: s.date_reg || s.date_factor || s.created_at || '', total: Number(s.total_amount || s.total || 0), paid: Number(s.payment || s.paid || 0), balance: Number(s.balance || 0) };
+2068:     }
+2069:     if (st === 'purchase') {
+2070:       const p = _srcMaps.purchases[sid]; if (!p) return null;
+2071:       return { kind: 'purchase', invoice: p.invoice_number || sid, date: p.date_reg || p.date_factor || p.created_at || '', total: Number(p.total_amount || p.total || 0), paid: Number(p.payment || p.paid || 0), balance: Number(p.balance || 0) };
+2072:     }
+2073:     if (st === 'expense') {
+2074:       const e = _srcMaps.expenses[sid]; if (!e) return null;
+2075:       return { kind: 'expense', invoice: e.invoice_number || sid, date: e.payment_date || e.created_at || '', total: Number(e.amount || 0), paid: Number(e.amount || 0), balance: 0, category: e.category || '', title: e.title || '', receiver: e.receiver_name || '', bank: e.bank || '', method: e.payment_method || '', status: e.status || '' };
+2076:     }
+2077:     if (st === 'salary') {
+2078:       const s = _srcMaps.salaries[sid]; if (!s) return null;
+2079:       return { kind: 'salary', invoice: s.invoice_number || sid, date: s.payment_date || s.created_at || '', total: Number(s.net_salary || 0), paid: Number(s.payment || 0), balance: Number(s.balance || 0), employee: s.employee_name || '', month: s.month || '', bank: s.bank || '' };
+2080:     }
+2081:     if (st === 'loan') {
+2082:       const l = _srcMaps.loans[sid]; if (!l) return null;
+2083:       return { kind: 'loan', invoice: sid, date: l.date || l.created_at || '', total: Number(l.amount || 0), paid: Number(l.paid || 0), balance: Number(l.balance || 0), employee: l.employee_name || '', installments: Number(l.installments || 0), monthly: Number(l.monthly_amount || 0), status: l.status || '' };
+2084:     }
+2085:     return null;
+2086:   }
+2087: 
+2088:   const partnerResult: any[] = [];
+2089:   try {
+2090:     const partnersList = await getPartners();
+2091:     for (const p of partnersList) {
+2092:       const txns = await getPartnerTransactions(p.code);
+2093:       if (!txns || !txns.length) continue;
+2094: 
+2095:       let capital = 0, current = 0, drawings = 0;
+2096:       let totalCredit = 0, totalDebit = 0;
+2097:       const trans: any[] = [];
+2098: 
+2099:       txns.forEach(function(t: any) {
+2100:         const amt = Math.abs(Number(t.amount) || 0);
+2101:         const at = String(t.account_type || 'current');
+2102:         const type = String(t.type || '');
+2103:         let d = 0, c = 0;
+2104:         if (type === 'withdraw' || type === 'transfer_out' || type === 'drawing') d = amt;
+2105:         else if (type === 'deposit' || type === 'transfer_in') c = amt;
+2106: 
+2107:         if (at === 'capital') capital += (c - d);
+2108:         else if (at === 'drawings') drawings += (d - c);
+2109:         else current += (c - d);
+2110: 
+2111:         totalDebit += d;
+2112:         totalCredit += c;
+2113: 
+2114:         const descParts = [];
+2115:         if (t.note) descParts.push(String(t.note));
+2116:         if (t.counterpart_type) descParts.push('طرف: ' + t.counterpart_type + (t.counterpart_code ? ' (' + t.counterpart_code + ')' : ''));
+2117:         if (t.exchange_rate && Number(t.exchange_rate) !== 1) descParts.push('نرخ: ' + t.exchange_rate);
+2118: 
+2119:         trans.push({
+2120:           date: t.transaction_date || t.created_at || '',
+2121:           invoice: t.invoice_number || '',
+2122:           manualInvoice: '',
+2123:           modelCode: '',
+2124:           modelName: '',
+2125:           bank: t.bank_account_local_id ? ('کارت ' + t.bank_account_local_id) : '',
+2126:           holder: t.partner_name || p.name || '',
+2127:           holderCode: t.partner_code || p.code || '',
+2128:           depositDate: '',
+2129:           shipping: '',
+2130:           description: descParts.join(' | '),
+2131:           type: 'partner_' + type,
+2132:           accountType: at,
+2133:           counterpartType: t.counterpart_type || '',
+2134:           counterpartCode: t.counterpart_code || '',
+2135:           sourceType: t.source_type || '',
+2136:           sourceId: t.source_id || '',
+2137:           sourceInfo: _srcInfo(t),
+2138:           qty: 0,
+2139:           priceUnit: 0,
+2140:           lineTotal: amt,
+2141:           debit: d,
+2142:           credit: c,
+2143:         });
+2144:       });
+2145: 
+2146:       trans.sort(function(a: any, b: any) {
+
+
+══════════ _buildHtml در LedgerScreen.tsx ══════════
+
+─── LedgerScreen.tsx — _buildHtml (خط 287) ───
+287:   const _buildHtml = (forParty) => {
+288:     var _p = [];
+289:     _p.push('<div class="info"><b>📅 تاریخ:</b> ' + displayDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
+290:     if (!forParty) {
+291:       _p.push('<div class="title">📊 ترازنامه (کلی)</div>');
+292:       _p.push('<table style="width:100%; table-layout:fixed; border-collapse:collapse;">');
+293:       _p.push('<thead><tr style="background:#0f2438; color:#fff;">');
+294:       _p.push('<th style="width:4%">#</th><th style="width:14%">نوع</th><th style="width:20%">نام</th>');
+295:       _p.push('<th style="width:14%">کدها</th><th style="width:12%">تلفن</th>');
+296:       _p.push('<th style="width:10%">بدهکار</th><th style="width:10%">بستانکار</th>');
+297:       _p.push('<th style="width:10%">مانده</th><th style="width:10%">وضعیت</th>');
+298:       _p.push('</tr></thead><tbody>');
+299:       var tdSum = 0, tcSum = 0;
+300:       var rows = data.map(function(r, i) {
+301:         var st = r.balance > 0 ? 'طرف بدهکار' : r.balance < 0 ? 'ما بدهکار' : 'تسویه';
+302:         var col = r.balance > 0 ? '#dc2626' : r.balance < 0 ? '#059669' : '#64748b';
+303:         if (r.balance > 0) tdSum += r.balance;
+304:         if (r.balance < 0) tcSum += Math.abs(r.balance);
+305:         var typeColor = r.type === 'مشتری' ? '#059669' : r.type === 'تأمین‌کننده' ? '#ea580c' : '#7c3aed';
+306:         return '<tr>' +
+307:           '<td style="text-align:center">' + (i+1) + '</td>' +
+308:           '<td style="text-align:center; font-weight:bold; color:' + typeColor + '">' + (r.type || '—') + '</td>' +
+309:           '<td style="text-align:right">' + r.name + '</td>' +
+310:           '<td style="text-align:center">' + (r.allCodes||[]).join(', ') + '</td>' +
+311:           '<td style="text-align:center">' + r.phone + '</td>' +
+312:           '<td style="text-align:center">' + fmt(r.totalDebit) + '</td>' +
+313:           '<td style="text-align:center">' + fmt(r.totalCredit) + '</td>' +
+314:           '<td style="text-align:center; font-weight:bold">' + fmt(Math.abs(r.balance)) + '</td>' +
+315:           '<td style="text-align:center; color:' + col + '; font-weight:bold">' + st + '</td>' +
+316:         '</tr>';
+317:       }).join('');
+318:       _p.push(rows);
+319:       _p.push('<tr style="background:#f1f5f9; font-weight:bold;">');
+320:       _p.push('<td colspan="5" style="text-align:left; padding:8px">جمع کل:</td>');
+321:       _p.push('<td style="text-align:center">' + fmt(data.reduce((a, r) => a + r.totalDebit, 0)) + '</td>');
+322:       _p.push('<td style="text-align:center">' + fmt(data.reduce((a, r) => a + r.totalCredit, 0)) + '</td>');
+323:       _p.push('<td style="text-align:center">' + fmt(tdSum + tcSum) + '</td>');
+324:       _p.push('<td style="text-align:center">طرف بدهکار: ' + fmt(tdSum) + '<br>ما بدهکار: ' + fmt(tcSum) + '</td>');
+325:       _p.push('</tr></tbody></table>');
+326:     } else {
+327:       var title = '📋 کارت حساب: ' + selectedParty.name;
+328:       if (treeMode === 'groups') title += ' — گروه‌ها';
+329:       else if (treeMode === 'group') title += ' — ' + activeGroup;
+330:       else if (treeMode === 'counterparty') title += ' — ' + activeCounterparty;
+331:       _p.push('<div class="title">' + title + '</div>');
+332:       _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty.allPhones||[]).join(', ') + ' &nbsp;|&nbsp; <b>وضعیت:</b> ' + (selectedParty.balance > 0 ? 'طرف بدهکار' : selectedParty.balance < 0 ? 'ما بدهکار' : 'تسویه') + '</div>');
+333: 
+334:       if (treeMode === 'groups') {
+335:         var gs = getTreeGroups();
+336:         var gd = 0, gc = 0;
+337:         _p.push('<table style="font-size:9px"><tr><th>#</th><th>گروه</th><th>تعداد</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+338:         gs.forEach(function(g, i) {
+339:           gd += g.debit; gc += g.credit;
+340:           _p.push('<tr><td>' + (i+1) + '</td><td style="text-align:right;font-weight:bold">' + g.name + '</td><td>' + toFaNum(g.count) + '</td><td style="color:#1e40af;font-weight:bold">' + fmt(g.debit) + '</td><td style="color:#059669;font-weight:bold">' + fmt(g.credit) + '</td><td style="font-weight:bold">' + fmt(Math.abs(g.balance)) + '</td></tr>');
+341:         });
+342:         _p.push('<tr class="total"><td colspan="2" style="text-align:left;font-weight:bold">جمع:</td><td></td><td style="color:#1e40af;font-weight:bold">' + fmt(gd) + '</td><td style="color:#059669;font-weight:bold">' + fmt(gc) + '</td><td style="font-weight:bold">' + fmt(Math.abs(gc - gd)) + '</td></tr></table>');
+343:         _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(gc - gd)) + ' ' + curLabel + '</div>');
+344:       } else if (treeMode === 'group') {
+345:         var cs = getTreeCounterparties(activeGroup);
+346:         var cd = 0, cc = 0;
+347:         _p.push('<table style="font-size:9px"><tr><th>#</th><th>طرف / دسته</th><th>تعداد</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+348:         cs.forEach(function(c, i) {
+349:           cd += c.debit; cc += c.credit;
+350:           _p.push('<tr><td>' + (i+1) + '</td><td style="text-align:right;font-weight:bold">' + c.name + '</td><td>' + toFaNum(c.count) + '</td><td style="color:#1e40af;font-weight:bold">' + fmt(c.debit) + '</td><td style="color:#059669;font-weight:bold">' + fmt(c.credit) + '</td><td style="font-weight:bold">' + fmt(Math.abs(c.balance)) + '</td></tr>');
+351:         });
+352:         _p.push('<tr class="total"><td colspan="2" style="text-align:left;font-weight:bold">جمع:</td><td></td><td style="color:#1e40af;font-weight:bold">' + fmt(cd) + '</td><td style="color:#059669;font-weight:bold">' + fmt(cc) + '</td><td style="font-weight:bold">' + fmt(Math.abs(cc - cd)) + '</td></tr></table>');
+353:         _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(cc - cd)) + ' ' + curLabel + '</div>');
+354:       } else if (treeMode === 'counterparty') {
+355:         var ts = treeTxns;
+356:         var td2 = 0, tc2 = 0;
+357:         _p.push('<table style="font-size:9px"><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>جمع سند</th><th>پرداخت سند</th><th>مانده سند</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+358:         ts.forEach(function(t, i) {
+359:           td2 += Number(t.debit) || 0; tc2 += Number(t.credit) || 0;
+360:           _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.sourceInfo?.invoice || t.invoice || t.sourceId || '—') + '</td><td style="text-align:right">' + (cleanDesc(t) || '—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.sourceInfo?.total ? fmt(t.sourceInfo.total) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (t.sourceInfo?.paid ? fmt(t.sourceInfo.paid) : '—') + '</td><td style="font-weight:bold">' + (t.sourceInfo?.balance !== undefined ? fmt(Math.abs(t.sourceInfo.balance)) : '—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit ? fmt(t.debit) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit ? fmt(t.credit) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t.runningBalance || 0)) + '</td></tr>');
+361:         });
+362:         _p.push('<tr class="total"><td colspan="4" style="text-align:left;font-weight:bold">جمع:</td><td></td><td style="color:#1e40af;font-weight:bold">' + fmt(ts.reduce(function(a,t){return a + (Number(t.sourceInfo?.total)||0);},0)) + '</td><td style="color:#059669;font-weight:bold">' + fmt(ts.reduce(function(a,t){return a + (Number(t.sourceInfo?.paid)||0);},0)) + '</td><td style="font-weight:bold">' + fmt(Math.abs(ts.reduce(function(a,t){return a + (Number(t.sourceInfo?.balance)||0);},0))) + '</td><td style="color:#1e40af;font-weight:bold">' + fmt(td2) + '</td><td style="color:#059669;font-weight:bold">' + fmt(tc2) + '</td><td style="font-weight:bold">' + fmt(Math.abs(tc2 - td2)) + '</td></tr></table>');
+363:         _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(tc2 - td2)) + ' ' + curLabel + '</div>');
+364:       } else {
+365:         var tDebit = 0, tCredit = 0;
+366:         _p.push('<table style="font-size:8px"><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>حساب</th><th>طرف</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+367:         filteredPartyDetails.forEach(function(t, i) {
+368:           tDebit += Number(t.debit) || 0; tCredit += Number(t.credit) || 0;
+369:           _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings' ? 'برداشت' : t.accountType === 'current' ? 'جاری' : '—') + '</td><td>' + cpLabel(t) + '</td><td>' + (t.invoice || t.sourceId || '—') + '</td><td style="text-align:right">' + (cleanDesc(t) || '—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit ? fmt(t.debit) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit ? fmt(t.credit) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t.runningBalance || 0)) + '</td></tr>');
+370:         });
+371:         _p.push('<tr class="total"><td colspan="6" style="text-align:left;font-weight:bold">جمع:</td><td style="color:#1e40af;font-weight:bold">' + fmt(tDebit) + '</td><td style="color:#059669;font-weight:bold">' + fmt(tCredit) + '</td><td style="font-weight:bold">' + fmt(Math.abs(tCredit - tDebit)) + '</td></tr></table>');
+372:         _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(tCredit - tDebit)) + ' ' + curLabel + '</div>');
+373:       }
+374:     }
+375:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+376:     _p.push(mizanComputerNoteHtml());
+377:     var html = buildStandardHtml('ترازنامه', _p.join(''), '📊 ترازنامه');
+378:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+379:     return html;
+380:   };
+
+
+══════════ _buildInvoiceListHtml در LedgerScreen.tsx ══════════
+
+─── LedgerScreen.tsx — _buildInvoiceListHtml (خط 429) ───
+429:   const _buildInvoiceListHtml = () => {
+430:     var _p = [];
+431:     var title = '';
+432:     if (partyViewMode === 'all') title = '📋 همه حرکات ' + (selectedParty?.name || '');
+433:     else if (partyViewMode === 'in') title = '📥 ورودی‌های ' + (selectedParty?.name || '');
+434:     else title = '📤 خروجی‌های ' + (selectedParty?.name || '');
+435:     _p.push('<div class="title">' + title + '</div>');
+436:     _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + '</div>');
+437:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:9px">');
+438:     if (partyViewMode === 'all') {
+439:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+440:       (buildPartyTransactions(selectedParty) || []).forEach(function(t: any, i: number) {
+441:         _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t._running||0)) + '</td></tr>');
+442:       });
+443:     } else if (partyViewMode === 'in') {
+444:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
+445:       var tot = 0, paid = 0;
+446:       (invoiceList || []).forEach(function(inv: any, i: number) {
+447:         tot += Number(inv.total) || 0; paid += Number(inv.paid) || 0;
+448:         _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>' + fmt(inv.paid) + '</td><td>' + fmt(Math.abs(inv.balance)) + '</td></tr>');
+449:       });
+450:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td>' + fmt(Math.abs(tot-paid)) + '</td></tr>');
+451:     } else {
+452:       _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</th></tr>');
+453:       var totP = 0;
+454:       (buildPaymentsList(selectedParty) || []).forEach(function(t: any, i: number) {
+455:         var amt = Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0;
+456:         totP += amt;
+457:         _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(t.date) + '</td><td>' + (t.invoice||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="font-weight:bold">' + fmt(amt) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td></tr>');
+458:       });
+459:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td>' + fmt(totP) + '</td><td colspan="2"></td></tr>');
+460:     }
+461:     _p.push('</table>');
+462:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+463:     _p.push(mizanComputerNoteHtml());
+464:     return buildStandardHtml('گزارش', _p.join(''), '📋 گزارش');
+465:   };
+
+
+══════════ _buildInvoiceDetailHtml در LedgerScreen.tsx ══════════
+
+─── LedgerScreen.tsx — _buildInvoiceDetailHtml (خط 466) ───
+466:   const _buildInvoiceDetailHtml = () => {
+467:     var _p = [];
+468:     _p.push('<div class="title">📄 فاکتور ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+469:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + displayDate(invoiceDetailMeta?.date || '') + '</div>');
+470:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+471:     _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th><th>باربری</th></tr>');
+472:     var tot = 0, paid = 0;
+473:     (invoiceDetailRows || []).forEach(function(r: any, i: number) {
+474:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+475:       tot += line; paid += Number(r.payment) || 0;
+476:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity) || 0) + '</td><td>' + fmt(Number(r.price_unit) || 0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment) || 0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? displayDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td></tr>');
+477:     });
+478:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td colspan="3"></td></tr>');
+479:     _p.push('</table>');
+480:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+481:     _p.push(mizanComputerNoteHtml());
+482:     return buildStandardHtml('فاکتور', _p.join(''), '📄 فاکتور');
+483:   };
+
+
+══════════ buildInvoicesList در LedgerScreen.tsx ══════════
+
+─── LedgerScreen.tsx — buildInvoicesList (خط 136) ───
+136:   function buildInvoicesList(p: any) {
+137:     const map: any = {};
+138:     (p?.transactions || []).forEach((t: any) => {
+139:       const inv = String(t.invoice || '').trim();
+140:       if (!inv) return;
+141:       const ty = String(t.type || '');
+142:       const isSale = ty === 'sale';
+143:       const isPurchase = ty === 'purchase';
+144:       const isPay = ty === 'payment_received' || ty === 'payment_sent' || ty === 'triangular_received';
+145:       if (isSale || isPurchase) {
+146:         if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+147:         map[inv].total += Number(t.lineTotal) || 0;
+148:         map[inv].count += 1;
+149:       } else if (isPay) {
+150:         if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+151:         map[inv].paid += Number(t.lineTotal) || 0;
+152:       }
+153:     });
+154:     return Object.values(map).map((x: any) => ({ ...x, balance: x.total - x.paid })).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+155:   }
+
+
+══════════ buildPartyTransactions در LedgerScreen.tsx ══════════
+
+─── LedgerScreen.tsx — buildPartyTransactions (خط 157) ───
+157:   function buildPartyTransactions(p: any) {
+158:     let run = 0;
+159:     return (p?.transactions || []).map((t: any) => {
+160:       const d = Number(t.debit) || 0;
+161:       const c = Number(t.credit) || 0;
+162:       run += c - d;
+163:       return { ...t, _running: run };
+164:     });
+165:   }
+
+
+══════════ buildPaymentsList در LedgerScreen.tsx ══════════
+
+─── LedgerScreen.tsx — buildPaymentsList (خط 166) ───
+166:   function buildPaymentsList(p: any) {
+167:     return (p?.transactions || [])
+168:       .filter((t: any) => t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received')
+169:       .sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')));
+170:   }

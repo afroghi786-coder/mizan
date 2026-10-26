@@ -1,0 +1,64 @@
+═══ ۱. importها ═══
+2: import React, { useState, useEffect, useRef } from 'react';
+3: import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Share, Modal, TextInput } from 'react-native';
+4: import { captureRef } from 'react-native-view-shot';
+5: import { getLedgerData, getInvoiceDetail } from './lib.offline';
+6: import { getCurrencySync } from './lib.currency';
+7: import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
+8: import { displayDate } from './lib-date';
+9: import { toFaNum } from './lib';
+397: const imgAll = async () => { try { if (!ref.current) return; var uri = await captureRef(ref, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'ترازنامه', url: uri }); } else if (await require('expo-sharing'
+402: const imgParty = async () => { try { if (!modalRef.current) return; var uri = await captureRef(modalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'کارت حساب', url: uri }); } else if (await require('
+570: const uri = await captureRef(invoiceModalRef, { format: 'jpg', quality: 0.95 });
+573: } else if (await require('expo-sharing').isAvailableAsync()) {
+574: await require('expo-sharing').shareAsync(uri);
+579: const imgInvoice = async () => { try { if (!invoiceRef.current) return; const uri = await captureRef(invoiceRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'فاکتور', url: uri }); } else if (await requ
+
+═══ ۲. تعریف توابع خروجی ═══
+✅ pdfParty — خط 400
+✅ printParty — خط 401
+✅ imgParty — خط 402
+✅ xlsParty — خط 404
+✅ pdfInvoiceList — خط 545
+✅ printInvoiceList — خط 546
+✅ imgInvoiceList — خط 567
+✅ xlsInvoiceList — خط 547
+✅ pdfInvoice — خط 565
+✅ printInvoice — خط 566
+✅ imgInvoice — خط 579
+✅ xlsInvoice — خط 580
+
+═══ ۳. دکمه‌های onPress در UI ═══
+635: <TouchableOpacity onPress={pdfAll} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+636: <TouchableOpacity onPress={printAll} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+637: <TouchableOpacity onPress={imgAll} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+638: <TouchableOpacity onPress={xlsAll} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📊 اکسل</Text></TouchableOpacity>
+759: <TouchableOpacity onPress={pdfParty} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+760: <TouchableOpacity onPress={printParty} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+761: <TouchableOpacity onPress={imgParty} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+762: <TouchableOpacity onPress={xlsParty} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+1008: <TouchableOpacity onPress={pdfInvoice} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+1009: <TouchableOpacity onPress={printInvoice} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+1010: <TouchableOpacity onPress={xlsInvoice} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+1026: <TouchableOpacity onPress={pdfInvoiceList} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+1027: <TouchableOpacity onPress={printInvoiceList} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+1028: <TouchableOpacity onPress={xlsInvoiceList} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+
+═══ ۴. refها ═══
+4: import { captureRef } from 'react-native-view-shot';
+87: const invoiceModalRef = useRef(null);
+88: const invoiceRef = useRef(null);
+92: const ref = useRef(null);
+93: const modalRef = useRef(null);
+397: const imgAll = async () => { try { if (!ref.current) return; var uri = await captureRef(ref, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'ترازنامه', ur
+402: const imgParty = async () => { try { if (!modalRef.current) return; var uri = await captureRef(modalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'ک
+569: if (!invoiceModalRef.current) return;
+570: const uri = await captureRef(invoiceModalRef, { format: 'jpg', quality: 0.95 });
+579: const imgInvoice = async () => { try { if (!invoiceRef.current) return; const uri = await captureRef(invoiceRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ mes
+765: <ScrollView style={{ padding: 8 }} ref={modalRef} collapsable={false}>
+1033: <ScrollView ref={invoiceModalRef} style={{ padding: 8 }}>
+
+═══ ۵. lib.share — توابع مهم ═══
+✅ shareHtmlAsPdf — خط 58
+✅ printHtml — خط 36
+✅ exportExcel — خط 85

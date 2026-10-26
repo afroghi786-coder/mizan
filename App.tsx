@@ -66,7 +66,7 @@ import DateField from './lib.datefield';
 
 
 
-import {             supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport , getParties, createParty, updateParty, deleteParty , lookupPartyByName , suggestPartyCode, suggestProductCode , getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount , getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction , getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping   , lookupPayerUniversal  , updateSale, updatePurchase  } from './lib.offline';
+import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport , getParties, createParty, updateParty, deleteParty , lookupPartyByName , suggestPartyCode, suggestProductCode , getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount , getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction , getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping   , lookupPayerUniversal  , updateSale, updatePurchase  , createPartnerAutoTx, findPartnerByNameOrCode } from './lib.offline';
 
 import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 
@@ -2041,7 +2041,7 @@ function PinModal({ visible, correctPin, onClose, onSuccess, showToast }: any) {
 
 // ══════════════════════════════════════════════════════════
 
-function Autocomplete({ value, onChange, onSelect, options, placeholder, label }: any) {
+function Autocomplete({ value, onChange, onSelect, options, placeholder, label, containerStyle }) {
 
   const [show, setShow] = useState(false);
 
@@ -2668,7 +2668,7 @@ function SalesScreen({ showToast }: any) {
 
       await new Promise(r => setTimeout(r, 100));
 
-      const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+      const rows = await getInvoiceDetail(inv, 'sales');
       if (rows.length > 0) {
         const r = rows[0];
         const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
@@ -2687,7 +2687,7 @@ function SalesScreen({ showToast }: any) {
         setNote(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount('');
         setView('invoice');
       } else {
-        alertMsg('✅ موفق', 'فاکتور فروش ثبت شد:\n' + inv);
+        showToast('✅ فروش ثبت شد');
         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
       }
     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
@@ -2717,8 +2717,32 @@ function SalesScreen({ showToast }: any) {
         receiverName, receiverCode, receiverBank, receiverAccount
       });
 
+      // ═══ اگر دریافت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+      try {
+        const partner = await findPartnerByNameOrCode(receiverName || receiverCode);
+        if (partner && payAmt > 0) {
+          const cur = (typeof getCurrencySync === 'function' ? ((getCurrencySync() as any).code || 'AFN') : 'AFN');
+          await createPartnerAutoTx({
+            partner_code: partner.code,
+            partner_name: partner.name,
+            type: 'deposit',
+            amount: payAmt,
+            currency: cur,
+            account_type: 'current',
+            counterpart_type: 'customer',
+            counterpart_code: customerCode,
+            source_type: 'sales',
+            source_id: inv,
+            transaction_date: invoiceDate || new Date().toISOString(),
+            note: 'فروش به ' + n + ' - فاکتور ' + inv,
+            bank_account_local_id: '',
+          });
+          console.log('[partner auto] sales deposit ثبت شد:', partner.name, payAmt);
+        }
+      } catch (e) { console.log('[partner auto sales]', e); }
+
       await new Promise(r => setTimeout(r, 100));
-      const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+      const rows = await getInvoiceDetail(inv, 'sales');
       if (rows.length > 0) {
         const r = rows[0];
         const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, shelf: x.shelf, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
@@ -4011,6 +4035,31 @@ function PurchaseScreen({ showToast }: any) {
         finalItems = [{ modelCode: '', modelName: 'پرداخت به تأمین‌کننده', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: note, shelf: '' }];
       }
       const inv = await createPurchase({ invoiceNumber: '', manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: finalItems, paymentAmount: amt, paymentDate: payDate, invoiceDate: invoiceDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
+
+      // ═══ اگر پرداخت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+      try {
+        const partner = await findPartnerByNameOrCode(payerName || payerCode);
+        if (partner && amt > 0) {
+          const cur = (typeof getCurrencySync === 'function' ? ((getCurrencySync() as any).code || 'AFN') : 'AFN');
+          await createPartnerAutoTx({
+            partner_code: partner.code,
+            partner_name: partner.name,
+            type: 'withdraw',
+            amount: amt,
+            currency: cur,
+            account_type: 'current',
+            counterpart_type: 'supplier',
+            counterpart_code: sCode || sPhone || '',
+            source_type: 'purchase',
+            source_id: inv,
+            transaction_date: payDate || invoiceDate || new Date().toISOString(),
+            note: 'خرید از ' + sName + ' - فاکتور ' + inv,
+            bank_account_local_id: '',
+          });
+          console.log('[partner auto] purchase withdraw ثبت شد:', partner.name, amt);
+        }
+      } catch (e) { console.log('[partner auto purchase]', e); }
+
       const isPending = typeof inv === 'string' && inv.startsWith('P-') && !/^\d{6}-/.test(inv);
       alertMsg('✅ موفق', 'فاکتور خرید ثبت شد' + (isPending ? '\n(در انتظار آپلود)' : ''));
       setSName(''); setSCode(''); setSPhone(''); setManualInv(''); setItems([]);
@@ -8912,8 +8961,9 @@ function PartnersSection({ showToast }: any) {
   const [txnLoading, setTxnLoading] = useState(false);
   const [txnForm, setTxnForm] = useState<any>({
     type: 'deposit', currency: 'AFN', amount: '', bank_account_local_id: '',
-    box_effect: 'none', box_currency: '', exchange_rate: 1,
-    to_partner_code: '', to_currency: 'AFN', to_amount: '', transaction_date: new Date().toISOString(), note: ''
+    box_effect: 'none', box_id: '', box_currency: '', exchange_rate: 1,
+    to_partner_code: '', to_currency: 'AFN', to_amount: '', transaction_date: new Date().toISOString(), note: '',
+    account_type: 'current', counterpart_type: 'none', counterpart_code: ''
   });
 
   const load = async () => {
@@ -9028,7 +9078,7 @@ function PartnersSection({ showToast }: any) {
       setTxnList(txns || []);
       const banks = await getPartnerBankAccounts(partner.code);
       setTxnBanks(banks || []);
-      setTxnForm({ type: 'deposit', currency: 'AFN', amount: '', bank_account_local_id: banks?.[0]?.local_id || '', box_effect: 'none', box_currency: '', exchange_rate: 1, to_partner_code: '', to_currency: 'AFN', to_amount: '', transaction_date: new Date().toISOString(), note: '' });
+      setTxnForm({ type: 'deposit', currency: 'AFN', amount: '', bank_account_local_id: banks?.[0]?.local_id || '', box_effect: 'none', box_id: '', box_currency: '', exchange_rate: 1, to_partner_code: '', to_currency: 'AFN', to_amount: '', transaction_date: new Date().toISOString(), note: '', account_type: 'current', counterpart_type: 'none', counterpart_code: '' });
     } catch {}
     finally { setTxnLoading(false); }
   };
@@ -9051,10 +9101,14 @@ function PartnersSection({ showToast }: any) {
       amount: amt,
       bank_account_local_id: txnForm.bank_account_local_id || '',
       box_effect: txnForm.box_effect || 'none',
+      box_id: txnForm.box_id || '',
       box_currency: txnForm.box_currency || txnForm.currency,
       exchange_rate: parseFloat(String(txnForm.exchange_rate)) || 1,
       transaction_date: txnForm.transaction_date || new Date().toISOString(),
       note: txnForm.note || '',
+      account_type: txnForm.account_type || 'current',
+      counterpart_type: txnForm.counterpart_type || 'none',
+      counterpart_code: txnForm.counterpart_code || '',
     };
     try {
       if (type === 'transfer_out') {
@@ -9250,7 +9304,44 @@ function PartnersSection({ showToast }: any) {
                     ))}
                   </ScrollView>
                 </View>
-                {txnForm.type === 'transfer_out' && (
+                {/* نوع حساب */}
+              <View style={{ width: '100%', marginTop: 6 }}>
+                <Text style={{ fontSize: 10 }}>نوع حساب</Text>
+                <View style={{ flexDirection: 'row-reverse', gap: 4 }}>
+                  {[{ v: 'capital', l: '💰 سرمایه' }, { v: 'current', l: '📊 جاری' }, { v: 'drawings', l: '📤 برداشت' }].map(a => (
+                    <TouchableOpacity key={a.v} onPress={() => setTxnForm({ ...txnForm, account_type: a.v })} style={{ flex: 1, padding: 8, borderRadius: 4, backgroundColor: txnForm.account_type === a.v ? '#7c3aed' : '#e2e8f0', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 10, color: txnForm.account_type === a.v ? '#fff' : '#475569', fontWeight: 'bold' }}>{a.l}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* طرف مقابل */}
+              <View style={{ width: '100%', marginTop: 6 }}>
+                <Text style={{ fontSize: 10 }}>طرف مقابل</Text>
+                <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4 }}>
+                  {[{ v: 'none', l: 'بدون طرف' }, { v: 'box', l: 'صندوق' }, { v: 'bank', l: 'بانک/کارت' }, { v: 'customer', l: 'مشتری' }, { v: 'supplier', l: 'تأمین‌کننده' }, { v: 'partner', l: 'شریک دیگر' }].map(c => (
+                    <TouchableOpacity key={c.v} onPress={() => setTxnForm({ ...txnForm, counterpart_type: c.v, counterpart_code: '' })} style={{ paddingHorizontal: 8, paddingVertical: 6, borderRadius: 4, backgroundColor: txnForm.counterpart_type === c.v ? '#0891b2' : '#e2e8f0' }}>
+                      <Text style={{ fontSize: 9, color: txnForm.counterpart_type === c.v ? '#fff' : '#475569', fontWeight: 'bold' }}>{c.l}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* کد طرف مقابل (متن آزاد/خودکار) */}
+              {txnForm.counterpart_type !== 'none' && (
+                <View style={{ width: '100%', marginTop: 6 }}>
+                  <Text style={{ fontSize: 10 }}>کد طرف مقابل</Text>
+                  <TextInput
+                    style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]}
+                    value={txnForm.counterpart_code}
+                    onChangeText={(v) => setTxnForm({ ...txnForm, counterpart_code: v })}
+                    placeholder="اختیاری / خودکار"
+                  />
+                </View>
+              )}
+
+              {txnForm.type === 'transfer_out' && (
                   <>
                     <View style={{ width: '48%' }}>
                       <Text style={{ fontSize: 10 }}>شریک مقصد</Text>
@@ -9299,7 +9390,9 @@ function PartnersSection({ showToast }: any) {
                   <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
                     <Text style={{ width: 40, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>#</Text>
                     <Text style={{ width: 100, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>تاریخ</Text>
-                    <Text style={{ width: 90, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>نوع</Text>
+                    <Text style={{ width: 60, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>نوع</Text>
+                    <Text style={{ width: 70, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>حساب</Text>
+                    <Text style={{ width: 70, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>طرف</Text>
                     <Text style={{ width: 70, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>ارز</Text>
                     <Text style={{ width: 110, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>مبلغ</Text>
                     <Text style={{ width: 120, color: '#d4af37', fontSize: 10, textAlign: 'center' }}>کارت</Text>
@@ -9311,7 +9404,9 @@ function PartnersSection({ showToast }: any) {
                     <View key={t.local_id || t.id || i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#fff', paddingVertical: 4 }}>
                       <Text style={{ width: 40, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
                       <Text style={{ width: 100, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(t.transaction_date) : String(t.transaction_date || '').slice(0, 10)}</Text>
-                      <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: t.type === 'deposit' ? '#059669' : t.type === 'withdraw' ? '#dc2626' : '#7c3aed', fontWeight: 'bold' }}>{t.type === 'deposit' ? 'واریز' : t.type === 'withdraw' ? 'برداشت' : t.type === 'transfer_out' ? 'انتقال' : 'دریافت'}</Text>
+                      <Text style={{ width: 60, fontSize: 10, textAlign: 'center', color: t.type === 'deposit' ? '#059669' : t.type === 'withdraw' ? '#dc2626' : '#7c3aed', fontWeight: 'bold' }}>{t.type === 'deposit' ? 'واریز' : t.type === 'withdraw' ? 'برداشت' : t.type === 'transfer_out' ? 'انتقال' : 'دریافت'}</Text>
+                      <Text style={{ width: 70, fontSize: 9, textAlign: 'center', color: '#7c3aed' }}>{t.account_type === 'capital' ? 'سرمایه' : t.account_type === 'drawings' ? 'برداشت' : 'جاری'}</Text>
+                      <Text style={{ width: 70, fontSize: 9, textAlign: 'center', color: '#0891b2' }}>{t.counterpart_type === 'box' ? 'صندوق' : t.counterpart_type === 'bank' ? 'بانک' : t.counterpart_type === 'customer' ? 'مشتری' : t.counterpart_type === 'supplier' ? 'تأمین‌کننده' : t.counterpart_type === 'partner' ? 'شریک' : '—'}</Text>
                       <Text style={{ width: 70, fontSize: 10, textAlign: 'center' }}>{t.currency}</Text>
                       <Text style={{ width: 110, fontSize: 10, textAlign: 'center', fontWeight: 'bold' }}>{fmt(t.amount)}</Text>
                       <Text style={{ width: 120, fontSize: 9, textAlign: 'center' }}>{txnBanks.find(b => (b.local_id || b.id) === t.bank_account_local_id)?.bank_name || '—'}</Text>

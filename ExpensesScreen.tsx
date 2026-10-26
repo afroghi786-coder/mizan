@@ -3,6 +3,7 @@ import { displayDate, displayDateOnly } from './lib-date';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { getExpenses, createExpense, updateExpense, deleteExpense } from './lib.exp';
+import { createPartnerAutoTx, findPartnerByNameOrCode, getPartners, getParties } from './lib.offline';
 
 const CATEGORIES = [
   'اجاره', 'برق', 'آب', 'گاز', 'تلفن', 'اینترنت', 'حقوق',
@@ -20,8 +21,15 @@ const today = () => new Date().toLocaleDateString('fa-IR');
 export default function ExpensesScreen({ showToast }: any) {
   const [list, setList] = useState<any[]>([]);
   const [prods, setProds] = useState<any[]>([]);
+  const [partnersList, setPartnersList] = useState<any[]>([]);
+  const [partiesList, setPartiesList] = useState<any[]>([]);
+  useEffect(() => {
+    getPartners().then(setPartnersList).catch(()=>{});
+    getParties().then(setPartiesList).catch(()=>{});
+  }, []);
   const [load, setLoad] = useState(true);
   const [modal, setModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
   const [filterCat, setFilterCat] = useState('');
@@ -30,7 +38,7 @@ export default function ExpensesScreen({ showToast }: any) {
   const reload = useCallback(async () => {
     try { setList(await getExpenses()); } catch (e) { console.log(e); }
     try {
-      const { getProducts } = require('./lib.offline');
+      const { getProducts, getPartners, getParties } = require('./lib.offline');
       const p = await getProducts();
       setProds(p || []);
     } catch {}
@@ -54,17 +62,52 @@ export default function ExpensesScreen({ showToast }: any) {
   const openEdit = (e: any) => { setEditId(e.local_id || e.id); setForm({ ...e }); setModal(true); };
 
   const submit = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (!form.title) return showToast('عنوان الزامی', true);
       if (!form.amount || parse(form.amount) <= 0) return showToast('مبلغ الزامی', true);
       if (form.payment_method === 'bank' && !form.bank) return showToast('بانک الزامی', true);
       const payload = { ...form, amount: parse(form.amount) };
-      if (editId) await updateExpense(editId, payload);
-      else await createExpense(payload);
+      let created: any = null;
+      if (editId) {
+        await updateExpense(editId, payload);
+      } else {
+        created = await createExpense(payload);
+        // ═══ اگر پرداخت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+        try {
+          const partner = await findPartnerByNameOrCode(form.payer_name || form.payer_code);
+          const amt = parse(form.amount);
+          if (partner && amt > 0) {
+            const cur = (form as any).currency || 'AFN';
+            const invId = (created && (created.invoice_number || created.local_id)) || payload.invoice_number || '';
+            const noteParts = [];
+            if (form.title) noteParts.push(String(form.title));
+            if (form.receiver_name) noteParts.push('به: ' + form.receiver_name);
+            if (form.description) noteParts.push(String(form.description));
+            await createPartnerAutoTx({
+              partner_code: partner.code,
+              partner_name: partner.name,
+              type: 'withdraw',
+              amount: amt,
+              currency: cur,
+              account_type: 'current',
+              counterpart_type: 'expense',
+              counterpart_code: form.receiver_code || '',
+              source_type: 'expense',
+              source_id: invId,
+              transaction_date: form.payment_date || new Date().toISOString(),
+              note: 'هزینه: ' + (form.title || form.category || '') + ' - به ' + (form.receiver_name || 'دریافت‌کننده نامشخص'),
+              bank_account_local_id: '',
+            });
+            console.log('[partner auto] expense withdraw ثبت شد:', partner.name, amt);
+          }
+        } catch (e) { console.log('[partner auto expense]', e); }
+      }
       await reload();
       setModal(false);
       showToast(editId ? '✅ ویرایش شد' : '✅ هزینه ثبت شد');
-    } catch (e: any) { showToast('❌ ' + (e?.message || ''), true); }
+    } catch (e: any) { showToast('❌ ' + (e?.message || ''), true); } finally { setSaving(false); }
   };
 
   const remove = async (id: string) => {
@@ -91,7 +134,11 @@ export default function ExpensesScreen({ showToast }: any) {
   const bankTotal = filtered.filter((x: any) => x.payment_method === 'bank').reduce((a: number, x: any) => a + (Number(x.amount) || 0), 0);
 
   // ─── پرداخت‌کننده‌ها از منابع ───
-  const payerNames = [...new Set((prods || []).map((p: any) => p.payer_name).filter(Boolean))];
+  const payerNames = [...new Set([
+    ...(prods || []).map((p: any) => p.payer_name).filter(Boolean),
+    ...(partiesList || []).map((p: any) => p.name).filter(Boolean),
+    ...(partnersList || []).map((p: any) => p.name).filter(Boolean),
+  ])];
 
   if (load) return <View style={s.center}><ActivityIndicator size="large" color="#d4af37" /></View>;
 
@@ -255,8 +302,11 @@ export default function ExpensesScreen({ showToast }: any) {
                 <View style={s.chips}>
                   {payerNames.slice(0, 20).map((n: any) => (
                     <TouchableOpacity key={n} onPress={() => {
+                      const party = (partiesList || []).find((p: any) => p.name === n);
+                      const partner = (partnersList || []).find((p: any) => p.name === n);
                       const prod = (prods || []).find((p: any) => p.payer_name === n);
-                      setForm({ ...form, payer_name: n, payer_code: prod?.supplier_code || '' });
+                      const code = partner?.code || party?.code || prod?.supplier_code || '';
+                      setForm({ ...form, payer_name: n, payer_code: code });
                     }} style={[s.chip, form.payer_name === n && s.chipActive]}>
                       <Text style={[s.chipTxt, form.payer_name === n && s.chipTxtActive]}>{n}</Text>
                     </TouchableOpacity>
@@ -291,8 +341,8 @@ export default function ExpensesScreen({ showToast }: any) {
                 <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#64748b', flex: 1 }]} onPress={() => setModal(false)}>
                   <Text style={s.btnTxt}>انصراف</Text>
                 </TouchableOpacity>
-                <TouchableOpacity accessibilityLabel="ذخیره" style={[s.btn, { backgroundColor: '#dc2626', flex: 2 }]} onPress={submit}>
-                  <Text style={s.btnTxt}>💾 ذخیره</Text>
+                <TouchableOpacity accessibilityLabel="ذخیره" disabled={saving} style={[s.btn, { backgroundColor: saving ? '#94a3b8' : '#dc2626', flex: 2 }]} onPress={submit}>
+                  <Text style={s.btnTxt}>{saving ? '⏳ در حال ثبت...' : '💾 ذخیره'}</Text>
                 </TouchableOpacity>
               </View>
             </View>

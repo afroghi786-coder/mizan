@@ -36,9 +36,33 @@ export function buildStandardHtml(title, body, subtitle) {
 export async function printHtml(html) {
   try {
     if (Platform.OS === 'web') {
-      const w = typeof window !== 'undefined' ? window.open('', '_blank') : null;
-      if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
-      return { ok: true, message: 'پنجره چاپ باز شد' };
+      try {
+        console.log('[print] html len:', html ? html.length : 0);
+        var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        var printed = false;
+        var doPrint = function() {
+          if (printed) return;
+          try {
+            console.log('[print] calling print');
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            printed = true;
+            setTimeout(function() { try { URL.revokeObjectURL(url); } catch(e){} }, 60000);
+          } catch(err) { console.error('[print] err:', err); }
+        };
+        iframe.onload = function() { console.log('[print] onload'); setTimeout(doPrint, 500); };
+        setTimeout(doPrint, 2000);
+        setTimeout(function() { try { document.body.removeChild(iframe); } catch(e) {} }, 120000);
+        return { ok: true, message: 'پنجره چاپ باز شد' };
+      } catch (e) {
+        console.error('[print] outer:', e);
+        return { ok: false, message: 'خطا: ' + (e.message || '') };
+      }
     }
     await Print.printAsync({ html });
     return { ok: true, message: 'چاپ ارسال شد' };
@@ -58,9 +82,33 @@ async function _doShare(uri, mime) {
 export async function shareHtmlAsPdf(html, filename) {
   try {
     if (Platform.OS === 'web') {
-      const w = typeof window !== 'undefined' ? window.open('', '_blank') : null;
-      if (w) { w.document.write(html); w.document.close(); w.focus(); }
-      return { ok: true, message: 'پیش‌نمایش باز شد' };
+      try {
+        console.log('[pdf] html len:', html ? html.length : 0);
+        var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        var printed = false;
+        var doPrint = function() {
+          if (printed) return;
+          try {
+            console.log('[pdf] calling print');
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            printed = true;
+            setTimeout(function() { try { URL.revokeObjectURL(url); } catch(e){} }, 60000);
+          } catch(err) { console.error('[pdf] err:', err); }
+        };
+        iframe.onload = function() { console.log('[pdf] onload'); setTimeout(doPrint, 500); };
+        setTimeout(doPrint, 2000);
+        setTimeout(function() { try { document.body.removeChild(iframe); } catch(e) {} }, 120000);
+        return { ok: true, message: 'پنجره چاپ باز شد' };
+      } catch (e) {
+        console.error('[pdf] outer:', e);
+        return { ok: false, message: 'خطا: ' + (e.message || '') };
+      }
     }
     const res = await Print.printToFileAsync({ html });
     const dir = (FileSystem && (FileSystem.cacheDirectory || FileSystem.documentDirectory)) || '';

@@ -1,0 +1,151 @@
+
+─── LedgerScreen.tsx — imgParty (خط 389) ───
+389:   const imgParty = async () => { try { if (!modalRef.current) return; var uri = await captureRef(modalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'کارت حساب', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+390: 
+391:   const xlsParty = async () => {
+392:     try {
+393:       let sheets: any[] = [];
+394:       if (treeMode === 'groups') {
+395:         sheets = [{ name: 'گروه‌ها', data: getTreeGroups().map((g: any, i: number) => ({ '#': i+1, 'گروه': g.name, 'تعداد': g.count, 'بدهکار': g.debit, 'بستانکار': g.credit, 'مانده': Math.abs(g.balance) })) }];
+396:       } else if (treeMode === 'group') {
+397:         sheets = [{ name: (activeGroup || 'گروه').slice(0, 28), data: getTreeCounterparties(activeGroup).map((c: any, i: number) => ({ '#': i+1, 'طرف / دسته': c.name, 'تعداد': c.count, 'بدهکار': c.debit, 'بستانکار': c.credit, 'مانده': Math.abs(c.balance) })) }];
+398:       } else if (treeMode === 'counterparty') {
+399:         sheets = [{ name: (activeCounterparty || 'طرف').slice(0, 28), data: treeTxns.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.sourceInfo?.invoice || t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'جمع سند': t.sourceInfo?.total || 0, 'پرداخت سند': t.sourceInfo?.paid || 0, 'مانده سند': t.sourceInfo?.balance || 0, 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t.runningBalance || 0) })) }];
+400:       } else {
+401:         sheets = [{ name: 'ریز', data: filteredPartyDetails.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'حساب': t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings' ? 'برداشت' : t.accountType === 'current' ? 'جاری' : '—', 'طرف': cpLabel(t), 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t.runningBalance || 0) })) }];
+402:       }
+403:       const r = await exportExcel(sheets, 'statement-' + (selectedParty?.code || 'party') + '-' + Date.now() + '.xlsx');
+
+─── LedgerScreen.tsx — imgInvoice (خط 541) ───
+541:   const imgInvoice = async () => { try { if (!invoiceRef.current) return; const uri = await captureRef(invoiceRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'فاکتور', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e: any) { if (showToast) showToast(e.message, true); } };
+542:   const xlsInvoice = async () => {
+543:     try {
+544:       var isPurchase = invoiceDetailMeta?.type === 'purchase';
+545:       var rows: any[] = [];
+546:       var run = 0;
+547:       (invoiceDetailRows || []).forEach(function(r: any, i: number) {
+548:         var qty = Number(r.quantity)||0, pr = Number(r.price_unit)||0, line = qty*pr;
+549:         var d = isPurchase ? 0 : line, c = isPurchase ? line : 0;
+550:         run += c - d;
+551:         rows.push({ '#': i+1, 'تاریخ': r.date_reg || r.date_factor || invoiceDetailMeta?.date || '', 'نوع': isPurchase?'خرید':'فروش', 'فاکتور': r.invoice_number || invoiceDetailMeta?.invoice || '', 'فاکتور دستی': r.manual_invoice || '', 'کد مدل': r.model_code || '', 'نام مدل': r.model_name || '', 'تعداد': qty, 'قیمت': pr, 'جمع ردیف': line, 'بدهکار': d, 'بستانکار': c, 'مانده': Math.abs(run), 'بانک': r.bank_name || r.receiver_bank || '', 'صاحب حساب': r.account_holder || '', 'کد صاحب': r.account_holder_code || '', 'تاریخ واریز': r.deposit_date || '', 'باربری': r.shipping || '', 'شرح': r.description || '' });
+552:       });
+553:       var pay = (invoiceDetailRows || []).reduce(function(a: number, r: any) { return a + (Number(r.payment)||0); }, 0);
+554:       if (pay > 0) {
+555:         var dp = isPurchase ? pay : 0, cp = isPurchase ? 0 : pay;
+⚠️ LedgerScreen.tsx: imgInvoiceList پیدا نشد
+
+─── LedgerScreen.tsx — imgAll (خط 384) ───
+384:   const imgAll = async () => { try { if (!ref.current) return; var uri = await captureRef(ref, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'ترازنامه', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+385:   const xlsAll = async () => { try { var rows = data.map((r, i) => ({ '#': i+1, 'نام': r.name, 'کدها': (r.allCodes||[]).join(', '), 'تلفن': r.phone, 'طرف بدهکار': r.totalDebit, 'ما بدهکار': r.totalCredit, 'مانده': Math.abs(r.balance), 'وضعیت': r.balance > 0 ? 'ما بستانکاریم' : r.balance < 0 ? 'ما بدهکاریم' : 'تسویه' })); var r2 = await exportExcel([{ name: 'ترازنامه', data: rows }], 'ledger-' + Date.now() + '.xlsx'); if (showToast) showToast(r2.ok ? '✅ ' + r2.message : '❌ ' + r2.message, !r2.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+386: 
+387:   const pdfParty = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(true), 'statement-' + selectedParty.code + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+388:   const printParty = async () => { try { var r = await printHtml(_buildHtml(true)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+389:   const imgParty = async () => { try { if (!modalRef.current) return; var uri = await captureRef(modalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'کارت حساب', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+390: 
+391:   const xlsParty = async () => {
+392:     try {
+393:       let sheets: any[] = [];
+394:       if (treeMode === 'groups') {
+395:         sheets = [{ name: 'گروه‌ها', data: getTreeGroups().map((g: any, i: number) => ({ '#': i+1, 'گروه': g.name, 'تعداد': g.count, 'بدهکار': g.debit, 'بستانکار': g.credit, 'مانده': Math.abs(g.balance) })) }];
+396:       } else if (treeMode === 'group') {
+397:         sheets = [{ name: (activeGroup || 'گروه').slice(0, 28), data: getTreeCounterparties(activeGroup).map((c: any, i: number) => ({ '#': i+1, 'طرف / دسته': c.name, 'تعداد': c.count, 'بدهکار': c.debit, 'بستانکار': c.credit, 'مانده': Math.abs(c.balance) })) }];
+398:       } else if (treeMode === 'counterparty') {
+
+══════ landscape در پرینت‌های فاکتور ══════
+378: html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+
+══════ دکمه‌های تصویر در همه مودال‌ها ══════
+599: <TouchableOpacity onPress={imgAll} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+723: <TouchableOpacity onPress={imgParty} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+
+══════ getInvoiceDetail در lib.offline.ts ══════
+779: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+780:   // ۱. صف آفلاین
+781:   const queue = await getQueue();
+782:   for (const item of queue) {
+783:     if (item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber) {
+784:       const p = item.payload;
+785:       return (p.items || []).map((it: any, idx: number) => ({
+786:         id: 'queued_' + idx,
+787:         invoice_number: p.invoiceNumber,
+788:         customer_code: p.customerCode,
+789:         customer_name: p.customerName,
+790:         customer_phone: p.customerPhone,
+791:         customer_address: p.customerAddress,
+792:         receiver_name: p.receiverName || '',
+793:         receiver_code: p.receiverCode || '',
+794:         receiver_bank: p.receiverBank || '',
+795:         receiver_account: p.receiverAccount || '',
+796:         shipping: p.shipping,
+797:         model_code: it.modelCode,
+798:         model_name: it.modelName,
+799:         shelf: it.shelf || '',
+800:         quantity: it.quantity,
+801:         price_unit: it.priceUnit,
+802:         payment: idx === 0 ? (p.paymentAmount !== undefined ? p.paymentAmount : (it.payment || 0)) : 0,
+803:         deposit_date: idx === 0 ? (p.payDate || it.depositDate || '') : '',
+804:         bank_name: idx === 0 ? (p.receiverBank || it.bankName || '') : '',
+805:         account_holder: idx === 0 ? (p.receiverName || it.accountHolder || '') : '',
+806:         account_holder_code: idx === 0 ? (p.receiverCode || it.accountHolderCode || '') : '',
+807:         description: idx === 0 ? (p.note || it.description || '') : (it.description || ''),
+808:         date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),
+809:         date_reg: new Date(item.ts).toISOString().slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+810:         _pending: true,
+811:       }));
+812:     }
+813:     if (item.op === 'createPurchase') {
+814:       const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+815:       if (pInv === invoiceNumber) {
+816:         const p = item.payload;
+817:         const items = (p.items && p.items.length) ? p.items : [{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }];
+818:         return items.map((it: any, idx: number) => ({
+819:           id: 'queued_' + idx,
+820:           invoice_number: pInv,
+821:           supplier_code: p.supplierCode,
+822:           supplier_name: p.supplierName,
+823:           supplier_phone: p.supplierPhone,
+824:           payer_name: p.payerName || '',
+825:           payer_code: p.payerCode || '',
+826:           receiver_acc: p.receiverAcc || '',
+827:           bank_name: p.bankAccount || '',
+828:           model_code: it.modelCode,
+829:           model_name: it.modelName,
+830:           shelf: it.shelf || '',
+831:           quantity: it.quantity,
+832:           price_unit: it.priceUnit,
+833:           payment: idx === 0 ? (p.paymentAmount || 0) : 0,
+834:           deposit_date: idx === 0 ? (p.paymentDate || '') : '',
+835:           description: it.description || '',
+836:           date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),
+837:           date_reg: new Date(item.ts).toISOString().slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+838:           _pending: true,
+839:         }));
+840:       }
+841:     }
+842:   }
+843: 
+844:   // ۲. کش محلی
+845:   const cacheKey = type === 'purchase' ? 'purchases' : (type === 'sales' ? 'sales' : 'sales');
+846:   const cached = (await getLocal<any[]>(cacheKey)) || [];
+847:   const filtered = cached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+848:   if (filtered.length > 0) return filtered;
+849: 
+850:   // اگر type مشخص نبود، جدول دیگر را هم امتحان کن
+851:   if (!type) {
+852:     const otherKey = cacheKey === 'sales' ? 'purchases' : 'sales';
+853:     const otherCached = (await getLocal<any[]>(otherKey)) || [];
+854:     const otherFiltered = otherCached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+855:     if (otherFiltered.length > 0) return otherFiltered;
+856:   }
+857: 
+858:   // ۳. سرور (اگر آنلاین)
+859:   if (MODE === 'online') {
+860:     try {
+861:       const fresh = await lib.getInvoiceDetail(invoiceNumber, type);
+862:       if (fresh && fresh.length > 0) return fresh;
+863:     } catch {}
+864:   }
+865: 
+866:   return [];
+867: }
+868: 

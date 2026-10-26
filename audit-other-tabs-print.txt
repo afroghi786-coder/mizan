@@ -1,0 +1,80 @@
+
+══════ pdfAll (خط 395) ══════
+395:   const pdfAll = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(false), 'ledger-' + Date.now() + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+396:   const printAll = async () => { try { var r = await printHtml(_buildHtml(false)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+397:   const imgAll = async () => { try { if (!ref.current) return; var uri = await captureRef(ref, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'ترازنامه', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+398:   const xlsAll = async () => { try { var rows = data.map((r, i) => ({ '#': i+1, 'نام': r.name, 'کدها': (r.allCodes||[]).join(', '), 'تلفن': r.phone, 'طرف بدهکار': r.totalDebit, 'ما بدهکار': r.totalCredit, 'مانده': Math.abs(r.balance), 'وضعیت': r.balance > 0 ? 'ما بستانکاریم' : r.balance < 0 ? 'ما بدهکاریم' : 'تسویه' })); var r2 = await exportExcel([{ name: 'ترازنامه', data: rows }], 'ledger-' + Date.now() + '.xlsx'); if (showToast) showToast(r2.ok ? '✅ ' + r2.message : '❌ ' + r2.message, !r2.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+399: 
+
+══════ printAll (خط 396) ══════
+396:   const printAll = async () => { try { var r = await printHtml(_buildHtml(false)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+397:   const imgAll = async () => { try { if (!ref.current) return; var uri = await captureRef(ref, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'ترازنامه', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+398:   const xlsAll = async () => { try { var rows = data.map((r, i) => ({ '#': i+1, 'نام': r.name, 'کدها': (r.allCodes||[]).join(', '), 'تلفن': r.phone, 'طرف بدهکار': r.totalDebit, 'ما بدهکار': r.totalCredit, 'مانده': Math.abs(r.balance), 'وضعیت': r.balance > 0 ? 'ما بستانکاریم' : r.balance < 0 ? 'ما بدهکاریم' : 'تسویه' })); var r2 = await exportExcel([{ name: 'ترازنامه', data: rows }], 'ledger-' + Date.now() + '.xlsx'); if (showToast) showToast(r2.ok ? '✅ ' + r2.message : '❌ ' + r2.message, !r2.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+399: 
+400:   const pdfParty = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(true), 'statement-' + selectedParty.code + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+
+══════ pdfParty (خط 400) ══════
+400:   const pdfParty = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(true), 'statement-' + selectedParty.code + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+401:   const printParty = async () => { try { var r = await printHtml(_buildHtml(true)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+402:   const imgParty = async () => { try { if (!modalRef.current) return; var uri = await captureRef(modalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'کارت حساب', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+403: 
+404:   const xlsParty = async () => {
+
+══════ printParty (خط 401) ══════
+401:   const printParty = async () => { try { var r = await printHtml(_buildHtml(true)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+402:   const imgParty = async () => { try { if (!modalRef.current) return; var uri = await captureRef(modalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'کارت حساب', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+403: 
+404:   const xlsParty = async () => {
+405:     try {
+
+══════ pdfInvoice (خط 565) ══════
+565:   const pdfInvoice = async () => { try { const r = await shareHtmlAsPdf(_buildInvoiceHtml(), 'invoice-' + (invoiceDetailMeta?.invoice || '') + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };
+566:   const printInvoice = async () => { try { const r = await printHtml(_buildInvoiceHtml()); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };
+567:   const imgInvoiceList = async () => {
+568:     try {
+569:       if (!invoiceModalRef.current) return;
+
+══════ printInvoice (خط 566) ══════
+566:   const printInvoice = async () => { try { const r = await printHtml(_buildInvoiceHtml()); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };
+567:   const imgInvoiceList = async () => {
+568:     try {
+569:       if (!invoiceModalRef.current) return;
+570:       const uri = await captureRef(invoiceModalRef, { format: 'jpg', quality: 0.95 });
+
+══════ pdfInvoiceList (خط 545) ══════
+545:   const pdfInvoiceList = async () => { try { const r = await shareHtmlAsPdf(_buildInvoiceListHtml(), 'invoices-' + (selectedParty?.code || 'party') + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };
+546:   const printInvoiceList = async () => { try { const r = await printHtml(_buildInvoiceListHtml()); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };
+547:   const xlsInvoiceList = async () => {
+548:     try {
+549:       let rows: any[] = [];
+
+══════ printInvoiceList (خط 546) ══════
+546:   const printInvoiceList = async () => { try { const r = await printHtml(_buildInvoiceListHtml()); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };
+547:   const xlsInvoiceList = async () => {
+548:     try {
+549:       let rows: any[] = [];
+550:       let name = 'گزارش';
+
+══════ دکمه‌های مودال (همه تب‌ها) ══════
+635: <TouchableOpacity onPress={pdfAll} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+636: <TouchableOpacity onPress={printAll} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+637: <TouchableOpacity onPress={imgAll} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+638: <TouchableOpacity onPress={xlsAll} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📊 اکسل</Text></TouchableOpacity>
+759: <TouchableOpacity onPress={pdfParty} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+760: <TouchableOpacity onPress={printParty} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+761: <TouchableOpacity onPress={imgParty} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+762: <TouchableOpacity onPress={xlsParty} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+1008: <TouchableOpacity onPress={pdfInvoice} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+1009: <TouchableOpacity onPress={printInvoice} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+1010: <TouchableOpacity onPress={imgInvoice} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+1011: <TouchableOpacity onPress={xlsInvoice} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+1027: <TouchableOpacity onPress={pdfInvoiceList} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+1028: <TouchableOpacity onPress={printInvoiceList} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+1029: <TouchableOpacity onPress={imgInvoiceList} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+1030: <TouchableOpacity onPress={xlsInvoiceList} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+
+══════ چک: آیا در مودال شرکا/کارمندان/هزینه‌ها از pdfParty/printParty استفاده شده؟ ══════
+کل occurrences pdfParty: 2
+کل occurrences printParty: 2
+کل occurrences pdfInvoice: 4
+کل occurrences printInvoice: 4

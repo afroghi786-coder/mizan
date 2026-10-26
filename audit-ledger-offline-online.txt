@@ -1,0 +1,742 @@
+══════ lib.offline.ts — مسیرهای دفتر معین ══════
+
+─── lib.offline.ts — getLedgerData (خط 1747) ───
+1747: export async function getLedgerData(): Promise<any[]> {
+1748:   const _pda = (lib && (lib as any).parseDateAny) ? (lib as any).parseDateAny : function(d: any) { return d ? new Date(d) : null; };
+1749:   let allSales: any[] = [];
+1750:   let allPurchases: any[] = [];
+1751: 
+1752:   if (MODE === 'online') {
+1753:     try {
+1754:       const [sRes, pRes] = await Promise.all([
+1755:         lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+1756:         lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+1757:       ]);
+1758:       if (sRes && sRes.data && sRes.data.length) allSales = sRes.data;
+1759:       if (pRes && pRes.data && pRes.data.length) allPurchases = pRes.data;
+1760:     } catch (e) { console.log('[getLedgerData] online fail:', e); }
+1761:   }
+1762: 
+1763:   if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
+1764:   if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
+1765: 
+1766:   const q = await getQueue();
+1767:   for (const item of q) {
+1768:     // حذف آفلاین فروش
+1769:     if (item.op === 'deleteSale' && item.payload) {
+1770:       const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+1771:       if (inv) allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+1772:       continue;
+1773:     }
+1774:     // حذف آفلاین خرید
+1775:     if (item.op === 'deletePurchase' && item.payload) {
+1776:       const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+1777:       if (inv) allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+1778:       continue;
+1779:     }
+1780:     // ویرایش آفلاین فروش سینک‌شده
+1781:     if (item.op === 'updateSale' && item.payload) {
+1782:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+1783:       if (!inv) continue;
+1784:       const meta = item.payload.meta || {};
+1785:       const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+1786:       allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+1787:       for (const r of (item.payload.rows || [])) {
+1788:         if (r._deleted) continue;
+1789:         const qty = Number(r.quantity) || 0;
+1790:         const price = Number(r.priceUnit != null ? r.priceUnit : r.price_unit) || 0;
+1791:         allSales.push({
+1792:           customer_code: meta.code || '',
+1793:           customer_name: meta.name || '',
+1794:           customer_phone: meta.phone || '',
+1795:           account_holder_code: r.accountHolderCode || '',
+1796:           account_holder: r.accountHolder || '',
+1797:           quantity: qty,
+1798:           price_unit: price,
+1799:           payment: Number(r.payment) || 0,
+1800:           total: qty * price,
+1801:           model_code: r.modelCode || '',
+1802:           model_name: r.modelName || '',
+1803:           invoice_number: inv,
+1804:           manual_invoice: '',
+1805:           date_factor: r.dateFactor || r.depositDate || baseDate,
+1806:           date_reg: r.dateReg || baseDate,
+1807:           bank_name: r.bankName || '',
+1808:           deposit_date: r.depositDate || '',
+1809:           shipping: meta.shipping || '',
+1810:           description: r.description || '',
+1811:           payer_code: r.accountHolderCode || '',
+1812:           _pending: true,
+1813:         });
+1814:       }
+1815:       continue;
+1816:     }
+1817:     // ویرایش آفلاین خرید سینک‌شده
+1818:     if (item.op === 'updatePurchase' && item.payload) {
+1819:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+1820:       if (!inv) continue;
+1821:       const meta = item.payload.meta || {};
+1822:       const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+1823:       allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+1824:       for (const r of (item.payload.rows || [])) {
+1825:         if (r._deleted) continue;
+1826:         const qty = Number(r.quantity) || 0;
+1827:         const price = Number(r.priceUnit != null ? r.priceUnit : r.price_unit) || 0;
+1828:         allPurchases.push({
+1829:           supplier_code: meta.code || '',
+1830:           supplier_name: meta.name || '',
+1831:           supplier_phone: meta.phone || '',
+1832:           quantity: qty,
+1833:           price_unit: price,
+1834:           payment: Number(r.payment) || 0,
+1835:           total: qty * price,
+1836:           model_code: r.modelCode || '',
+1837:           model_name: r.modelName || '',
+1838:           invoice_number: inv,
+1839:           manual_invoice: meta.manualInv || '',
+1840:           date_factor: r.dateFactor || r.depositDate || baseDate,
+1841:           date_reg: r.dateReg || baseDate,
+1842:           bank_name: r.bankName || '',
+1843:           deposit_date: r.depositDate || '',
+1844:           shipping: meta.shipping || '',
+1845:           description: r.description || '',
+1846:           payer_code: r.payerCode || r.accountHolderCode || '',
+1847:           _pending: true,
+1848:         });
+1849:       }
+1850:       continue;
+1851:     }
+1852:     if (item.op === 'createSale' && item.payload) {
+1853:       const rows = item.payload.rows || item.payload.items || [];
+1854:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+1855:       for (const r of rows) {
+1856:         allSales.push({
+1857:           customer_code: item.payload.customerCode || item.payload.customer_code || '',
+1858:           customer_name: item.payload.customerName || item.payload.customer_name || '',
+1859:           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
+1860:           account_holder_code: item.payload.holderCode || item.payload.account_holder_code || '',
+1861:           account_holder: item.payload.holderName || item.payload.account_holder || '',
+1862:           quantity: Number(r.quantity) || 0,
+1863:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+1864:           payment: Number(r.payment) || 0,
+1865:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+1866:           model_code: r.model_code || r.modelCode || '',
+1867:           model_name: r.model_name || r.modelName || '',
+1868:           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+1869:           manual_invoice: '',
+1870:           date_factor: r.date_factor || r.dateFactor || baseDate,
+1871:           date_reg: r.date_reg || r.dateReg || baseDate,
+1872:           bank_name: item.payload.bank || '',
+1873:           deposit_date: item.payload.depositDate || '',
+1874:           shipping: item.payload.shipping || '',
+1875:           description: r.description || '',
+1876:           payer_code: item.payload.holderCode || '',
+1877:           _pending: true,
+1878:         });
+1879:       }
+1880:     }
+1881:     if (item.op === 'createPurchase' && item.payload) {
+1882:       const rows = item.payload.rows || item.payload.items || [];
+1883:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+1884:       for (const r of rows) {
+1885:         allPurchases.push({
+1886:           supplier_code: item.payload.supplierCode || item.payload.supplier_code || '',
+1887:           supplier_name: item.payload.supplierName || item.payload.supplier_name || '',
+1888:           supplier_phone: item.payload.supplierPhone || item.payload.supplier_phone || '',
+1889:           quantity: Number(r.quantity) || 0,
+1890:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+1891:           payment: Number(r.payment) || 0,
+1892:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+1893:           model_code: r.model_code || r.modelCode || '',
+1894:           model_name: r.model_name || r.modelName || '',
+1895:           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+1896:           manual_invoice: item.payload.manualInvoice || '',
+1897:           date_factor: r.date_factor || r.dateFactor || baseDate,
+1898:           date_reg: r.date_reg || r.dateReg || baseDate,
+1899:           bank_name: item.payload.bank || '',
+1900:           deposit_date: item.payload.depositDate || '',
+1901:           shipping: item.payload.shipping || '',
+1902:           description: r.description || '',
+1903:           payer_code: item.payload.payerCode || '',
+1904:           _pending: true,
+1905:         });
+1906:       }
+1907:     }
+1908:   }
+1909: 
+1910:   const normPhone = function(p: any) { return String(p || '').replace(/[^\d]/g, ''); };
+1911:   const makeKey = function(name: string, code: string, phone: string): string | null {
+1912:     const np = normPhone(phone);
+1913:     if (np && np.length >= 7) return 'P:' + np;
+1914:     if (code) return 'C:' + String(code).trim();
+1915:     if (name) return 'N:' + String(name).trim();
+1916:     return null;
+1917:   };
+1918: 
+1919:   const accounts: Record<string, any> = {};
+1920:   const getOrCreate = function(name: string, code: string, phone: string) {
+1921:     const key = makeKey(name, code, phone);
+1922:     if (!key) return null;
+1923:     if (!accounts[key]) accounts[key] = { key: key, names: {}, codes: {}, phones: {}, transactions: [] };
+1924:     if (name) accounts[key].names[name] = true;
+1925:     if (code) accounts[key].codes[code] = true;
+1926:     if (phone) accounts[key].phones[phone] = true;
+1927:     return accounts[key];
+1928:   };
+1929: 
+1930:   allSales.forEach(function(s: any) {
+1931:     const code = String(s.customer_code || '').trim();
+1932:     const name = String(s.customer_name || '').trim();
+1933:     const phone = String(s.customer_phone || '').trim();
+1934:     const acc = getOrCreate(name, code, phone);
+1935:     if (!acc) return;
+1936: 
+1937:     const qty = Number(s.quantity) || 0;
+1938:     const price = Number(s.price_unit) || 0;
+1939:     const total = Number(s.total) || (qty * price);
+1940:     const payment = Number(s.payment) || 0;
+1941: 
+1942:     const common = {
+1943:       date: s.date_factor || s.date_reg || s.created_at || '',
+1944:       invoice: s.invoice_number || '',
+1945:       manualInvoice: s.manual_invoice || '',
+1946:       modelCode: s.model_code || '',
+1947:       modelName: s.model_name || '',
+1948:       bank: s.bank_name || '',
+1949:       holder: s.account_holder || '',
+1950:       holderCode: s.account_holder_code || '',
+1951:       depositDate: s.deposit_date || '',
+1952:       shipping: s.shipping || '',
+1953:       description: s.description || '',
+1954:     };
+1955: 
+1956:     if (total > 0) {
+1957:       acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0 });
+1958:     }
+1959:     if (payment > 0) {
+1960:       acc.transactions.push({ ...common, type: 'payment_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: 0, credit: payment, description: 'دریافت وجه' });
+1961: 
+1962:       const hCode = String(s.account_holder_code || '').trim();
+1963:       const hName = String(s.account_holder || '').trim();
+1964:       if (hCode && hCode !== code) {
+1965:         const hAcc = getOrCreate(hName, hCode, '');
+1966:         if (hAcc) {
+1967:           hAcc.transactions.push({
+1968:             ...common, type: 'triangular_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0,
+1969:             description: 'دریافت مثلثی از طرف ' + name,
+1970:           });
+1971:         }
+1972:       }
+1973:     }
+1974:   });
+1975: 
+1976:   allPurchases.forEach(function(p: any) {
+1977:     const code = String(p.supplier_code || '').trim();
+1978:     const name = String(p.supplier_name || '').trim();
+1979:     const phone = String(p.supplier_phone || '').trim();
+1980:     const acc = getOrCreate(name, code, phone);
+1981:     if (!acc) return;
+1982: 
+1983:     const qty = Number(p.quantity) || 0;
+1984:     const price = Number(p.price_unit) || 0;
+1985:     const total = Number(p.total) || (qty * price);
+1986:     const payment = Number(p.payment) || 0;
+1987: 
+1988:     const common = {
+1989:       date: p.date_factor || p.date_reg || p.created_at || '',
+1990:       invoice: p.invoice_number || '',
+1991:       manualInvoice: p.manual_invoice || '',
+1992:       modelCode: p.model_code || '',
+1993:       modelName: p.model_name || '',
+1994:       bank: p.bank_name || '',
+1995:       holder: p.account_holder || '',
+1996:       holderCode: p.payer_code || '',
+1997:       depositDate: p.deposit_date || '',
+1998:       shipping: p.shipping || '',
+1999:       description: p.description || '',
+2000:     };
+2001: 
+2002:     if (total > 0) {
+2003:       acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit: total });
+2004:     }
+2005:     if (payment > 0) {
+2006:       acc.transactions.push({ ...common, type: 'payment_sent', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0, description: 'پرداخت به تأمین‌کننده' });
+2007:     }
+2008:   });
+2009: 
+2010:   const result: any[] = [];
+2011:   Object.keys(accounts).forEach(function(k) {
+2012:     const acc = accounts[k];
+2013:     let debit = 0, credit = 0;
+2014:     acc.transactions.forEach(function(t: any) { debit += (t.debit || 0); credit += (t.credit || 0); });
+2015:     const balance = debit - credit;
+2016:     const trans = acc.transactions.slice().sort(function(a: any, b: any) {
+2017:       const da = _pda(a.date), db = _pda(b.date);
+2018:       return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+2019:     });
+2020:     let run = 0;
+2021:     trans.forEach(function(t: any) { run += (t.debit || 0) - (t.credit || 0); t.runningBalance = run; });
+2022:     let hasSale = false;
+2023:     let hasPurchase = false;
+2024:     trans.forEach(function(t: any) {
+2025:       if (t.type === 'sale') hasSale = true;
+2026:       if (t.type === 'purchase') hasPurchase = true;
+2027:     });
+2028:     const typeStr = (hasSale && hasPurchase) ? 'مشتری/تأمین‌کننده' : hasSale ? 'مشتری' : hasPurchase ? 'تأمین‌کننده' : '—';
+2029:     result.push({
+2030:       key: acc.key,
+2031:       name: Object.keys(acc.names)[0] || '—',
+2032:       code: Object.keys(acc.codes)[0] || '—',
+2033:       phone: Object.keys(acc.phones)[0] || '—',
+2034:       allNames: Object.keys(acc.names),
+2035:       allCodes: Object.keys(acc.codes),
+2036:       allPhones: Object.keys(acc.phones),
+2037:       transactions: trans,
+2038:       totalDebit: debit,
+2039:       totalCredit: credit,
+2040:       balance: balance,
+2041:       type: typeStr,
+2042:     });
+2043:   });
+2044:   // ═══ حساب شرکا در دفتر معین ═══
+2045:   // ═══ یک ردیف خلاصه برای هر شریک ═══
+2046:   // ═══ یک ردیف خلاصه برای هر شریک ═══
+2047:   // ═══ نقشه اسناد مبنا برای غنی‌سازی سطح ۳ ═══
+2048:   const _srcMaps: any = { sales: {}, purchases: {}, expenses: {}, salaries: {}, loans: {} };
+2049:   (allSales || []).forEach((s: any) => { const k = s.invoice_number || s.invoice; if (k) _srcMaps.sales[k] = s; });
+2050:   (allPurchases || []).forEach((p: any) => { const k = p.invoice_number || p.invoice; if (k) _srcMaps.purchases[k] = p; });
+2051:   let _allExpenses: any[] = [];
+2052:   let _allSalaries: any[] = [];
+2053:   let _allLoans: any[] = [];
+2054:   try { _allExpenses = await getExpenses(); } catch {}
+2055:   try { _allSalaries = await getSalaryPayments(); } catch {}
+2056:   try { _allLoans = await getLoans(); } catch {}
+2057:   _allExpenses.forEach((e: any) => { const k = e.local_id || e.id || e.invoice_number; if (k) _srcMaps.expenses[k] = e; });
+2058:   _allSalaries.forEach((s: any) => { const k = s.local_id || s.id || s.invoice_number; if (k) _srcMaps.salaries[k] = s; });
+2059:   _allLoans.forEach((l: any) => { const k = l.local_id || l.id; if (k) _srcMaps.loans[k] = l; });
+2060: 
+2061:   function _srcInfo(t: any) {
+2062:     const st = String(t.source_type || t.sourceType || '').toLowerCase();
+2063:     const sid = String(t.source_id || t.sourceId || t.invoice || '');
+2064:     if (!sid) return null;
+2065:     if (st === 'sale') {
+2066:       const s = _srcMaps.sales[sid]; if (!s) return null;
+2067:       return { kind: 'sale', invoice: s.invoice_number || sid, date: s.date_reg || s.date_factor || s.created_at || '', total: Number(s.total_amount || s.total || 0), paid: Number(s.payment || s.paid || 0), balance: Number(s.balance || 0) };
+2068:     }
+2069:     if (st === 'purchase') {
+2070:       const p = _srcMaps.purchases[sid]; if (!p) return null;
+2071:       return { kind: 'purchase', invoice: p.invoice_number || sid, date: p.date_reg || p.date_factor || p.created_at || '', total: Number(p.total_amount || p.total || 0), paid: Number(p.payment || p.paid || 0), balance: Number(p.balance || 0) };
+2072:     }
+2073:     if (st === 'expense') {
+2074:       const e = _srcMaps.expenses[sid]; if (!e) return null;
+2075:       return { kind: 'expense', invoice: e.invoice_number || sid, date: e.payment_date || e.created_at || '', total: Number(e.amount || 0), paid: Number(e.amount || 0), balance: 0, category: e.category || '', title: e.title || '', receiver: e.receiver_name || '', bank: e.bank || '', method: e.payment_method || '', status: e.status || '' };
+2076:     }
+2077:     if (st === 'salary') {
+2078:       const s = _srcMaps.salaries[sid]; if (!s) return null;
+2079:       return { kind: 'salary', invoice: s.invoice_number || sid, date: s.payment_date || s.created_at || '', total: Number(s.net_salary || 0), paid: Number(s.payment || 0), balance: Number(s.balance || 0), employee: s.employee_name || '', month: s.month || '', bank: s.bank || '' };
+2080:     }
+2081:     if (st === 'loan') {
+2082:       const l = _srcMaps.loans[sid]; if (!l) return null;
+2083:       return { kind: 'loan', invoice: sid, date: l.date || l.created_at || '', total: Number(l.amount || 0), paid: Number(l.paid || 0), balance: Number(l.balance || 0), employee: l.employee_name || '', installments: Number(l.installments || 0), monthly: Number(l.monthly_amount || 0), status: l.status || '' };
+2084:     }
+2085:     return null;
+2086:   }
+2087: 
+2088:   const partnerResult: any[] = [];
+2089:   try {
+2090:     const partnersList = await getPartners();
+2091:     for (const p of partnersList) {
+2092:       const txns = await getPartnerTransactions(p.code);
+2093:       if (!txns || !txns.length) continue;
+2094: 
+2095:       let capital = 0, current = 0, drawings = 0;
+2096:       let totalCredit = 0, totalDebit = 0;
+2097:       const trans: any[] = [];
+2098: 
+2099:       txns.forEach(function(t: any) {
+2100:         const amt = Math.abs(Number(t.amount) || 0);
+2101:         const at = String(t.account_type || 'current');
+2102:         const type = String(t.type || '');
+2103:         let d = 0, c = 0;
+2104:         if (type === 'withdraw' || type === 'transfer_out' || type === 'drawing') d = amt;
+2105:         else if (type === 'deposit' || type === 'transfer_in') c = amt;
+2106: 
+2107:         if (at === 'capital') capital += (c - d);
+2108:         else if (at === 'drawings') drawings += (d - c);
+2109:         else current += (c - d);
+2110: 
+2111:         totalDebit += d;
+2112:         totalCredit += c;
+2113: 
+2114:         const descParts = [];
+2115:         if (t.note) descParts.push(String(t.note));
+2116:         if (t.counterpart_type) descParts.push('طرف: ' + t.counterpart_type + (t.counterpart_code ? ' (' + t.counterpart_code + ')' : ''));
+2117:         if (t.exchange_rate && Number(t.exchange_rate) !== 1) descParts.push('نرخ: ' + t.exchange_rate);
+2118: 
+2119:         trans.push({
+2120:           date: t.transaction_date || t.created_at || '',
+2121:           invoice: t.invoice_number || '',
+2122:           manualInvoice: '',
+2123:           modelCode: '',
+2124:           modelName: '',
+2125:           bank: t.bank_account_local_id ? ('کارت ' + t.bank_account_local_id) : '',
+2126:           holder: t.partner_name || p.name || '',
+2127:           holderCode: t.partner_code || p.code || '',
+2128:           depositDate: '',
+2129:           shipping: '',
+2130:           description: descParts.join(' | '),
+2131:           type: 'partner_' + type,
+2132:           accountType: at,
+2133:           counterpartType: t.counterpart_type || '',
+2134:           counterpartCode: t.counterpart_code || '',
+2135:           sourceType: t.source_type || '',
+2136:           sourceId: t.source_id || '',
+2137:           sourceInfo: _srcInfo(t),
+2138:           qty: 0,
+2139:           priceUnit: 0,
+2140:           lineTotal: amt,
+2141:           debit: d,
+2142:           credit: c,
+2143:         });
+2144:       });
+2145: 
+2146:       trans.sort(function(a: any, b: any) {
+
+─── lib.offline.ts — getInvoiceDetail (خط 779) ───
+779: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+780:   // ۱. صف آفلاین
+781:   const queue = await getQueue();
+782:   for (const item of queue) {
+783:     if (item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber) {
+784:       const p = item.payload;
+785:       return (p.items || []).map((it: any, idx: number) => ({
+786:         id: 'queued_' + idx,
+787:         invoice_number: p.invoiceNumber,
+788:         customer_code: p.customerCode,
+789:         customer_name: p.customerName,
+790:         customer_phone: p.customerPhone,
+791:         customer_address: p.customerAddress,
+792:         receiver_name: p.receiverName || '',
+793:         receiver_code: p.receiverCode || '',
+794:         receiver_bank: p.receiverBank || '',
+795:         receiver_account: p.receiverAccount || '',
+796:         shipping: p.shipping,
+797:         model_code: it.modelCode,
+798:         model_name: it.modelName,
+799:         shelf: it.shelf || '',
+800:         quantity: it.quantity,
+801:         price_unit: it.priceUnit,
+802:         payment: idx === 0 ? (p.paymentAmount !== undefined ? p.paymentAmount : (it.payment || 0)) : 0,
+803:         deposit_date: idx === 0 ? (p.payDate || it.depositDate || '') : '',
+804:         bank_name: idx === 0 ? (p.receiverBank || it.bankName || '') : '',
+805:         account_holder: idx === 0 ? (p.receiverName || it.accountHolder || '') : '',
+806:         account_holder_code: idx === 0 ? (p.receiverCode || it.accountHolderCode || '') : '',
+807:         description: idx === 0 ? (p.note || it.description || '') : (it.description || ''),
+808:         date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),
+809:         date_reg: new Date(item.ts).toISOString().slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+810:         _pending: true,
+811:       }));
+812:     }
+813:     if (item.op === 'createPurchase') {
+814:       const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+815:       if (pInv === invoiceNumber) {
+816:         const p = item.payload;
+817:         const items = (p.items && p.items.length) ? p.items : [{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }];
+818:         return items.map((it: any, idx: number) => ({
+819:           id: 'queued_' + idx,
+820:           invoice_number: pInv,
+821:           supplier_code: p.supplierCode,
+822:           supplier_name: p.supplierName,
+823:           supplier_phone: p.supplierPhone,
+824:           payer_name: p.payerName || '',
+825:           payer_code: p.payerCode || '',
+826:           receiver_acc: p.receiverAcc || '',
+827:           bank_name: p.bankAccount || '',
+828:           model_code: it.modelCode,
+829:           model_name: it.modelName,
+830:           shelf: it.shelf || '',
+831:           quantity: it.quantity,
+832:           price_unit: it.priceUnit,
+833:           payment: idx === 0 ? (p.paymentAmount || 0) : 0,
+834:           deposit_date: idx === 0 ? (p.paymentDate || '') : '',
+835:           description: it.description || '',
+836:           date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),
+837:           date_reg: new Date(item.ts).toISOString().slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+838:           _pending: true,
+839:         }));
+840:       }
+841:     }
+842:   }
+843: 
+844:   // ۲. کش محلی
+845:   const cacheKey = type === 'purchase' ? 'purchases' : (type === 'sales' ? 'sales' : 'sales');
+846:   const cached = (await getLocal<any[]>(cacheKey)) || [];
+847:   const filtered = cached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+848:   if (filtered.length > 0) return filtered;
+849: 
+850:   // اگر type مشخص نبود، جدول دیگر را هم امتحان کن
+851:   if (!type) {
+852:     const otherKey = cacheKey === 'sales' ? 'purchases' : 'sales';
+853:     const otherCached = (await getLocal<any[]>(otherKey)) || [];
+854:     const otherFiltered = otherCached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+855:     if (otherFiltered.length > 0) return otherFiltered;
+856:   }
+857: 
+858:   // ۳. سرور (اگر آنلاین)
+859:   if (MODE === 'online') {
+860:     try {
+861:       const fresh = await lib.getInvoiceDetail(invoiceNumber, type);
+862:       if (fresh && fresh.length > 0) return fresh;
+863:     } catch {}
+864:   }
+865: 
+866:   return [];
+867: }
+
+─── lib.offline.ts — getSalesGrouped (خط 617) ───
+617: export async function getSalesGrouped() {
+618:   let serverList: any[] = [];
+619:   if (MODE === 'online') {
+620:     try {
+621:       serverList = await lib.getSalesGrouped();
+622:       await setLocal('sales_grouped', serverList);
+623:     } catch {
+624:       serverList = (await getLocal<any[]>('sales_grouped')) || [];
+625:     }
+626:   } else {
+627:     serverList = (await getLocal<any[]>('sales_grouped')) || [];
+628:   }
+629: 
+630:   // ادغام با صف
+631:   const queue = await getQueue();
+632:   const pendingByInv: Record<string, any> = {};
+633:   for (const item of queue) {
+634:     if (item.op === 'createSale') {
+635:       const p = item.payload;
+636:       const inv = p.invoiceNumber;
+637:       if (!pendingByInv[inv]) {
+638:         pendingByInv[inv] = {
+639:           invoice: inv, name: p.customerName, phone: p.customerPhone,
+640:           total: 0, paid: 0, items: [],
+641:           date: new Date(item.ts).toISOString(),
+642:           _pending: true,
+643:         };
+644:       }
+645:       for (const it of p.items || []) {
+646:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+647:         pendingByInv[inv].paid += Number(it.payment) || 0;
+648:         pendingByInv[inv].items.push(it);
+649:       }
+650:     }
+651:   }
+652:   return [...Object.values(pendingByInv), ...serverList];
+653: }
+
+─── lib.offline.ts — getPurchasesGrouped (خط 735) ───
+735: export async function getPurchasesGrouped() {
+736:   let serverList: any[] = [];
+737:   if (MODE === 'online') {
+738:     try {
+739:       serverList = await lib.getPurchasesGrouped();
+740:       await setLocal('purchases_grouped', serverList);
+741:     } catch {
+742:       serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+743:     }
+744:   } else {
+745:     serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+746:   }
+747: 
+748:   const queue = await getQueue();
+749:   const pendingByInv: Record<string, any> = {};
+750:   for (const item of queue) {
+751:     if (item.op === 'createPurchase') {
+752:       const p = item.payload;
+753:       const inv = p._pendingInvNumber || p.invoiceNumber || 'P-PENDING';
+754:       if (!pendingByInv[inv]) {
+755:         pendingByInv[inv] = {
+756:           invoice: inv,
+757:           manual: p.manualInvoice || '',
+758:           name: p.supplierName,
+759:           phone: p.supplierPhone,
+760:           total: 0, paid: 0, items: [],
+761:           date: new Date(item.ts).toISOString(),
+762:           _pending: true,
+763:         };
+764:       }
+765:       const items = (p.items && p.items.length) ? p.items : [{ modelName: '—', quantity: 0, priceUnit: 0 }];
+766:       for (const it of items) {
+767:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+768:         pendingByInv[inv].items.push(it);
+769:       }
+770:       pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
+771:     }
+772:   }
+773:   return [...Object.values(pendingByInv), ...serverList];
+774: }
+
+─── lib.offline.ts — getExpenses (خط 1101) ───
+1101: export async function getExpenses(): Promise<any[]> {
+1102:   const local = (await getLocal<any[]>('expenses')) || [];
+1103:   if (MODE === 'offline') return local;
+1104:   let server: any[] = [];
+1105:   try {
+1106:     const { data } = await lib.supabase.from('expenses').select('*').order('created_at', { ascending: false });
+1107:     server = data || [];
+1108:   } catch {}
+1109:   const merged: Record<string, any> = {};
+1110:   local.forEach(x => { merged[x.local_id || x.id] = x; });
+1111:   server.forEach(x => { merged[x.local_id || x.id] = x; });
+1112:   try {
+1113:     const q = await getQueue();
+1114:     q.forEach((it: any) => {
+1115:       if (it.op === 'createExpense' && it.payload) {
+1116:         const p = it.payload;
+1117:         const id = p.local_id || p.id;
+1118:         if (id) merged[id] = p;
+1119:       }
+1120:       if (it.op === 'deleteExpense') {
+1121:         const id = typeof it.payload === 'string' ? it.payload : (it.payload?.local_id || it.payload?.id);
+1122:         if (id) delete merged[id];
+1123:       }
+1124:     });
+1125:   } catch {}
+1126:   return Object.values(merged);
+1127: }
+
+─── lib.offline.ts — getSalaryPayments (خط 2840) ───
+2840: export async function getSalaryPayments(): Promise<any[]> {
+2841:   const local = (await getLocal<any[]>('salary_payments')) || [];
+2842:   if (MODE === 'offline') return local;
+2843:   let server: any[] = [];
+2844:   try {
+2845:     const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
+2846:     server = data || [];
+2847:   } catch {}
+2848:   const merged: Record<string, any> = {};
+2849:   local.forEach(x => { merged[x.local_id || x.id] = x; });
+2850:   server.forEach(x => { merged[x.local_id || x.id] = x; });
+2851:   try {
+2852:     const q = await getQueue();
+2853:     q.forEach((it: any) => {
+2854:       const p = it.payload;
+2855:       if (!p) return;
+2856:       if (it.op === 'createSalaryPayment' || it.op === 'updateSalaryPayment') {
+2857:         const id = p.local_id || p.id;
+2858:         if (id) merged[id] = { ...(merged[id] || {}), ...p };
+2859:       }
+2860:       if (it.op === 'deleteSalaryPayment') {
+2861:         const id = typeof p === 'string' ? p : (p.local_id || p.id);
+2862:         if (id) delete merged[id];
+2863:       }
+2864:     });
+2865:   } catch {}
+2866:   return Object.values(merged);
+2867: }
+
+─── lib.offline.ts — getLoans (خط 2873) ───
+2873: export async function getLoans(): Promise<any[]> {
+2874:   const local = (await getLocal<any[]>('employee_loans')) || [];
+2875:   if (MODE === 'offline') return local;
+2876:   let server: any[] = [];
+2877:   try {
+2878:     const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
+2879:     server = data || [];
+2880:   } catch {}
+2881:   const merged: Record<string, any> = {};
+2882:   local.forEach(x => { merged[x.local_id || x.id] = x; });
+2883:   server.forEach(x => { merged[x.local_id || x.id] = x; });
+2884:   try {
+2885:     const q = await getQueue();
+2886:     q.forEach((it: any) => {
+2887:       const p = it.payload;
+2888:       if (!p) return;
+2889:       if (it.op === 'createLoan' || it.op === 'updateLoan') {
+2890:         const id = p.local_id || p.id;
+2891:         if (id) merged[id] = { ...(merged[id] || {}), ...p };
+2892:       }
+2893:       if (it.op === 'deleteLoan') {
+2894:         const id = typeof p === 'string' ? p : (p.local_id || p.id);
+2895:         if (id) delete merged[id];
+2896:       }
+2897:     });
+2898:   } catch {}
+2899:   return Object.values(merged);
+2900: }
+
+─── lib.offline.ts — getPartnerTransactions (خط 2583) ───
+2583: export async function getPartnerTransactions(partnerCode: string) {
+2584:   const list = (await cachedRead('ptx_' + partnerCode, () => lib.getPartnerTransactions(partnerCode))) || [];
+2585:   const q = await getQueue();
+2586:   const result = [...list];
+2587:   for (const item of q) {
+2588:     if (item.op === 'createPTX' && item.payload.partner_code === partnerCode) result.push(item.payload);
+2589:     else if (item.op === 'deletePTX') {
+2590:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2591:       if (idx >= 0) result.splice(idx, 1);
+2592:     }
+2593:   }
+2594:   return result.sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || '')));
+2595: }
+
+─── lib.offline.ts — getQueue (خط 38) ───
+38: export async function getQueue(): Promise<any[]> {
+39:   const raw = await AsyncStorage.getItem(QUEUE);
+40:   return raw ? JSON.parse(raw) : [];
+41: }
+
+─── lib.offline.ts — syncToServer (خط 50) ───
+50: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+51:   const q = await getQueue();
+52:   const remaining: any[] = [];
+53:   let ok = 0, fail = 0;
+54:   const total = q.length;
+55:   for (let i = 0; i < q.length; i++) {
+56:     const item = q[i];
+57:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+58:     try {
+59:       await (lib as any)[item.op](item.payload);
+60:       ok++;
+61:     } catch (e: any) {
+62:       const msg = String(e?.message || e || '');
+63:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+64:       if (isDup) { ok++; } else {
+65:         const attempts = (item.attempts || 0) + 1;
+66:         if (attempts >= 5) {
+67:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+68:         } else {
+69:           remaining.push({ ...item, attempts, lastError: msg });
+70:         }
+71:         fail++;
+72:       }
+73:     }
+74:     if (onProgress) onProgress(i + 1, total);
+75:     if ((i + 1) % 20 === 0) {
+76:       await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+77:       await new Promise(r => setTimeout(r, 10));
+78:     }
+79:   }
+80:   await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+81:   return { ok, fail };
+82: }
+
+══════ lib.storage.ts — ذخیره‌سازی وب/گوشی ══════
+1: // lib.storage.ts — آداپتر SQLite (گوشی) + AsyncStorage (وب)
+3: // 💻 وب: AsyncStorage (سازگار با مرورگر)
+4: // 🎯 همون API AsyncStorage — منطق اپ دست‌نخورده
+6: import { Platform } from 'react-native';
+9: const isWeb = Platform.OS === 'web';
+12: console.log('[storage] 🌐 وب — فقط AsyncStorage');
+60: // API (کاملاً مثل AsyncStorage)
+62: const AsyncStorage = {
+63: async getItem(key: string): Promise<string | null> {
+65: if (!db) return RealAS.getItem(key);
+70: // Lazy migration از AsyncStorage
+71: const v = await RealAS.getItem(key);
+80: return RealAS.getItem(key);
+84: async setItem(key: string, value: string): Promise<void> {
+86: if (!db) return RealAS.setItem(key, value);
+92: // بکاپ در AsyncStorage
+93: try { await RealAS.setItem(key, value); } catch {}
+95: await RealAS.setItem(key, value);
+202: export default AsyncStorage;
+203: export { AsyncStorage };

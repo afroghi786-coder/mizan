@@ -1,7 +1,7 @@
 // lib.exp.ts — هزینه‌ها (استاندارد آفلاین/آنلاین)
 import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
-import { getMode, enqueue } from './lib.offline';
+import { getMode, enqueue, getQueue } from './lib.offline';
 
 const K = (k: string) => '@mizan_local_' + k;
 const gid = () => 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -19,15 +19,42 @@ async function writeLocal(key: string, list: any[]) {
   await AsyncStorage.setItem(K(key), JSON.stringify(list));
 }
 
+const EXP_COLS = [
+  'invoice_number','category','title','amount','payment_method','bank','account_number',
+  'payer_name','payer_code','receiver_name','receiver_code','payment_date',
+  'description','status','local_id','counterpart_type','counterpart_code'
+];
+function sanitizeExpense(p: any) {
+  const out: any = {};
+  EXP_COLS.forEach(k => { if (p[k] !== undefined) out[k] = p[k]; });
+  if (!out.category) out.category = p.type || 'متفرقه';
+  if (!out.payment_date) out.payment_date = p.date || '';
+  if (out.amount !== undefined) out.amount = Number(out.amount) || 0;
+  return out;
+}
+
 async function fetchAll(table: string, key: string): Promise<any[]> {
   const local = await readLocal(key);
   if (getMode() === 'offline') return local;
   try {
     const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
-    if (error || !data || !data.length) return local;
     const merged: Record<string, any> = {};
     local.forEach(x => { merged[x.local_id || x.id] = x; });
-    data.forEach(x => { merged[x.local_id || x.id] = x; });
+    (data || []).forEach(x => { merged[x.local_id || x.id] = x; });
+    try {
+      const q = await getQueue();
+      q.forEach((it: any) => {
+        if (it.op === 'createExpense' && it.payload) {
+          const p = it.payload;
+          const id = p.local_id || p.id;
+          if (id) merged[id] = p;
+        }
+        if (it.op === 'deleteExpense') {
+          const id = typeof it.payload === 'string' ? it.payload : (it.payload?.local_id || it.payload?.id);
+          if (id) delete merged[id];
+        }
+      });
+    } catch {}
     return Object.values(merged);
   } catch { return local; }
 }
@@ -38,7 +65,7 @@ async function saveItem(table: string, key: string, item: any, op: 'createExpens
   const newList = idx >= 0 ? list.map((x, i) => i === idx ? { ...x, ...item } : x) : [item, ...list];
   await writeLocal(key, newList);
 
-  const clean: any = { ...item };
+  const clean: any = sanitizeExpense(item);
   delete clean.user_id;
   delete clean.id;
 

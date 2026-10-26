@@ -921,8 +921,23 @@ export async function createFxTrade(p: any) {
 // ═══════════════════════════════════════════
 export async function createExpense(p: any) {
   const { error } = await supabase.from('expenses').insert({
-    type: p.type, title: p.title, amount: p.amount, date: p.date,
-    bank: p.bank || '', description: p.description || '', local_id: p.local_id || '',
+    invoice_number: p.invoice_number || '',
+    category: p.category || p.type || 'متفرقه',
+    title: p.title || '',
+    amount: Number(p.amount) || 0,
+    payment_method: p.payment_method || '',
+    bank: p.bank || '',
+    account_number: p.account_number || '',
+    payer_name: p.payer_name || '',
+    payer_code: p.payer_code || '',
+    receiver_name: p.receiver_name || p.receiverName || '',
+    receiver_code: p.receiver_code || p.receiverCode || '',
+    payment_date: p.payment_date || p.date || '',
+    description: p.description || '',
+    status: p.status || '',
+    local_id: p.local_id || '',
+    counterpart_type: p.counterpart_type || '',
+    counterpart_code: p.counterpart_code || '',
   });
   if (error) throw new Error(error.message);
 }
@@ -1330,4 +1345,38 @@ export async function updateShipping(id: string, p: any) {
 export async function deleteShipping(id: string) {
   const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
   if (error) throw new Error(error.message);
+}
+// ═══════════════════════════════════════════
+//  Aliases for queue operations
+//  (syncToServer uses item.op as function name)
+// ═══════════════════════════════════════════
+export const createPTX = createPartnerTransaction;
+export const deletePTX = deletePartnerTransaction;
+export const createPBA = createPartnerBankAccount;
+export const deletePBA = deletePartnerBankAccount;
+
+
+// ═══════════════════════════════════════════
+//  getSalaryPayments — خواندن حقوق‌ها
+// ═══════════════════════════════════════════
+export async function getSalaryPayments(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('salary_payments')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+
+// ═══════════════════════════════════════════
+//  getLoans — خواندن وام‌های کارمندان
+// ═══════════════════════════════════════════
+export async function getLoans(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('employee_loans')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
 }

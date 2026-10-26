@@ -1099,10 +1099,31 @@ export async function deleteFxTrade(localId: string) {
 //  هزینه‌ها (Expenses)
 // ═══════════════════════════════════════════
 export async function getExpenses(): Promise<any[]> {
-  return cachedRead('expenses', async () => {
+  const local = (await getLocal<any[]>('expenses')) || [];
+  if (MODE === 'offline') return local;
+  let server: any[] = [];
+  try {
     const { data } = await lib.supabase.from('expenses').select('*').order('created_at', { ascending: false });
-    return data || [];
-  });
+    server = data || [];
+  } catch {}
+  const merged: Record<string, any> = {};
+  local.forEach(x => { merged[x.local_id || x.id] = x; });
+  server.forEach(x => { merged[x.local_id || x.id] = x; });
+  try {
+    const q = await getQueue();
+    q.forEach((it: any) => {
+      if (it.op === 'createExpense' && it.payload) {
+        const p = it.payload;
+        const id = p.local_id || p.id;
+        if (id) merged[id] = p;
+      }
+      if (it.op === 'deleteExpense') {
+        const id = typeof it.payload === 'string' ? it.payload : (it.payload?.local_id || it.payload?.id);
+        if (id) delete merged[id];
+      }
+    });
+  } catch {}
+  return Object.values(merged);
 }
 export async function createExpense(p: any): Promise<any> {
   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
@@ -1111,8 +1132,23 @@ export async function createExpense(p: any): Promise<any> {
   if (MODE === 'online') {
     try {
       const { error } = await lib.supabase.from('expenses').insert({
-        type: p.type, title: p.title, amount: p.amount,
-        date: p.date, bank: p.bank || '', description: p.description || '', local_id: item.local_id,
+        invoice_number: p.invoice_number || '',
+        category: p.category || p.type || 'متفرقه',
+        title: p.title || '',
+        amount: Number(p.amount) || 0,
+        payment_method: p.payment_method || '',
+        bank: p.bank || '',
+        account_number: p.account_number || '',
+        payer_name: p.payer_name || '',
+        payer_code: p.payer_code || '',
+        receiver_name: p.receiver_name || p.receiverName || '',
+        receiver_code: p.receiver_code || p.receiverCode || '',
+        payment_date: p.payment_date || p.date || '',
+        description: p.description || '',
+        status: p.status || '',
+        local_id: item.local_id,
+        counterpart_type: p.counterpart_type || '',
+        counterpart_code: p.counterpart_code || '',
       });
       if (error) throw error;
     } catch { await enqueue('createExpense', p); }
@@ -2005,7 +2041,296 @@ export async function getLedgerData(): Promise<any[]> {
       type: typeStr,
     });
   });
-  return result.sort(function(a: any, b: any) { return Math.abs(b.balance) - Math.abs(a.balance); });
+  // ═══ حساب شرکا در دفتر معین ═══
+  // ═══ یک ردیف خلاصه برای هر شریک ═══
+  // ═══ یک ردیف خلاصه برای هر شریک ═══
+  // ═══ نقشه اسناد مبنا برای غنی‌سازی سطح ۳ ═══
+  const _srcMaps: any = { sales: {}, purchases: {}, expenses: {}, salaries: {}, loans: {} };
+  (allSales || []).forEach((s: any) => { const k = s.invoice_number || s.invoice; if (k) _srcMaps.sales[k] = s; });
+  (allPurchases || []).forEach((p: any) => { const k = p.invoice_number || p.invoice; if (k) _srcMaps.purchases[k] = p; });
+  let _allExpenses: any[] = [];
+  let _allSalaries: any[] = [];
+  let _allLoans: any[] = [];
+  try { _allExpenses = await getExpenses(); } catch {}
+  try { _allSalaries = await getSalaryPayments(); } catch {}
+  try { _allLoans = await getLoans(); } catch {}
+  _allExpenses.forEach((e: any) => { const k = e.local_id || e.id || e.invoice_number; if (k) _srcMaps.expenses[k] = e; });
+  _allSalaries.forEach((s: any) => { const k = s.local_id || s.id || s.invoice_number; if (k) _srcMaps.salaries[k] = s; });
+  _allLoans.forEach((l: any) => { const k = l.local_id || l.id; if (k) _srcMaps.loans[k] = l; });
+
+  function _srcInfo(t: any) {
+    const st = String(t.source_type || t.sourceType || '').toLowerCase();
+    const sid = String(t.source_id || t.sourceId || t.invoice || '');
+    if (!sid) return null;
+    if (st === 'sale') {
+      const s = _srcMaps.sales[sid]; if (!s) return null;
+      return { kind: 'sale', invoice: s.invoice_number || sid, date: s.date_reg || s.date_factor || s.created_at || '', total: Number(s.total_amount || s.total || 0), paid: Number(s.payment || s.paid || 0), balance: Number(s.balance || 0) };
+    }
+    if (st === 'purchase') {
+      const p = _srcMaps.purchases[sid]; if (!p) return null;
+      return { kind: 'purchase', invoice: p.invoice_number || sid, date: p.date_reg || p.date_factor || p.created_at || '', total: Number(p.total_amount || p.total || 0), paid: Number(p.payment || p.paid || 0), balance: Number(p.balance || 0) };
+    }
+    if (st === 'expense') {
+      const e = _srcMaps.expenses[sid]; if (!e) return null;
+      return { kind: 'expense', invoice: e.invoice_number || sid, date: e.payment_date || e.created_at || '', total: Number(e.amount || 0), paid: Number(e.amount || 0), balance: 0, category: e.category || '', title: e.title || '', receiver: e.receiver_name || '', bank: e.bank || '', method: e.payment_method || '', status: e.status || '' };
+    }
+    if (st === 'salary') {
+      const s = _srcMaps.salaries[sid]; if (!s) return null;
+      return { kind: 'salary', invoice: s.invoice_number || sid, date: s.payment_date || s.created_at || '', total: Number(s.net_salary || 0), paid: Number(s.payment || 0), balance: Number(s.balance || 0), employee: s.employee_name || '', month: s.month || '', bank: s.bank || '' };
+    }
+    if (st === 'loan') {
+      const l = _srcMaps.loans[sid]; if (!l) return null;
+      return { kind: 'loan', invoice: sid, date: l.date || l.created_at || '', total: Number(l.amount || 0), paid: Number(l.paid || 0), balance: Number(l.balance || 0), employee: l.employee_name || '', installments: Number(l.installments || 0), monthly: Number(l.monthly_amount || 0), status: l.status || '' };
+    }
+    return null;
+  }
+
+  const partnerResult: any[] = [];
+  try {
+    const partnersList = await getPartners();
+    for (const p of partnersList) {
+      const txns = await getPartnerTransactions(p.code);
+      if (!txns || !txns.length) continue;
+
+      let capital = 0, current = 0, drawings = 0;
+      let totalCredit = 0, totalDebit = 0;
+      const trans: any[] = [];
+
+      txns.forEach(function(t: any) {
+        const amt = Math.abs(Number(t.amount) || 0);
+        const at = String(t.account_type || 'current');
+        const type = String(t.type || '');
+        let d = 0, c = 0;
+        if (type === 'withdraw' || type === 'transfer_out' || type === 'drawing') d = amt;
+        else if (type === 'deposit' || type === 'transfer_in') c = amt;
+
+        if (at === 'capital') capital += (c - d);
+        else if (at === 'drawings') drawings += (d - c);
+        else current += (c - d);
+
+        totalDebit += d;
+        totalCredit += c;
+
+        const descParts = [];
+        if (t.note) descParts.push(String(t.note));
+        if (t.counterpart_type) descParts.push('طرف: ' + t.counterpart_type + (t.counterpart_code ? ' (' + t.counterpart_code + ')' : ''));
+        if (t.exchange_rate && Number(t.exchange_rate) !== 1) descParts.push('نرخ: ' + t.exchange_rate);
+
+        trans.push({
+          date: t.transaction_date || t.created_at || '',
+          invoice: t.invoice_number || '',
+          manualInvoice: '',
+          modelCode: '',
+          modelName: '',
+          bank: t.bank_account_local_id ? ('کارت ' + t.bank_account_local_id) : '',
+          holder: t.partner_name || p.name || '',
+          holderCode: t.partner_code || p.code || '',
+          depositDate: '',
+          shipping: '',
+          description: descParts.join(' | '),
+          type: 'partner_' + type,
+          accountType: at,
+          counterpartType: t.counterpart_type || '',
+          counterpartCode: t.counterpart_code || '',
+          sourceType: t.source_type || '',
+          sourceId: t.source_id || '',
+          sourceInfo: _srcInfo(t),
+          qty: 0,
+          priceUnit: 0,
+          lineTotal: amt,
+          debit: d,
+          credit: c,
+        });
+      });
+
+      trans.sort(function(a: any, b: any) {
+        const da = _pda(a.date), db = _pda(b.date);
+        return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+      });
+      let run = 0;
+      trans.forEach(function(t: any) { run += (t.credit || 0) - (t.debit || 0); t.runningBalance = run; });
+
+      const balance = totalCredit - totalDebit; // مثبت = شرکت بدهکار به شریک، منفی = شریک بدهکار به شرکت
+
+      partnerResult.push({
+        key: 'PARTNER:' + (p.code || p.name),
+        name: p.name || '—',
+        code: p.code || '—',
+        phone: p.phone || '—',
+        allNames: [p.name || '—'],
+        allCodes: [p.code || '—'],
+        allPhones: [p.phone || '—'],
+        transactions: trans,
+        totalDebit: totalDebit,
+        totalCredit: totalCredit,
+        balance: balance,
+        capital: capital,
+        current: current,
+        drawings: drawings,
+        type: 'شریک',
+      });
+    }
+  } catch (e) { console.log('[getLedgerData] partners fail:', e); }
+
+  // ═══ هزینه‌ها: یک ردیف برای هر دسته هزینه ═══
+  const expenseResult: any[] = [];
+  try {
+    const expenses = await getExpenses();
+    const groups: Record<string, any[]> = {};
+    (expenses || []).forEach((e: any) => {
+      const cat = String(e.category || e.type || 'متفرقه').trim() || 'متفرقه';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(e);
+    });
+    for (const cat of Object.keys(groups)) {
+      const list = groups[cat];
+      let debit = 0, credit = 0;
+      const trans: any[] = [];
+      list.forEach((e: any) => {
+        const amt = Math.abs(Number(e.amount) || 0);
+        if (!amt) return;
+        const date = e.date || e.created_at || '';
+        const inv = e.invoice_number || e.local_id || '';
+        const code = e.receiver_code || '';
+        const title = e.title || '';
+        const recv = e.receiver_name || '';
+        const desc = 'هزینه ' + cat + (title ? ': ' + title : '') + (recv ? ' - به ' + recv : '');
+        credit += amt;
+        trans.push({
+          date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+          bank: e.bank || '', holder: cat, holderCode: code, depositDate: '', shipping: '',
+          description: desc, type: 'expense', accountType: '',
+          counterpartType: 'expense', counterpartCode: code,
+          sourceType: 'expense', sourceId: e.local_id || '',
+          qty: 0, priceUnit: 0, lineTotal: amt, debit: 0, credit: amt,
+        });
+      });
+      trans.sort((a: any, b: any) => {
+        const da = _pda(a.date), db = _pda(b.date);
+        return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+      });
+      let run = 0;
+      trans.forEach((t: any) => { run += (t.debit || 0) - (t.credit || 0); t.runningBalance = run; });
+      expenseResult.push({
+        key: 'EXPENSE_CAT:' + cat,
+        name: cat,
+        code: '—',
+        phone: '—',
+        allNames: [cat],
+        allCodes: ['—'],
+        allPhones: ['—'],
+        transactions: trans,
+        totalDebit: debit,
+        totalCredit: credit,
+        balance: debit - credit,
+        type: 'هزینه‌گیرنده',
+        kind: 'expense_category',
+      });
+    }
+  } catch (e) { console.log('[getLedgerData] expenses fail:', e); }
+
+  // ═══ کارمندان: حقوق + وام، یک ردیف برای هر کارمند ═══
+  const employeeResult: any[] = [];
+  try {
+    const salaries = await getSalaryPayments();
+    const loans = await getLoans();
+    const groups: Record<string, { name: string; code: string; txns: any[] }> = {};
+    const ensure = (name: string, code: string) => {
+      const key = code || name || 'UNKNOWN';
+      if (!groups[key]) groups[key] = { name: name || 'کارمند نامشخص', code: code || '—', txns: [] };
+      return groups[key];
+    };
+
+    (salaries || []).forEach((s: any) => {
+      const nm = String(s.employee_name || s.employee_code || 'کارمند نامشخص').trim();
+      const code = String(s.employee_code || '').trim();
+      const g = ensure(nm, code);
+      const net = Math.abs(Number(s.net_salary) || 0);
+      const paid = Math.abs(Number(s.payment) || 0);
+      const date = s.payment_date || s.created_at || '';
+      const inv = s.local_id || s.id || '';
+      const month = s.month || '';
+      if (net > 0) {
+        g.txns.push({
+          date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+          bank: s.bank || '', holder: nm, holderCode: code, depositDate: '', shipping: '',
+          description: 'حقوق ' + nm + (month ? ' - ماه ' + month : ''),
+          type: 'salary', accountType: '', counterpartType: 'employee', counterpartCode: code,
+          sourceType: 'salary', sourceId: inv, qty: 0, priceUnit: 0, lineTotal: net, debit: 0, credit: net,
+        });
+      }
+      if (paid > 0) {
+        g.txns.push({
+          date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+          bank: s.bank || '', holder: nm, holderCode: code, depositDate: '', shipping: '',
+          description: 'پرداخت حقوق ' + nm + (month ? ' - ماه ' + month : ''),
+          type: 'salary_payment', accountType: '', counterpartType: 'employee', counterpartCode: code,
+          sourceType: 'salary', sourceId: inv, qty: 0, priceUnit: 0, lineTotal: paid, debit: paid, credit: 0,
+        });
+      }
+    });
+
+    (loans || []).forEach((l: any) => {
+      const nm = String(l.employee_name || l.employee_code || 'کارمند نامشخص').trim();
+      const code = String(l.employee_code || '').trim();
+      const g = ensure(nm, code);
+      const amt = Math.abs(Number(l.amount) || 0);
+      const paid = Math.abs(Number(l.paid) || 0);
+      const date = l.date || l.created_at || '';
+      const inv = l.local_id || l.id || '';
+      if (amt > 0) {
+        g.txns.push({
+          date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+          bank: l.bank || '', holder: nm, holderCode: code, depositDate: '', shipping: '',
+          description: 'وام به ' + nm,
+          type: 'loan', accountType: '', counterpartType: 'employee', counterpartCode: code,
+          sourceType: 'loan', sourceId: inv, qty: 0, priceUnit: 0, lineTotal: amt, debit: amt, credit: 0,
+        });
+      }
+      if (paid > 0) {
+        g.txns.push({
+          date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+          bank: l.bank || '', holder: nm, holderCode: code, depositDate: '', shipping: '',
+          description: 'بازپرداخت وام ' + nm,
+          type: 'loan_payment', accountType: '', counterpartType: 'employee', counterpartCode: code,
+          sourceType: 'loan', sourceId: inv, qty: 0, priceUnit: 0, lineTotal: paid, debit: 0, credit: paid,
+        });
+      }
+    });
+
+    for (const key of Object.keys(groups)) {
+      const g = groups[key];
+      let debit = 0, credit = 0;
+      g.txns.sort((a: any, b: any) => {
+        const da = _pda(a.date), db = _pda(b.date);
+        return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+      });
+      let run = 0;
+      g.txns.forEach((t: any) => {
+        debit += t.debit || 0;
+        credit += t.credit || 0;
+        run += (t.debit || 0) - (t.credit || 0);
+        t.runningBalance = run;
+      });
+      employeeResult.push({
+        key: 'EMPLOYEE:' + key,
+        name: g.name,
+        code: g.code,
+        phone: '—',
+        allNames: [g.name],
+        allCodes: [g.code],
+        allPhones: ['—'],
+        transactions: g.txns,
+        totalDebit: debit,
+        totalCredit: credit,
+        balance: debit - credit,
+        type: 'کارمند',
+      });
+    }
+  } catch (e) { console.log('[getLedgerData] salary/loan fail:', e); }
+
+  const combined = result.concat(partnerResult, expenseResult, employeeResult);
+  return combined.sort(function(a: any, b: any) { return Math.abs(b.balance) - Math.abs(a.balance); });
 }
 
 // ═══════════════════════════════════════════
@@ -2443,4 +2768,133 @@ export async function updatePurchase(payload: { invoiceNumber: string; rows: any
     shelf: r.shelf || '',
   }));
   await setLocal('purchases', [...filtered, ...newRows]);
+}
+
+// ═══════════════════════════════════════════
+//  createPartnerAutoTx — ثبت خودکار حرکت شریک
+//  (فقط اگر طرف مقابل یکی از شرکا باشد)
+// ═══════════════════════════════════════════
+export async function createPartnerAutoTx(p: {
+  partner_code: string;
+  partner_name?: string;
+  type: 'deposit' | 'withdraw' | 'transfer_in' | 'transfer_out';
+  amount: number;
+  currency: string;
+  account_type?: 'capital' | 'current' | 'drawings';
+  counterpart_type?: string;
+  counterpart_code?: string;
+  source_type?: string;
+  source_id?: string;
+  transaction_date?: string;
+  note?: string;
+  bank_account_local_id?: string;
+}) {
+  if (!p.partner_code) return null;
+  const amt = Number(p.amount) || 0;
+  if (!amt) return null;
+
+  // جلوگیری از ثبت تکراری برای همان فاکتور/هزینه
+  if (p.source_type && p.source_id) {
+    try {
+      const existingList = await getPartnerTransactions(p.partner_code);
+      const existing = existingList.find(
+        (t: any) => String(t.source_type || '') === p.source_type &&
+                   String(t.source_id || '') === p.source_id
+      );
+      if (existing) return existing;
+    } catch {}
+  }
+
+  return createPartnerTransaction({
+    partner_code: p.partner_code,
+    partner_name: p.partner_name || '',
+    type: p.type,
+    amount: amt,
+    currency: p.currency || 'AFN',
+    account_type: p.account_type || 'current',
+    counterpart_type: p.counterpart_type || 'none',
+    counterpart_code: p.counterpart_code || '',
+    source_type: p.source_type || '',
+    source_id: p.source_id || '',
+    transaction_date: p.transaction_date || new Date().toISOString(),
+    note: p.note || '',
+    bank_account_local_id: p.bank_account_local_id || '',
+  });
+}
+
+// پیدا کردن شریک بر اساس نام یا کد
+export async function findPartnerByNameOrCode(nameOrCode: string) {
+  const v = String(nameOrCode || '').trim();
+  if (!v) return null;
+  const partners = await getPartners();
+  return partners.find((p: any) =>
+    String(p.name || '').trim() === v ||
+    String(p.code || '').trim() === v
+  ) || null;
+}
+
+
+// ═══════════════════════════════════════════
+//  getSalaryPayments — خواندن حقوق‌ها (کش + صف)
+// ═══════════════════════════════════════════
+export async function getSalaryPayments(): Promise<any[]> {
+  const local = (await getLocal<any[]>('salary_payments')) || [];
+  if (MODE === 'offline') return local;
+  let server: any[] = [];
+  try {
+    const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
+    server = data || [];
+  } catch {}
+  const merged: Record<string, any> = {};
+  local.forEach(x => { merged[x.local_id || x.id] = x; });
+  server.forEach(x => { merged[x.local_id || x.id] = x; });
+  try {
+    const q = await getQueue();
+    q.forEach((it: any) => {
+      const p = it.payload;
+      if (!p) return;
+      if (it.op === 'createSalaryPayment' || it.op === 'updateSalaryPayment') {
+        const id = p.local_id || p.id;
+        if (id) merged[id] = { ...(merged[id] || {}), ...p };
+      }
+      if (it.op === 'deleteSalaryPayment') {
+        const id = typeof p === 'string' ? p : (p.local_id || p.id);
+        if (id) delete merged[id];
+      }
+    });
+  } catch {}
+  return Object.values(merged);
+}
+
+
+// ═══════════════════════════════════════════
+//  getLoans — خواندن وام‌ها (کش + صف)
+// ═══════════════════════════════════════════
+export async function getLoans(): Promise<any[]> {
+  const local = (await getLocal<any[]>('employee_loans')) || [];
+  if (MODE === 'offline') return local;
+  let server: any[] = [];
+  try {
+    const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
+    server = data || [];
+  } catch {}
+  const merged: Record<string, any> = {};
+  local.forEach(x => { merged[x.local_id || x.id] = x; });
+  server.forEach(x => { merged[x.local_id || x.id] = x; });
+  try {
+    const q = await getQueue();
+    q.forEach((it: any) => {
+      const p = it.payload;
+      if (!p) return;
+      if (it.op === 'createLoan' || it.op === 'updateLoan') {
+        const id = p.local_id || p.id;
+        if (id) merged[id] = { ...(merged[id] || {}), ...p };
+      }
+      if (it.op === 'deleteLoan') {
+        const id = typeof p === 'string' ? p : (p.local_id || p.id);
+        if (id) delete merged[id];
+      }
+    });
+  } catch {}
+  return Object.values(merged);
 }

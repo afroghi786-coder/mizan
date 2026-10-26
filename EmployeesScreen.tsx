@@ -15,6 +15,8 @@ import { printPayslip, exportBankFile, payslipMenu } from './EmpHelpers';
 import HRDash from './HRDash';
 import DateField from './lib.datefield';
 import { toStorageDateFull } from './lib';
+import { createPartnerAutoTx, findPartnerByNameOrCode } from './lib.offline';
+import { getPartners, getParties } from './lib.offline';
 
 const BANKS = ['ملی','ملت','صادرات','تجارت','سپه','کشاورزی','مسکن','پاسارگاد','پارسیان','سامان','رفاه','اقتصاد نوین','سینا','شهر','آینده','دی','قوامین','صنعت و معدن','کارآفرین','مهر ایران','بلوبانک','رسالت'];
 const DEPTS = ['فروش','انبار','حسابداری','مدیریت','تولید','کنترل کیفیت','پشتیبانی','مالی'];
@@ -58,7 +60,7 @@ export default function EmployeesScreen({ showToast, settings }: any) {
   }, []);
   const reloadProds = useCallback(async () => {
     try {
-      const { getProducts } = require('./lib.offline');
+      const { getProducts, getPartners, getParties } = require('./lib.offline');
       setProds((await getProducts()) || []);
     } catch (e) { console.log('prods:', e); }
   }, []);
@@ -448,6 +450,12 @@ function SalaryTab({ emps, salaries, atts, prods, reload, showToast }: any) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<any>({});
   const [editId, setEditId] = useState<string | null>(null);
+  const [partnersList, setPartnersList] = useState<any[]>([]);
+  const [partiesList, setPartiesList] = useState<any[]>([]);
+  useEffect(() => {
+    getPartners().then(setPartnersList).catch(()=>{});
+    getParties().then(setPartiesList).catch(()=>{});
+  }, []);
 
   const openNew = () => {
     setEditId(null);
@@ -499,8 +507,40 @@ function SalaryTab({ emps, salaries, atts, prods, reload, showToast }: any) {
       if (['base_salary','overtime','bonus','deduction','loan','insurance','net_salary','payment','balance'].includes(k)) payload[k] = parse(form[k]);
       else payload[k] = form[k];
     });
-    if (editId) await updateSalaryPayment(editId, payload);
-    else await createSalaryPayment(payload);
+    if (editId) {
+      await updateSalaryPayment(editId, payload);
+    } else {
+      const created = await createSalaryPayment(payload);
+      // ═══ اگر پرداخت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+      try {
+        const partner = await findPartnerByNameOrCode(form.payer_name || form.payer_code);
+        const amt = parse(form.payment);
+        if (partner && amt > 0) {
+          const cur = (form as any).currency || 'AFN';
+          const invId = (created && (created.invoice_number || created.local_id)) || payload.invoice_number || '';
+          const noteParts = [];
+          if (form.employee_name) noteParts.push('حقوق ' + form.employee_name);
+          if (form.month) noteParts.push('ماه ' + form.month);
+          if (form.description) noteParts.push(String(form.description));
+          await createPartnerAutoTx({
+            partner_code: partner.code,
+            partner_name: partner.name,
+            type: 'withdraw',
+            amount: amt,
+            currency: cur,
+            account_type: 'current',
+            counterpart_type: 'employee',
+            counterpart_code: form.employee_code || '',
+            source_type: 'salary',
+            source_id: invId,
+            transaction_date: form.payment_date || new Date().toISOString(),
+            note: 'حقوق ' + (form.employee_name || '') + ' - ماه ' + (form.month || ''),
+            bank_account_local_id: '',
+          });
+          console.log('[partner auto] salary withdraw ثبت شد:', partner.name, amt);
+        }
+      } catch (e) { console.log('[partner auto salary]', e); }
+    }
     await reload();
     setModal(false);
     showToast(editId ? '✅ ویرایش شد' : '✅ حقوق ثبت شد');
@@ -610,11 +650,18 @@ function SalaryTab({ emps, salaries, atts, prods, reload, showToast }: any) {
 
             <Text style={s.lbl}>نام پرداخت‌کننده (از منابع)</Text>
             <View style={s.chips}>
-              {[...new Set(prods.map((p: any) => p.payer_name).filter(Boolean))].slice(0, 20).map((x: any) => (
+              {[...new Set([
+                ...prods.map((p: any) => p.payer_name).filter(Boolean),
+                ...partnersList.map((p: any) => p.name).filter(Boolean),
+                ...partiesList.map((p: any) => p.name).filter(Boolean),
+              ])].slice(0, 30).map((x: any) => (
                 <TouchableOpacity key={x} onPress={() => {
                   const prod = prods.find((p: any) => p.payer_name === x);
+                  const partner = partnersList.find((p: any) => p.name === x);
+                  const party = partiesList.find((p: any) => p.name === x);
                   upd('payer_name', x);
-                  if (prod?.supplier_code) upd('payer_code', prod.supplier_code);
+                  const code = partner?.code || party?.code || prod?.supplier_code || '';
+                  if (code) upd('payer_code', code);
                 }} style={[s.chip, form.payer_name === x && s.chipActive]}><Text style={[s.chipTxt, form.payer_name === x && s.chipTxtActive]}>{x}</Text></TouchableOpacity>
               ))}
             </View>

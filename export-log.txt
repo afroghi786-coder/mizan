@@ -1,0 +1,24 @@
+Starting Metro Bundler
+
+Web Bundled 12453ms index.ts (632 modules)
+
+› Assets (8):
+node_modules\@expo-google-fonts\orbitron\400Regular\Orbitron_400Regular.f51de0b72e236467e71439339a673e3c.ttf (25KB)
+node_modules\@expo-google-fonts\orbitron\500Medium\Orbitron_500Medium.501993d0e7d27d632c7da6374307113b.ttf (25KB)
+node_modules\@expo-google-fonts\orbitron\600SemiBold\Orbitron_600SemiBold.f0c411b781c7967a34e2d5c3376b268e.ttf (25KB)
+node_modules\@expo-google-fonts\orbitron\700Bold\Orbitron_700Bold.e0d0468317d267bdcd43f1df80807eaa.ttf (25KB)
+node_modules\@expo-google-fonts\orbitron\800ExtraBold\Orbitron_800ExtraBold.22e4cd5d187feb1b2ba68bb4014a68b2.ttf (25KB)
+node_modules\@expo-google-fonts\orbitron\900Black\Orbitron_900Black.e00a0735fb6ea5b095e6de1492e0b461.ttf (23KB)
+node_modules\@expo-google-fonts\share-tech-mono\400Regular\ShareTechMono_400Regular.a1cea4ee23cd0a3e68cd6dcc1155613c.ttf (43KB)
+node_modules\expo-sqlite\web\wa-sqlite\wa-sqlite.7ca566fbbc2ec2a172c5aefa63a20f4b.wasm (621KB)
+
+› web bundles (2):
+_expo/static/js/web/index-22b47d7de88014a3c51456c65d54ab80.js (3.1MB)
+_expo/static/js/web/worker-a19dddd99b4c91064d9b91e9789f6ec9.js (139KB)
+
+› Files (3):
+favicon.ico (15KB)
+index.html (1.2KB)
+metadata.json (49B)
+
+Exported: dist-check

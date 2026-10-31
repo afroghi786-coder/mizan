@@ -1,3 +1,5 @@
+import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
 import DashboardScreen from './components/DashboardScreen';
 
 import PlusMenu from './components/PlusMenu';
@@ -66,7 +68,7 @@ import DateField from './lib.datefield';
 
 
 
-import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport , getParties, createParty, updateParty, deleteParty , lookupPartyByName , suggestPartyCode, suggestProductCode , getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount , getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction , getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping   , lookupPayerUniversal  , updateSale, updatePurchase  , createPartnerAutoTx, findPartnerByNameOrCode } from './lib.offline';
+import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport , getParties, createParty, updateParty, deleteParty , lookupPartyByName , suggestPartyCode, suggestProductCode , getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount , getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction , getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping   , lookupPayerUniversal  , updateSale, updatePurchase  , createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked } from './lib.offline';
 
 import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 
@@ -83,10 +85,16 @@ import ResetPasswordScreen from './ResetPasswordScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+import SettingsSheets from './SettingsSheets';
+import SettingsAssistant from './SettingsAssistant';
+import AssistantHome from './AssistantHome';
+import { syncByDestination } from './lib.sheets';
 
 import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, currencyLabel, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
 
-import CurrencyField from './lib.currencyfield';// Safely load expo-notifications (fix for Expo Go)
+import CurrencyField from './lib.currencyfield';
+import { setStorageUserId, canUseDevice, setDeviceLock } from './lib.storage';
+import Storage from './lib.storage';// Safely load expo-notifications (fix for Expo Go)
 
 import { hydrateFromSettings, getCurrencySync } from './lib.currency';let Notifications: any = null;
 
@@ -260,21 +268,20 @@ async function getCustomerPreviousBalance(customerCode: string, currentInvoiceNu
 
   try {
 
-    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    const AsyncStorage = Storage;
 
 
 
     // ═══ ۱. تلاش آنلاین ═══
 
     let allSales: any[] = [];
-
-    try {
-
-      const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
-
-      if (data && data.length) allSales = data;
-
-    } catch {}
+    const locked = await isBusinessLocked();
+    if (!locked) {
+      try {
+        const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
+        if (data && data.length) allSales = data;
+      } catch {}
+    }
 
 
 
@@ -717,6 +724,10 @@ export default function App() {
 
 
   useEffect(() => {
+    // استارت خودکار ربات در پس‌زمینه به محض باز شدن اپ
+    startGlobalBotWorker();
+    __clearSeen().catch(()=>{});
+
 
     if (typeof window === 'undefined') return;
 
@@ -1056,11 +1067,57 @@ export default function App() {
 
     supabase.auth.getSession()
 
-      .then(({ data: { session } }) => { setSession(session); setLoading(false); clearTimeout(failsafe); })
+      .then(async ({ data: { session } }) => {
+        if (session?.user?.id) {
+          const chk = await canUseDevice(session.user.id);
+          if (!chk.ok) {
+            try { await supabase.auth.signOut(); } catch {}
+            setStorageUserId('');
+            setSession(null);
+            setLoading(false);
+            clearTimeout(failsafe);
+            const msg = 'این دستگاه به حساب فروشگاه دیگری قفل است.\n\n' +
+              'برای تغییر حساب باید برنامه را حذف و دوباره نصب کنی.\n\n' +
+              'قبل از حذف نصب:\n' +
+              '۱) با حساب فعلی سینک کن.\n' +
+              '۲) از تنظیمات، بکاپ محلی بگیر و فایل را نگه دار.\n\n' +
+              'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+            if (Platform.OS === 'web') window.alert(msg);
+            else Alert.alert('قفل دستگاه', msg);
+            return;
+          }
+          await setDeviceLock(session.user.id);
+        }
+        setStorageUserId(session?.user?.id || '');
+        setSession(session);
+        setLoading(false);
+        clearTimeout(failsafe);
+      })
 
       .catch(() => { setLoading(false); clearTimeout(failsafe); });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_e, s) => {
+      if (s?.user?.id) {
+        const chk = await canUseDevice(s.user.id);
+        if (!chk.ok) {
+          try { await supabase.auth.signOut(); } catch {}
+          setStorageUserId('');
+          setSession(null);
+          const msg = 'این دستگاه به حساب فروشگاه دیگری قفل است.\n\n' +
+            'برای تغییر حساب باید برنامه را حذف و دوباره نصب کنی.\n\n' +
+            'قبل از حذف نصب:\n' +
+            '۱) با حساب فعلی سینک کن.\n' +
+            '۲) از تنظیمات، بکاپ محلی بگیر و فایل را نگه دار.\n\n' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+          return;
+        }
+        await setDeviceLock(s.user.id);
+      }
+      setStorageUserId(s?.user?.id || '');
+      setSession(s);
+    });
 
     return () => { subscription.unsubscribe(); clearTimeout(failsafe); clearInterval(licTimer); };
 
@@ -1633,7 +1690,8 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
     { key: 'expenses', icon: '💸', label: t('هزینه‌ها'), color: '#7f1d1d' },
 
-  ];
+  
+    { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },];
 
 
 
@@ -1733,7 +1791,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
       </View>
 
-      {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && (
+      {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && (
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
 
@@ -1791,14 +1849,24 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
       {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />}
 
-      {tab === 'settings' && (
-
-        <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ paddingBottom: 120 }}>
-
-          <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />
-
+      {tab === 'assistant' && (
+        <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+          <AssistantHome showToast={showToast} />
         </ScrollView>
+      )}
 
+      {tab === 'settings' && (
+        <View style={{ flex: 1, backgroundColor: '#0a1628' }}>
+          <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+            <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>→ بازگشت</Text>
+            </TouchableOpacity>
+            <Text style={{ color: '#f4d47a', fontSize: 16, fontWeight: 'bold' }}>⚙️ تنظیمات</Text>
+          </View>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+            <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />
+          </ScrollView>
+        </View>
       )}
 
       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
@@ -7643,13 +7711,20 @@ function ReportsSection({ showToast }: any) {
 
     try {
 
-      const [{ data: sales }, { data: purchases }] = await Promise.all([
-
-        supabase.from('sales').select('*'),
-
-        supabase.from('purchases').select('*'),
-
-      ]);
+      const locked = await isBusinessLocked();
+      let sales: any[] = [];
+      let purchases: any[] = [];
+      if (locked) {
+        sales = (await getSalesGrouped().catch(() => [])) || [];
+        purchases = (await getPurchasesGrouped().catch(() => [])) || [];
+      } else {
+        const [sRes, pRes] = await Promise.all([
+          supabase.from('sales').select('*'),
+          supabase.from('purchases').select('*'),
+        ]);
+        sales = sRes.data || [];
+        purchases = pRes.data || [];
+      }
 
 
 
@@ -8068,554 +8143,375 @@ function PresetSection({ showToast }: any) {
 // ══════════════════════════════════════════════════════════
 
 function SettingsSection({ showToast, settings, setSettings, reload }: any) {
-
   const [saving, setSaving] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('general');
 
   const pins = settings.tab_pins || {};
-
   const [emailInput, setEmailInput] = useState('');
-
   const [autoDelEnabled, setAutoDelEnabled] = useState(false);
-
   const [autoDelHours, setAutoDelHours] = useState('1');
-
   const [schedDailyEnabled, setSchedDailyEnabled] = useState(false);
-
   const [schedDailyHour, setSchedDailyHour] = useState('21');
-
   const [schedDailyDays, setSchedDailyDays] = useState<string[]>([]);
-
   const [schedDailyType, setSchedDailyType] = useState('daily-combined');
-
   const [schedWeeklyEnabled, setSchedWeeklyEnabled] = useState(false);
-
   const [schedWeeklyDay, setSchedWeeklyDay] = useState('6');
-
   const [schedWeeklyHour, setSchedWeeklyHour] = useState('21');
-
   const [schedWeeklyType, setSchedWeeklyType] = useState('weekly-combined');
 
-
-
   useEffect(() => {
-
     if (!settings) return;
-
     setAutoDelEnabled(!!settings.auto_delete_enabled);
-
     setAutoDelHours(String(settings.auto_delete_hours || 1));
-
     const sd = settings.sched_daily || {};
-
     setSchedDailyEnabled(!!sd.enabled);
-
     setSchedDailyHour(String(sd.hour ?? 21));
-
     setSchedDailyDays(sd.days || []);
-
     setSchedDailyType(sd.type || 'daily-combined');
-
     const sw = settings.sched_weekly || {};
-
     setSchedWeeklyEnabled(!!sw.enabled);
-
     setSchedWeeklyDay(String(sw.day ?? 6));
-
     setSchedWeeklyHour(String(sw.hour ?? 21));
-
     setSchedWeeklyType(sw.type || 'weekly-combined');
-
   }, [settings]);
 
-
-
   const [lastBackupLabel, setLastBackupLabel] = useState<string | null>(null);
-
   useEffect(() => {
-
     (async () => {
-
       try {
-
         const last = await getLastAutoBackup();
-
         setLastBackupLabel(last);
-
       } catch (e) { console.log('[backup] read last err:', e); }
-
       try {
-
         await autoBackup();
-
         const last2 = await getLastAutoBackup();
-
         setLastBackupLabel(last2);
-
       } catch (e) { console.log('[backup] auto err:', e); }
-
     })();
-
   }, []);
 
-
-
   const save = async () => {
-
     setSaving(true);
-
     try {
-
       await updateSettings({
-
         ...settings,
-
         auto_delete_enabled: autoDelEnabled,
-
         auto_delete_hours: parseInt(autoDelHours, 10) || 1,
-
         sched_daily: { enabled: schedDailyEnabled, hour: parseInt(schedDailyHour, 10), days: schedDailyDays, type: schedDailyType },
-
         sched_weekly: { enabled: schedWeeklyEnabled, day: parseInt(schedWeeklyDay, 10), hour: parseInt(schedWeeklyHour, 10), type: schedWeeklyType },
-
       });
-
       const _sMode = getMode();
-
       alertMsg('✅ موفق', _sMode === 'offline' ? 'تنظیمات ذخیره شد و در صف آپلود قرار گرفت' : 'تنظیمات ذخیره شد');
-
       reload && reload();
-
     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
-
     finally { setSaving(false); }
-
   };
-
-
 
   const emails: string[] = settings.emails || [];
-
   const addEmail = () => {
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) return showToast('ایمیل معتبر وارد کن', true);
-
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) return showToast('ایمیل معتبر نیست', true);
     setSettings({ ...settings, emails: [...emails, emailInput] });
-
     setEmailInput('');
-
   };
-
   const removeEmail = (i: number) => setSettings({ ...settings, emails: emails.filter((_, idx) => idx !== i) });
-
   const toggleDay = (d: string) => setSchedDailyDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
 
+  const settingsTabs = [
+    { k: 'general', l: '⚙️ عمومی' },
+    { k: 'calendar', l: '📅 تقویم و نمایش' },
+    { k: 'connection', l: '☁️ اتصال و فضای اختصاصی' },
+    { k: 'security', l: '🔐 امنیت و قفل' },
+    { k: 'payroll', l: '💼 حقوق و دستمزد' },
+    { k: 'assistant', l: '🤝 دستیار میزان' },
+    { k: 'backup', l: '💾 پشتیبان‌گیری و نگهداری' },
+  ];
+
   return (
-
     <View>
+      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+        {settingsTabs.map((tb) => (
+          <TouchableOpacity key={tb.k} onPress={() => setSettingsTab(tb.k)} style={[s.chip, settingsTab === tb.k && s.chipActive]}>
+            <Text style={[s.chipTxt, settingsTab === tb.k && s.chipTxtActive]}>{tb.l}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-      <EL text="{t('🌍 زبان برنامه')}" style={s.secT} />
-
-      <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginBottom: 12 }]} onPress={() => { (globalThis as any).__openLang?.(); }}>
-
-        <Text style={s.btnTxt}>{t('🌍 تغییر زبان / Change Language')}</Text>
-
-      </TouchableOpacity>
-
-
-
-      <EL text="{t('📅 نوع تقویم')}" style={s.secT} />
-
-      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-
-        {[{ k: 'jalali', l: '🌙 شمسی' }, { k: 'gregorian', l: '🌍 میلادی' }, { k: 'hijri', l: '🕋 قمری' }].map((f) => (
-
-          <TouchableOpacity key={f.k} onPress={() => { setSettings({ ...settings, cal_type: f.k as CalType }); saveCalType(f.k as CalType); }} style={[s.chip, settings.cal_type === f.k && s.chipActive]}>
-
-            <Text style={[s.chipTxt, settings.cal_type === f.k && s.chipTxtActive]}>{f.l}</Text>
-
+      {settingsTab === 'general' && (
+        <View>
+          <EL text="{t('🌐 زبان برنامه')}" style={s.secT} />
+          <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginBottom: 12 }]} onPress={() => { (globalThis as any).__openLang?.(); }}>
+            <Text style={s.btnTxt}>{t('🌐 تغییر زبان / Change Language')}</Text>
           </TouchableOpacity>
 
-        ))}
-
-      </View>
-
-
-
-      <EL text="💱 واحد پول" style={s.secT} />
-      <Text style={{ color: C.textMut, fontSize: 11, textAlign: 'right', marginBottom: 6 }}>
-        واحد پول پیش‌فرض کل برنامه — همه مبالغ با این واحد نمایش داده می‌شوند
-      </Text>
-      <CurrencyField
-        value={settings.currency_code || 'AFN'}
-        onChange={(code: string, cur: any) => {
-          setSettings({
-            ...settings,
-            currency_code: cur.code,
-            currency_label: cur.label,
-            currency_symbol: cur.symbol,
-            currency_decimals: cur.decimals,
-            currency_custom: cur.custom,
-          });
-        }}
-      />
-
-      <EL text="💼 تنظیمات حقوق و دستمزد" style={s.secT} />
-      <Text style={{ color: C.textMut, fontSize: 11, textAlign: 'right', marginBottom: 8 }}>
-        کنترل کامل کسورات و ضرایب — همه در گوشی و سرور ذخیره می‌شوند
-      </Text>
-
-      {/* کسر غیبت */}
-      <View style={s.rowBetween}>
-        <Text style={[s.lbl, { color: C.textMut }]}>📉 کسر غیبت</Text>
-        <Switch value={!!settings.payroll_deduct_absence} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_absence: v })} />
-      </View>
-      <Text style={[s.lblS, { color: C.textMut }]}>ضریب کسر غیبت (۰ تا ۱.۵)</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_absence_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_absence_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
-
-      {/* کسر مرخصی بدون حقوق */}
-      <View style={s.rowBetween}>
-        <Text style={[s.lbl, { color: C.textMut }]}>📉 کسر مرخصی بدون حقوق</Text>
-        <Switch value={!!settings.payroll_deduct_unpaid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_unpaid_leave: v })} />
-      </View>
-      <Text style={[s.lblS, { color: C.textMut }]}>ضریب مرخصی بدون حقوق</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_unpaid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_unpaid_leave_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
-
-      {/* کسر مرخصی استحقاقی */}
-      <View style={s.rowBetween}>
-        <Text style={[s.lbl, { color: C.textMut }]}>📉 کسر مرخصی استحقاقی (استاندارد: غیرفعال)</Text>
-        <Switch value={!!settings.payroll_deduct_paid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_paid_leave: v })} />
-      </View>
-      <Text style={[s.lblS, { color: C.textMut }]}>ضریب مرخصی استحقاقی</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_paid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_paid_leave_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
-
-      {/* کسر مرخصی استعلاجی */}
-      <View style={s.rowBetween}>
-        <Text style={[s.lbl, { color: C.textMut }]}>📉 کسر مرخصی استعلاجی (استاندارد: ۰.۵)</Text>
-        <Switch value={!!settings.payroll_deduct_sick_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_sick_leave: v })} />
-      </View>
-      <Text style={[s.lblS, { color: C.textMut }]}>ضریب مرخصی استعلاجی</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_sick_leave_rate ?? 0.5)} onChangeText={(v) => setSettings({ ...settings, payroll_sick_leave_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
-
-      {/* بیمه و مالیات */}
-      <Text style={[s.lbl, { color: C.textMut, marginTop: 12 }]}>🧾 درصد بیمه کارمند</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_insurance_rate ?? 7)} onChangeText={(v) => setSettings({ ...settings, payroll_insurance_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
-      <Text style={[s.lblS, { color: C.textMut }]}>درصد بیمه کارفرما</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_employer_insurance_rate ?? 23)} onChangeText={(v) => setSettings({ ...settings, payroll_employer_insurance_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
-
-      <View style={s.rowBetween}>
-        <Text style={[s.lbl, { color: C.textMut }]}>🧮 محاسبه خودکار مالیات</Text>
-        <Switch value={!!settings.payroll_auto_tax} onValueChange={(v) => setSettings({ ...settings, payroll_auto_tax: v })} />
-      </View>
-
-      {/* وام و اضافه‌کاری */}
-      <View style={s.rowBetween}>
-        <Text style={[s.lbl, { color: C.textMut }]}>🏦 کسر خودکار قسط وام</Text>
-        <Switch value={!!settings.payroll_loan_deduction} onValueChange={(v) => setSettings({ ...settings, payroll_loan_deduction: v })} />
-      </View>
-      <Text style={[s.lblS, { color: C.textMut }]}>ضریب اضافه‌کاری (استاندارد: ۱.۴)</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_overtime_rate_multiplier ?? 1.4)} onChangeText={(v) => setSettings({ ...settings, payroll_overtime_rate_multiplier: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
-
-      <Text style={[s.lblS, { color: C.textMut }]}>روزهای کاری ماه (استاندارد: ۳۰)</Text>
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_work_days_per_month ?? 30)} onChangeText={(v) => setSettings({ ...settings, payroll_work_days_per_month: parseInt(v) || 30 })} keyboardType="numeric" />
-
-      <EL text="{t('📺 بازه داشبورد')}" style={s.secT} />
-
-      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-
-        {Object.entries(DASH_RANGE_LABELS).map(([k, l]) => (
-
-          <TouchableOpacity key={k} onPress={() => setSettings({ ...settings, dashboard_range: k })} style={[s.chip, settings.dashboard_range === k && s.chipActive]}>
-
-            <Text style={[s.chipTxt, settings.dashboard_range === k && s.chipTxtActive]}>{l}</Text>
-
-          </TouchableOpacity>
-
-        ))}
-
-      </View>
-
-
-
-      <EL text="{t('🔎 فیلتر داده')}" style={s.secT} />
-
-      <View style={{ flexDirection: 'row', gap: 6 }}>
-
-        {[{ k: 'both', l: '📋 هر دو' }, { k: 'sales', l: '🛒 فروش' }, { k: 'purchase', l: '🛍️ خرید' }].map((f) => (
-
-          <TouchableOpacity key={f.k} onPress={() => setSettings({ ...settings, dashboard_filter: f.k })} style={[s.chip, settings.dashboard_filter === f.k && s.chipActive]}>
-
-            <Text style={[s.chipTxt, settings.dashboard_filter === f.k && s.chipTxtActive]}>{f.l}</Text>
-
-          </TouchableOpacity>
-
-        ))}
-
-      </View>
-
-
-
-      <EL text="{t('💹 درصد سود تخمینی')}" style={s.secT} />
-
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(Math.round((settings.profit_margin || 0.1) * 100))} onChangeText={(v) => setSettings({ ...settings, profit_margin: (parseFloat(v) || 0) / 100 })} keyboardType="numeric" />
-
-
-
-      <EL text="{t('📦 آستانه کمبود')}" style={s.secT} />
-
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.inventory_threshold || 5)} onChangeText={(v) => setSettings({ ...settings, inventory_threshold: parseInt(v) || 5 })} keyboardType="numeric" />
-
-
-
-      <EL text="{t('📧 ایمیل‌های گزارش')}" style={s.secT} />
-
-      {emails.map((e, i) => (
-
-        <View key={i} style={[s.emailRow, { backgroundColor: C.cardAlt }]}>
-
-          <Text style={[s.emailTxt, { color: C.text }]} numberOfLines={1}>{e}</Text>
-
-          <TouchableOpacity onPress={() => removeEmail(i)}><Text>🗑</Text></TouchableOpacity>
-
-        </View>
-
-      ))}
-
-      <View style={{ flexDirection: 'row', gap: 6 }}>
-
-        <TextInput accessibilityLabel="ایمیل جدید..." style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={emailInput} onChangeText={setEmailInput} placeholder="ایمیل جدید..." placeholderTextColor={C.textMut} keyboardType="email-address" autoCapitalize="none" />
-
-        <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#7c3aed' }]} onPress={addEmail}><Text style={s.btnTxt}>➕</Text></TouchableOpacity>
-
-      </View>
-
-
-
-      <EL text="{t('🗑️ حذف خودکار')}" style={s.secT} />
-
-      <View style={s.rowBetween}>
-
-        <EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} />
-
-        <Switch value={autoDelEnabled} onValueChange={setAutoDelEnabled} />
-
-      </View>
-
-      <EL textKey="حذف بعد از (ساعت)" style={[s.lblS, { color: C.textMut }]} />
-
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={autoDelHours} onChangeText={setAutoDelHours} keyboardType="numeric" />
-
-
-
-      <EL text="{t('📊 گزارش روزانه')}" style={s.secT} />
-
-      <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedDailyEnabled} onValueChange={setSchedDailyEnabled} /></View>
-
-      <EL textKey="ساعت ارسال" style={[s.lblS, { color: C.textMut }]} />
-
-      <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={schedDailyHour} onChangeText={setSchedDailyHour} keyboardType="numeric" />
-
-      <EL textKey="روزها" style={[s.lblS, { color: C.textMut }]} />
-
-      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-
-        {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
-
-          <TouchableOpacity key={i} onPress={() => toggleDay(String(i))} style={[s.chip, schedDailyDays.includes(String(i)) && s.chipActive]}>
-
-            <Text style={[s.chipTxt, schedDailyDays.includes(String(i)) && s.chipTxtActive]}>{d}</Text>
-
-          </TouchableOpacity>
-
-        ))}
-
-      </View>
-
-
-
-      <EL text="{t('📅 گزارش هفتگی')}" style={s.secT} />
-
-      <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedWeeklyEnabled} onValueChange={setSchedWeeklyEnabled} /></View>
-
-      <EL textKey="روز هفته" style={[s.lblS, { color: C.textMut }]} />
-
-      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-
-        {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
-
-          <TouchableOpacity key={i} onPress={() => setSchedWeeklyDay(String(i))} style={[s.chip, schedWeeklyDay === String(i) && s.chipActive]}>
-
-            <Text style={[s.chipTxt, schedWeeklyDay === String(i) && s.chipTxtActive]}>{d}</Text>
-
-          </TouchableOpacity>
-
-        ))}
-
-      </View>
-
-
-
-      <Text style={s.secT}>{t('💾 بکاپ و بازیابی')}</Text>
-
-      <Text style={[s.lblS, { color: C.textMut, marginBottom: 6 }]}>
-
-        آخرین بکاپ خودکار: {lastBackupLabel || 'هنوز انجام نشده'}
-
-      </Text>
-
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
-
-        <TouchableOpacity
-
-          style={[s.btn, { flex: 1, backgroundColor: '#059669' }]}
-
-          onPress={async () => {
-
-            showToast('⏳ در حال ساخت بکاپ...');
-
-            const r = await exportBackup();
-
-            showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
-
-          }}
-
-        >
-
-          <Text style={s.btnTxt}>{t('📤 خروجی بکاپ')}</Text>
-
-        </TouchableOpacity>
-
-        <TouchableOpacity
-
-          style={[s.btn, { flex: 1, backgroundColor: '#0ea5e9' }]}
-
-          onPress={async () => {
-
-            const r = await importBackup();
-
-            showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
-
-          }}
-
-        >
-
-          <Text style={s.btnTxt}>{t('📥 بازیابی از فایل')}</Text>
-
-        </TouchableOpacity>
-
-      </View>
-
-
-
-      <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={save} disabled={saving}>
-
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('💾 ذخیره همه تنظیمات')}</Text>}
-
-      </TouchableOpacity>
-
-      <EL text="{t('🔐 رمز عبور تب‌ها')}" style={s.secT} />
-
-      <EL textKey="خالی بگذاری = بدون رمز. مقدار پیش‌فرض: 4242" style={[s.lblS, { color: C.textMut, marginBottom: 8 }]} />
-
-      {[
-
-        { k: 'purchase', l: '🛍️ خرید' },
-
-        { k: 'print', l: '🖨️ پرینت' },
-
-        { k: 'mgr', l: '📋 مدیریت' },
-
-        { k: 'profit', l: '💹 سود' },
-
-        { k: 'inventory', l: '📦 انبار' },
-
-        { k: 'settings', l: '⚙️ تنظیمات' },
-
-      ].map((t) => (
-
-        <View key={t.k} style={{ marginBottom: 8 }}>
-
-          <Text style={[s.lblS, { color: C.textMut }]}>{t.l}</Text>
-
-          <TextInput accessibilityLabel="4242"
-
-            style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]}
-
-            value={String(pins[t.k] ?? '4242')}
-
-            onChangeText={(v) =>
-
-              setSettings({ ...settings, tab_pins: { ...pins, [t.k]: v.replace(/\D/g, '').slice(0, 10) } })
-
-            }
-
-            keyboardType="phone-pad"
-
-            secureTextEntry
-
-            placeholder="4242"
-
-            placeholderTextColor={C.textMut}
-
+          <EL text="💱 واحد پول" style={s.secT} />
+          <Text style={{ color: C.textMut, fontSize: 11, textAlign: 'right', marginBottom: 6 }}>
+            واحد پول پیش‌فرض برنامه را انتخاب کنید. در همه بخش‌ها اعمال می‌شود.
+          </Text>
+          <CurrencyField
+            value={settings.currency_code || 'AFN'}
+            onChange={(code: string, cur: any) => {
+              setSettings({
+                ...settings,
+                currency_code: cur.code,
+                currency_label: cur.label,
+                currency_symbol: cur.symbol,
+                currency_decimals: cur.decimals,
+                currency_custom: cur.custom,
+              });
+            }}
           />
 
+          <EL text="{t('📊 بازه پیش‌فرض داشبورد')}" style={s.secT} />
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+            {Object.entries(DASH_RANGE_LABELS).map(([k, l]) => (
+              <TouchableOpacity key={k} onPress={() => setSettings({ ...settings, dashboard_range: k })} style={[s.chip, settings.dashboard_range === k && s.chipActive]}>
+                <Text style={[s.chipTxt, settings.dashboard_range === k && s.chipTxtActive]}>{l}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <EL text="{t('🔎 فیلتر پیش‌فرض داشبورد')}" style={s.secT} />
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {[{ k: 'both', l: '🔵 هر دو' }, { k: 'sales', l: '🟢 فروش' }, { k: 'purchase', l: '🟠 خرید' }].map((f) => (
+              <TouchableOpacity key={f.k} onPress={() => setSettings({ ...settings, dashboard_filter: f.k })} style={[s.chip, settings.dashboard_filter === f.k && s.chipActive]}>
+                <Text style={[s.chipTxt, settings.dashboard_filter === f.k && s.chipTxtActive]}>{f.l}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <EL text="{t('📈 درصد سود پیش‌فرض')}" style={s.secT} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(Math.round((settings.profit_margin || 0.1) * 100))} onChangeText={(v) => setSettings({ ...settings, profit_margin: (parseFloat(v) || 0) / 100 })} keyboardType="numeric" />
+
+          <EL text="{t('📦 آستانه موجودی')}" style={s.secT} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.inventory_threshold || 5)} onChangeText={(v) => setSettings({ ...settings, inventory_threshold: parseInt(v) || 5 })} keyboardType="numeric" />
+
+          <EL text="{t('📧 ایمیل‌های اعلان')}" style={s.secT} />
+          {emails.map((e, i) => (
+            <View key={i} style={[s.emailRow, { backgroundColor: C.cardAlt }]}>
+              <Text style={[s.emailTxt, { color: C.text }]} numberOfLines={1}>{e}</Text>
+              <TouchableOpacity onPress={() => removeEmail(i)}><Text>❌</Text></TouchableOpacity>
+            </View>
+          ))}
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <TextInput accessibilityLabel="ایمیل معتبر..." style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={emailInput} onChangeText={setEmailInput} placeholder="ایمیل معتبر..." placeholderTextColor={C.textMut} keyboardType="email-address" autoCapitalize="none" />
+            <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#7c3aed' }]} onPress={addEmail}><Text style={s.btnTxt}>＋</Text></TouchableOpacity>
+          </View>
         </View>
+      )}
 
-      ))}
+      {settingsTab === 'calendar' && (
+        <View>
+          <EL text="{t('📅 نوع تقویم')}" style={s.secT} />
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+            {[{ k: 'jalali', l: '☀️ شمسی' }, { k: 'gregorian', l: '🌍 میلادی' }, { k: 'hijri', l: '🌙 قمری' }].map((f) => (
+              <TouchableOpacity key={f.k} onPress={() => { setSettings({ ...settings, cal_type: f.k as CalType }); saveCalType(f.k as CalType); }} style={[s.chip, settings.cal_type === f.k && s.chipActive]}>
+                <Text style={[s.chipTxt, settings.cal_type === f.k && s.chipTxtActive]}>{f.l}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
+      {settingsTab === 'connection' && (
+        <View>
+          <SettingsSheets showToast={showToast} />
+        </View>
+      )}
 
+      {settingsTab === 'security' && (
+        <View>
+          <EL text="{t('🔐 پین تب‌ها')}" style={s.secT} />
+          <EL textKey="مثال: پین پیش‌فرض = 4242. برای غیرفعال کردن، خالی بگذارید." style={[s.lblS, { color: C.textMut, marginBottom: 8 }]} />
+          {[
+            { k: 'purchase', l: '🛒 خرید' },
+            { k: 'print', l: '🖨 چاپ فاکتور' },
+            { k: 'mgr', l: '📁 مدیریت' },
+            { k: 'profit', l: '📈 سود' },
+            { k: 'inventory', l: '📦 موجودی' },
+            { k: 'settings', l: '⚙️ تنظیمات' },
+          ].map((t) => (
+            <View key={t.k} style={{ marginBottom: 8 }}>
+              <Text style={[s.lblS, { color: C.textMut }]}>{t.l}</Text>
+              <TextInput accessibilityLabel="4242"
+                style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]}
+                value={String(pins[t.k] ?? '4242')}
+                onChangeText={(v) =>
+                  setSettings({ ...settings, tab_pins: { ...pins, [t.k]: v.replace(/\D/g, '').slice(0, 10) } })
+                }
+                keyboardType="phone-pad"
+                secureTextEntry
+                placeholder="4242"
+                placeholderTextColor={C.textMut}
+              />
+            </View>
+          ))}
+          <TouchableOpacity
+            style={[s.btn, { backgroundColor: '#7c3aed', marginTop: 8 }]}
+            onPress={async () => {
+              try {
+                await updateSettings({ ...settings, tab_pins: pins });
+                showToast('✅ پین تب‌ها ذخیره شد');
+                reload && reload();
+              } catch (e: any) { showToast(e?.message || 'خطا', true); }
+            }}
+          >
+            <Text style={s.btnTxt}>{t('💾 ذخیره پین‌های تب‌ها')}</Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity
+          <EL text="{t('🚪 خروج امن از حساب')}" style={s.secT} />
+          <TouchableOpacity
+            style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}
+            onPress={async () => {
+              const ok = await confirmMsg('خروج', 'از حساب خارج می‌شوی؟');
+              if (!ok) return;
+              const warn = '⚠️ قبل از خروج توجه کن:\n\n' +
+                'اگر می‌خواهی روی این دستگاه حساب دیگری باز کنی، باید برنامه را حذف و دوباره نصب کنی.\n\n' +
+                'قبل از حذف نصب:\n' +
+                '۱) با حساب فعلی سینک کن.\n' +
+                '۲) از تنظیمات، بکاپ محلی بگیر.\n\n' +
+                'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.\n\n' +
+                'آیا می‌خواهی خارج شوی؟';
+              const ok2 = await confirmMsg('هشدار خروج', warn);
+              if (!ok2) return;
+              await supabase.auth.signOut();
+              setStorageUserId('');
+            }}
+          >
+            <Text style={s.btnTxt}>{t('🚪 خروج از حساب')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-        style={[s.btn, { backgroundColor: '#7c3aed', marginTop: 8 }]}
+      {settingsTab === 'payroll' && (
+        <View>
+          <EL text="💼 تنظیمات حقوق و دستمزد" style={s.secT} />
+          <Text style={{ color: C.textMut, fontSize: 11, textAlign: 'right', marginBottom: 8 }}>
+            این تنظیمات در محاسبه حقوق و دستمزد کارمندان اعمال می‌شود.
+          </Text>
 
-        onPress={async () => {
+          <View style={s.rowBetween}>
+            <Text style={[s.lbl, { color: C.textMut }]}>➖ کسر غیبت</Text>
+            <Switch value={!!settings.payroll_deduct_absence} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_absence: v })} />
+          </View>
+          <Text style={[s.lblS, { color: C.textMut }]}>ضریب کسر غیبت (پیش‌فرض: ۱.۰)</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_absence_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_absence_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
 
-          try {
+          <View style={s.rowBetween}>
+            <Text style={[s.lbl, { color: C.textMut }]}>➖ کسر مرخصی بدون حقوق</Text>
+            <Switch value={!!settings.payroll_deduct_unpaid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_unpaid_leave: v })} />
+          </View>
+          <Text style={[s.lblS, { color: C.textMut }]}>ضریب کسر مرخصی بدون حقوق</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_unpaid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_unpaid_leave_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
 
-            await updateSettings({ ...settings, tab_pins: pins });
+          <View style={s.rowBetween}>
+            <Text style={[s.lbl, { color: C.textMut }]}>➖ کسر مرخصی استحقاقی (استفاده‌شده: کسر نمی‌شود)</Text>
+            <Switch value={!!settings.payroll_deduct_paid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_paid_leave: v })} />
+          </View>
+          <Text style={[s.lblS, { color: C.textMut }]}>ضریب کسر مرخصی استحقاقی</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_paid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_paid_leave_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
 
-            showToast('✅ رمزها ذخیره شد');
+          <View style={s.rowBetween}>
+            <Text style={[s.lbl, { color: C.textMut }]}>➖ کسر مرخصی استعلاجی (استفاده‌شده: ۰.۵)</Text>
+            <Switch value={!!settings.payroll_deduct_sick_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_sick_leave: v })} />
+          </View>
+          <Text style={[s.lblS, { color: C.textMut }]}>ضریب کسر مرخصی استعلاجی</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_sick_leave_rate ?? 0.5)} onChangeText={(v) => setSettings({ ...settings, payroll_sick_leave_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
 
-            reload && reload();
+          <Text style={[s.lbl, { color: C.textMut, marginTop: 12 }]}>🏥 بیمه سهم کارمند</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_insurance_rate ?? 7)} onChangeText={(v) => setSettings({ ...settings, payroll_insurance_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
+          <Text style={[s.lblS, { color: C.textMut }]}>سهم بیمه کارفرما</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_employer_insurance_rate ?? 23)} onChangeText={(v) => setSettings({ ...settings, payroll_employer_insurance_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
 
-          } catch (e: any) { showToast(e?.message || 'خطا', true); }
+          <View style={s.rowBetween}>
+            <Text style={[s.lbl, { color: C.textMut }]}>🧾 محاسبه خودکار مالیات</Text>
+            <Switch value={!!settings.payroll_auto_tax} onValueChange={(v) => setSettings({ ...settings, payroll_auto_tax: v })} />
+          </View>
 
-        }}
+          <View style={s.rowBetween}>
+            <Text style={[s.lbl, { color: C.textMut }]}>💸 کسر اقساط وام</Text>
+            <Switch value={!!settings.payroll_loan_deduction} onValueChange={(v) => setSettings({ ...settings, payroll_loan_deduction: v })} />
+          </View>
+          <Text style={[s.lblS, { color: C.textMut }]}>ضریب اضافه‌کاری (پیش‌فرض: ۱.۴)</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_overtime_rate_multiplier ?? 1.4)} onChangeText={(v) => setSettings({ ...settings, payroll_overtime_rate_multiplier: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
 
-      >
+          <Text style={[s.lblS, { color: C.textMut }]}>تعداد روزهای کاری ماه (پیش‌فرض: ۳۰)</Text>
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_work_days_per_month ?? 30)} onChangeText={(v) => setSettings({ ...settings, payroll_work_days_per_month: parseInt(v) || 30 })} keyboardType="numeric" />
+        </View>
+      )}
 
-        <Text style={s.btnTxt}>{t('💾 ذخیره رمزهای تب‌ها')}</Text>
+      {settingsTab === 'assistant' && (
+        <View>
+          <SettingsAssistant showToast={showToast} />
+        </View>
+      )}
 
+      {settingsTab === 'backup' && (
+        <View>
+          <Text style={s.secT}>{t('💾 بکاپ و بازیابی')}</Text>
+          <Text style={[s.lblS, { color: C.textMut, marginBottom: 6 }]}>
+            آخرین بکاپ خودکار: {lastBackupLabel || 'امروز گرفته نشده'}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+            <TouchableOpacity
+              style={[s.btn, { flex: 1, backgroundColor: '#059669' }]}
+              onPress={async () => {
+                showToast('⏳ در حال ساخت بکاپ...');
+                const r = await exportBackup();
+                showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+              }}
+            >
+              <Text style={s.btnTxt}>{t('📤 ساخت بکاپ')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.btn, { flex: 1, backgroundColor: '#0ea5e9' }]}
+              onPress={async () => {
+                const r = await importBackup();
+                showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+              }}
+            >
+              <Text style={s.btnTxt}>{t('📥 بازیابی از بکاپ')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <EL text="{t('🗑 حذف خودکار')}" style={s.secT} />
+          <View style={s.rowBetween}>
+            <EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} />
+            <Switch value={autoDelEnabled} onValueChange={setAutoDelEnabled} />
+          </View>
+          <EL textKey="حذف قدیمی‌تر از (روز)" style={[s.lblS, { color: C.textMut }]} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={autoDelHours} onChangeText={setAutoDelHours} keyboardType="numeric" />
+
+          <EL text="{t('📨 گزارش روزانه')}" style={s.secT} />
+          <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedDailyEnabled} onValueChange={setSchedDailyEnabled} /></View>
+          <EL textKey="ساعت ارسال" style={[s.lblS, { color: C.textMut }]} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={schedDailyHour} onChangeText={setSchedDailyHour} keyboardType="numeric" />
+          <EL textKey="روزها" style={[s.lblS, { color: C.textMut }]} />
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+            {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
+              <TouchableOpacity key={i} onPress={() => toggleDay(String(i))} style={[s.chip, schedDailyDays.includes(String(i)) && s.chipActive]}>
+                <Text style={[s.chipTxt, schedDailyDays.includes(String(i)) && s.chipTxtActive]}>{d}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <EL text="{t('📬 گزارش هفتگی')}" style={s.secT} />
+          <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedWeeklyEnabled} onValueChange={setSchedWeeklyEnabled} /></View>
+          <EL textKey="روز ارسال" style={[s.lblS, { color: C.textMut }]} />
+          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+            {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((d, i) => (
+              <TouchableOpacity key={i} onPress={() => setSchedWeeklyDay(String(i))} style={[s.chip, schedWeeklyDay === String(i) && s.chipActive]}>
+                <Text style={[s.chipTxt, schedWeeklyDay === String(i) && s.chipTxtActive]}>{d}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 20 }]} onPress={save} disabled={saving}>
+        {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('💾 ذخیره تنظیمات')}</Text>}
       </TouchableOpacity>
-
-
-
-      <EL text="{t('🚪 خروج از حساب')}" style={s.secT} />
-
-      <TouchableOpacity
-
-        style={[s.btn, { backgroundColor: '#dc2626', marginTop: 8 }]}
-
-        onPress={async () => {
-
-          const ok = await confirmMsg('خروج', 'از حساب خارج می‌شوی؟');
-
-          if (!ok) return;
-
-          await supabase.auth.signOut();
-
-        }}
-
-      >
-
-        <Text style={s.btnTxt}>{t('🚪 خروج از حساب')}</Text>
-
-      </TouchableOpacity>
-
     </View>
-
   );
-
 }
 
 

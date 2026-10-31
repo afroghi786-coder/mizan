@@ -59,145 +59,187 @@ async function getDb(): Promise<any> {
 // ═══════════════════════════════════════════
 // API (کاملاً مثل AsyncStorage)
 // ═══════════════════════════════════════════
+let currentUserId = '';
+
+export function setStorageUserId(uid: string | null | undefined) {
+  currentUserId = String(uid || '').trim();
+}
+export function getStorageUserId() {
+  return currentUserId;
+}
+
+const EXEMPT_KEYS = new Set<string>([
+  '@mizan_license_data',
+  '@mizan_last_license_check',
+  '@mizan_lang',
+  '@mizan_lang_set',
+  '@mizan_voice_lang',
+  '@mizan_currency_cache',
+  '@mizan_device_id',
+  '@mizan_device_lock_user',
+]);
+
+function _nsKey(key: string): string {
+  if (!key) return key;
+  if (!currentUserId) return key;
+  if (key.startsWith('@mizan_u_')) return key;
+  if (!key.startsWith('@mizan_')) return key;
+  if (EXEMPT_KEYS.has(key)) return key;
+  return '@mizan_u_' + currentUserId + '_' + key.slice(7);
+}
+
+function _logicalKey(key: string): string {
+  if (!currentUserId) return key;
+  const prefix = '@mizan_u_' + currentUserId + '_';
+  if (key.startsWith(prefix)) return '@mizan_' + key.slice(prefix.length);
+  return key;
+}
+
+function _belongsToCurrentOrGlobal(key: string): boolean {
+  if (!key.startsWith('@mizan_u_')) return true;
+  return key.startsWith('@mizan_u_' + currentUserId + '_');
+}
+
 const AsyncStorage = {
   async getItem(key: string): Promise<string | null> {
+    const k = _nsKey(key);
     const db = await getDb();
-    if (!db) return RealAS.getItem(key);
+    if (!db) return RealAS.getItem(k);
     try {
-      const row: any = await db.getFirstAsync('SELECT value FROM kv WHERE key = ?', [key]);
+      const row: any = await db.getFirstAsync('SELECT value FROM kv WHERE key = ?', [k]);
       if (row && row.value !== null && row.value !== undefined) return String(row.value);
-
-      // Lazy migration از AsyncStorage
-      const v = await RealAS.getItem(key);
+      const v = await RealAS.getItem(k);
       if (v !== null) {
         await db.runAsync(
           'INSERT OR REPLACE INTO kv (key, value, updated_at) VALUES (?, ?, ?)',
-          [key, v, Date.now()]
+          [k, v, Date.now()]
         ).catch(() => {});
       }
       return v;
     } catch (e) {
-      return RealAS.getItem(key);
+      return RealAS.getItem(k);
     }
   },
 
   async setItem(key: string, value: string): Promise<void> {
+    const k = _nsKey(key);
     const db = await getDb();
-    if (!db) return RealAS.setItem(key, value);
+    if (!db) return RealAS.setItem(k, value);
     try {
       await db.runAsync(
         'INSERT OR REPLACE INTO kv (key, value, updated_at) VALUES (?, ?, ?)',
-        [key, value, Date.now()]
+        [k, value, Date.now()]
       );
-      // بکاپ در AsyncStorage
-      try { await RealAS.setItem(key, value); } catch {}
+      try { await RealAS.setItem(k, value); } catch {}
     } catch (e) {
-      await RealAS.setItem(key, value);
+      await RealAS.setItem(k, value);
     }
   },
 
   async removeItem(key: string): Promise<void> {
+    const k = _nsKey(key);
     const db = await getDb();
-    if (!db) return RealAS.removeItem(key);
+    if (!db) return RealAS.removeItem(k);
     try {
-      await db.runAsync('DELETE FROM kv WHERE key = ?', [key]);
-      try { await RealAS.removeItem(key); } catch {}
+      await db.runAsync('DELETE FROM kv WHERE key = ?', [k]);
+      try { await RealAS.removeItem(k); } catch {}
     } catch (e) {
-      await RealAS.removeItem(key);
+      await RealAS.removeItem(k);
     }
   },
 
   async multiGet(keys: string[]): Promise<[string, string | null][]> {
-    const db = await getDb();
-    if (!db) return RealAS.multiGet(keys);
-    try {
-      if (keys.length === 0) return [];
-      const placeholders = keys.map(() => '?').join(',');
-      const rows: any[] = await db.getAllAsync(
-        'SELECT key, value FROM kv WHERE key IN (' + placeholders + ')',
-        keys
-      );
-      const map: Record<string, string> = {};
-      for (const r of rows) map[r.key] = r.value;
-
-      const missing = keys.filter(k => map[k] === undefined);
-      if (missing.length > 0) {
-        const fallback = await RealAS.multiGet(missing);
-        for (const [k, v] of fallback) {
-          if (v !== null) {
-            map[k] = v;
-            await db.runAsync(
-              'INSERT OR REPLACE INTO kv (key, value, updated_at) VALUES (?, ?, ?)',
-              [k, v, Date.now()]
-            ).catch(() => {});
-          }
-        }
-      }
-      return keys.map(k => [k, map[k] !== undefined ? map[k] : null]);
-    } catch (e) {
-      return RealAS.multiGet(keys);
+    const out: [string, string | null][] = [];
+    for (const k of keys) {
+      out.push([k, await AsyncStorage.getItem(k)]);
     }
+    return out;
   },
 
   async multiSet(pairs: [string, string][]): Promise<void> {
-    const db = await getDb();
-    if (!db) return RealAS.multiSet(pairs);
-    try {
-      await db.withTransactionAsync(async () => {
-        for (const [k, v] of pairs) {
-          await db.runAsync(
-            'INSERT OR REPLACE INTO kv (key, value, updated_at) VALUES (?, ?, ?)',
-            [k, v, Date.now()]
-          );
-        }
-      });
-      try { await RealAS.multiSet(pairs); } catch {}
-    } catch (e) {
-      await RealAS.multiSet(pairs);
+    for (const [k, v] of pairs) {
+      await AsyncStorage.setItem(k, v);
     }
   },
 
   async multiRemove(keys: string[]): Promise<void> {
-    const db = await getDb();
-    if (!db) return RealAS.multiRemove(keys);
-    try {
-      await db.withTransactionAsync(async () => {
-        for (const k of keys) {
-          await db.runAsync('DELETE FROM kv WHERE key = ?', [k]);
-        }
-      });
-      try { await RealAS.multiRemove(keys); } catch {}
-    } catch (e) {
-      await RealAS.multiRemove(keys);
+    for (const k of keys) {
+      await AsyncStorage.removeItem(k);
     }
   },
 
   async getAllKeys(): Promise<string[]> {
     const db = await getDb();
-    if (!db) return RealAS.getAllKeys();
-    try {
-      const rows: any[] = await db.getAllAsync('SELECT key FROM kv');
-      const sqliteKeys = rows.map(r => r.key);
-      const asKeys = await RealAS.getAllKeys();
-      return Array.from(new Set([...sqliteKeys, ...asKeys]));
-    } catch (e) {
-      return RealAS.getAllKeys();
+    let physical: string[] = [];
+    if (db) {
+      try {
+        const rows: any[] = await db.getAllAsync('SELECT key FROM kv');
+        physical = physical.concat(rows.map(r => String(r.key)));
+      } catch {}
     }
+    try {
+      const asKeys = await RealAS.getAllKeys();
+      physical = physical.concat(asKeys);
+    } catch {}
+    const uniq = Array.from(new Set(physical));
+    return uniq
+      .filter(_belongsToCurrentOrGlobal)
+      .map(_logicalKey);
   },
 
   async clear(): Promise<void> {
     const db = await getDb();
-    if (!db) return RealAS.clear();
+    let physical: string[] = [];
+    if (db) {
+      try {
+        const rows: any[] = await db.getAllAsync('SELECT key FROM kv');
+        physical = physical.concat(rows.map(r => String(r.key)));
+      } catch {}
+    }
     try {
-      await db.runAsync('DELETE FROM kv');
-      try { await RealAS.clear(); } catch {}
-    } catch (e) {
-      await RealAS.clear();
+      const asKeys = await RealAS.getAllKeys();
+      physical = physical.concat(asKeys);
+    } catch {}
+    const uniq = Array.from(new Set(physical)).filter(_belongsToCurrentOrGlobal);
+    for (const k of uniq) {
+      await AsyncStorage.removeItem(k);
     }
   },
 
   async flushGetRequests(): Promise<void> {},
 };
 
+
+// ═══ قفل دستگاه ═══
+// یک دستگاه فقط یک حساب. کلید سراسری است و بین حساب‌ها مشترک.
+const DEVICE_LOCK_KEY = '@mizan_device_lock_user';
+
+export async function getDeviceLock(): Promise<string> {
+  try {
+    const v = await AsyncStorage.getItem(DEVICE_LOCK_KEY);
+    return String(v || '').trim();
+  } catch { return ''; }
+}
+
+export async function setDeviceLock(userId: string): Promise<void> {
+  try {
+    const v = String(userId || '').trim();
+    if (!v) return;
+    await AsyncStorage.setItem(DEVICE_LOCK_KEY, v);
+  } catch {}
+}
+
+export async function canUseDevice(userId: string): Promise<{ ok: boolean; lockedTo: string }> {
+  const current = String(userId || '').trim();
+  const lockedTo = await getDeviceLock();
+  if (!lockedTo) return { ok: true, lockedTo: '' };
+  if (!current) return { ok: false, lockedTo };
+  return { ok: lockedTo === current, lockedTo };
+}
+
 export default AsyncStorage;
 export { AsyncStorage };
+
+
+// تست: پاک کردن seen
+export async function __clearSeen(){const A=(await import("./lib.storage")).default;await A.removeItem("@mizan_bot_seen_msgs_v2");await A.removeItem("@mizan_bot_seen_msgs");console.log("[CLEAR] seen cleared");}

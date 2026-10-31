@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { getProducts } from './lib.offline';
-import { rubikaSendMessage, buildChannelPostText, rubikaSendPhoto, resetBotOffset, rubikaRemoveWebhook, forceFixBot, getBotLastError, processRubikaUpdates } from './lib.assistant.bot.simple';
+import { processRubikaUpdatesSimple } from './lib.assistant.bot.simple';
+import { rubikaSendMessage, buildChannelPostText, rubikaSendPhoto, resetBotOffset, rubikaRemoveWebhook, forceFixBot, getBotLastError } from './lib.assistant.rubika';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from './lib.storage';
 import {

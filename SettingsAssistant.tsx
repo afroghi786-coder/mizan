@@ -69,6 +69,17 @@ export default function SettingsAssistant({ showToast }: any) {
     setSaving(true);
     try {
       await saveBotConfig(botConfig);
+    if (botConfig.rubika_token && !botConfig.rubika_admin_chat_id) {
+      try {
+        const _r = await rubikaExtractAdminChatId(botConfig.rubika_token);
+        if (_r && _r.chat_id) {
+          const _cfg = { ...botConfig, rubika_admin_chat_id: _r.chat_id };
+          setBotConfig(_cfg);
+          await saveBotConfig(_cfg);
+          showToast?.('✅ آیدی ادمین خودکار پر شد');
+        }
+      } catch {}
+    }
       showToast?.('✅ تنظیمات دستیار فروش ذخیره شد (توکن‌ها در فاز نهایی به SecureStore منتقل می‌شوند)');
     } catch (e: any) { showToast?.(e?.message || 'خطا', true); }
     finally { setSaving(false); }
@@ -206,7 +217,7 @@ export default function SettingsAssistant({ showToast }: any) {
             <TextInput value={botConfig.rubika_channel_id || ''} onChangeText={(v) => setBotConfig({ ...botConfig, rubika_channel_id: v })} placeholder="@mychannel" autoCapitalize="none" style={inputStyle} />
             <Text style={{ fontSize: 11, color: '#64748b', marginTop: 8, marginBottom: 4, textAlign: 'right' }}>شناسه چت ادمین (برای دریافت فاکتورها)</Text>
             <View style={{ flexDirection: 'row-reverse', gap: 6, alignItems: 'center' }}>
-              <TextInput value={botConfig.rubika_admin_chat_id || ''} onChangeText={(v) => setBotConfig({ ...botConfig, rubika_admin_chat_id: v })} placeholder="مثلاً b123456" autoCapitalize="none" style={[inputStyle, { flex: 1 }]} />
+              <TextInput value={botConfig.rubika_admin_chat_id || ''} onChangeText={(v) => setBotConfig({ ...botConfig, rubika_admin_chat_id: v })} placeholder="مثلاً b123456" autoCapitalize="none" style={[inputStyle, { flex: 1, minWidth: 220, minHeight: 48 }]} />
 
             <TouchableOpacity disabled={!botConfig.rubika_token} onPress={async () => {
                 const r = await rubikaExtractAdminChatId(botConfig.rubika_token);

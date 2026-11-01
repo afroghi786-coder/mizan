@@ -1,7 +1,7 @@
 // lib.emp.ts — استاندارد آفلاین/آنلاین (منطق محاسبات دست‌نخورده)
 import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
-import { getMode, enqueue } from './lib.offline';
+import { getMode, enqueue, recordAuditEvent } from './lib.offline';
 
 const K = (k: string) => '@mizan_local_' + k;
 const gid = () => 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -38,6 +38,44 @@ async function fetchAll(table: string, key: string): Promise<any[]> {
   return local;
 }
 
+const EMP_AUDIT_MAP: Record<string, { type: string; summary: string }> = {
+  createEmployee: { type: 'employee_create', summary: 'ثبت کارمند' },
+  updateEmployee: { type: 'employee_update', summary: 'ویرایش کارمند' },
+  deleteEmployee: { type: 'employee_delete', summary: 'حذف کارمند' },
+  createAttendance: { type: 'attendance_create', summary: 'ثبت حضور' },
+  deleteAttendance: { type: 'attendance_delete', summary: 'حذف حضور' },
+  createLeave: { type: 'leave_create', summary: 'ثبت مرخصی' },
+  deleteLeave: { type: 'leave_delete', summary: 'حذف مرخصی' },
+  createSalaryPayment: { type: 'salary_create', summary: 'ثبت حقوق' },
+  updateSalaryPayment: { type: 'salary_update', summary: 'ویرایش حقوق' },
+  deleteSalaryPayment: { type: 'salary_delete', summary: 'حذف حقوق' },
+  createLoan: { type: 'loan_create', summary: 'ثبت وام' },
+  deleteLoan: { type: 'loan_delete', summary: 'حذف وام' },
+  createBatch: { type: 'batch_create', summary: 'ثبت لیست حقوق' },
+  deleteBatch: { type: 'batch_delete', summary: 'حذف لیست حقوق' },
+};
+
+function _empKeyOf(item: any, fallback?: string): string {
+  if (item && typeof item === 'object') {
+    const fields = ['local_id','id','code','invoice_number','batch_number'];
+    for (const f of fields) {
+      const v = (item as any)[f];
+      if (v !== undefined && v !== null && v !== '') return String(v);
+    }
+  }
+  return String(fallback || '');
+}
+
+async function _auditEmp(opName: string, table: string, item: any, fallback?: string) {
+  try {
+    const meta = EMP_AUDIT_MAP[opName];
+    if (!meta) return;
+    const key = _empKeyOf(item, fallback) || opName;
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    await recordAuditEvent({ type: meta.type, table, key, at: new Date().toISOString(), device_id: dev, summary: meta.summary });
+  } catch {}
+}
+
 async function saveItem(table: string, key: string, item: any, isUpdate: boolean, opName: string): Promise<any> {
   const list = await readLocal(key);
   const idx = list.findIndex(x => (x.local_id || x.id) === (item.local_id || item.id));
@@ -56,8 +94,16 @@ async function saveItem(table: string, key: string, item: any, isUpdate: boolean
       const { error } = isUpdate
         ? await supabase.from(table).upsert(cleanItem, { onConflict: 'local_id' })
         : await supabase.from(table).insert(cleanItem);
-      if (error) { console.log('[supa write]', table, error.message); await enqueue(opName, item); }
-    } catch (e) { console.log('[supa write exc]', table, e); await enqueue(opName, item); }
+      if (error) {
+        console.log('[supa write]', table, error.message);
+        await enqueue(opName, item);
+      } else {
+        await _auditEmp(opName, table, item);
+      }
+    } catch (e) {
+      console.log('[supa write exc]', table, e);
+      await enqueue(opName, item);
+    }
   } else {
     await enqueue(opName, item);
   }
@@ -70,8 +116,14 @@ async function removeById(table: string, key: string, id: string, opName: string
   if (getMode() === 'online') {
     try {
       const { error } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
-      if (error) await enqueue(opName, id);
-    } catch { await enqueue(opName, id); }
+      if (error) {
+        await enqueue(opName, id);
+      } else {
+        await _auditEmp(opName, table, { local_id: id }, id);
+      }
+    } catch {
+      await enqueue(opName, id);
+    }
   } else {
     await enqueue(opName, id);
   }

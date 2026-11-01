@@ -47,3 +47,35 @@ export async function telegramGetUpdates(token: string, offset?: number): Promis
     return { ok: false, count: 0, error: e?.message || 'خطا در دریافت' };
   }
 }
+
+
+export async function telegramSendMessage(token: string, chatId: string, text: string): Promise<string> {
+  const t = String(token || '').trim();
+  const c = String(chatId || '').trim();
+  if (!t || !c) return '';
+  try {
+    const res = await fetch('https://api.telegram.org/bot' + t + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: c, text: String(text || ''), parse_mode: 'HTML', disable_web_page_preview: true }),
+    });
+    const data: any = await res.json().catch(() => null);
+    return String(data?.result?.message_id || '');
+  } catch { return ''; }
+}
+
+export async function telegramSendPhoto(token: string, chatId: string, imageUrl: string, caption: string): Promise<string> {
+  const t = String(token || '').trim();
+  const c = String(chatId || '').trim();
+  const u = String(imageUrl || '').trim();
+  if (!t || !c || !u || !/^https?:\/\//i.test(u)) return '';
+  try {
+    const res = await fetch('https://api.telegram.org/bot' + t + '/sendPhoto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: c, photo: u, caption: String(caption || ''), parse_mode: 'HTML' }),
+    });
+    const data: any = await res.json().catch(() => null);
+    return String(data?.result?.message_id || '');
+  } catch { return ''; }
+}

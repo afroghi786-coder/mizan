@@ -408,3 +408,43 @@ export async function transferAssistantInvoice(id: string) {
   const updated = await markAssistantInvoiceTransferred(id, invoiceNumber);
   return updated;
 }
+
+
+export async function addAdToQueue(item: any) {
+  try {
+    const list = await getAdsQueue();
+    list.push({ ...item, created_at: item?.created_at || new Date().toISOString() });
+    await AsyncStorage.setItem(ADS_QUEUE_KEY, JSON.stringify(list));
+    return true;
+  } catch { return false; }
+}
+
+export async function removeAdFromQueue(index: number) {
+  try {
+    const list = await getAdsQueue();
+    if (index >= 0 && index < list.length) list.splice(index, 1);
+    await AsyncStorage.setItem(ADS_QUEUE_KEY, JSON.stringify(list));
+    return true;
+  } catch { return false; }
+}
+
+export async function clearAdsQueue() {
+  try { await AsyncStorage.setItem(ADS_QUEUE_KEY, '[]'); return true; } catch { return false; }
+}
+
+
+export async function addAdToHistory(item: any) {
+  try {
+    const raw = await AsyncStorage.getItem(ADS_HISTORY_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    const arr = Array.isArray(list) ? list : [];
+    arr.push({ ...item, sent_at: item?.sent_at || new Date().toISOString() });
+    const trimmed = arr.slice(-200);
+    await AsyncStorage.setItem(ADS_HISTORY_KEY, JSON.stringify(trimmed));
+    return true;
+  } catch { return false; }
+}
+
+export async function clearAdsHistory() {
+  try { await AsyncStorage.setItem(ADS_HISTORY_KEY, '[]'); return true; } catch { return false; }
+}

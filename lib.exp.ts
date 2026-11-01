@@ -1,7 +1,7 @@
 // lib.exp.ts — هزینه‌ها (استاندارد آفلاین/آنلاین)
 import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
-import { getMode, enqueue, getQueue } from './lib.offline';
+import { getMode, enqueue, getQueue, serverBusinessAllowed, recordAuditEvent } from './lib.offline';
 
 const K = (k: string) => '@mizan_local_' + k;
 const gid = () => 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -35,7 +35,7 @@ function sanitizeExpense(p: any) {
 
 async function fetchAll(table: string, key: string): Promise<any[]> {
   const local = await readLocal(key);
-  if (getMode() === 'offline') return local;
+  if (!(await serverBusinessAllowed())) return local;
   try {
     const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
     const merged: Record<string, any> = {};
@@ -65,11 +65,25 @@ async function saveItem(table: string, key: string, item: any, op: 'createExpens
   const newList = idx >= 0 ? list.map((x, i) => i === idx ? { ...x, ...item } : x) : [item, ...list];
   await writeLocal(key, newList);
 
+  try {
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    const type = op === 'updateExpense' ? 'expense_update' : 'expense_create';
+    const summary = op === 'updateExpense' ? 'ویرایش هزینه' : 'ثبت هزینه';
+    await recordAuditEvent({
+      type: type,
+      table: 'expenses',
+      key: String(item.local_id || item.id || ''),
+      at: new Date().toISOString(),
+      device_id: dev,
+      summary: summary,
+    });
+  } catch {}
+
   const clean: any = sanitizeExpense(item);
   delete clean.user_id;
   delete clean.id;
 
-  if (getMode() === 'online') {
+  if (await serverBusinessAllowed()) {
     try {
       await supabase.from(table).upsert(clean, { onConflict: 'local_id' });
     } catch {
@@ -85,7 +99,19 @@ async function removeById(table: string, key: string, id: string) {
   const list = await readLocal(key);
   await writeLocal(key, list.filter(x => x.local_id !== id && x.id !== id));
 
-  if (getMode() === 'online') {
+  try {
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    await recordAuditEvent({
+      type: 'expense_delete',
+      table: 'expenses',
+      key: String(id),
+      at: new Date().toISOString(),
+      device_id: dev,
+      summary: 'حذف هزینه',
+    });
+  } catch {}
+
+  if (await serverBusinessAllowed()) {
     try {
       await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
     } catch {

@@ -97,6 +97,7 @@ import { setStorageUserId, canUseDevice, setDeviceLock } from './lib.storage';
 import Storage from './lib.storage';// Safely load expo-notifications (fix for Expo Go)
 
 import { hydrateFromSettings, getCurrencySync } from './lib.currency';let Notifications: any = null;
+import { startAdsWorker } from './lib.ads.worker';
 
 try {
 
@@ -726,6 +727,7 @@ export default function App() {
   useEffect(() => {
     // استارت خودکار ربات در پس‌زمینه به محض باز شدن اپ
     startGlobalBotWorker();
+    startAdsWorker();
     __clearSeen().catch(()=>{});
 
 

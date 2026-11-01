@@ -5,7 +5,7 @@ import { clearAuditEvents } from './lib.offline';
 import {
   getPrivateConnection, startPrivateOAuth, syncPrivateTables, disconnectPrivate,
   getSyncDestination, setSyncDestination, SyncDestination, pullPrivateTables,
-  getBridgeConfig, setBridgeConfig, bridgePing, bridgePull, bridgeSaveTest, bridgeSaveTable, bridgeSaveAll, pullBridgeTables, syncBridgeTables, getConflicts, clearConflicts, applyConflictSheet, keepLocalConflict, getAuditEvents, clearAuditInSheet
+  getBridgeConfig, setBridgeConfig, bridgePing, bridgePull, bridgeSaveTest, bridgeSaveTable, bridgeSaveAll, pullBridgeTables, syncBridgeTables, syncByDestination, getConflicts, clearConflicts, applyConflictSheet, keepLocalConflict, getAuditEvents, clearAuditInSheet
 } from './lib.sheets';
 
 const SHOW_PRIVATE_STORAGE = true;
@@ -15,7 +15,6 @@ const BRIDGE_TEMPLATE_URL = 'لینک_گوگل_داک_را_اینجا_بگذار
 
 export default function SettingsSheets({ showToast }: any) {
   if (!SHOW_PRIVATE_STORAGE) return null;
-  if (Platform.OS !== 'web') return null;
 
   const [conn, setConn] = useState<any>(null);
   const [dest, setDest] = useState<SyncDestination>('server');
@@ -82,30 +81,40 @@ export default function SettingsSheets({ showToast }: any) {
   };
 
   const sync = async () => {
-    setBusy(true); setProgress('در حال آماده‌سازی...');
+    setBusy(true);
+    setProgress('در حال آماده‌سازی...');
     try {
-      if (bridgeReady) {
-        await syncBridgeTables((d, t, tab) => setProgress('ذخیره ' + tab + ' (' + d + '/' + t + ')'));
-      } else {
-        await syncPrivateTables((d, t, tab) => setProgress('ذخیره ' + tab + ' (' + d + '/' + t + ')'));
-      }
-      showToast?.('✅ ذخیره در فضای اختصاصی انجام شد');
+      const r = await syncByDestination((d, t) => setProgress('ذخیره (' + d + '/' + t + ')'));
+      showToast?.('✅ ' + (r.ok || 0) + ' مورد ذخیره شد' + (r.fail ? ' — ' + r.fail + ' ناموفق' : ''));
       await load();
-    } catch (e: any) { showToast?.(e.message, true); }
-    finally { setBusy(false); setProgress(''); }
-  };;
+    } catch (e: any) {
+      showToast?.(e.message, true);
+    } finally {
+      setBusy(false);
+      setProgress('');
+    }
+  };;;
 
   const pull = async () => {
-    setPulling(true); setProgress('در حال دریافت...');
+    setPulling(true);
+    setProgress('در حال دریافت...');
     try {
+      if (Platform.OS !== 'web' && !bridgeReady) {
+        showToast?.('برای دریافت در گوشی، اول واسط امن را تنظیم کنید', true);
+        return;
+      }
       const r = bridgeReady
         ? await pullBridgeTables((d, t, tab) => setProgress('دریافت ' + tab + ' (' + d + '/' + t + ')'))
         : await pullPrivateTables((d, t, tab) => setProgress('دریافت ' + tab + ' (' + d + '/' + t + ')'));
-      showToast?.('✅ ' + r.added + ' رکورد جدید از فضای اختصاصی دریافت شد');
+      showToast?.('✅ ' + (r.added || 0) + ' رکورد جدید دریافت شد');
       await load();
-    } catch (e: any) { showToast?.(e.message, true); }
-    finally { setPulling(false); setProgress(''); }
-  };;
+    } catch (e: any) {
+      showToast?.(e.message, true);
+    } finally {
+      setPulling(false);
+      setProgress('');
+    }
+  };;;
 
   const disconnect = async () => {
     setBusy(true);
@@ -377,6 +386,12 @@ export default function SettingsSheets({ showToast }: any) {
 
       <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e2e8f0' }}>
         <Text style={{ fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>🔐 واسط امن</Text>
+        {/* MOBILE_BRIDGE_NOTE */}
+        {Platform.OS !== 'web' && (
+          <Text style={{ fontSize: 10, color: '#92400e', textAlign: 'right', marginBottom: 8 }}>
+            روی گوشی، اتصال از طریق واسط امن انجام می‌شود. آدرس و کلید واسط را وارد کنید و ذخیره بزنید.
+          </Text>
+        )}
         <Text style={{ fontSize: 10, color: '#64748b', textAlign: 'right', marginBottom: 8 }}>
           این بخش اختیاری است. اگر واسط امن را راه‌اندازی کرده‌اید، آدرس و کلید را اینجا وارد کنید.
         </Text>
@@ -423,6 +438,7 @@ export default function SettingsSheets({ showToast }: any) {
           این دکمه شما را به قالب آماده هدایت می‌کند. یک بار کپی و Deploy کافی است.
         </Text>
 
+      {Platform.OS === 'web' && (
       <View style={{ marginTop: 10, padding: 8, backgroundColor: '#fffbeb', borderRadius: 6, borderWidth: 1, borderColor: '#fcd34d' }}>
         <Text style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>🚀 ویزارد راه‌اندازی</Text>
         <Text style={{ fontSize: 10, color: '#92400e', textAlign: 'right', marginBottom: 8 }}>
@@ -452,6 +468,7 @@ export default function SettingsSheets({ showToast }: any) {
           <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>🧩 باز کردن Apps Script</Text>
         </TouchableOpacity>
       </View>
+      )}
 
       <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e2e8f0' }}>
         <Text style={{ fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>🚨 گزارش تضاد</Text>

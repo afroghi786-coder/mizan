@@ -17,6 +17,49 @@ export async function loadMode() {
   return MODE;
 }
 export function getMode() { return MODE; }
+
+// ═══ قفل داده تجاری ═══
+// پیش‌فرض: قفل. فقط با مقدار 'open' باز می‌شود و هیچ دکمه‌ای در UI برای باز کردن آن نیست.
+const BUSINESS_LOCK_KEY = '@mizan_business_lock';
+
+const BUSINESS_OPS = new Set<string>([
+  'createProduct','updateProduct','deleteProduct',
+  'createSale','updateSale','deleteSale',
+  'createPurchase','updatePurchase','deletePurchase',
+  'createExpense','updateExpense','deleteExpense',
+  'createEmployee','updateEmployee','deleteEmployee',
+  'createAttendance','updateAttendance','deleteAttendance',
+  'createSalaryPayment','updateSalaryPayment','deleteSalaryPayment',
+  'createLoan','updateLoan','deleteLoan',
+  'createLeave','updateLeave','deleteLeave',
+  'createBatch','updateBatch','deleteBatch',
+  'createParty','updateParty','deleteParty',
+  'createPartner','updatePartner','deletePartner',
+  'createPBA','deletePBA',
+  'createPTX','deletePTX',
+  'createBank','updateBank','deleteBank',
+  'createShipping','updateShipping','deleteShipping',
+  'createStockAdjustment','deleteStockAdjustment',
+  'updateSettings'
+]);
+
+export async function serverBusinessAllowed() {
+  if (MODE !== 'online') return false;
+  return !(await isBusinessLocked());
+}
+
+export async function isBusinessLocked() {
+  try {
+    const v = await AsyncStorage.getItem(BUSINESS_LOCK_KEY);
+    return v !== 'open';
+  } catch { return true; }
+}
+
+export async function setBusinessLock(open: boolean) {
+  await AsyncStorage.setItem(BUSINESS_LOCK_KEY, open ? 'open' : 'locked');
+}
+
+
 export async function setMode(m: 'online' | 'offline') {
   MODE = m;
   await AsyncStorage.setItem(MODE_KEY, m);
@@ -39,13 +82,165 @@ export async function getQueue(): Promise<any[]> {
   const raw = await AsyncStorage.getItem(QUEUE);
   return raw ? JSON.parse(raw) : [];
 }
+const AUDIT_OPS: Record<string, { table: string; type: string; summary: string }> = {
+  createProduct: { table: 'products', type: 'product_create', summary: 'ثبت کالا' },
+  updateProduct: { table: 'products', type: 'product_update', summary: 'ویرایش کالا' },
+  deleteProduct: { table: 'products', type: 'product_delete', summary: 'حذف کالا' },
+  createSale: { table: 'sales', type: 'sale_create', summary: 'ثبت فاکتور فروش' },
+  deleteSale: { table: 'sales', type: 'sale_delete', summary: 'حذف فاکتور فروش' },
+  createPurchase: { table: 'purchases', type: 'purchase_create', summary: 'ثبت فاکتور خرید' },
+  deletePurchase: { table: 'purchases', type: 'purchase_delete', summary: 'حذف فاکتور خرید' },
+  createExpense: { table: 'expenses', type: 'expense_create', summary: 'ثبت هزینه' },
+  deleteExpense: { table: 'expenses', type: 'expense_delete', summary: 'حذف هزینه' },
+  createEmployee: { table: 'employees', type: 'employee_create', summary: 'ثبت کارمند' },
+  updateEmployee: { table: 'employees', type: 'employee_update', summary: 'ویرایش کارمند' },
+  deleteEmployee: { table: 'employees', type: 'employee_delete', summary: 'حذف کارمند' },
+  createAttendance: { table: 'attendance', type: 'attendance_create', summary: 'ثبت حضور' },
+  updateAttendance: { table: 'attendance', type: 'attendance_update', summary: 'ویرایش حضور' },
+  deleteAttendance: { table: 'attendance', type: 'attendance_delete', summary: 'حذف حضور' },
+  createSalaryPayment: { table: 'salary_payments', type: 'salary_create', summary: 'ثبت حقوق' },
+  updateSalaryPayment: { table: 'salary_payments', type: 'salary_update', summary: 'ویرایش حقوق' },
+  deleteSalaryPayment: { table: 'salary_payments', type: 'salary_delete', summary: 'حذف حقوق' },
+  createLoan: { table: 'employee_loans', type: 'loan_create', summary: 'ثبت وام' },
+  updateLoan: { table: 'employee_loans', type: 'loan_update', summary: 'ویرایش وام' },
+  deleteLoan: { table: 'employee_loans', type: 'loan_delete', summary: 'حذف وام' },
+  createLeave: { table: 'employee_leaves', type: 'leave_create', summary: 'ثبت مرخصی' },
+  updateLeave: { table: 'employee_leaves', type: 'leave_update', summary: 'ویرایش مرخصی' },
+  deleteLeave: { table: 'employee_leaves', type: 'leave_delete', summary: 'حذف مرخصی' },
+  createBatch: { table: 'payroll_batches', type: 'batch_create', summary: 'ثبت لیست حقوق' },
+  updateBatch: { table: 'payroll_batches', type: 'batch_update', summary: 'ویرایش لیست حقوق' },
+  deleteBatch: { table: 'payroll_batches', type: 'batch_delete', summary: 'حذف لیست حقوق' },
+  createParty: { table: 'parties', type: 'party_create', summary: 'ثبت طرف‌حساب' },
+  updateParty: { table: 'parties', type: 'party_update', summary: 'ویرایش طرف‌حساب' },
+  deleteParty: { table: 'parties', type: 'party_delete', summary: 'حذف طرف‌حساب' },
+  createPartner: { table: 'partners', type: 'partner_create', summary: 'ثبت شریک' },
+  updatePartner: { table: 'partners', type: 'partner_update', summary: 'ویرایش شریک' },
+  deletePartner: { table: 'partners', type: 'partner_delete', summary: 'حذف شریک' },
+  createPBA: { table: 'partner_bank_accounts', type: 'pba_create', summary: 'ثبت حساب بانکی شریک' },
+  deletePBA: { table: 'partner_bank_accounts', type: 'pba_delete', summary: 'حذف حساب بانکی شریک' },
+  createPTX: { table: 'partner_transactions', type: 'ptx_create', summary: 'ثبت حرکت شریک' },
+  deletePTX: { table: 'partner_transactions', type: 'ptx_delete', summary: 'حذف حرکت شریک' },
+  createBank: { table: 'banks', type: 'bank_create', summary: 'ثبت بانک' },
+  updateBank: { table: 'banks', type: 'bank_update', summary: 'ویرایش بانک' },
+  deleteBank: { table: 'banks', type: 'bank_delete', summary: 'حذف بانک' },
+  createShipping: { table: 'shippings', type: 'shipping_create', summary: 'ثبت باربری' },
+  updateShipping: { table: 'shippings', type: 'shipping_update', summary: 'ویرایش باربری' },
+  deleteShipping: { table: 'shippings', type: 'shipping_delete', summary: 'حذف باربری' },
+  createStockAdjustment: { table: 'stock_adjustments', type: 'stock_create', summary: 'ثبت تعدیل انبار' },
+  deleteStockAdjustment: { table: 'stock_adjustments', type: 'stock_delete', summary: 'حذف تعدیل انبار' },
+  updateSettings: { table: 'settings', type: 'settings_update', summary: 'ویرایش تنظیمات' },
+};
+
+function _auditKeyOf(op: string, payload: any): string {
+  if (!payload) return '';
+  if (typeof payload === 'string') return payload;
+  if (typeof payload !== 'object') return '';
+  const fields = ['local_id','id','code','_localId','invoiceNumber','invoice_number','invoice','employee_code','partner_code'];
+  for (const f of fields) {
+    const v = (payload as any)[f];
+    if (v !== undefined && v !== null && v !== '') return String(v);
+  }
+  const p = (payload as any).p;
+  if (p && typeof p === 'object') {
+    for (const f of fields) {
+      const v = p[f];
+      if (v !== undefined && v !== null && v !== '') return String(v);
+    }
+  }
+  return '';
+}
+
+async function _maybeAuditFromEnqueue(op: string, payload: any) {
+  try {
+    const meta = AUDIT_OPS[op];
+    if (!meta) return;
+    const key = _auditKeyOf(op, payload) || op;
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    await _pushAudit({ type: meta.type, table: meta.table, key, at: new Date().toISOString(), device_id: dev, summary: meta.summary });
+  } catch {}
+}
+
+const DIRTY_TABLES_KEY = '@mizan_dirty_tables';
+
+export async function getDirtyTables(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+    if (raw === null) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.map(String) : [];
+  } catch { return []; }
+}
+
+async function markTableDirty(table: string) {
+  if (!table) return;
+  try {
+    const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+    if (raw === null) return;
+    let arr: string[] = [];
+    try { arr = JSON.parse(raw); } catch { arr = []; }
+    if (!Array.isArray(arr)) arr = [];
+    if (!arr.includes(table)) arr.push(table);
+    await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
+export async function setDirtyTables(tables: string[]) {
+  try {
+    const clean = Array.from(new Set((tables || []).map(String).filter(Boolean)));
+    await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(clean));
+  } catch {}
+}
+
+export async function removeDirtyTables(tables: string[]) {
+  try {
+    const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+    let arr: string[] = [];
+    if (raw !== null) { try { arr = JSON.parse(raw); } catch { arr = []; } }
+    if (!Array.isArray(arr)) arr = [];
+    const remove = new Set((tables || []).map(String));
+    const next = arr.filter(t => !remove.has(String(t)));
+    await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(next));
+  } catch {}
+}
+
 export async function enqueue(op: string, payload: any) {
   const q = await getQueue();
   q.push({ op, payload, ts: Date.now() });
   await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+  await _maybeAuditFromEnqueue(op, payload);
+  try {
+    const meta = (typeof AUDIT_OPS !== 'undefined') ? AUDIT_OPS[op] : null;
+    if (meta && meta.table) await markTableDirty(meta.table);
+  } catch {}
 }
 export async function getQueueCount() { return (await getQueue()).length; }
 export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
+
+const TOMBSTONES_KEY = '@mizan_tombstones';
+
+export async function recordTombstone(table: string, key: string) {
+  if (!table || !key) return;
+  try {
+    const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (!Array.isArray(arr)) arr = [];
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    const now = new Date().toISOString();
+    const clean = arr.filter((x: any) => !(x && x.table === table && String(x.key) === String(key)));
+    clean.push({ table: table, key: String(key), deleted_at: now, device_id: dev });
+    await AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(clean));
+  } catch (e) { console.log('[recordTombstone]', e); }
+}
+
+export async function getTombstones(): Promise<any[]> {
+  try {
+    const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
 
 export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
   const q = await getQueue();
@@ -56,6 +251,11 @@ export async function syncToServer(onProgress?: (done: number, total: number) =>
     const item = q[i];
     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
     try {
+      if ((await isBusinessLocked()) && BUSINESS_OPS.has(String(item.op))) {
+        remaining.push(item);
+        if (onProgress) onProgress(i + 1, total);
+        continue;
+      }
       await (lib as any)[item.op](item.payload);
       ok++;
     } catch (e: any) {
@@ -123,10 +323,16 @@ export async function getProducts() {
 }
 export async function createProduct(p: any) {
   const list: any[] = (await getLocal('products')) || [];
-  list.push({ ...p, _localId: Date.now() });
+  const item = { ...p, _localId: Date.now() };
+  list.push(item);
   await setLocal('products', list);
-  if (MODE === 'online') {
-    try { await lib.createProduct(p); await setLocal('products', await lib.getProducts()); }
+  try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try {
+      await lib.createProduct(p);
+      await setLocal('products', await lib.getProducts());
+        try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+    }
     catch { await enqueue('createProduct', p); }
   } else {
     await enqueue('createProduct', p);
@@ -137,6 +343,7 @@ export async function updateProduct(id: string, p: any) {
   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
   if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+  try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
 
   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
   const q = await getQueue();
@@ -150,7 +357,7 @@ export async function updateProduct(id: string, p: any) {
   }
 
   const payload = { id, code, p };
-  if (MODE === 'online') {
+  if (await serverBusinessAllowed()) {
     try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
   } else {
     await enqueue('updateProduct', payload);
@@ -160,7 +367,9 @@ export async function deleteProduct(id: string) {
   const list: any[] = (await getLocal('products')) || [];
   const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
   const code = found?.code;
+  await recordTombstone('products', String(code || id));
   await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+  try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
 
   // اگر این محصول هنوز در صف createProduct است → از صف حذف کن (چیزی برای حذف از سرور نیست)
   const q = await getQueue();
@@ -173,7 +382,7 @@ export async function deleteProduct(id: string) {
   }
 
   const payload = { id, code };
-  if (MODE === 'online') {
+  if (await serverBusinessAllowed()) {
     try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
   } else {
     await enqueue('deleteProduct', payload);
@@ -181,17 +390,24 @@ export async function deleteProduct(id: string) {
 }
 
 export async function createSale(payload: any) {
-  if (MODE === 'online') {
-    try { return await lib.createSale(payload); }
+  if (await serverBusinessAllowed()) {
+    try {
+      const r = await lib.createSale(payload);
+        try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+      return r;
+    }
     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
   }
   await enqueue('createSale', payload);
+  try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
   return payload.invoiceNumber;
 }
 export async function deleteSale(inv: string) {
+  await recordTombstone('sales', String(inv));
   const grouped = (await getLocal<any[]>('sales_grouped')) || [];
   await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
-  if (MODE === 'online') {
+  try { await _pushAudit({ type: 'sale_delete', table: 'sales', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور فروش' }); } catch {}
+  if (await serverBusinessAllowed()) {
     try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
   } else {
     await enqueue('deleteSale', inv);
@@ -199,9 +415,11 @@ export async function deleteSale(inv: string) {
 }
 
 export async function deletePurchase(inv: string) {
+  await recordTombstone('purchases', String(inv));
   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
-  if (MODE === 'online') {
+  try { await _pushAudit({ type: 'purchase_delete', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور خرید' }); } catch {}
+  if (await serverBusinessAllowed()) {
     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
   } else {
     await enqueue('deletePurchase', inv);
@@ -213,7 +431,8 @@ export async function getSettings() {
 }
 export async function updateSettings(s: any) {
   await setLocal('settings', s);
-  if (MODE === 'online') {
+  try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+  if (await serverBusinessAllowed()) {
     try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
   } else {
     await enqueue('updateSettings', s);
@@ -714,12 +933,17 @@ async function genPurchaseInvoiceNumber() {
 //  createPurchase — با شماره P-
 // ═══════════════════════════════════════════
 export async function createPurchase(payload: any) {
-  if (MODE === 'online') {
-    try { return await lib.createPurchase(payload); }
+  if (await serverBusinessAllowed()) {
+    try {
+      const r = await lib.createPurchase(payload);
+      try { await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(payload.invoiceNumber || payload._pendingInvNumber || ''), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' }); } catch {}
+      return r;
+    }
     catch {
       const pInv = await genPurchaseInvoiceNumber();
       const newPayload = { ...payload, _pendingInvNumber: pInv };
       await enqueue('createPurchase', newPayload);
+  try { await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(newPayload?.invoiceNumber || newPayload?._pendingInvNumber || ''), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' }); } catch {}
       return pInv;
     }
   }
@@ -1129,7 +1353,8 @@ export async function createExpense(p: any): Promise<any> {
   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
   const local = (await getLocal<any[]>('expenses')) || [];
   await setLocal('expenses', [item, ...local]);
-  if (MODE === 'online') {
+  try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
+  if (await serverBusinessAllowed()) {
     try {
       const { error } = await lib.supabase.from('expenses').insert({
         invoice_number: p.invoice_number || '',
@@ -1151,15 +1376,21 @@ export async function createExpense(p: any): Promise<any> {
         counterpart_code: p.counterpart_code || '',
       });
       if (error) throw error;
+        try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
     } catch { await enqueue('createExpense', p); }
   } else { await enqueue('createExpense', p); }
   return item;
 }
 export async function deleteExpense(localId: string) {
+  await recordTombstone('expenses', String(localId));
   const local = (await getLocal<any[]>('expenses')) || [];
   await setLocal('expenses', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
-  if (MODE === 'online') {
-    try { await lib.supabase.from('expenses').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  try { await _pushAudit({ type: 'expense_delete', table: 'expenses', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف هزینه' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.supabase.from('expenses').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+    catch { await enqueue('deleteExpense', String(localId)); }
+  } else {
+    await enqueue('deleteExpense', String(localId));
   }
 }
 
@@ -1176,7 +1407,8 @@ export async function createEmployee(p: any): Promise<any> {
   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
   const local = (await getLocal<any[]>('employees')) || [];
   await setLocal('employees', [item, ...local]);
-  if (MODE === 'online') {
+  try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+  if (await serverBusinessAllowed()) {
     try {
       const { error } = await lib.supabase.from('employees').insert({
         code: p.code, name: p.name, phone: p.phone || '', role: p.role || '',
@@ -1184,15 +1416,21 @@ export async function createEmployee(p: any): Promise<any> {
         local_id: item.local_id,
       });
       if (error) throw error;
+        try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
     } catch { await enqueue('createEmployee', p); }
   } else { await enqueue('createEmployee', p); }
   return item;
 }
 export async function deleteEmployee(localId: string) {
+  await recordTombstone('employees', String(localId));
   const local = (await getLocal<any[]>('employees')) || [];
   await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
-  if (MODE === 'online') {
-    try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  try { await _pushAudit({ type: 'employee_delete', table: 'employees', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کارمند' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+    catch { await enqueue('deleteEmployee', String(localId)); }
+  } else {
+    await enqueue('deleteEmployee', String(localId));
   }
 }
 
@@ -1209,7 +1447,8 @@ export async function createAttendance(p: any): Promise<any> {
   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
   const local = (await getLocal<any[]>('attendance')) || [];
   await setLocal('attendance', [item, ...local]);
-  if (MODE === 'online') {
+  try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+  if (await serverBusinessAllowed()) {
     try {
       const { error } = await lib.supabase.from('attendance').insert({
         employee_code: p.employee_code, employee_name: p.employee_name || '',
@@ -1217,15 +1456,60 @@ export async function createAttendance(p: any): Promise<any> {
         local_id: item.local_id,
       });
       if (error) throw error;
+        try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
     } catch { await enqueue('createAttendance', p); }
   } else { await enqueue('createAttendance', p); }
   return item;
 }
+export async function deleteSalaryPayment(localId: string) {
+  await recordTombstone('salary_payments', String(localId));
+  const local = (await getLocal<any[]>('salary_payments')) || [];
+  await setLocal('salary_payments', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  try { await _pushAudit({ type: 'salary_delete', table: 'salary_payments', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف پرداخت حقوق' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.deleteSalaryPayment(String(localId)); }
+    catch { await enqueue('deleteSalaryPayment', String(localId)); }
+  } else {
+    await enqueue('deleteSalaryPayment', String(localId));
+  }
+}
+
+export async function deleteLoan(localId: string) {
+  await recordTombstone('employee_loans', String(localId));
+  const local = (await getLocal<any[]>('employee_loans')) || [];
+  await setLocal('employee_loans', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  try { await _pushAudit({ type: 'loan_delete', table: 'employee_loans', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف وام' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.deleteLoan(String(localId)); }
+    catch { await enqueue('deleteLoan', String(localId)); }
+  } else {
+    await enqueue('deleteLoan', String(localId));
+  }
+}
+
+export async function deleteLeave(localId: string) {
+  await recordTombstone('employee_leaves', String(localId));
+  const local = (await getLocal<any[]>('employee_leaves')) || [];
+  await setLocal('employee_leaves', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  try { await _pushAudit({ type: 'leave_delete', table: 'employee_leaves', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف مرخصی' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.deleteLeave(String(localId)); }
+    catch { await enqueue('deleteLeave', String(localId)); }
+  } else {
+    await enqueue('deleteLeave', String(localId));
+  }
+}
+
 export async function deleteAttendance(localId: string) {
+  await recordTombstone('attendance', String(localId));
   const local = (await getLocal<any[]>('attendance')) || [];
   await setLocal('attendance', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
-  if (MODE === 'online') {
-    try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+  try { await _pushAudit({ type: 'attendance_delete', table: 'attendance', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حضور' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+    catch { await enqueue('deleteAttendance', String(localId)); }
+  } else {
+    await enqueue('deleteAttendance', String(localId));
   }
 }
 
@@ -1669,8 +1953,11 @@ export async function createStockAdjustment(p: any) {
   const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || new Date().toISOString() };
   const list = (await getLocal<any[]>('stock_adjustments')) || [];
   await setLocal('stock_adjustments', [item, ...list]);
-  if (MODE === 'online') {
-    try { await lib.createStockAdjustment(item); }
+  if (await serverBusinessAllowed()) {
+    try {
+      await lib.createStockAdjustment(item);
+        try { await _pushAudit({ type: 'stock_create', table: 'stock_adjustments', key: String(item.local_id || item.id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت تعدیل انبار' }); } catch {}
+    }
     catch { await enqueue('createStockAdjustment', item); }
   } else {
     await enqueue('createStockAdjustment', item);
@@ -1678,9 +1965,11 @@ export async function createStockAdjustment(p: any) {
   return item;
 }
 export async function deleteStockAdjustment(id: string) {
+  await recordTombstone('stock_adjustments', String(id));
   const list = (await getLocal<any[]>('stock_adjustments')) || [];
   await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
-  if (MODE === 'online') {
+  try { await _pushAudit({ type: 'stock_delete', table: 'stock_adjustments', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف تعدیل انبار' }); } catch {}
+  if (await serverBusinessAllowed()) {
     try { await lib.deleteStockAdjustment(id); }
     catch { await enqueue('deleteStockAdjustment', id); }
   } else {
@@ -2364,8 +2653,12 @@ export async function createParty(p: any) {
   };
   const list = (await getLocal<any[]>('parties')) || [];
   await setLocal('parties', [item, ...list]);
-  if (MODE === 'online') {
-    try { await lib.createParty(item); }
+  try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try {
+      await lib.createParty(item);
+        try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+    }
     catch { await enqueue('createParty', item); }
   } else {
     await enqueue('createParty', item);
@@ -2377,12 +2670,14 @@ export async function updateParty(idOrPayload: any, pArg?: any) {
   const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+  await recordTombstone('parties', String(id));
   const list = (await getLocal<any[]>('parties')) || [];
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
   if (idx >= 0) {
     list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString() };
     await setLocal('parties', list);
   }
+  try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
   const q = await getQueue();
   const pendingCreate = q.find((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
   if (pendingCreate) {
@@ -2391,7 +2686,7 @@ export async function updateParty(idOrPayload: any, pArg?: any) {
     return pendingCreate.payload;
   }
   const item = { ...payload, local_id: payload.local_id || id };
-  if (MODE === 'online') {
+  if (await serverBusinessAllowed()) {
     try { await lib.updateParty(id, item); }
     catch { await enqueue('updateParty', item); }
   } else {
@@ -2403,8 +2698,10 @@ export async function updateParty(idOrPayload: any, pArg?: any) {
 export async function deleteParty(idOrPayload: any) {
   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+  await recordTombstone('parties', String(id));
   const list = (await getLocal<any[]>('parties')) || [];
   await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+  try { await _pushAudit({ type: 'party_delete', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف طرف‌حساب' }); } catch {}
   const q = await getQueue();
   const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
   if (pendingCreate) {
@@ -2412,7 +2709,7 @@ export async function deleteParty(idOrPayload: any) {
     await saveQueue(newQ);
     return;
   }
-  if (MODE === 'online') {
+  if (await serverBusinessAllowed()) {
     try { await lib.deleteParty(id); }
     catch { await enqueue('deleteParty', { local_id: id, id }); }
   } else {
@@ -2532,7 +2829,13 @@ export async function createPartner(p: any) {
   const item = { ...p, local_id: p.local_id || ('pt_' + Date.now()), created_at: new Date().toISOString() };
   const list = (await getLocal<any[]>('partners')) || [];
   await setLocal('partners', [...list, item]);
-  if (MODE === 'online') { try { await lib.createPartner(item); } catch { await enqueue('createPartner', item); } }
+  try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try {
+      await lib.createPartner(item);
+        try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+    } catch { await enqueue('createPartner', item); }
+  }
   else { await enqueue('createPartner', item); }
   return item;
 }
@@ -2541,14 +2844,17 @@ export async function updatePartner(id: string, p: any) {
   const list = (await getLocal<any[]>('partners')) || [];
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
   if (idx >= 0) { list[idx] = { ...list[idx], ...item }; await setLocal('partners', list); }
-  if (MODE === 'online') { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+  try { await _pushAudit({ type: 'partner_update', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش شریک' }); } catch {}
+  if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
   else { await enqueue('updatePartner', item); }
   return item;
 }
 export async function deletePartner(id: string) {
+  await recordTombstone('partners', String(id));
   const list = (await getLocal<any[]>('partners')) || [];
   await setLocal('partners', list.filter((x: any) => x.local_id !== id && x.id !== id));
-  if (MODE === 'online') { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+  try { await _pushAudit({ type: 'partner_delete', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف شریک' }); } catch {}
+  if (await serverBusinessAllowed()) { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
   else { await enqueue('deletePartner', id); }
 }
 
@@ -2569,14 +2875,22 @@ export async function createPartnerBankAccount(p: any) {
   const item = { ...p, local_id: p.local_id || ('pba_' + Date.now()) };
   const list = (await getLocal<any[]>('pba_' + item.partner_code)) || [];
   await setLocal('pba_' + item.partner_code, [...list, item]);
-  if (MODE === 'online') { try { await lib.createPartnerBankAccount(item); } catch { await enqueue('createPBA', item); } }
+  try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try {
+      await lib.createPartnerBankAccount(item);
+        try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
+    } catch { await enqueue('createPBA', item); }
+  }
   else { await enqueue('createPBA', item); }
   return item;
 }
 export async function deletePartnerBankAccount(id: string, partnerCode: string) {
+  await recordTombstone('partner_bank_accounts', String(id));
   const list = (await getLocal<any[]>('pba_' + partnerCode)) || [];
   await setLocal('pba_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
-  if (MODE === 'online') { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+  try { await _pushAudit({ type: 'pba_delete', table: 'partner_bank_accounts', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حساب بانکی شریک' }); } catch {}
+  if (await serverBusinessAllowed()) { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
   else { await enqueue('deletePBA', id); }
 }
 
@@ -2597,14 +2911,22 @@ export async function createPartnerTransaction(p: any) {
   const item = { ...p, local_id: p.local_id || ('ptx_' + Date.now()) };
   const list = (await getLocal<any[]>('ptx_' + item.partner_code)) || [];
   await setLocal('ptx_' + item.partner_code, [...list, item]);
-  if (MODE === 'online') { try { await lib.createPartnerTransaction(item); } catch { await enqueue('createPTX', item); } }
+  try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try {
+      await lib.createPartnerTransaction(item);
+        try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
+    } catch { await enqueue('createPTX', item); }
+  }
   else { await enqueue('createPTX', item); }
   return item;
 }
 export async function deletePartnerTransaction(id: string, partnerCode: string) {
+  await recordTombstone('partner_transactions', String(id));
   const list = (await getLocal<any[]>('ptx_' + partnerCode)) || [];
   await setLocal('ptx_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
-  if (MODE === 'online') { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+  try { await _pushAudit({ type: 'ptx_delete', table: 'partner_transactions', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حرکت شریک' }); } catch {}
+  if (await serverBusinessAllowed()) { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
   else { await enqueue('deletePTX', id); }
 }
 // ═══════════════════════════════════════════
@@ -2627,14 +2949,40 @@ export async function createBank(p: any) {
   const item = { ...p, local_id: p.local_id || ('bank_' + Date.now()) };
   const list = (await getLocal<any[]>('banks')) || [];
   await setLocal('banks', [...list, item]);
-  if (MODE === 'online') { try { await lib.createBank(item); } catch { await enqueue('createBank', item); } }
+  try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try {
+      await lib.createBank(item);
+        try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+    } catch { await enqueue('createBank', item); }
+  }
   else { await enqueue('createBank', item); }
   return item;
 }
+export async function updateBank(id: string, p: any) {
+  const item = { ...p, local_id: p.local_id || id };
+  const list = (await getLocal<any[]>('banks')) || [];
+  const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...item };
+    await setLocal('banks', list);
+  }
+  try { await _pushAudit({ type: 'bank_update', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش بانک' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.updateBank(id, item); }
+    catch { await enqueue('updateBank', item); }
+  } else {
+    await enqueue('updateBank', item);
+  }
+  return item;
+}
+
 export async function deleteBank(id: string) {
+  await recordTombstone('banks', String(id));
   const list = (await getLocal<any[]>('banks')) || [];
   await setLocal('banks', list.filter((x: any) => x.local_id !== id && x.id !== id));
-  if (MODE === 'online') { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+  try { await _pushAudit({ type: 'bank_delete', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف بانک' }); } catch {}
+  if (await serverBusinessAllowed()) { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
   else { await enqueue('deleteBank', id); }
 }
 
@@ -2658,14 +3006,40 @@ export async function createShipping(p: any) {
   const item = { ...p, local_id: p.local_id || ('ship_' + Date.now()) };
   const list = (await getLocal<any[]>('shippings')) || [];
   await setLocal('shippings', [...list, item]);
-  if (MODE === 'online') { try { await lib.createShipping(item); } catch { await enqueue('createShipping', item); } }
+  try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try {
+      await lib.createShipping(item);
+        try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+    } catch { await enqueue('createShipping', item); }
+  }
   else { await enqueue('createShipping', item); }
   return item;
 }
+export async function updateShipping(id: string, p: any) {
+  const item = { ...p, local_id: p.local_id || id };
+  const list = (await getLocal<any[]>('shippings')) || [];
+  const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...item };
+    await setLocal('shippings', list);
+  }
+  try { await _pushAudit({ type: 'shipping_update', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش باربری' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.updateShipping(id, item); }
+    catch { await enqueue('updateShipping', item); }
+  } else {
+    await enqueue('updateShipping', item);
+  }
+  return item;
+}
+
 export async function deleteShipping(id: string) {
+  await recordTombstone('shippings', String(id));
   const list = (await getLocal<any[]>('shippings')) || [];
   await setLocal('shippings', list.filter((x: any) => x.local_id !== id && x.id !== id));
-  if (MODE === 'online') { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+  try { await _pushAudit({ type: 'shipping_delete', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف باربری' }); } catch {}
+  if (await serverBusinessAllowed()) { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
   else { await enqueue('deleteShipping', id); }
 }
 // ═══════════════════════════════════════════
@@ -2703,17 +3077,142 @@ export async function lookupPayerUniversal(name: string) {
 // ═══════════════════════════════════════════
 //  Offline updateSale / updatePurchase
 // ═══════════════════════════════════════════
+const AUDIT_KEY = '@mizan_audit_events';
+const AUDIT_MAX = 500;
+
+async function _pushAudit(ev: any) {
+  try {
+    const raw = await AsyncStorage.getItem(AUDIT_KEY);
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (!Array.isArray(arr)) arr = [];
+    const id = ev.id || ('aud_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
+    const item = { ...ev, id };
+    const nowMs = Date.now();
+    const dedup = arr.some((x: any) => {
+      if (!x || x.type !== item.type || String(x.key) !== String(item.key)) return false;
+      const t = Date.parse(String(x.at || ''));
+      return !isNaN(t) && (nowMs - t) < 5000;
+    });
+    if (!dedup) arr.push(item);
+    if (arr.length > AUDIT_MAX) arr = arr.slice(arr.length - AUDIT_MAX);
+    await AsyncStorage.setItem(AUDIT_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
+function _itemKey(r: any): string {
+  return String(r?.model_code || r?.modelCode || '') + '|' + String(r?.shelf || '');
+}
+
+function _itemQty(r: any): number {
+  return Number(r?.quantity) || 0;
+}
+
+function _itemPrice(r: any): number {
+  return Number(r?.price_unit ?? r?.priceUnit) || 0;
+}
+
+function _diffInvoiceRows(oldRows: any[], newRows: any[]) {
+  const oldMap = new Map<string, any>();
+  const newMap = new Map<string, any>();
+  for (const r of oldRows || []) oldMap.set(_itemKey(r), r);
+  for (const r of newRows || []) newMap.set(_itemKey(r), r);
+  const added: any[] = [];
+  const removed: any[] = [];
+  const changed: any[] = [];
+  for (const [k, nr] of Array.from(newMap.entries())) {
+    if (!oldMap.has(k)) { added.push({ key: k, qty: _itemQty(nr), price: _itemPrice(nr) }); continue; }
+    const or = oldMap.get(k);
+    const oq = _itemQty(or), nq = _itemQty(nr);
+    const op = _itemPrice(or), np = _itemPrice(nr);
+    if (oq !== nq || op !== np) changed.push({ key: k, fromQty: oq, toQty: nq, fromPrice: op, toPrice: np });
+  }
+  for (const [k, or] of Array.from(oldMap.entries())) {
+    if (!newMap.has(k)) { removed.push({ key: k, qty: _itemQty(or), price: _itemPrice(or) }); }
+  }
+  return { added, removed, changed };
+}
+
+async function recordInvoiceAudit(table: 'sales' | 'purchases', invoiceNumber: string, oldRows: any[], newRows: any[]) {
+  try {
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    const diff = _diffInvoiceRows(oldRows, newRows);
+    const beforeCount = (oldRows || []).length;
+    const afterCount = (newRows || []).length;
+    const beforeTotal = (oldRows || []).reduce((a: number, r: any) => a + _itemQty(r) * _itemPrice(r), 0);
+    const afterTotal = (newRows || []).reduce((a: number, r: any) => a + _itemQty(r) * _itemPrice(r), 0);
+    const summary = 'قلم: ' + beforeCount + '→' + afterCount +
+      ' | مبلغ: ' + beforeTotal + '→' + afterTotal +
+      ' | +' + diff.added.length + ' -' + diff.removed.length + ' ±' + diff.changed.length;
+    await _pushAudit({
+      type: 'invoice_update',
+      table: table,
+      key: String(invoiceNumber),
+      at: new Date().toISOString(),
+      device_id: dev,
+      summary: summary,
+      beforeCount: beforeCount,
+      afterCount: afterCount,
+      beforeTotal: beforeTotal,
+      afterTotal: afterTotal,
+      diff: diff,
+    });
+  } catch {}
+}
+
+export async function recordAuditEvent(ev: any) {
+  await _pushAudit(ev);
+}
+
+export async function getAuditEvents(): Promise<any[]> {
+  try {
+    const raw = await AsyncStorage.getItem(AUDIT_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+async function _auditAckKey(): Promise<string> {
+  try {
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || 'nodev';
+    return '@mizan_audit_ack_' + dev;
+  } catch { return '@mizan_audit_ack_nodev'; }
+}
+
+export async function getUnseenAuditCount(): Promise<number> {
+  try {
+    const all = await getAuditEvents();
+    const key = await _auditAckKey();
+    const raw = await AsyncStorage.getItem(key);
+    const seen = Number(raw || 0) || 0;
+    return Math.max(0, (Array.isArray(all) ? all.length : 0) - seen);
+  } catch { return 0; }
+}
+
+export async function markAuditSeen(): Promise<void> {
+  try {
+    const all = await getAuditEvents();
+    const key = await _auditAckKey();
+    await AsyncStorage.setItem(key, String(Array.isArray(all) ? all.length : 0));
+  } catch {}
+}
+
+export async function clearAuditEvents(): Promise<void> {
+  try { await AsyncStorage.setItem(AUDIT_KEY, '[]'); } catch {}
+}
+
 export async function updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
-  if (MODE === 'online') {
+  if (await serverBusinessAllowed()) {
     try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
   } else {
     await enqueue('updateSale', payload);
   }
-  // آپدیت کش محلی 'sales'
   const list = (await getLocal<any[]>('sales')) || [];
   const meta = payload.meta || {};
   const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
   const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const now = new Date().toISOString();
   const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
     ...template,
     invoice_number: payload.invoiceNumber,
@@ -2732,12 +3231,16 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
     account_holder: r.accountHolder || '',
     account_holder_code: r.accountHolderCode || '',
     shelf: r.shelf || '',
+    updated_at: now,
+    device_id: dev,
   }));
+  const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
+  await recordInvoiceAudit('sales', payload.invoiceNumber, oldRows, newRows);
   await setLocal('sales', [...filtered, ...newRows]);
 }
 
 export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
-  if (MODE === 'online') {
+  if (await serverBusinessAllowed()) {
     try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
   } else {
     await enqueue('updatePurchase', payload);
@@ -2746,6 +3249,8 @@ export async function updatePurchase(payload: { invoiceNumber: string; rows: any
   const meta = payload.meta || {};
   const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
   const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const now = new Date().toISOString();
   const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
     ...template,
     invoice_number: payload.invoiceNumber,
@@ -2766,7 +3271,11 @@ export async function updatePurchase(payload: { invoiceNumber: string; rows: any
     account_holder: r.accountHolder || '',
     account_holder_code: r.accountHolderCode || '',
     shelf: r.shelf || '',
+    updated_at: now,
+    device_id: dev,
   }));
+  const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
+  await recordInvoiceAudit('purchases', payload.invoiceNumber, oldRows, newRows);
   await setLocal('purchases', [...filtered, ...newRows]);
 }
 

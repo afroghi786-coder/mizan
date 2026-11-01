@@ -43,7 +43,7 @@ async function loop() {
   }
 
   busy = true;
-  let delay = 3000;
+  let delay = 5000;
   try {
     const cfg = await getCachedConfig();
     if (cfg && cfg.rubika_token && cfg.rubika_enabled !== false) {
@@ -52,7 +52,7 @@ async function loop() {
       } else {
         const r = await processRubikaUpdatesSimple(cfg.rubika_token);
         if (r.error === 'TOO_REQUESTS') {
-          backoffMs = Math.min(backoffMs + 5000, 30000);
+          backoffMs = Math.min(backoffMs + 30000, 120000);
           console.log('[Worker] TOO_REQUESTS backoff ' + backoffMs + 'ms');
         } else if (r.ok) {
           backoffMs = 0;

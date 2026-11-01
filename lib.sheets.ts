@@ -34,7 +34,8 @@ export type SyncDestination = 'server' | 'private' | 'both';
 export async function getSyncDestination(): Promise<SyncDestination> {
   const v = await AsyncStorage.getItem(DEST_KEY);
   if (v === 'server' || v === 'private' || v === 'both') return v;
-  return 'private';
+  if (Platform.OS === 'web') return 'private';
+  return 'server';
 }
 
 export async function setSyncDestination(v: SyncDestination) {
@@ -245,17 +246,19 @@ async function getToken() {
 }
 
 async function getAllMizanKeys(): Promise<string[]> {
-  if (Platform.OS === 'web') {
-    try { return Object.keys(localStorage).filter(k => k.startsWith('@mizan_')); } catch { return []; }
-  }
   try {
-    const anyAS: any = AsyncStorage as any;
-    if (typeof anyAS.getAllKeys === 'function') {
-      const keys = await anyAS.getAllKeys();
-      return (keys || []).filter((k: string) => k.startsWith('@mizan_'));
+    if (Platform.OS === 'web') {
+      try {
+        return Object.keys(localStorage).filter(k => k.startsWith('@mizan_'));
+      } catch {
+        return [];
+      }
     }
-  } catch {}
-  return [];
+    const keys = await AsyncStorage.getAllKeys();
+    return (keys || []).filter((k: string) => k.startsWith('@mizan_'));
+  } catch {
+    return [];
+  }
 }
 
 export async function getPrivateConnection() {
@@ -468,6 +471,9 @@ export async function syncByDestination(onProgress?: (done: number, total: numbe
       const ok = rows.filter(r => r.ok).length;
       return { ok, fail: rows.length - ok };
     }
+    if (Platform.OS !== 'web') {
+      return await syncToServer(onProgress);
+    }
     await pullPrivateTables((d, t) => onProgress?.(d, t));
     const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
     const ok = rows.filter(r => r.ok).length;
@@ -480,6 +486,9 @@ export async function syncByDestination(onProgress?: (done: number, total: numbe
     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
     const pOk = rows.filter(r => r.ok).length;
     return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+  }
+  if (Platform.OS !== 'web') {
+    return serverRes;
   }
   await pullPrivateTables((d, t) => onProgress?.(d, t));
   const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));

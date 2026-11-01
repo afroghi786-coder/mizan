@@ -1,7 +1,7 @@
 // lib.exp.ts — هزینه‌ها (استاندارد آفلاین/آنلاین)
 import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
-import { getMode, enqueue, getQueue, serverBusinessAllowed, recordAuditEvent } from './lib.offline';
+import { getMode, enqueue, getQueue, serverBusinessAllowed, recordAuditEvent, recordTombstone } from './lib.offline';
 
 const K = (k: string) => '@mizan_local_' + k;
 const gid = () => 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -96,6 +96,7 @@ async function saveItem(table: string, key: string, item: any, op: 'createExpens
 }
 
 async function removeById(table: string, key: string, id: string) {
+  await recordTombstone(table, String(id));
   const list = await readLocal(key);
   await writeLocal(key, list.filter(x => x.local_id !== id && x.id !== id));
 

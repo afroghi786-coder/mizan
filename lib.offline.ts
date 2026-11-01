@@ -21,6 +21,7 @@ export function getMode() { return MODE; }
 // ═══ قفل داده تجاری ═══
 // پیش‌فرض: قفل. فقط با مقدار 'open' باز می‌شود و هیچ دکمه‌ای در UI برای باز کردن آن نیست.
 const BUSINESS_LOCK_KEY = '@mizan_business_lock';
+const SYNC_DEST_KEY = '@mizan_sync_destination';
 
 const BUSINESS_OPS = new Set<string>([
   'createProduct','updateProduct','deleteProduct',
@@ -45,6 +46,10 @@ const BUSINESS_OPS = new Set<string>([
 
 export async function serverBusinessAllowed() {
   if (MODE !== 'online') return false;
+  try {
+    const dest = (await AsyncStorage.getItem(SYNC_DEST_KEY)) || '';
+    if (dest === 'private' || dest === 'both') return false;
+  } catch {}
   return !(await isBusinessLocked());
 }
 
@@ -247,10 +252,19 @@ export async function syncToServer(onProgress?: (done: number, total: number) =>
   const remaining: any[] = [];
   let ok = 0, fail = 0;
   const total = q.length;
+  let dest = '';
+  try { dest = (await AsyncStorage.getItem(SYNC_DEST_KEY)) || ''; } catch {}
+  const businessToSheetOnly = dest === 'private' || dest === 'both';
+
   for (let i = 0; i < q.length; i++) {
     const item = q[i];
     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
     try {
+      // در مقصد private/both، عملیات تجاری فقط به شیت می‌روند و از صف حذف می‌شوند.
+      if (businessToSheetOnly && BUSINESS_OPS.has(String(item.op))) {
+        if (onProgress) onProgress(i + 1, total);
+        continue;
+      }
       if ((await isBusinessLocked()) && BUSINESS_OPS.has(String(item.op))) {
         remaining.push(item);
         if (onProgress) onProgress(i + 1, total);
@@ -1510,6 +1524,19 @@ export async function deleteAttendance(localId: string) {
     catch { await enqueue('deleteAttendance', String(localId)); }
   } else {
     await enqueue('deleteAttendance', String(localId));
+  }
+}
+
+export async function deleteBatch(localId: string) {
+  await recordTombstone('payroll_batches', String(localId));
+  const local = (await getLocal<any[]>('payroll_batches')) || [];
+  await setLocal('payroll_batches', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  try { await _pushAudit({ type: 'batch_delete', table: 'payroll_batches', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف لیست حقوق' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.supabase.from('payroll_batches').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+    catch { await enqueue('deleteBatch', String(localId)); }
+  } else {
+    await enqueue('deleteBatch', String(localId));
   }
 }
 

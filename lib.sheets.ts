@@ -25,6 +25,12 @@ const TAB_TASKS: { tab: string; keys: string[] }[] = [
   { tab: 'banks', keys: ['@mizan_local_banks'] },
   { tab: 'shippings', keys: ['@mizan_local_shippings'] },
   { tab: 'stock_adjustments', keys: ['@mizan_local_stock_adjustments'] },
+  { tab: 'fx_hawalas', keys: ['@mizan_local_fx_hawalas'] },
+  { tab: 'fx_boxes', keys: ['@mizan_local_fx_boxes'] },
+  { tab: 'fx_transfers', keys: ['@mizan_local_fx_transfers'] },
+  { tab: 'fx_checks', keys: ['@mizan_local_fx_checks'] },
+  { tab: 'fx_customers', keys: ['@mizan_local_fx_customers'] },
+  { tab: 'fx_partners', keys: ['@mizan_local_fx_partners'] },
   { tab: '_deleted', keys: ['@mizan_tombstones'] },
   { tab: '_audit', keys: ['@mizan_audit_events'] },
 ];
@@ -32,10 +38,10 @@ const TAB_TASKS: { tab: string; keys: string[] }[] = [
 export type SyncDestination = 'server' | 'private' | 'both';
 
 export async function getSyncDestination(): Promise<SyncDestination> {
+  if (Platform.OS !== 'web') return 'private';
   const v = await AsyncStorage.getItem(DEST_KEY);
   if (v === 'server' || v === 'private' || v === 'both') return v;
-  if (Platform.OS === 'web') return 'private';
-  return 'server';
+  return 'private';
 }
 
 export async function setSyncDestination(v: SyncDestination) {
@@ -460,24 +466,28 @@ export async function syncByDestination(onProgress?: (done: number, total: numbe
   const cfg = await getBridgeConfig();
   const useBridge = !!(cfg.url && cfg.key);
 
-  if (dest === 'server') {
-    return await syncToServer(onProgress);
+  if (dest === 'private') {
+    // ابتدا صف غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+    // تجاری داخل syncToServer حذف می‌شود و به Supabase نمی‌رود.
+    const serverRes = await syncToServer(onProgress);
+
+    if (!useBridge) {
+      if (Platform.OS !== 'web') {
+        throw new Error('برای سینک در گوشی، ابتدا واسط امن را تنظیم کنید');
+      }
+      await pullPrivateTables((d, t) => onProgress?.(d, t));
+      const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+      const ok = rows.filter(r => r.ok).length;
+      return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+    }
+    await pullBridgeTables((d, t) => onProgress?.(d, t));
+    const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+    const ok = rows.filter(r => r.ok).length;
+    return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
   }
 
-  if (dest === 'private') {
-    if (useBridge) {
-      await pullBridgeTables((d, t) => onProgress?.(d, t));
-      const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
-      const ok = rows.filter(r => r.ok).length;
-      return { ok, fail: rows.length - ok };
-    }
-    if (Platform.OS !== 'web') {
-      return await syncToServer(onProgress);
-    }
-    await pullPrivateTables((d, t) => onProgress?.(d, t));
-    const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
-    const ok = rows.filter(r => r.ok).length;
-    return { ok, fail: rows.length - ok };
+  if (dest === 'server') {
+    return await syncToServer(onProgress);
   }
 
   const serverRes = await syncToServer(onProgress);
@@ -523,6 +533,7 @@ const PULL_TABLES = [
   'expenses','employees','salary_payments','employee_loans','attendance',
   'employee_leaves','payroll_batches','parties','partners','partner_transactions',
   'partner_bank_accounts','products','settings','banks','shippings','stock_adjustments',
+  'fx_hawalas','fx_boxes','fx_transfers','fx_checks','fx_customers','fx_partners',
 ];
 
 const PULL_LOCAL_KEYS: Record<string, string> = {
@@ -540,6 +551,12 @@ const PULL_LOCAL_KEYS: Record<string, string> = {
   banks: '@mizan_local_banks',
   shippings: '@mizan_local_shippings',
   stock_adjustments: '@mizan_local_stock_adjustments',
+  fx_hawalas: '@mizan_local_fx_hawalas',
+  fx_boxes: '@mizan_local_fx_boxes',
+  fx_transfers: '@mizan_local_fx_transfers',
+  fx_checks: '@mizan_local_fx_checks',
+  fx_customers: '@mizan_local_fx_customers',
+  fx_partners: '@mizan_local_fx_partners',
 };
 
 function keyOfRow(r: any): string {

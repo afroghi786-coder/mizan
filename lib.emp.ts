@@ -1,7 +1,7 @@
 // lib.emp.ts — استاندارد آفلاین/آنلاین (منطق محاسبات دست‌نخورده)
 import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
-import { getMode, enqueue, recordAuditEvent } from './lib.offline';
+import { getMode, enqueue, recordAuditEvent, recordTombstone, serverBusinessAllowed } from './lib.offline';
 
 const K = (k: string) => '@mizan_local_' + k;
 const gid = () => 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -111,9 +111,10 @@ async function saveItem(table: string, key: string, item: any, isUpdate: boolean
 }
 
 async function removeById(table: string, key: string, id: string, opName: string) {
+  await recordTombstone(table, String(id));
   const list = await readLocal(key);
   await writeLocal(key, list.filter(x => x.local_id !== id && x.id !== id));
-  if (getMode() === 'online') {
+  if (await serverBusinessAllowed()) {
     try {
       const { error } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
       if (error) {

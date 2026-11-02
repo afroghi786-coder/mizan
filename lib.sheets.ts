@@ -9,6 +9,8 @@ const DEST_KEY = '@mizan_sync_destination';
 const TAB_TASKS: { tab: string; keys: string[] }[] = [
   { tab: 'sales', keys: ['@mizan_local_sales_grouped'] },
   { tab: 'purchases', keys: ['@mizan_local_purchases_grouped'] },
+  { tab: 'sales_returns', keys: ['@mizan_local_sales_returns'] },
+  { tab: 'purchase_returns', keys: ['@mizan_local_purchase_returns'] },
   { tab: 'expenses', keys: ['@mizan_local_expenses'] },
   { tab: 'employees', keys: ['@mizan_local_employees'] },
   { tab: 'salary_payments', keys: ['@mizan_local_salary_payments'] },
@@ -487,7 +489,23 @@ export async function syncByDestination(onProgress?: (done: number, total: numbe
   }
 
   if (dest === 'server') {
-    return await syncToServer(onProgress);
+    // بخش غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+    const serverRes = await syncToServer(onProgress);
+
+    // بخش تجاری حتی با مقصد سرور، فقط به Google Sheets می‌رود.
+    if (!useBridge) {
+      if (Platform.OS !== 'web') {
+        return serverRes;
+      }
+      await pullPrivateTables((d, t) => onProgress?.(d, t));
+      const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+      const pOk = rows.filter(r => r.ok).length;
+      return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+    }
+    await pullBridgeTables((d, t) => onProgress?.(d, t));
+    const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+    const pOk = rows.filter(r => r.ok).length;
+    return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
   }
 
   const serverRes = await syncToServer(onProgress);
@@ -547,6 +565,8 @@ const PULL_LOCAL_KEYS: Record<string, string> = {
   parties: '@mizan_local_parties',
   partners: '@mizan_local_partners',
   products: '@mizan_local_products',
+  sales_returns: '@mizan_local_sales_returns',
+  purchase_returns: '@mizan_local_purchase_returns',
   settings: '@mizan_local_settings',
   banks: '@mizan_local_banks',
   shippings: '@mizan_local_shippings',

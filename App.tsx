@@ -68,7 +68,7 @@ import DateField from './lib.datefield';
 
 
 
-import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, deleteSale, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, deletePurchase, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport , getParties, createParty, updateParty, deleteParty , lookupPartyByName , suggestPartyCode, suggestProductCode , getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount , getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction , getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping   , lookupPayerUniversal  , updateSale, updatePurchase  , createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked } from './lib.offline';
+import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn } from './lib.offline';
 
 import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 
@@ -1228,6 +1228,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const [curLang, setCurLang] = useState(getLang());
 
   const [tab, setTab] = useState('dashboard');
+  const [ledgerOpen, setLedgerOpen] = useState(false);
 
   const [plus, setPlus] = useState(false);
 
@@ -1793,7 +1794,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
       </View>
 
-      {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && (
+      {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && tab !== 'mgr' && !ledgerOpen && (
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
 
@@ -1841,7 +1842,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
       <View key={`tab-${tab}-${langTick || 0}`} style={{ flex: 1 }}>
 
-      {tab === 'dashboard' && <DashboardScreen lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabKey); setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); } else { requestTab(k); } }} />}
+      {tab === 'dashboard' && <DashboardScreen onLedgerOpenChange={setLedgerOpen} lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabKey); setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); } else { requestTab(k); } }} />}
 
       {tab === 'order' && <SalesScreen showToast={showToast} />}
 
@@ -1849,7 +1850,17 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
       {tab === 'print' && <PrintScreen showToast={showToast} />}
 
-      {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />}
+      {tab === 'mgr' && (
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+                  <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+                    <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>← بازگشت به داشبورد</Text>
+                  </TouchableOpacity>
+                  <Text style={{ color: '#d4af37', fontSize: 14, fontWeight: 'bold' }}>📁 مدیریت</Text>
+                </View>
+                <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />
+              </View>
+            )}
 
       {tab === 'assistant' && (
         <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
@@ -2610,6 +2621,10 @@ function SalesScreen({ showToast }: any) {
   const [items, setItems] = useState<SaleItem[]>([]);
 
   const [saving, setSaving] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnInvoice, setReturnInvoice] = useState<any>(null);
+  const [returnRows, setReturnRows] = useState<any[]>([]);
+  const [returnSaving, setReturnSaving] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<any>(null);
 
   const [customerStatus, setCustomerStatus] = useState('');
@@ -6635,6 +6650,10 @@ function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }:
 
     { k: 'search', l: '🔍 جستجو و ویرایش' },
 
+    { k: 'salesReturns', l: '↩️ برگشت از فروش' },
+
+    { k: 'purchaseReturns', l: '↩️ برگشت از خرید' },
+
     { k: 'reports', l: '📊 گزارشات' },
 
     { k: 'preset', l: '🎨 نوع کسب‌وکار' },
@@ -6667,7 +6686,11 @@ function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }:
 
       {sub === 'newOrder' && <NewOrderSection showToast={showToast} />}
 
-      {sub === 'search' && <SearchSection showToast={showToast} />}
+      {sub === 'search' && <SearchSection showToast={showToast} onReturnSaved={(t: string) => setSub(t === 'sales' ? 'salesReturns' : 'purchaseReturns')} />}
+
+      {sub === 'salesReturns' && <ReturnsSection type="sales" showToast={showToast} />}
+
+      {sub === 'purchaseReturns' && <ReturnsSection type="purchase" showToast={showToast} />}
 
       {sub === 'reports' && <ReportsSection showToast={showToast} />}
 
@@ -7075,7 +7098,7 @@ function NewOrderSection({ showToast }: any) {
 
 // ══════════════════════════════════════════════════════════
 
-function SearchSection({ showToast }: any) {
+function SearchSection({ showToast, onReturnSaved }: any) {
 
   const [list, setList] = useState<any[]>([]);
 
@@ -7096,6 +7119,10 @@ function SearchSection({ showToast }: any) {
   const [dirty, setDirty] = useState(false);
   const [showInvoice, setShowInvoice] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnInvoice, setReturnInvoice] = useState<any>(null);
+  const [returnRows, setReturnRows] = useState<any[]>([]);
+  const [returnSaving, setReturnSaving] = useState(false);
   const savingRef = useRef(false);
   const [banksList, setBanksList] = useState<any[]>([]);
   const [shippingsList, setShippingsList] = useState<any[]>([]);
@@ -7335,6 +7362,111 @@ function SearchSection({ showToast }: any) {
   };
 
 
+
+  const [returnReason, setReturnReason] = useState('');
+  const [returnShipping, setReturnShipping] = useState('');
+  const [returnSettlement, setReturnSettlement] = useState('credit');
+  const [returnBank, setReturnBank] = useState('');
+  const [returnHolder, setReturnHolder] = useState('');
+  const [returnDepositDate, setReturnDepositDate] = useState('');
+  const [returnNote, setReturnNote] = useState('');
+
+  const openReturn = async (inv: string, type: string) => {
+    try {
+      const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+      if (!rows.length) { showToast('فاکتور پیدا نشد', true); return; }
+      const isSales = type === 'sales';
+      setReturnRows(rows.map((r: any) => ({
+        modelCode: r.model_code || '',
+        modelName: r.model_name || '',
+        quantity: Number(r.quantity) || 0,
+        priceUnit: Number(r.price_unit) || 0,
+        returnQty: 0,
+      })));
+      setReturnInvoice({
+        invoice: inv,
+        type: isSales ? 'sales' : 'purchase',
+        name: isSales ? rows[0].customer_name : rows[0].supplier_name,
+        code: isSales ? rows[0].customer_code : rows[0].supplier_code,
+      });
+      setReturnReason('');
+      setReturnShipping('');
+      setReturnSettlement('credit');
+      setReturnBank('');
+      setReturnHolder('');
+      setReturnDepositDate('');
+      setReturnNote('');
+      setReturnModalOpen(true);
+    } catch (e: any) {
+      showToast(e?.message || 'خطا در باز کردن فاکتور', true);
+    }
+  };
+
+  const submitReturn = async () => {
+    if (!returnInvoice) return;
+    const items = returnRows.filter((r: any) => Number(r.returnQty) > 0);
+    if (!items.length) { showToast('تعداد برگشتی را وارد کنید', true); return; }
+
+    for (const it of items) {
+      if (Number(it.returnQty) > Number(it.quantity)) {
+        showToast('تعداد برگشتی برای ' + (it.modelName || it.modelCode) + ' بیشتر از تعداد اصلی است', true);
+        return;
+      }
+    }
+
+    setReturnSaving(true);
+    const savedType = returnInvoice.type;
+    try {
+      const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);
+      const shipping = Number(returnShipping) || 0;
+      const total = subtotal + shipping;
+      const settlementAmount = returnSettlement === 'credit' ? 0 : total;
+      const balance = total - settlementAmount;
+      const returnNumber = (savedType === 'sales' ? 'SR-' : 'PR-') + Date.now().toString().slice(-8);
+
+      const payload = {
+        return_number: returnNumber,
+        status: 'approved',
+        original_invoice_number: returnInvoice.invoice,
+        party_name: returnInvoice.name,
+        party_code: returnInvoice.code,
+        type: savedType,
+        date: new Date().toISOString(),
+        reason: returnReason || '',
+        shipping_cost: shipping,
+        settlement_method: returnSettlement,
+        settlement_amount: settlementAmount,
+        balance: balance,
+        bank: returnBank || '',
+        account_holder: returnHolder || '',
+        deposit_date: returnDepositDate || '',
+        note: returnNote || '',
+        subtotal,
+        total,
+        items,
+      };
+
+      if (savedType === 'sales') {
+        await createSalesReturn(payload);
+      } else {
+        await createPurchaseReturn(payload);
+      }
+
+      showToast('✅ برگشت ثبت شد — ' + returnNumber);
+      setReturnModalOpen(false);
+      setReturnInvoice(null);
+      setReturnRows([]);
+
+      if (onReturnSaved) onReturnSaved(savedType);
+      else load();
+    } catch (e: any) {
+      showToast(e?.message || 'خطا در ثبت برگشت', true);
+    } finally {
+      setReturnSaving(false);
+    }
+  };;
+
+;
 
   // ═══ حالت ویرایش ═══
 
@@ -7670,6 +7802,7 @@ function SearchSection({ showToast }: any) {
                 <TouchableOpacity onPress={() => openEdit(r.invoice, r.type)} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>✏️</Text></TouchableOpacity>
 
                 <TouchableOpacity onPress={() => remove(r.invoice, r.type)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>🗑</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => openReturn(r.invoice, r.type)} style={{ backgroundColor: '#ede9fe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>↩️</Text></TouchableOpacity>
 
               </View>
 
@@ -7680,6 +7813,109 @@ function SearchSection({ showToast }: any) {
         </View>
 
       </ScrollView>
+
+            <Modal visible={returnModalOpen} transparent animationType="slide" onRequestClose={() => setReturnModalOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, maxHeight: '92%' }}>
+            <Text style={{ fontSize: 15, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>
+              ↩️ ثبت برگشت {returnInvoice?.type === 'sales' ? 'از فروش' : 'از خرید'}
+            </Text>
+            <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 8 }}>
+              فاکتور {returnInvoice?.invoice} — {returnInvoice?.name}
+            </Text>
+
+            <ScrollView style={{ maxHeight: 460 }}>
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>دلیل برگشت</Text>
+              <TextInput
+                value={returnReason}
+                onChangeText={setReturnReason}
+                placeholder="خرابی، اشتباه، مرجوعی، عدم مطابقت"
+                style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }}
+              />
+
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>هزینه باربری برگشت</Text>
+              <TextInput
+                value={returnShipping}
+                onChangeText={setReturnShipping}
+                keyboardType="numeric"
+                placeholder="0"
+                style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'center' }}
+              />
+
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>روش تسویه</Text>
+              <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 8 }}>
+                {[{ k: 'cash', l: 'نقدی' }, { k: 'bank', l: 'بانکی' }, { k: 'credit', l: 'اعتباری' }].map((x) => (
+                  <TouchableOpacity key={x.k} onPress={() => setReturnSettlement(x.k)} style={{ flex: 1, padding: 8, borderRadius: 6, backgroundColor: returnSettlement === x.k ? '#7c3aed' : '#e2e8f0', alignItems: 'center' }}>
+                    <Text style={{ color: returnSettlement === x.k ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 11 }}>{x.l}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {returnSettlement !== 'credit' && (
+                <>
+                  <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>بانک</Text>
+                  <TextInput value={returnBank} onChangeText={setReturnBank} placeholder="نام بانک" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} />
+
+                  <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>صاحب حساب</Text>
+                  <TextInput value={returnHolder} onChangeText={setReturnHolder} placeholder="نام صاحب حساب" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} />
+
+                  <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>تاریخ واریز</Text>
+                  <DateField value={returnDepositDate} onChange={setReturnDepositDate} compact />
+                </>
+              )}
+
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4, marginTop: 8 }}>اقلام برگشتی</Text>
+              {returnRows.map((r: any, i: number) => (
+                <View key={i} style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+                  <Text style={{ flex: 1, fontSize: 11, textAlign: 'right' }} numberOfLines={1}>{r.modelName || r.modelCode || '—'}</Text>
+                  <Text style={{ width: 60, fontSize: 10, textAlign: 'center', color: '#64748b' }}>{toFaNum(r.quantity)}</Text>
+                  <TextInput
+                    value={String(r.returnQty || '')}
+                    onChangeText={(v) => {
+                      const n = [...returnRows];
+                      n[i].returnQty = parseNum(v);
+                      setReturnRows(n);
+                    }}
+                    keyboardType="numeric"
+                    placeholder="برگشت"
+                    style={{ width: 70, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 6, textAlign: 'center', fontSize: 11 }}
+                  />
+                </View>
+              ))}
+
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4, marginTop: 8 }}>یادداشت</Text>
+              <TextInput
+                value={returnNote}
+                onChangeText={setReturnNote}
+                multiline
+                placeholder="توضیحات"
+                style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right', minHeight: 50 }}
+              />
+
+              <View style={{ padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginTop: 8 }}>
+                <Text style={{ fontSize: 11, textAlign: 'right', color: '#475569' }}>
+                  جمع کالای برگشتی: {fmt(returnRows.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0))}
+                </Text>
+                <Text style={{ fontSize: 11, textAlign: 'right', color: '#475569' }}>
+                  هزینه باربری: {fmt(Number(returnShipping) || 0)}
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', textAlign: 'right', color: '#0f2438', marginTop: 4 }}>
+                  جمع کل: {fmt(returnRows.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0) + (Number(returnShipping) || 0))}
+                </Text>
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity onPress={() => setReturnModalOpen(false)} style={{ flex: 1, backgroundColor: '#64748b', padding: 10, borderRadius: 6 }}>
+                <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>انصراف</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={submitReturn} disabled={returnSaving} style={{ flex: 2, backgroundColor: returnSaving ? '#94a3b8' : '#7c3aed', padding: 10, borderRadius: 6 }}>
+                <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>{returnSaving ? '⏳...' : '✅ ثبت برگشت'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {!loading && !filtered.length && (<View style={s.emptyState}><Text style={{ fontSize: 48, opacity: 0.5 }}>🔍</Text><EL textKey="نتیجه‌ای یافت نشد" style={s.emptyStateTxt} /></View>)}
 
@@ -7696,6 +7932,308 @@ function SearchSection({ showToast }: any) {
 //  REPORTS SECTION
 
 // ══════════════════════════════════════════════════════════
+
+function ReturnsSection({ type, showToast }: { type: 'sales' | 'purchase'; showToast: any }) {
+  const [list, setList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const viewRef = useRef<any>(null);
+  const [editReturn, setEditReturn] = useState<any>(null);
+  const [editReason, setEditReason] = useState('');
+  const [editShipping, setEditShipping] = useState('');
+  const [editSettlement, setEditSettlement] = useState('credit');
+  const [editBank, setEditBank] = useState('');
+  const [editHolder, setEditHolder] = useState('');
+  const [editDepositDate, setEditDepositDate] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [editItems, setEditItems] = useState<any[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = type === 'sales' ? await getSalesReturns() : await getPurchaseReturns();
+      setList(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      showToast?.(e?.message || 'خطا در دریافت برگشت‌ها', true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, [type]);
+
+  const del = async (id: string) => {
+    const ok = await confirmMsg('حذف برگشت', 'این برگشت حذف شود؟');
+    if (!ok) return;
+    try {
+      if (type === 'sales') await deleteSalesReturn(id);
+      else await deletePurchaseReturn(id);
+      showToast?.('✅ برگشت حذف شد');
+      load();
+    } catch (e: any) {
+      showToast?.(e?.message || 'خطا در حذف', true);
+    }
+  };
+
+  const openEditReturn = (r: any) => {
+    setEditReturn(r);
+    setEditReason(r.reason || '');
+    setEditShipping(String(r.shipping_cost || ''));
+    setEditSettlement(r.settlement_method || 'credit');
+    setEditBank(r.bank || '');
+    setEditHolder(r.account_holder || '');
+    setEditDepositDate(r.deposit_date || '');
+    setEditNote(r.note || '');
+    setEditItems((r.items || []).map((it: any) => ({
+      modelCode: it.modelCode || it.model_code || '',
+      modelName: it.modelName || it.model_name || '',
+      quantity: Number(it.quantity) || 0,
+      priceUnit: Number(it.priceUnit || it.price_unit) || 0,
+      returnQty: Number(it.returnQty || it.quantity) || 0,
+    })));
+  };
+
+  const saveEditReturn = async () => {
+    if (!editReturn) return;
+    const items = editItems.filter((r: any) => Number(r.returnQty) > 0);
+    if (!items.length) { showToast('تعداد برگشتی را وارد کنید', true); return; }
+    for (const it of items) {
+      if (Number(it.returnQty) > Number(it.quantity)) {
+        showToast('تعداد برگشتی برای ' + (it.modelName || it.modelCode) + ' بیشتر از تعداد اصلی است', true);
+        return;
+      }
+    }
+    setEditSaving(true);
+    try {
+      const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);
+      const shipping = Number(editShipping) || 0;
+      const total = subtotal + shipping;
+      const settlementAmount = editSettlement === 'credit' ? 0 : total;
+      const balance = total - settlementAmount;
+      const payload = {
+        reason: editReason || '',
+        shipping_cost: shipping,
+        settlement_method: editSettlement,
+        settlement_amount: settlementAmount,
+        balance,
+        bank: editBank || '',
+        account_holder: editHolder || '',
+        deposit_date: editDepositDate || '',
+        note: editNote || '',
+        subtotal,
+        total,
+        items,
+      };
+      const id = editReturn.local_id || editReturn.id;
+      if (type === 'sales') await updateSalesReturn(id, payload);
+      else await updatePurchaseReturn(id, payload);
+      showToast?.('✅ برگشت ویرایش شد');
+      setEditReturn(null);
+      load();
+    } catch (e: any) {
+      showToast?.(e?.message || 'خطا در ویرایش برگشت', true);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const title = type === 'sales' ? '↩️ برگشت از فروش' : '↩️ برگشت از خرید';
+
+  const buildHtml = () => {
+    var _p: string[] = [];
+    _p.push('<div class="title">' + title + '</div>');
+    _p.push('<div class="info"><b>تاریخ چاپ:</b> ' + displayDate(new Date()) + '</div>');
+    _p.push('<table style="width:100%;border-collapse:collapse;font-size:9px">');
+    _p.push('<tr><th>#</th><th>شماره برگشت</th><th>تاریخ</th><th>فاکتور اصلی</th><th>طرف‌حساب</th><th>دلیل</th><th>جمع کالا</th><th>باربری</th><th>جمع کل</th><th>تسویه</th></tr>');
+    var totalSub = 0, totalShip = 0, totalAll = 0;
+    list.slice().reverse().forEach(function(r: any, i: number) {
+      totalSub += Number(r.subtotal) || 0;
+      totalShip += Number(r.shipping_cost) || 0;
+      totalAll += Number(r.total) || 0;
+      _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.return_number || '—') + '</td><td>' + displayDateOnly(r.date || r.created_at || '') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.party_name || '—') + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td>' + fmt(r.subtotal || 0) + '</td><td>' + fmt(r.shipping_cost || 0) + '</td><td style="font-weight:bold">' + fmt(r.total || 0) + '</td><td>' + (r.settlement_method === 'cash' ? 'نقدی' : r.settlement_method === 'bank' ? 'بانکی' : 'اعتباری') + '</td></tr>');
+    });
+    _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(totalSub) + '</td><td>' + fmt(totalShip) + '</td><td>' + fmt(totalAll) + '</td><td></td></tr>');
+    _p.push('</table>');
+    _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+    _p.push(mizanComputerNoteHtml());
+    return buildStandardHtml(title, _p.join(''), title);
+  };
+
+  const pdfAll = async () => {
+    try {
+      const r = await shareHtmlAsPdf(buildHtml(), 'returns-' + type + '-' + Date.now() + '.pdf');
+      showToast?.(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+    } catch (e: any) { showToast?.(e?.message || 'خطا در PDF', true); }
+  };
+
+  const printAll = async () => {
+    try {
+      const r = await printHtml(buildHtml());
+      showToast?.(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+    } catch (e: any) { showToast?.(e?.message || 'خطا در پرینت', true); }
+  };
+
+  const xlsAll = async () => {
+    try {
+      const rows = list.map((r: any, i: number) => ({
+        '#': i + 1,
+        'شماره برگشت': r.return_number || '',
+        'تاریخ': displayDateOnly(r.date || r.created_at || ''),
+        'فاکتور اصلی': r.original_invoice_number || '',
+        'طرف‌حساب': r.party_name || '',
+        'دلیل': r.reason || '',
+        'جمع کالا': Number(r.subtotal) || 0,
+        'باربری': Number(r.shipping_cost) || 0,
+        'جمع کل': Number(r.total) || 0,
+        'تسویه': r.settlement_method === 'cash' ? 'نقدی' : r.settlement_method === 'bank' ? 'بانکی' : 'اعتباری',
+      }));
+      const r = await exportExcel([{ name: title, data: rows }], 'returns-' + type + '-' + Date.now() + '.xlsx');
+      showToast?.(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+    } catch (e: any) { showToast?.(e?.message || 'خطا در اکسل', true); }
+  };
+
+  const imgAll = async () => {
+    try {
+      if (!viewRef.current) return;
+      const uri = await captureRef(viewRef, { format: 'jpg', quality: 0.95 });
+      if (Platform.OS === 'web') {
+        await Share.share({ message: title, url: uri });
+      } else {
+        await Share.share({ message: title + '\n' + uri });
+      }
+    } catch (e: any) {
+      showToast?.(e?.message || 'خطا در تصویر', true);
+    }
+  };
+
+  return (
+    <View ref={viewRef} collapsable={false}>
+      <EL text={title + ' (' + toFaNum(list.length) + ')'} style={s.secT} />
+      <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+        <TouchableOpacity onPress={pdfAll} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+        <TouchableOpacity onPress={printAll} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+        <TouchableOpacity onPress={xlsAll} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+        <TouchableOpacity onPress={imgAll} style={[s.btn, { backgroundColor: '#7c3aed' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+      </View>
+      {loading ? (
+        <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} />
+      ) : !list.length ? (
+        <View style={s.emptyState}><Text style={{ fontSize: 48, opacity: 0.5 }}>↩️</Text><EL textKey="برگشتی ثبت نشده" style={s.emptyStateTxt} /></View>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+          <View>
+            <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+              <Text style={[s.thCell, { width: 40 }]}>#</Text>
+              <EL textKey="شماره برگشت" style={[s.thCell, { width: 130 }]} />
+              <EL textKey="تاریخ" style={[s.thCell, { width: 120 }]} />
+              <EL textKey="فاکتور اصلی" style={[s.thCell, { width: 150 }]} />
+              <EL textKey="طرف‌حساب" style={[s.thCell, { width: 160 }]} />
+              <EL textKey="دلیل" style={[s.thCell, { width: 160 }]} />
+              <EL textKey="جمع کالا" style={[s.thCell, { width: 120 }]} />
+              <EL textKey="باربری" style={[s.thCell, { width: 100 }]} />
+              <EL textKey="جمع کل" style={[s.thCell, { width: 120 }]} />
+              <EL textKey="تسویه" style={[s.thCell, { width: 100 }]} />
+              <EL textKey="عملیات" style={[s.thCell, { width: 100 }]} />
+            </View>
+            {list.slice().reverse().map((r: any, i: number) => (
+              <View key={r.local_id || r.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+                <Text style={[s.tdCell, { width: 40 }]}>{i + 1}</Text>
+                <Text style={[s.tdCell, { width: 130, fontSize: 11 }]}>{r.return_number || '—'}</Text>
+                <Text style={[s.tdCell, { width: 120, fontSize: 11 }]}>{displayDateOnly(r.date || r.created_at || '')}</Text>
+                <Text style={[s.tdCell, { width: 150, fontSize: 11 }]}>{r.original_invoice_number || '—'}</Text>
+                <Text style={[s.tdCell, { width: 160, fontSize: 11 }]} numberOfLines={1}>{r.party_name || '—'}</Text>
+                <Text style={[s.tdCell, { width: 160, fontSize: 11 }]} numberOfLines={1}>{r.reason || '—'}</Text>
+                <Text style={[s.tdCell, { width: 120, fontSize: 11 }]}>{fmt(r.subtotal || 0)}</Text>
+                <Text style={[s.tdCell, { width: 100, fontSize: 11 }]}>{fmt(r.shipping_cost || 0)}</Text>
+                <Text style={[s.tdCell, { width: 120, fontSize: 11, fontWeight: 'bold', color: '#dc2626' }]}>{fmt(r.total || 0)}</Text>
+                <Text style={[s.tdCell, { width: 100, fontSize: 11 }]}>{r.settlement_method === 'cash' ? 'نقدی' : r.settlement_method === 'bank' ? 'بانکی' : 'اعتباری'}</Text>
+                <View style={[s.tdCell, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+                  <TouchableOpacity onPress={() => openEditReturn(r)} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 12 }}>✏️</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => del(r.local_id || r.id)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 12 }}>🗑</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      <Modal visible={!!editReturn} transparent animationType="slide" onRequestClose={() => setEditReturn(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, maxHeight: '92%' }}>
+            <Text style={{ fontSize: 15, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>
+              ✏️ ویرایش برگشت {type === 'sales' ? 'از فروش' : 'از خرید'}
+            </Text>
+            <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 8 }}>
+              {editReturn?.return_number || ''} — فاکتور {editReturn?.original_invoice_number || ''}
+            </Text>
+
+            <ScrollView style={{ maxHeight: 480 }}>
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>دلیل برگشت</Text>
+              <TextInput value={editReason} onChangeText={setEditReason} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} />
+
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>هزینه باربری</Text>
+              <TextInput value={editShipping} onChangeText={setEditShipping} keyboardType="numeric" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'center' }} />
+
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>روش تسویه</Text>
+              <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 8 }}>
+                {[{ k: 'cash', l: 'نقدی' }, { k: 'bank', l: 'بانکی' }, { k: 'credit', l: 'اعتباری' }].map((x) => (
+                  <TouchableOpacity key={x.k} onPress={() => setEditSettlement(x.k)} style={{ flex: 1, padding: 8, borderRadius: 6, backgroundColor: editSettlement === x.k ? '#7c3aed' : '#e2e8f0', alignItems: 'center' }}>
+                    <Text style={{ color: editSettlement === x.k ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 11 }}>{x.l}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {editSettlement !== 'credit' && (
+                <>
+                  <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>بانک</Text>
+                  <TextInput value={editBank} onChangeText={setEditBank} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} />
+                  <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>صاحب حساب</Text>
+                  <TextInput value={editHolder} onChangeText={setEditHolder} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} />
+                  <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>تاریخ واریز</Text>
+                  <DateField value={editDepositDate} onChange={setEditDepositDate} compact />
+                </>
+              )}
+
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4, marginTop: 8 }}>اقلام برگشتی</Text>
+              {editItems.map((r: any, i: number) => (
+                <View key={i} style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+                  <Text style={{ flex: 1, fontSize: 11, textAlign: 'right' }} numberOfLines={1}>{r.modelName || r.modelCode || '—'}</Text>
+                  <Text style={{ width: 60, fontSize: 10, textAlign: 'center', color: '#64748b' }}>{toFaNum(r.quantity)}</Text>
+                  <TextInput
+                    value={String(r.returnQty || '')}
+                    onChangeText={(v) => {
+                      const n = [...editItems];
+                      n[i].returnQty = parseNum(v);
+                      setEditItems(n);
+                    }}
+                    keyboardType="numeric"
+                    style={{ width: 70, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 6, textAlign: 'center', fontSize: 11 }}
+                  />
+                </View>
+              ))}
+
+              <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4, marginTop: 8 }}>یادداشت</Text>
+              <TextInput value={editNote} onChangeText={setEditNote} multiline style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right', minHeight: 50 }} />
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity onPress={() => setEditReturn(null)} style={{ flex: 1, backgroundColor: '#64748b', padding: 10, borderRadius: 6 }}>
+                <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>انصراف</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={saveEditReturn} disabled={editSaving} style={{ flex: 2, backgroundColor: editSaving ? '#94a3b8' : '#7c3aed', padding: 10, borderRadius: 6 }}>
+                <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>{editSaving ? '⏳...' : '✅ ذخیره ویرایش'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
 
 function ReportsSection({ showToast }: any) {
 

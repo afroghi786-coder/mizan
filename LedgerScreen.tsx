@@ -540,20 +540,20 @@ export default function LedgerScreen({ onBack, showToast }) {
         </TouchableOpacity>
       </View>
 
-      <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 12 }}>
-        <TouchableOpacity onPress={() => setActiveTab('parties')} style={{ flex: 1, padding: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'parties' ? '#7c3aed' : '#e2e8f0' }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 12, paddingHorizontal: 2 }}>
+        <TouchableOpacity onPress={() => setActiveTab('parties')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'parties' ? '#7c3aed' : '#e2e8f0' }}>
           <Text style={{ color: activeTab === 'parties' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 13 }}>👥 طرف‌حساب‌ها</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setActiveTab('partners')} style={{ flex: 1, padding: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'partners' ? '#7c3aed' : '#e2e8f0' }}>
+        <TouchableOpacity onPress={() => setActiveTab('partners')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'partners' ? '#7c3aed' : '#e2e8f0' }}>
           <Text style={{ color: activeTab === 'partners' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 13 }}>🤝 تراز شرکا</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setActiveTab('employees')} style={{ flex: 1, minWidth: 100, padding: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'employees' ? '#7c3aed' : '#e2e8f0' }}>
+        <TouchableOpacity onPress={() => setActiveTab('employees')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'employees' ? '#7c3aed' : '#e2e8f0' }}>
           <Text style={{ color: activeTab === 'employees' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>👷 کارمندان</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setActiveTab('expenses')} style={{ flex: 1, minWidth: 100, padding: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'expenses' ? '#7c3aed' : '#e2e8f0' }}>
+        <TouchableOpacity onPress={() => setActiveTab('expenses')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'expenses' ? '#7c3aed' : '#e2e8f0' }}>
           <Text style={{ color: activeTab === 'expenses' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>🧾 هزینه‌ها</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       <View style={{ flexDirection: 'row-reverse', backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 10, alignItems: 'center', marginBottom: 12 }}>
         <Text style={{ fontSize: 16, color: '#64748b', marginRight: 8 }}>🔍</Text>

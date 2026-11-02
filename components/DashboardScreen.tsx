@@ -5,12 +5,29 @@ import LedgerScreen from '../LedgerScreen';
 
 export default function DashboardScreen({
   onOpen,
-  lang = 'fa'
+  lang = 'fa',
+  onLedgerOpenChange,
 }: {
-  onOpen: (n: NavItem) => void; lang?: 'fa' | 'ps';
+  onOpen: (n: NavItem) => void;
+  lang?: 'fa' | 'ps';
+  onLedgerOpenChange?: (open: boolean) => void;
 }) {
   const [showLedger, setShowLedger] = React.useState(false);
-  if (showLedger) return <LedgerScreen onBack={() => setShowLedger(false)} />;
+
+  React.useEffect(() => {
+    onLedgerOpenChange?.(showLedger);
+  }, [showLedger]);
+
+  if (showLedger) {
+    return (
+      <LedgerScreen
+        onBack={() => {
+          setShowLedger(false);
+          onLedgerOpenChange?.(false);
+        }}
+      />
+    );
+  }
 
   const items = byGroup('dashboard');
   return (

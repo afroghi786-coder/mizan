@@ -27,6 +27,8 @@ const BUSINESS_OPS = new Set<string>([
   'createProduct','updateProduct','deleteProduct',
   'createSale','updateSale','deleteSale',
   'createPurchase','updatePurchase','deletePurchase',
+  'createSalesReturn','updateSalesReturn','deleteSalesReturn',
+  'createPurchaseReturn','updatePurchaseReturn','deletePurchaseReturn',
   'createExpense','updateExpense','deleteExpense',
   'createEmployee','updateEmployee','deleteEmployee',
   'createAttendance','updateAttendance','deleteAttendance',
@@ -45,12 +47,8 @@ const BUSINESS_OPS = new Set<string>([
 ]);
 
 export async function serverBusinessAllowed() {
-  if (MODE !== 'online') return false;
-  try {
-    const dest = (await AsyncStorage.getItem(SYNC_DEST_KEY)) || '';
-    if (dest === 'private' || dest === 'both') return false;
-  } catch {}
-  return !(await isBusinessLocked());
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — هیچ عملیات تجاری به Supabase نمی‌رود.
+  return false;
 }
 
 export async function isBusinessLocked() {
@@ -261,12 +259,8 @@ export async function syncToServer(onProgress?: (done: number, total: number) =>
     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
     try {
       // در مقصد private/both، عملیات تجاری فقط به شیت می‌روند و از صف حذف می‌شوند.
-      if (businessToSheetOnly && BUSINESS_OPS.has(String(item.op))) {
-        if (onProgress) onProgress(i + 1, total);
-        continue;
-      }
-      if ((await isBusinessLocked()) && BUSINESS_OPS.has(String(item.op))) {
-        remaining.push(item);
+      if (BUSINESS_OPS.has(String(item.op))) {
+        // هیچ عملیات تجاری به Supabase نمی‌رود.
         if (onProgress) onProgress(i + 1, total);
         continue;
       }
@@ -296,22 +290,8 @@ export async function syncToServer(onProgress?: (done: number, total: number) =>
 }
 
 export async function pullFromServer() {
-  try {
-    const [products, salesGrouped, purchasesGrouped, sales, purchases, settings] = await Promise.all([
-      lib.getProducts(),
-      lib.getSalesGrouped(),
-      lib.getPurchasesGrouped(),
-      lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
-      lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
-      lib.getSettings(),
-    ]);
-    await setLocal('products', products);
-    await setLocal('sales_grouped', salesGrouped);
-    await setLocal('purchases_grouped', purchasesGrouped);
-    await setLocal('sales', sales.data || []);
-    await setLocal('purchases', purchases.data || []);
-    await setLocal('settings', settings);
-  } catch (e) { console.log('Pull failed:', e); }
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — بخش تجاری از Supabase خوانده نمی‌شود.
+  return;
 }
 
 async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
@@ -332,8 +312,9 @@ async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T>
 }
 
 export async function getProducts() {
-  try { return await cachedRead('products', () => lib.getProducts()); }
-  catch { return []; }
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
+  const local = await getLocal<any[]>('products');
+  return local || [];
 }
 export async function createProduct(p: any) {
   const list: any[] = (await getLocal('products')) || [];
@@ -403,7 +384,63 @@ export async function deleteProduct(id: string) {
   }
 }
 
+async function _localUpsertSale(payload: any) {
+  try {
+    const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+    if (!inv) return;
+    const items = payload.items || payload.rows || [];
+    const old = (await getLocal<any[]>('sales')) || [];
+    const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+    const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+    const rows = items.map((it: any, idx: number) => ({
+      invoice_number: inv,
+      customer_code: payload.customerCode || payload.customer_code || '',
+      customer_name: payload.customerName || payload.customer_name || '',
+      customer_phone: payload.customerPhone || payload.customer_phone || '',
+      model_code: it.modelCode || it.model_code || '',
+      model_name: it.modelName || it.model_name || '',
+      quantity: Number(it.quantity) || 0,
+      price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      payment: idx === 0 ? (Number(payload.paymentAmount) || Number(it.payment) || 0) : 0,
+      date_factor: it.dateFactor || it.date_factor || baseDate,
+      date_reg: it.dateReg || it.date_reg || baseDate,
+      description: it.description || '',
+      _pending: true,
+    }));
+    await setLocal('sales', [...filtered, ...rows]);
+  } catch {}
+}
+
+async function _localUpsertPurchase(payload: any) {
+  try {
+    const inv = String(payload.invoiceNumber || payload.invoice_number || payload._pendingInvNumber || '').trim();
+    if (!inv) return;
+    const items = payload.items || payload.rows || [];
+    const old = (await getLocal<any[]>('purchases')) || [];
+    const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+    const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+    const rows = items.map((it: any, idx: number) => ({
+      invoice_number: inv,
+      manual_invoice: payload.manualInvoice || '',
+      supplier_code: payload.supplierCode || payload.supplier_code || '',
+      supplier_name: payload.supplierName || payload.supplier_name || '',
+      supplier_phone: payload.supplierPhone || payload.supplier_phone || '',
+      model_code: it.modelCode || it.model_code || '',
+      model_name: it.modelName || it.model_name || '',
+      quantity: Number(it.quantity) || 0,
+      price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      payment: idx === 0 ? (Number(payload.paymentAmount) || Number(it.payment) || 0) : 0,
+      date_factor: it.dateFactor || it.date_factor || baseDate,
+      date_reg: it.dateReg || it.date_reg || baseDate,
+      description: it.description || '',
+      _pending: true,
+    }));
+    await setLocal('purchases', [...filtered, ...rows]);
+  } catch {}
+}
+
 export async function createSale(payload: any) {
+  await _localUpsertSale(payload);
   if (await serverBusinessAllowed()) {
     try {
       const r = await lib.createSale(payload);
@@ -416,7 +453,52 @@ export async function createSale(payload: any) {
   try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
   return payload.invoiceNumber;
 }
+async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+  const inv = String(invoiceNumber || '').trim();
+  if (!inv) return false;
+  const key = type === 'sales' ? 'sales_returns' : 'purchase_returns';
+  const local = (await getLocal<any[]>(key)) || [];
+  const q = await getQueue();
+
+  const deletedIds = new Set<string>();
+  for (const item of q) {
+    if (type === 'sales' && item.op === 'deleteSalesReturn') {
+      const id = String(item.payload || '').trim();
+      if (id) deletedIds.add(id);
+    }
+    if (type === 'purchase' && item.op === 'deletePurchaseReturn') {
+      const id = String(item.payload || '').trim();
+      if (id) deletedIds.add(id);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (type === 'sales' && String(t.table || '') !== 'sales_returns') continue;
+        if (type === 'purchase' && String(t.table || '') !== 'purchase_returns') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedIds.add(k);
+      }
+    }
+  } catch {}
+
+  const pending = q
+    .filter(x => (type === 'sales' ? x.op === 'createSalesReturn' : x.op === 'createPurchaseReturn'))
+    .map(x => x.payload)
+    .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+
+  const all = [...pending, ...local];
+  return all.some((r: any) => String(r.original_invoice_number || '').trim() === inv);
+}
+
 export async function deleteSale(inv: string) {
+  if (await hasActiveReturns(inv, 'sales')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
   await recordTombstone('sales', String(inv));
   const grouped = (await getLocal<any[]>('sales_grouped')) || [];
   await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
@@ -429,6 +511,9 @@ export async function deleteSale(inv: string) {
 }
 
 export async function deletePurchase(inv: string) {
+  if (await hasActiveReturns(inv, 'purchase')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
   await recordTombstone('purchases', String(inv));
   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
@@ -441,7 +526,9 @@ export async function deletePurchase(inv: string) {
 }
 
 export async function getSettings() {
-  return cachedRead('settings', () => lib.getSettings());
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — تنظیمات فقط محلی
+  const local = await getLocal<any>('settings');
+  return local || {};
 }
 export async function updateSettings(s: any) {
   await setLocal('settings', s);
@@ -529,8 +616,14 @@ async function computeLocalInventory() {
 
   // --- Merge Creates (فاکتورهای آفلاین جدید) ---
   for (const item of q) {
-    if (item.op === 'createSale' && item.payload?.rows) sales = sales.concat(item.payload.rows);
-    if (item.op === 'createPurchase' && item.payload?.rows) purchases = purchases.concat(item.payload.rows);
+    if (item.op === 'createSale' && item.payload) {
+      const rows = item.payload.rows || item.payload.items || [];
+      sales = sales.concat(rows);
+    }
+    if (item.op === 'createPurchase' && item.payload) {
+      const rows = item.payload.rows || item.payload.items || [];
+      purchases = purchases.concat(rows);
+    }
     if (item.op === 'createStockAdjustment' && item.payload) adjAll = adjAll.concat([item.payload]);
   }
   const adjustmentMap: Record<string, number> = {};
@@ -569,6 +662,38 @@ async function computeLocalInventory() {
     const d = _pda(r.date_factor || r.date_reg);
     if (d && d.getTime() > models[c].lastSaleTime) models[c].lastSaleTime = d.getTime();
   });
+  // ─── اثر برگشت از فروش: افزایش موجودی ───
+  try {
+    const salesReturns = await getSalesReturns();
+    for (const r of salesReturns || []) {
+      for (const it of (r.items || [])) {
+        const c = String(it.modelCode || it.model_code || '').trim();
+        if (!c) continue;
+        if (!models[c]) models[c] = { code: c, name: it.modelName || it.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+        const qty = Number(it.returnQty || it.quantity) || 0;
+        models[c].sold -= qty;
+        if (it.modelName || it.model_name) models[c].name = it.modelName || it.model_name;
+      }
+    }
+  } catch (e) { console.log('[inventory] salesReturns effect fail:', e); }
+
+  // ─── اثر برگشت از خرید: کاهش موجودی ───
+  try {
+    const purchaseReturns = await getPurchaseReturns();
+    for (const r of purchaseReturns || []) {
+      for (const it of (r.items || [])) {
+        const c = String(it.modelCode || it.model_code || '').trim();
+        if (!c) continue;
+        if (!models[c]) models[c] = { code: c, name: it.modelName || it.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+        const qty = Number(it.returnQty || it.quantity) || 0;
+        const price = Number(it.priceUnit || it.price_unit) || 0;
+        models[c].bought -= qty;
+        models[c].boughtValue -= qty * price;
+        if (it.modelName || it.model_name) models[c].name = it.modelName || it.model_name;
+      }
+    }
+  } catch (e) { console.log('[inventory] purchaseReturns effect fail:', e); }
+
   products.forEach((p: any) => {
     if (!models[p.code]) {
       models[p.code] = { code: p.code, name: p.name, bought: 0, sold: 0, boughtValue: 0, lastPrice: p.price || 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
@@ -615,16 +740,8 @@ async function computeLocalInventory() {
 }
 
 export async function getInventory() {
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — انبار فقط محلی + صف
   try {
-    if (MODE === 'online') {
-      try {
-        const fresh = await lib.getInventory();
-        await setLocal('inventory', fresh);
-        return fresh;
-      } catch (e) {
-        console.log('[getInventory] online failed, using local:', e);
-      }
-    }
     return await computeLocalInventory();
   } catch (e) {
     console.log('[getInventory] error:', e);
@@ -632,15 +749,7 @@ export async function getInventory() {
   }
 }
 export async function getDashboardStats(r, f) {
-  if (MODE === "online") {
-    try {
-      var fresh = await lib.getDashboardStats(r, f);
-      await setLocal("stats_" + r + "_" + f, fresh);
-      return fresh;
-    } catch (e) {
-      console.log("[getDashboardStats] online failed, using local:", e);
-    }
-  }
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — داشبورد فقط از داده محلی محاسبه می‌شود.
   try {
     return await computeLocalDashboardStats(r, f);
   } catch (e) {
@@ -849,24 +958,37 @@ export async function generateCustomerCode(): Promise<string> {
 // ═══════════════════════════════════════════
 export async function getSalesGrouped() {
   let serverList: any[] = [];
-  if (MODE === 'online') {
-    try {
-      serverList = await lib.getSalesGrouped();
-      await setLocal('sales_grouped', serverList);
-    } catch {
-      serverList = (await getLocal<any[]>('sales_grouped')) || [];
-    }
-  } else {
-    serverList = (await getLocal<any[]>('sales_grouped')) || [];
-  }
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
+  serverList = (await getLocal<any[]>('sales_grouped')) || [];
 
-  // ادغام با صف
   const queue = await getQueue();
+  const deletedInvs = new Set<string>();
+  for (const item of queue) {
+    if (item.op === 'deleteSale') {
+      const inv = String(item.payload || '').trim();
+      if (inv) deletedInvs.add(inv);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (String(t.table || '') !== 'sales') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedInvs.add(k);
+      }
+    }
+  } catch {}
+
   const pendingByInv: Record<string, any> = {};
   for (const item of queue) {
     if (item.op === 'createSale') {
       const p = item.payload;
       const inv = p.invoiceNumber;
+      if (deletedInvs.has(String(inv))) continue;
       if (!pendingByInv[inv]) {
         pendingByInv[inv] = {
           invoice: inv, name: p.customerName, phone: p.customerPhone,
@@ -882,7 +1004,9 @@ export async function getSalesGrouped() {
       }
     }
   }
-  return [...Object.values(pendingByInv), ...serverList];
+
+  const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+  return [...Object.values(pendingByInv), ...cleanedServer];
 }
 
 // ═══════════════════════════════════════════
@@ -947,6 +1071,7 @@ async function genPurchaseInvoiceNumber() {
 //  createPurchase — با شماره P-
 // ═══════════════════════════════════════════
 export async function createPurchase(payload: any) {
+  await _localUpsertPurchase(payload);
   if (await serverBusinessAllowed()) {
     try {
       const r = await lib.createPurchase(payload);
@@ -972,23 +1097,37 @@ export async function createPurchase(payload: any) {
 // ═══════════════════════════════════════════
 export async function getPurchasesGrouped() {
   let serverList: any[] = [];
-  if (MODE === 'online') {
-    try {
-      serverList = await lib.getPurchasesGrouped();
-      await setLocal('purchases_grouped', serverList);
-    } catch {
-      serverList = (await getLocal<any[]>('purchases_grouped')) || [];
-    }
-  } else {
-    serverList = (await getLocal<any[]>('purchases_grouped')) || [];
-  }
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — خرید فقط محلی + صف
+  serverList = (await getLocal<any[]>('purchases_grouped')) || [];
 
   const queue = await getQueue();
+  const deletedInvs = new Set<string>();
+  for (const item of queue) {
+    if (item.op === 'deletePurchase') {
+      const inv = String(item.payload || '').trim();
+      if (inv) deletedInvs.add(inv);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (String(t.table || '') !== 'purchases') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedInvs.add(k);
+      }
+    }
+  } catch {}
+
   const pendingByInv: Record<string, any> = {};
   for (const item of queue) {
     if (item.op === 'createPurchase') {
       const p = item.payload;
       const inv = p._pendingInvNumber || p.invoiceNumber || 'P-PENDING';
+      if (deletedInvs.has(String(inv))) continue;
       if (!pendingByInv[inv]) {
         pendingByInv[inv] = {
           invoice: inv,
@@ -1008,7 +1147,9 @@ export async function getPurchasesGrouped() {
       pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
     }
   }
-  return [...Object.values(pendingByInv), ...serverList];
+
+  const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+  return [...Object.values(pendingByInv), ...cleanedServer];
 }
 
 // ═══════════════════════════════════════════
@@ -1854,6 +1995,64 @@ async function computeLocalDashboardStats(range, filter) {
     }
   });
 
+  // ─── اثر برگشت از فروش و خرید روی داشبورد و سود ───
+  var salesReturns = [];
+  var purchaseReturns = [];
+  try { salesReturns = await getSalesReturns(); } catch {}
+  try { purchaseReturns = await getPurchaseReturns(); } catch {}
+
+  var customerDebtVar = totalSales - customerPaid;
+  var supplierDebtVar = supplierDebt;
+
+  salesReturns.forEach(function(r: any) {
+    var items = r.items || [];
+    var subtotal = 0;
+    items.forEach(function(it: any) {
+      var qty = Number(it.returnQty || it.quantity) || 0;
+      var price = Number(it.priceUnit || it.price_unit) || 0;
+      subtotal += qty * price;
+    });
+    if (!subtotal) subtotal = Number(r.subtotal) || 0;
+    var settlement = Number(r.settlement_amount) || 0;
+    totalSales -= subtotal;
+    customerPaid -= settlement;
+    customerDebtVar -= (subtotal - settlement);
+
+    var returnDate = parseDateAny(r.date || r.created_at) || now;
+    items.forEach(function(it: any) {
+      var qty = Number(it.returnQty || it.quantity) || 0;
+      if (!qty) return;
+      var price = Number(it.priceUnit || it.price_unit) || 0;
+      var code = String(it.modelCode || it.model_code || '').trim();
+      if (!code) return;
+      var info = findPurchaseForSale(code, returnDate.getTime());
+      var profitReduction = (info.price > 0 && price > 0) ? (price - info.price) * qty : 0;
+      totalProfit -= profitReduction;
+      if (!modelProfits[code]) {
+        modelProfits[code] = { code: code, name: it.modelName || it.model_name || purchaseNames[code] || '—', purchasePrice: info.price, priceSource: info.source, totalQty: 0, totalSales: 0, totalProfit: 0, estimated: false };
+      }
+      var m = modelProfits[code];
+      m.totalQty -= qty;
+      m.totalSales -= qty * price;
+      m.totalProfit -= profitReduction;
+    });
+  });
+
+  purchaseReturns.forEach(function(r: any) {
+    var items = r.items || [];
+    var subtotal = 0;
+    items.forEach(function(it: any) {
+      var qty = Number(it.returnQty || it.quantity) || 0;
+      var price = Number(it.priceUnit || it.price_unit) || 0;
+      subtotal += qty * price;
+    });
+    if (!subtotal) subtotal = Number(r.subtotal) || 0;
+    var settlement = Number(r.settlement_amount) || 0;
+    totalPurchases -= subtotal;
+    supplierPaid -= settlement;
+    supplierDebtVar -= (subtotal - settlement);
+  });
+
   var models = Object.values(modelProfits);
   var estimatedCount = 0;
   if (filter !== "purchase") {
@@ -1874,8 +2073,8 @@ async function computeLocalDashboardStats(range, filter) {
 
   return {
     totalSales: totalSales, totalPurchases: totalPurchases, customerPaid: customerPaid,
-    customerDebt: totalSales - customerPaid,
-    supplierPaid: supplierPaid, supplierDebt: supplierDebt,
+    customerDebt: customerDebtVar,
+    supplierPaid: supplierPaid, supplierDebt: supplierDebtVar,
     profit: totalProfit,
     models: models, estimatedCount: estimatedCount,
     defaultMargin: margin,
@@ -2065,16 +2264,7 @@ export async function getLedgerData(): Promise<any[]> {
   let allSales: any[] = [];
   let allPurchases: any[] = [];
 
-  if (MODE === 'online') {
-    try {
-      const [sRes, pRes] = await Promise.all([
-        lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
-        lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
-      ]);
-      if (sRes && sRes.data && sRes.data.length) allSales = sRes.data;
-      if (pRes && pRes.data && pRes.data.length) allPurchases = pRes.data;
-    } catch (e) { console.log('[getLedgerData] online fail:', e); }
-  }
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — دفتر معین فقط محلی + صف
 
   if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
   if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
@@ -2241,7 +2431,23 @@ export async function getLedgerData(): Promise<any[]> {
     if (code) accounts[key].codes[code] = true;
     if (phone) accounts[key].phones[phone] = true;
     return accounts[key];
-  };
+  }
+
+  const findExistingAccount = function(name: string, code: string) {
+    const cn = String(code || '').trim();
+    const nm = String(name || '').trim();
+    if (cn) {
+      for (const k of Object.keys(accounts)) {
+        if (accounts[k].codes[cn]) return accounts[k];
+      }
+    }
+    if (nm) {
+      for (const k of Object.keys(accounts)) {
+        if (accounts[k].names[nm]) return accounts[k];
+      }
+    }
+    return null;
+  };;
 
   allSales.forEach(function(s: any) {
     const code = String(s.customer_code || '').trim();
@@ -2322,6 +2528,64 @@ export async function getLedgerData(): Promise<any[]> {
       acc.transactions.push({ ...common, type: 'payment_sent', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0, description: 'پرداخت به تأمین‌کننده' });
     }
   });
+
+  // ─── اثر برگشت از فروش روی دفتر معین: بستانکار مشتری ───
+  try {
+    const salesReturns = await getSalesReturns();
+    for (const r of salesReturns || []) {
+      const name = String(r.party_name || '').trim();
+      const code = String(r.party_code || '').trim();
+      const acc = findExistingAccount(name, code) || getOrCreate(name, code, '');
+      if (!acc) continue;
+      const total = Number(r.total) || 0;
+      if (total <= 0) continue;
+      acc.transactions.push({
+        date: r.date || r.created_at || '',
+        invoice: r.original_invoice_number || '',
+        manualInvoice: '',
+        modelCode: '',
+        modelName: '',
+        bank: r.bank || '',
+        holder: r.account_holder || '',
+        holderCode: '',
+        depositDate: r.deposit_date || '',
+        shipping: '',
+        description: 'برگشت از فروش' + (r.reason ? ' — ' + r.reason : ''),
+        type: 'sale_return',
+        qty: 0, priceUnit: 0, lineTotal: total,
+        debit: 0, credit: total,
+      });
+    }
+  } catch (e) { console.log('[ledger] salesReturns effect fail:', e); }
+
+  // ─── اثر برگشت از خرید روی دفتر معین: بدهکار تأمین‌کننده ───
+  try {
+    const purchaseReturns = await getPurchaseReturns();
+    for (const r of purchaseReturns || []) {
+      const name = String(r.party_name || '').trim();
+      const code = String(r.party_code || '').trim();
+      const acc = findExistingAccount(name, code) || getOrCreate(name, code, '');
+      if (!acc) continue;
+      const total = Number(r.total) || 0;
+      if (total <= 0) continue;
+      acc.transactions.push({
+        date: r.date || r.created_at || '',
+        invoice: r.original_invoice_number || '',
+        manualInvoice: '',
+        modelCode: '',
+        modelName: '',
+        bank: r.bank || '',
+        holder: r.account_holder || '',
+        holderCode: '',
+        depositDate: r.deposit_date || '',
+        shipping: '',
+        description: 'برگشت از خرید' + (r.reason ? ' — ' + r.reason : ''),
+        type: 'purchase_return',
+        qty: 0, priceUnit: 0, lineTotal: total,
+        debit: total, credit: 0,
+      });
+    }
+  } catch (e) { console.log('[ledger] purchaseReturns effect fail:', e); }
 
   const result: any[] = [];
   Object.keys(accounts).forEach(function(k) {
@@ -3229,6 +3493,9 @@ export async function clearAuditEvents(): Promise<void> {
 }
 
 export async function updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  if (await hasActiveReturns(payload.invoiceNumber, 'sales')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
   if (await serverBusinessAllowed()) {
     try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
   } else {
@@ -3267,6 +3534,9 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
 }
 
 export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  if (await hasActiveReturns(payload.invoiceNumber, 'purchase')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
   if (await serverBusinessAllowed()) {
     try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
   } else {
@@ -3433,4 +3703,251 @@ export async function getLoans(): Promise<any[]> {
     });
   } catch {}
   return Object.values(merged);
+}
+
+
+// ═══════════════════════════════════════════
+//  برگشت از فروش (Sales Returns)
+// ═══════════════════════════════════════════
+export async function createSalesReturn(payload: any) {
+  const now = new Date().toISOString();
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const local = (await getLocal<any[]>('sales_returns')) || [];
+  const item = {
+    ...payload,
+    local_id: payload.local_id || ('sr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+    created_at: payload.created_at || now,
+    updated_at: now,
+    device_id: dev,
+  };
+  await setLocal('sales_returns', [item, ...local]);
+  try {
+    await _pushAudit({
+      type: 'sales_return_create',
+      table: 'sales_returns',
+      key: String(item.local_id),
+      at: now,
+      device_id: dev,
+      summary: 'ثبت برگشت از فروش',
+    });
+  } catch {}
+  await enqueue('createSalesReturn', item);
+  return item;
+}
+
+export async function getSalesReturns() {
+  const local = (await getLocal<any[]>('sales_returns')) || [];
+  const q = await getQueue();
+
+  const deletedIds = new Set<string>();
+  for (const item of q) {
+    if (item.op === 'deleteSalesReturn') {
+      const id = String(item.payload || '').trim();
+      if (id) deletedIds.add(id);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (String(t.table || '') !== 'sales_returns') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedIds.add(k);
+      }
+    }
+  } catch {}
+
+  const pending = q
+    .filter(x => x.op === 'createSalesReturn')
+    .map(x => x.payload)
+    .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+
+  const cleaned = local.filter((x: any) => {
+    const id = String(x.local_id || x.id || '');
+    return id ? !deletedIds.has(id) : true;
+  });
+
+  const map = new Map<string, any>();
+  for (const r of cleaned) {
+    const key = String(r.local_id || r.id || r.return_number || '');
+    if (key) map.set(key, r);
+  }
+  for (const p of pending) {
+    const key = String(p.local_id || p.id || p.return_number || '');
+    if (key) map.set(key, p);
+  }
+  return Array.from(map.values());
+}
+
+export async function updateSalesReturn(localId: string, payload: any) {
+  const now = new Date().toISOString();
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const local = (await getLocal<any[]>('sales_returns')) || [];
+  const idx = local.findIndex((x: any) => x.local_id === localId || x.id === localId);
+  if (idx < 0) throw new Error('برگشت از فروش پیدا نشد');
+  const item = {
+    ...local[idx],
+    ...payload,
+    local_id: local[idx].local_id || localId,
+    updated_at: now,
+    device_id: dev,
+  };
+  const newList = local.slice();
+  newList[idx] = item;
+  await setLocal('sales_returns', newList);
+  try {
+    await _pushAudit({
+      type: 'sales_return_update',
+      table: 'sales_returns',
+      key: String(item.local_id),
+      at: now,
+      device_id: dev,
+      summary: 'ویرایش برگشت از فروش',
+    });
+  } catch {}
+  await enqueue('updateSalesReturn', item);
+  return item;
+}
+
+export async function deleteSalesReturn(localId: string) {
+  await recordTombstone('sales_returns', String(localId));
+  const local = (await getLocal<any[]>('sales_returns')) || [];
+  await setLocal('sales_returns', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  try {
+    await _pushAudit({
+      type: 'sales_return_delete',
+      table: 'sales_returns',
+      key: String(localId),
+      at: new Date().toISOString(),
+      device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+      summary: 'حذف برگشت از فروش',
+    });
+  } catch {}
+  await enqueue('deleteSalesReturn', String(localId));
+}
+
+// ═══════════════════════════════════════════
+//  برگشت از خرید (Purchase Returns)
+// ═══════════════════════════════════════════
+export async function createPurchaseReturn(payload: any) {
+  const now = new Date().toISOString();
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const local = (await getLocal<any[]>('purchase_returns')) || [];
+  const item = {
+    ...payload,
+    local_id: payload.local_id || ('pr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+    created_at: payload.created_at || now,
+    updated_at: now,
+    device_id: dev,
+  };
+  await setLocal('purchase_returns', [item, ...local]);
+  try {
+    await _pushAudit({
+      type: 'purchase_return_create',
+      table: 'purchase_returns',
+      key: String(item.local_id),
+      at: now,
+      device_id: dev,
+      summary: 'ثبت برگشت از خرید',
+    });
+  } catch {}
+  await enqueue('createPurchaseReturn', item);
+  return item;
+}
+
+export async function getPurchaseReturns() {
+  const local = (await getLocal<any[]>('purchase_returns')) || [];
+  const q = await getQueue();
+
+  const deletedIds = new Set<string>();
+  for (const item of q) {
+    if (item.op === 'deletePurchaseReturn') {
+      const id = String(item.payload || '').trim();
+      if (id) deletedIds.add(id);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (String(t.table || '') !== 'purchase_returns') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedIds.add(k);
+      }
+    }
+  } catch {}
+
+  const pending = q
+    .filter(x => x.op === 'createPurchaseReturn')
+    .map(x => x.payload)
+    .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+
+  const cleaned = local.filter((x: any) => {
+    const id = String(x.local_id || x.id || '');
+    return id ? !deletedIds.has(id) : true;
+  });
+
+  const map = new Map<string, any>();
+  for (const r of cleaned) {
+    const key = String(r.local_id || r.id || r.return_number || '');
+    if (key) map.set(key, r);
+  }
+  for (const p of pending) {
+    const key = String(p.local_id || p.id || p.return_number || '');
+    if (key) map.set(key, p);
+  }
+  return Array.from(map.values());
+}
+
+export async function updatePurchaseReturn(localId: string, payload: any) {
+  const now = new Date().toISOString();
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const local = (await getLocal<any[]>('purchase_returns')) || [];
+  const idx = local.findIndex((x: any) => x.local_id === localId || x.id === localId);
+  if (idx < 0) throw new Error('برگشت از خرید پیدا نشد');
+  const item = {
+    ...local[idx],
+    ...payload,
+    local_id: local[idx].local_id || localId,
+    updated_at: now,
+    device_id: dev,
+  };
+  const newList = local.slice();
+  newList[idx] = item;
+  await setLocal('purchase_returns', newList);
+  try {
+    await _pushAudit({
+      type: 'purchase_return_update',
+      table: 'purchase_returns',
+      key: String(item.local_id),
+      at: now,
+      device_id: dev,
+      summary: 'ویرایش برگشت از خرید',
+    });
+  } catch {}
+  await enqueue('updatePurchaseReturn', item);
+  return item;
+}
+
+export async function deletePurchaseReturn(localId: string) {
+  await recordTombstone('purchase_returns', String(localId));
+  const local = (await getLocal<any[]>('purchase_returns')) || [];
+  await setLocal('purchase_returns', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+  try {
+    await _pushAudit({
+      type: 'purchase_return_delete',
+      table: 'purchase_returns',
+      key: String(localId),
+      at: new Date().toISOString(),
+      device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+      summary: 'حذف برگشت از خرید',
+    });
+  } catch {}
+  await enqueue('deletePurchaseReturn', String(localId));
 }

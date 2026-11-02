@@ -585,7 +585,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                   <Text style={[s.th, { flex: 1.2 }]}>وضعیت</Text>
                 </View>
                 {getDisplayData().map((r: any, i: number) => (
-                  <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                  <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
                     <Text style={[s.td, { flex: 1.5, fontSize: 10, fontWeight: 'bold', color: r.type === 'مشتری' ? '#059669' : r.type === 'تأمین‌کننده' ? '#ea580c' : '#7c3aed' }]}>{r.type || '—'}</Text>
                     <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.name}</Text>
@@ -612,7 +612,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                   <Text style={[s.th, { flex: 1.8 }]}>وضعیت</Text>
                 </View>
                 {getDisplayData().map((r: any, i: number) => (
-                  <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                  <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
                     <Text style={[s.td, { flex: 2.5, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.name}</Text>
                     <Text style={[s.td, { flex: 1.2, fontSize: 9, color: '#7c3aed' }]}>{r.code}</Text>
@@ -637,7 +637,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                   <Text style={[s.th, { flex: 2 }]}>وضعیت</Text>
                 </View>
                 {getDisplayData().map((r: any, i: number) => (
-                  <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                  <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
                     <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.name}</Text>
                     <Text style={[s.td, { flex: 1.5, fontSize: 10, color: '#7c3aed' }]}>{r.code}</Text>
@@ -660,7 +660,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                   <Text style={[s.th, { flex: 2 }]}>وضعیت</Text>
                 </View>
                 {getDisplayData().map((r: any, i: number) => (
-                  <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                  <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
                     <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.name}</Text>
                     <Text style={[s.td, { flex: 1.5, fontSize: 10, color: '#7c3aed' }]}>{r.code}</Text>
@@ -760,7 +760,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                     <Text style={{ color: partyFilter === f.k ? '#fff' : '#475569', fontSize: 11, fontWeight: 'bold' }}>{f.l}</Text>
                   </TouchableOpacity>
                 ))}
-                    <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438' }]}>
+                    <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.td, { width: 30 }]}></Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
                       <Text style={[s.td, { width: 75 }]}></Text>
@@ -770,7 +770,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.td, { width: 120 }]}></Text>
                       <Text style={[s.td, { width: 45, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.qty) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 65 }]}></Text>
-                      <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.lineTotal) || 0), 0))}</Text>
+                      <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal) || 0) : 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#1e40af' }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
@@ -810,7 +810,7 @@ export default function LedgerScreen({ onBack, showToast }) {
               {treeMode === 'flat' ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator>
                   <View>
-                    <View style={[s.thead, { backgroundColor: '#334155' }]}>
+                    <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.th, { width: 30 }]}>#</Text>
                       <Text style={[s.th, { width: 80 }]}>تاریخ</Text>
                       <Text style={[s.th, { width: 90 }]}>نوع</Text>
@@ -823,7 +823,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.th, { width: 85 }]}>مانده</Text>
                     </View>
                     {filteredPartyDetails.map((t: any, i: number) => (
-                      <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                      <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{displayDate(t.date)}</Text>
                         <Text style={[s.td, { width: 90, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
@@ -854,7 +854,7 @@ export default function LedgerScreen({ onBack, showToast }) {
               ) : treeMode === 'groups' ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator>
                   <View>
-                    <View style={[s.thead, { backgroundColor: '#334155' }]}>
+                    <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.th, { width: 40 }]}>#</Text>
                       <Text style={[s.th, { width: 180, textAlign: 'right' }]}>گروه</Text>
                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
@@ -863,7 +863,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
                     </View>
                     {getTreeGroups().map((g: any, i: number) => (
-                      <TouchableOpacity key={g.name} onPress={() => { setActiveGroup(g.name); setTreeMode('group'); }} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                      <TouchableOpacity key={g.name} onPress={() => { setActiveGroup(g.name); setTreeMode('group'); }} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 40 }]}>{i + 1}</Text>
                         <Text style={[s.td, { width: 180, textAlign: 'right', fontWeight: 'bold', color: '#2563eb' }]}>{g.name}</Text>
                         <Text style={[s.td, { width: 80 }]}>{toFaNum(g.count)}</Text>
@@ -872,7 +872,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                         <Text style={[s.td, { width: 100, fontWeight: 'bold' }]}>{fmt(Math.abs(g.balance))}</Text>
                       </TouchableOpacity>
                     ))}
-                    <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438' }]}>
+                    <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.td, { width: 30 }]}></Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
                       <Text style={[s.td, { width: 75 }]}></Text>
@@ -882,7 +882,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.td, { width: 120 }]}></Text>
                       <Text style={[s.td, { width: 45, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.qty) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 65 }]}></Text>
-                      <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.lineTotal) || 0), 0))}</Text>
+                      <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal) || 0) : 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#1e40af' }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
@@ -899,7 +899,7 @@ export default function LedgerScreen({ onBack, showToast }) {
               ) : treeMode === 'group' ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator>
                   <View>
-                    <View style={[s.thead, { backgroundColor: '#334155' }]}>
+                    <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.th, { width: 40 }]}>#</Text>
                       <Text style={[s.th, { width: 240, textAlign: 'right' }]}>طرف / دسته</Text>
                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
@@ -908,7 +908,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
                     </View>
                     {getTreeCounterparties(activeGroup).map((c: any, i: number) => (
-                      <TouchableOpacity key={c.name} onPress={() => { setActiveCounterparty(c.name); setTreeMode('counterparty'); }} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                      <TouchableOpacity key={c.name} onPress={() => { setActiveCounterparty(c.name); setTreeMode('counterparty'); }} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 40 }]}>{i + 1}</Text>
                         <Text style={[s.td, { width: 240, textAlign: 'right', fontWeight: 'bold', color: '#2563eb' }]}>{c.name}</Text>
                         <Text style={[s.td, { width: 80 }]}>{toFaNum(c.count)}</Text>
@@ -922,7 +922,7 @@ export default function LedgerScreen({ onBack, showToast }) {
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator>
                   <View>
-                    <View style={[s.thead, { backgroundColor: '#334155' }]}>
+                    <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.th, { width: 30 }]}>#</Text>
                       <Text style={[s.th, { width: 75 }]}>تاریخ</Text>
                       <Text style={[s.th, { width: 80 }]}>نوع</Text>
@@ -936,7 +936,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.th, { width: 80 }]}>مانده</Text>
                     </View>
                     {treeTxns.map((t: any, i: number) => (
-                      <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                      <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
                         <Text style={[s.td, { width: 75, fontSize: 9 }]}>{displayDate(t.date)}</Text>
                         <Text style={[s.td, { width: 80, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
@@ -1016,7 +1016,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                   {invoiceLoading ? <ActivityIndicator /> : (
                     <ScrollView horizontal>
                       <View>
-                        <View style={[s.thead, { backgroundColor: '#334155' }]}>
+                        <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
                           <Text style={[s.th, { width: 30 }]}>#</Text>
                           <Text style={[s.th, { width: 80 }]}>کد مدل</Text>
                           <Text style={[s.th, { width: 130, textAlign: 'right' }]}>نام مدل</Text>
@@ -1030,7 +1030,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                           <Text style={[s.th, { width: 100 }]}>باربری</Text>
                         </View>
                         {(invoiceDetailRows || []).map((r: any, i: number) => (
-                          <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                          <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                             <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{r.model_code || '—'}</Text>
                             <Text style={[s.td, { width: 130, fontSize: 9, textAlign: 'right' }]}>{r.model_name || '—'}</Text>
@@ -1051,7 +1051,7 @@ export default function LedgerScreen({ onBack, showToast }) {
               ) : partyViewMode === 'all' ? (
                 <ScrollView horizontal>
                   <View>
-                    <View style={[s.thead, { backgroundColor: '#334155' }]}>
+                    <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.th, { width: 30 }]}>#</Text>
                       <Text style={[s.th, { width: 75 }]}>تاریخ</Text>
                       <Text style={[s.th, { width: 75 }]}>نوع</Text>
@@ -1074,7 +1074,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
                     </View>
                     {filteredPartyDetails.map((t: any, i: number) => (
-                      <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                      <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
                         <Text style={[s.td, { width: 75, fontSize: 9 }]}>{displayDate(t.date)}</Text>
                         <Text style={[s.td, { width: 75, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
@@ -1084,7 +1084,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                         <Text style={[s.td, { width: 120, fontSize: 9, textAlign: 'right' }]} numberOfLines={1}>{t.modelName || '—'}</Text>
                         <Text style={[s.td, { width: 45, fontSize: 9 }]}>{t.qty ? toFaNum(t.qty) : '—'}</Text>
                         <Text style={[s.td, { width: 65, fontSize: 9 }]}>{t.priceUnit ? fmt(t.priceUnit) : '—'}</Text>
-                        <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{t.lineTotal ? fmt(t.lineTotal) : '—'}</Text>
+                        <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) && t.lineTotal ? fmt(t.lineTotal) : '—'}</Text>
                         <Text style={[s.td, { width: 75, fontSize: 9, color: t.debit ? '#1e40af' : '#475569', fontWeight: 'bold' }]}>{t.debit ? fmt(t.debit) : '—'}</Text>
                         <Text style={[s.td, { width: 75, fontSize: 9, color: t.credit ? '#059669' : '#475569', fontWeight: 'bold' }]}>{t.credit ? fmt(t.credit) : '—'}</Text>
                         <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}</Text>
@@ -1106,7 +1106,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       </View>
                     ))}
                   
-                    <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438' }]}>
+                    <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.td, { width: 30 }]}></Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
                       <Text style={[s.td, { width: 75 }]}></Text>
@@ -1116,7 +1116,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.td, { width: 120 }]}></Text>
                       <Text style={[s.td, { width: 45, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.qty) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 65 }]}></Text>
-                      <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.lineTotal) || 0), 0))}</Text>
+                      <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal) || 0) : 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#1e40af' }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
@@ -1132,7 +1132,7 @@ export default function LedgerScreen({ onBack, showToast }) {
               ) : (selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in') ? (
                 <ScrollView horizontal>
                   <View>
-                    <View style={[s.thead, { backgroundColor: '#334155' }]}>
+                    <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.th, { width: 30 }]}>#</Text>
                       <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
                       <Text style={[s.th, { width: 80 }]}>نوع</Text>
@@ -1144,7 +1144,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
                     </View>
                     {(invoiceList || []).map((inv: any, i: number) => (
-                      <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                      <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{displayDate(inv.date)}</Text>
                         <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
@@ -1159,7 +1159,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                         </TouchableOpacity>
                       </View>
                     ))}
-                      <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438' }]}>
+                      <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
                         <Text style={[s.td, { width: 30 }]}></Text>
                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
                         <Text style={[s.td, { width: 80 }]}></Text>
@@ -1175,7 +1175,7 @@ export default function LedgerScreen({ onBack, showToast }) {
               ) : (
                 <ScrollView horizontal>
                   <View>
-                    <View style={[s.thead, { backgroundColor: '#334155' }]}>
+                    <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
                       <Text style={[s.th, { width: 30 }]}>#</Text>
                       <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
                       <Text style={[s.th, { width: 110 }]}>سند</Text>
@@ -1186,7 +1186,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
                     </View>
                     {(buildPaymentsList(selectedParty) || []).map((t: any, i: number) => (
-                      <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+                      <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{displayDate(t.date)}</Text>
                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{t.invoice || '—'}</Text>
@@ -1205,7 +1205,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                         </View>
                       </View>
                     ))}
-                      <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438' }]}>
+                      <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
                         <Text style={[s.td, { width: 30 }]}></Text>
                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
                         <Text style={[s.td, { width: 110 }]}></Text>

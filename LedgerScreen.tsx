@@ -7,6 +7,22 @@ import { getCurrencySync } from './lib.currency';
 import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
 import { displayDate } from './lib-date';
 import { toFaNum } from './lib';
+function _safeLedgerDate(input: any): string {
+  if (input === null || input === undefined || input === '') return '—';
+  let s = String(input).trim();
+  if (!s) return '—';
+  s = s.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+       .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+  const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0));
+    if (!isNaN(d.getTime())) return displayDate(d.toISOString());
+  }
+  const d2 = new Date(s);
+  if (!isNaN(d2.getTime())) return displayDate(d2.toISOString());
+  return s;
+}
+
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('en-US');
 const TYPE_LABEL = {
@@ -287,7 +303,7 @@ export default function LedgerScreen({ onBack, showToast }) {
   // PDF builder
   const _buildHtml = (forParty) => {
     var _p = [];
-    _p.push('<div class="info"><b>📅 تاریخ:</b> ' + displayDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
+    _p.push('<div class="info"><b>📅 تاریخ:</b> ' + _safeLedgerDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
     if (!forParty) {
       _p.push('<div class="title">📊 ترازنامه (کلی)</div>');
       _p.push('<table style="width:100%; table-layout:fixed; border-collapse:collapse;">');
@@ -350,7 +366,7 @@ export default function LedgerScreen({ onBack, showToast }) {
         tQty += Number(t.qty) || 0;
         tDebit += Number(t.debit) || 0;
         tCredit += Number(t.credit) || 0;
-        _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||'—') + '</td><td>' + (t.manualInvoice||'—') + '</td><td>' + (t.modelCode||'—') + '</td><td style="text-align:right">' + (t.modelName||'—') + '</td><td>' + (t.qty?toFaNum(t.qty):'—') + '</td><td>' + (t.priceUnit?fmt(t.priceUnit):'—') + '</td><td>' + (t.lineTotal?fmt(t.lineTotal):'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t.runningBalance||0)) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td><td>' + (t.holderCode||'—') + '</td><td>' + (t.depositDate?displayDate(t.depositDate):'—') + '</td><td>' + (t.shipping||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td></tr>');
+        _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||'—') + '</td><td>' + (t.manualInvoice||'—') + '</td><td>' + (t.modelCode||'—') + '</td><td style="text-align:right">' + (t.modelName||'—') + '</td><td>' + (t.qty?toFaNum(t.qty):'—') + '</td><td>' + (t.priceUnit?fmt(t.priceUnit):'—') + '</td><td>' + (t.lineTotal?fmt(t.lineTotal):'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t.runningBalance||0)) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td><td>' + (t.holderCode||'—') + '</td><td>' + (t.depositDate?_safeLedgerDate(t.depositDate):'—') + '</td><td>' + (t.shipping||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td></tr>');
       });
       _p.push('<tr class="total"><td colspan="7" style="text-align:left;font-weight:bold">جمع:</td><td style="font-weight:bold">' + toFaNum(tQty) + '</td><td></td><td></td><td style="color:#1e40af;font-weight:bold">' + fmt(tDebit) + '</td><td style="color:#059669;font-weight:bold">' + fmt(tCredit) + '</td><td style="font-weight:bold">' + fmt(Math.abs(tCredit - tDebit)) + '</td><td colspan="6"></td></tr>');
       _p.push('</table>');
@@ -380,9 +396,9 @@ export default function LedgerScreen({ onBack, showToast }) {
       } else if (treeMode === 'group') {
         sheets = [{ name: (activeGroup || 'گروه').slice(0, 28), data: getTreeCounterparties(activeGroup).map((c: any, i: number) => ({ '#': i+1, 'طرف / دسته': c.name, 'تعداد': c.count, 'بدهکار': c.debit, 'بستانکار': c.credit, 'مانده': Math.abs(c.balance) })) }];
       } else if (treeMode === 'counterparty') {
-        sheets = [{ name: (activeCounterparty || 'طرف').slice(0, 28), data: treeTxns.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.sourceInfo?.invoice || t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'جمع سند': t.sourceInfo?.total || 0, 'پرداخت سند': t.sourceInfo?.paid || 0, 'مانده سند': t.sourceInfo?.balance || 0, 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t.runningBalance || 0) })) }];
+        sheets = [{ name: (activeCounterparty || 'طرف').slice(0, 28), data: treeTxns.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.sourceInfo?.invoice || t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'جمع سند': t.sourceInfo?.total || 0, 'پرداخت سند': t.sourceInfo?.paid || 0, 'مانده سند': t.sourceInfo?.balance || 0, 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t.runningBalance || 0) })) }];
       } else {
-        sheets = [{ name: 'ریز', data: filteredPartyDetails.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'حساب': t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings' ? 'برداشت' : t.accountType === 'current' ? 'جاری' : '—', 'طرف': cpLabel(t), 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t.runningBalance || 0) })) }];
+        sheets = [{ name: 'ریز', data: filteredPartyDetails.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'حساب': t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings' ? 'برداشت' : t.accountType === 'current' ? 'جاری' : '—', 'طرف': cpLabel(t), 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t.runningBalance || 0) })) }];
       }
       const r = await exportExcel(sheets, 'statement-' + (selectedParty?.code || 'party') + '-' + Date.now() + '.xlsx');
       if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
@@ -392,7 +408,7 @@ export default function LedgerScreen({ onBack, showToast }) {
   
   const _buildInvoiceHtml = () => {
     var _p = [];
-    _p.push('<div class="info"><b>📅 تاریخ:</b> ' + displayDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
+    _p.push('<div class="info"><b>📅 تاریخ:</b> ' + _safeLedgerDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
     _p.push('<div class="title">📄 فاکتور: ' + (invoiceDetailMeta?.invoice || '') + '</div>');
     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + '</div>');
     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
@@ -401,7 +417,7 @@ export default function LedgerScreen({ onBack, showToast }) {
     (invoiceDetailRows || []).forEach(function(r, i) {
       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
       tot += line; pay += Number(r.payment) || 0;
-      _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' + (r.model_name || r.modelName || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity)||0) + '</td><td>' + fmt(Number(r.price_unit)||0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment)||0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? displayDate(r.deposit_date) : '—') + '</td></tr>');
+      _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' + (r.model_name || r.modelName || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity)||0) + '</td><td>' + fmt(Number(r.price_unit)||0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment)||0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td></tr>');
     });
     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
     _p.push('</table>');
@@ -424,14 +440,14 @@ export default function LedgerScreen({ onBack, showToast }) {
     if (partyViewMode === 'all') {
       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
       (buildPartyTransactions(selectedParty) || []).forEach(function(t: any, i: number) {
-        _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t._running||0)) + '</td></tr>');
+        _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t._running||0)) + '</td></tr>');
       });
     } else if ((selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in')) {
       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
       var tot = 0, paid = 0;
       (invoiceList || []).forEach(function(inv: any, i: number) {
         tot += Number(inv.total) || 0; paid += Number(inv.paid) || 0;
-        _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>' + fmt(inv.paid) + '</td><td>' + fmt(Math.abs(inv.balance)) + '</td></tr>');
+        _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>' + fmt(inv.paid) + '</td><td>' + fmt(Math.abs(inv.balance)) + '</td></tr>');
       });
       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td>' + fmt(Math.abs(tot-paid)) + '</td></tr>');
     } else {
@@ -440,7 +456,7 @@ export default function LedgerScreen({ onBack, showToast }) {
       (buildPaymentsList(selectedParty) || []).forEach(function(t: any, i: number) {
         var amt = Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0;
         totP += amt;
-        _p.push('<tr><td>' + (i+1) + '</td><td>' + displayDate(t.date) + '</td><td>' + (t.invoice||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="font-weight:bold">' + fmt(amt) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td></tr>');
+        _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (t.invoice||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="font-weight:bold">' + fmt(amt) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td></tr>');
       });
       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td>' + fmt(totP) + '</td><td colspan="2"></td></tr>');
     }
@@ -456,14 +472,14 @@ export default function LedgerScreen({ onBack, showToast }) {
   const _buildInvoiceDetailHtml = () => {
     var _p = [];
     _p.push('<div class="title">📄 فاکتور ' + (invoiceDetailMeta?.invoice || '') + '</div>');
-    _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + displayDate(invoiceDetailMeta?.date || '') + '</div>');
+    _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(invoiceDetailMeta?.date || '') + '</div>');
     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
     _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th><th>باربری</th></tr>');
     var tot = 0, paid = 0;
     (invoiceDetailRows || []).forEach(function(r: any, i: number) {
       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
       tot += line; paid += Number(r.payment) || 0;
-      _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity) || 0) + '</td><td>' + fmt(Number(r.price_unit) || 0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment) || 0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? displayDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td></tr>');
+      _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity) || 0) + '</td><td>' + fmt(Number(r.price_unit) || 0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment) || 0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td></tr>');
     });
     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td colspan="3"></td></tr>');
     _p.push('</table>');
@@ -485,13 +501,13 @@ export default function LedgerScreen({ onBack, showToast }) {
       let name = 'گزارش';
       if (partyViewMode === 'all') {
         name = 'همه';
-        rows = (buildPartyTransactions(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t._running || 0) }));
+        rows = (buildPartyTransactions(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t._running || 0) }));
       } else if (partyViewMode === 'in') {
         name = 'ورودی‌ها';
-        rows = (invoiceList || []).map((inv: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(inv.date), 'نوع': inv.type === 'purchase' ? 'خرید' : 'فروش', 'شماره فاکتور': inv.invoice, 'تعداد': inv.count || 0, 'مبلغ کل': inv.total, 'پرداخت': inv.paid, 'مانده': Math.abs(inv.balance) }));
+        rows = (invoiceList || []).map((inv: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(inv.date), 'نوع': inv.type === 'purchase' ? 'خرید' : 'فروش', 'شماره فاکتور': inv.invoice, 'تعداد': inv.count || 0, 'مبلغ کل': inv.total, 'پرداخت': inv.paid, 'مانده': Math.abs(inv.balance) }));
       } else {
         name = 'خروجی‌ها';
-        rows = (buildPaymentsList(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(t.date), 'سند': t.invoice || '', 'شرح': cleanDesc(t), 'مبلغ پرداخت': Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0, 'بانک': t.bank || '', 'صاحب حساب': t.holder || '' }));
+        rows = (buildPaymentsList(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'سند': t.invoice || '', 'شرح': cleanDesc(t), 'مبلغ پرداخت': Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0, 'بانک': t.bank || '', 'صاحب حساب': t.holder || '' }));
       }
       const r = await exportExcel([{ name, data: rows }], 'party-' + (selectedParty?.code || 'p') + '-' + Date.now() + '.xlsx');
       if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
@@ -501,7 +517,7 @@ export default function LedgerScreen({ onBack, showToast }) {
     var isP = meta && meta.type === 'purchase';
     var _p = [];
     _p.push('<div class="title">📄 فاکتور ' + (meta?.invoice || '') + '</div>');
-    _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + displayDate(meta?.date || '') + '</div>');
+    _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(meta?.date || '') + '</div>');
     _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
     _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>قیمت</th><th>جمع ردیف</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
     var td = 0, tc = 0, run = 0, idx = 0;
@@ -509,7 +525,7 @@ export default function LedgerScreen({ onBack, showToast }) {
       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0, line = qty * pr;
       var d = isP ? 0 : line, c = isP ? line : 0;
       td += d; tc += c; run += c - d; idx++;
-      _p.push('<tr><td>' + idx + '</td><td>' + displayDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_invoice || '—') + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + toFaNum(qty) + '</td><td>' + fmt(pr) + '</td><td>' + fmt(line) + '</td><td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.account_holder || '—') + '</td><td>' + (r.account_holder_code || '—') + '</td><td>' + (r.deposit_date ? displayDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td><td style="text-align:right">' + (r.description || '—') + '</td></tr>');
+      _p.push('<tr><td>' + idx + '</td><td>' + _safeLedgerDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_invoice || '—') + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + toFaNum(qty) + '</td><td>' + fmt(pr) + '</td><td>' + fmt(line) + '</td><td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.account_holder || '—') + '</td><td>' + (r.account_holder_code || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td><td style="text-align:right">' + (r.description || '—') + '</td></tr>');
     });
     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="10" style="text-align:left">جمع:</td><td style="color:#1e40af">' + fmt(td) + '</td><td style="color:#059669">' + fmt(tc) + '</td><td>' + fmt(Math.abs(td - tc)) + '</td><td colspan="6"></td></tr>');
     _p.push('</table>');
@@ -825,7 +841,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                     {filteredPartyDetails.map((t: any, i: number) => (
                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
-                        <Text style={[s.td, { width: 80, fontSize: 9 }]}>{displayDate(t.date)}</Text>
+                        <Text style={[s.td, { width: 80, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
                         <Text style={[s.td, { width: 90, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
                         <Text style={[s.td, { width: 70, fontSize: 9, color: '#7c3aed' }]}>{t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings' ? 'برداشت' : t.accountType === 'current' ? 'جاری' : '—'}</Text>
                         <Text style={[s.td, { width: 80, fontSize: 9, color: '#0891b2' }]}>{cpLabel(t)}</Text>
@@ -938,7 +954,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                     {treeTxns.map((t: any, i: number) => (
                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
-                        <Text style={[s.td, { width: 75, fontSize: 9 }]}>{displayDate(t.date)}</Text>
+                        <Text style={[s.td, { width: 75, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
                         <Text style={[s.td, { width: 80, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
                         <Text style={[s.td, { width: 95, fontSize: 9, color: '#7c3aed' }]} numberOfLines={1}>{t.sourceInfo?.invoice || t.invoice || t.sourceId || '—'}</Text>
                         <Text style={[s.td, { width: 170, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
@@ -1040,7 +1056,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                             <Text style={[s.td, { width: 90, fontSize: 9, fontWeight: 'bold' }]}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{fmt(Number(r.payment) || 0)}</Text>
                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.bank_name || r.receiver_bank || '—'}</Text>
-                            <Text style={[s.td, { width: 90, fontSize: 9 }]}>{r.deposit_date ? displayDate(r.deposit_date) : '—'}</Text>
+                            <Text style={[s.td, { width: 90, fontSize: 9 }]}>{r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—'}</Text>
                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.shipping || '—'}</Text>
                           </View>
                         ))}
@@ -1076,7 +1092,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                     {filteredPartyDetails.map((t: any, i: number) => (
                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
-                        <Text style={[s.td, { width: 75, fontSize: 9 }]}>{displayDate(t.date)}</Text>
+                        <Text style={[s.td, { width: 75, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
                         <Text style={[s.td, { width: 75, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#7c3aed' }]}>{t.invoice || '—'}</Text>
                         <Text style={[s.td, { width: 85, fontSize: 9 }]}>{t.manualInvoice || '—'}</Text>
@@ -1091,7 +1107,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{t.bank || '—'}</Text>
                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.holder || '—'}</Text>
                         <Text style={[s.td, { width: 65, fontSize: 9 }]}>{t.holderCode || '—'}</Text>
-                        <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.depositDate ? displayDate(t.depositDate) : '—'}</Text>
+                        <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.depositDate ? _safeLedgerDate(t.depositDate) : '—'}</Text>
                         <Text style={[s.td, { width: 85, fontSize: 9 }]}>{t.shipping || '—'}</Text>
                         <Text style={[s.td, { width: 120, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
                         <View style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
@@ -1146,7 +1162,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                     {(invoiceList || []).map((inv: any, i: number) => (
                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
-                        <Text style={[s.td, { width: 90, fontSize: 9 }]}>{displayDate(inv.date)}</Text>
+                        <Text style={[s.td, { width: 90, fontSize: 9 }]}>{_safeLedgerDate(inv.date)}</Text>
                         <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{inv.invoice}</Text>
                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{toFaNum(inv.count || 0)}</Text>
@@ -1188,7 +1204,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                     {(buildPaymentsList(selectedParty) || []).map((t: any, i: number) => (
                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
-                        <Text style={[s.td, { width: 90, fontSize: 9 }]}>{displayDate(t.date)}</Text>
+                        <Text style={[s.td, { width: 90, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{t.invoice || '—'}</Text>
                         <Text style={[s.td, { width: 180, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
                         <Text style={[s.td, { width: 110, fontSize: 9, fontWeight: 'bold', color: '#059669' }]}>{fmt(Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0)}</Text>

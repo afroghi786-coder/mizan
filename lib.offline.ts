@@ -398,16 +398,21 @@ async function _localUpsertSale(payload: any) {
       customer_code: payload.customerCode || payload.customer_code || '',
       customer_name: payload.customerName || payload.customer_name || '',
       customer_phone: payload.customerPhone || payload.customer_phone || '',
-      account_holder: payload.holderName || payload.accountHolder || '',
-      account_holder_code: payload.holderCode || payload.accountHolderCode || '',
+      account_holder: payload.holderName || payload.accountHolder || payload.receiverName || it.accountHolder || it.holderName || '',
+      account_holder_code: payload.holderCode || payload.accountHolderCode || payload.receiverCode || it.accountHolderCode || it.holderCode || '',
       model_code: it.modelCode || it.model_code || '',
       model_name: it.modelName || it.model_name || '',
       quantity: Number(it.quantity) || 0,
       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
-      payment: idx === 0 ? (Number(payload.paymentAmount ?? payload.payment ?? payload.paid ?? it.payment) || 0) : 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return rowPay;
+        if (idx !== 0) return 0;
+        return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+      })(),
       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
-      bank_name: payload.bank || payload.bankName || it.bankName || '',
-      deposit_date: payload.depositDate || payload.payDate || it.depositDate || '',
+      bank_name: payload.bank || payload.bankName || payload.receiverBank || it.bankName || '',
+      deposit_date: payload.depositDate || payload.payDate || payload.paymentDate || it.depositDate || '',
       shipping: payload.shipping || '',
       date_factor: it.dateFactor || it.date_factor || baseDate,
       date_reg: it.dateReg || it.date_reg || baseDate,
@@ -432,13 +437,18 @@ async function _localUpsertPurchase(payload: any) {
       supplier_code: payload.supplierCode || payload.supplier_code || '',
       supplier_name: payload.supplierName || payload.supplier_name || '',
       supplier_phone: payload.supplierPhone || payload.supplier_phone || '',
-      account_holder: payload.payerName || payload.accountHolder || '',
-      payer_code: payload.payerCode || payload.accountHolderCode || '',
+      account_holder: payload.payerName || payload.accountHolder || it.accountHolder || it.payerName || '',
+      payer_code: payload.payerCode || payload.accountHolderCode || it.accountHolderCode || it.payerCode || '',
       model_code: it.modelCode || it.model_code || '',
       model_name: it.modelName || it.model_name || '',
       quantity: Number(it.quantity) || 0,
       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
-      payment: idx === 0 ? (Number(payload.paymentAmount ?? payload.payment ?? payload.paid ?? it.payment) || 0) : 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return rowPay;
+        if (idx !== 0) return 0;
+        return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+      })(),
       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
       bank_name: payload.bankAccount || payload.bank || it.bankName || '',
       deposit_date: payload.paymentDate || payload.depositDate || it.depositDate || '',
@@ -566,7 +576,7 @@ async function computeLocalInventory() {
   let purchases = purchasesRaw || [];
   const settings = (settingsRaw as any) || {};
   const threshold = settings.inventory_threshold ?? 5;
-  const adjAll = (adjRaw || []).slice();
+  let adjAll = (adjRaw || []).slice();
   const q = await getQueue();
   
   // --- Merge Deletions (حذف‌های آفلاین) ---
@@ -633,6 +643,7 @@ async function computeLocalInventory() {
       const rows = item.payload.rows || item.payload.items || [];
       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+      if (inv && sales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
       for (const r of rows) {
         sales.push({
           customer_code: item.payload.customerCode || item.payload.customer_code || '',
@@ -656,11 +667,13 @@ async function computeLocalInventory() {
       const rows = item.payload.rows || item.payload.items || [];
       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+      if (inv && purchases.some((p: any) => String(p.invoice_number || '') === String(inv))) continue;
       for (const r of rows) {
         purchases.push({
           supplier_code: item.payload.supplierCode || item.payload.supplier_code || '',
           supplier_name: item.payload.supplierName || item.payload.supplier_name || '',
           supplier_phone: item.payload.supplierPhone || item.payload.supplier_phone || '',
+          account_holder: item.payload.payerName || item.payload.accountHolder || r.accountHolder || r.account_holder || '',
           quantity: Number(r.quantity) || 0,
           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
           payment: Number(r.payment) || 0,
@@ -671,11 +684,11 @@ async function computeLocalInventory() {
           manual_invoice: item.payload.manualInvoice || '',
           date_factor: r.date_factor || r.dateFactor || baseDate,
           date_reg: r.date_reg || r.dateReg || baseDate,
-          bank_name: item.payload.bank || '',
-          deposit_date: item.payload.depositDate || '',
-          shipping: item.payload.shipping || '',
+          bank_name: item.payload.bank || item.payload.bankName || item.payload.bankAccount || item.payload.receiverBank || r.bankName || r.bank_name || '',
+          deposit_date: item.payload.depositDate || item.payload.paymentDate || item.payload.payDate || r.depositDate || r.deposit_date || '',
+          shipping: item.payload.shipping || r.shipping || '',
           description: r.description || '',
-          payer_code: item.payload.payerCode || '',
+          payer_code: item.payload.payerCode || item.payload.accountHolderCode || r.accountHolderCode || r.account_holder_code || r.payerCode || '',
           _pending: true,
         });
       }
@@ -1336,14 +1349,19 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
         shelf: it.shelf || '',
         quantity: it.quantity,
         price_unit: it.priceUnit,
-        payment: idx === 0 ? (Number(p.paymentAmount ?? p.payment ?? p.paid ?? it.payment) || 0) : 0,
-        deposit_date: idx === 0 ? (p.payDate || it.depositDate || '') : '',
-        bank_name: idx === 0 ? (p.receiverBank || it.bankName || '') : '',
-        account_holder: idx === 0 ? (p.receiverName || it.accountHolder || '') : '',
-        account_holder_code: idx === 0 ? (p.receiverCode || it.accountHolderCode || '') : '',
+        payment: (() => {
+          const rowPay = Number(it.payment) || 0;
+          if (rowPay > 0) return rowPay;
+          if (idx !== 0) return 0;
+          return Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+        })(),
+        deposit_date: idx === 0 ? (p.payDate || p.depositDate || p.paymentDate || it.depositDate || '') : '',
+        bank_name: idx === 0 ? (p.receiverBank || p.bankName || p.bank || it.bankName || '') : '',
+        account_holder: idx === 0 ? (p.receiverName || p.holderName || p.accountHolder || it.accountHolder || '') : '',
+        account_holder_code: idx === 0 ? (p.receiverCode || p.holderCode || p.accountHolderCode || it.accountHolderCode || '') : '',
         description: idx === 0 ? (p.note || it.description || '') : (it.description || ''),
-        date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),
-        date_reg: new Date(item.ts).toISOString().slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+        date_factor: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 10).replace(/-/g, '/'),
+        date_reg: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
         _pending: true,
       }));
     }
@@ -1367,11 +1385,16 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
           shelf: it.shelf || '',
           quantity: it.quantity,
           price_unit: it.priceUnit,
-          payment: idx === 0 ? (p.paymentAmount || 0) : 0,
-          deposit_date: idx === 0 ? (p.paymentDate || '') : '',
+          payment: (() => {
+            const rowPay = Number(it.payment) || 0;
+            if (rowPay > 0) return rowPay;
+            if (idx !== 0) return 0;
+            return Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+          })(),
+          deposit_date: idx === 0 ? (p.paymentDate || p.depositDate || it.depositDate || '') : '',
           description: it.description || '',
-          date_factor: new Date(item.ts).toISOString().slice(0, 10).replace(/-/g, '/'),
-          date_reg: new Date(item.ts).toISOString().slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+          date_factor: String(p.invoiceDate || p.purchaseDate || p.factorDate || p.date || new Date(item.ts).toISOString()).slice(0, 10).replace(/-/g, '/'),
+          date_reg: String(p.invoiceDate || p.purchaseDate || p.factorDate || p.date || new Date(item.ts).toISOString()).slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
           _pending: true,
         }));
       }
@@ -1426,7 +1449,6 @@ export async function updateInvoiceInQueue_original(invoiceNumber: string, type:
   for (const item of queue) {
     if (item.op !== op) continue;
 
-    // چک هر دو شماره برای purchase
     let match = false;
     if (type === 'sales') {
       match = item.payload?.invoiceNumber === invoiceNumber;
@@ -1459,7 +1481,6 @@ export async function updateInvoiceInQueue_original(invoiceNumber: string, type:
           priceUnit: r.priceUnit,
           description: r.description,
         }));
-        // اطلاعات پرداخت از ردیف اول
         if (validRows[0]) {
           item.payload.paymentAmount = validRows[0].payment || 0;
           item.payload.paymentDate = validRows[0].depositDate || '';
@@ -1468,6 +1489,27 @@ export async function updateInvoiceInQueue_original(invoiceNumber: string, type:
           item.payload.payerCode = validRows[0].accountHolderCode || '';
         }
       }
+
+      // BUSINESS_LOCAL_AND_SHEET_ONLY — به‌روزرسانی محلی تا دفتر معین فوراً تغییر را ببیند
+      const key = type === 'sales' ? 'sales' : 'purchases';
+      const list = (await getLocal<any[]>(key)) || [];
+      const template = list.find((r: any) => String(r.invoice_number || '') === invoiceNumber) || {};
+      const filtered = list.filter((r: any) => String(r.invoice_number || '') !== invoiceNumber);
+      const newRows = validRows.map((r: any) => ({
+        ...template,
+        invoice_number: invoiceNumber,
+        model_code: r.modelCode || '',
+        model_name: r.modelName || '',
+        quantity: Number(r.quantity) || 0,
+        price_unit: Number(r.priceUnit) || 0,
+        payment: Number(r.payment) || 0,
+        description: r.description || '',
+        deposit_date: r.depositDate || template.deposit_date || '',
+        bank_name: r.bankName || template.bank_name || '',
+        account_holder: r.accountHolder || template.account_holder || '',
+        account_holder_code: r.accountHolderCode || template.account_holder_code || '',
+      }));
+      await setLocal(key, [...filtered, ...newRows]);
       break;
     }
   }
@@ -2291,8 +2333,11 @@ export async function getInventoryByModel(code: string) {
         description: r.description || '',
         _pending: true,
       };
-      if (item.op === 'createPurchase') pAll = pAll.concat([normalized]);
-      else sAll = sAll.concat([normalized]);
+      if (item.op === 'createPurchase') {
+        if (!pAll.some((x: any) => String(x.invoice_number || '') === String(normalized.invoice_number || ''))) pAll = pAll.concat([normalized]);
+      } else {
+        if (!sAll.some((x: any) => String(x.invoice_number || '') === String(normalized.invoice_number || ''))) sAll = sAll.concat([normalized]);
+      }
     }
   }
 
@@ -2527,8 +2572,8 @@ export async function getLedgerData(): Promise<any[]> {
           customer_code: item.payload.customerCode || item.payload.customer_code || '',
           customer_name: item.payload.customerName || item.payload.customer_name || '',
           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
-          account_holder_code: item.payload.holderCode || item.payload.account_holder_code || '',
-          account_holder: item.payload.holderName || item.payload.account_holder || '',
+          account_holder_code: item.payload.holderCode || item.payload.account_holder_code || item.payload.receiverCode || r.accountHolderCode || r.account_holder_code || '',
+          account_holder: item.payload.holderName || item.payload.account_holder || item.payload.receiverName || r.accountHolder || r.account_holder || '',
           quantity: Number(r.quantity) || 0,
           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
           payment: Number(r.payment) || 0,
@@ -2539,9 +2584,9 @@ export async function getLedgerData(): Promise<any[]> {
           manual_invoice: '',
           date_factor: r.date_factor || r.dateFactor || baseDate,
           date_reg: r.date_reg || r.dateReg || baseDate,
-          bank_name: item.payload.bank || '',
-          deposit_date: item.payload.depositDate || '',
-          shipping: item.payload.shipping || '',
+          bank_name: item.payload.bank || item.payload.bankName || item.payload.bankAccount || r.bankName || r.bank_name || '',
+          deposit_date: item.payload.depositDate || item.payload.paymentDate || r.depositDate || r.deposit_date || '',
+          shipping: item.payload.shipping || r.shipping || '',
           description: r.description || '',
           payer_code: item.payload.holderCode || '',
           _pending: true,
@@ -2568,9 +2613,9 @@ export async function getLedgerData(): Promise<any[]> {
           manual_invoice: item.payload.manualInvoice || '',
           date_factor: r.date_factor || r.dateFactor || baseDate,
           date_reg: r.date_reg || r.dateReg || baseDate,
-          bank_name: item.payload.bank || '',
-          deposit_date: item.payload.depositDate || '',
-          shipping: item.payload.shipping || '',
+          bank_name: item.payload.bank || item.payload.bankName || item.payload.bankAccount || r.bankName || r.bank_name || '',
+          deposit_date: item.payload.depositDate || item.payload.paymentDate || r.depositDate || r.deposit_date || '',
+          shipping: item.payload.shipping || r.shipping || '',
           description: r.description || '',
           payer_code: item.payload.payerCode || '',
           _pending: true,
@@ -3272,7 +3317,7 @@ export async function getPartners() {
   const q = await getQueue();
   const result = [...list];
   for (const item of q) {
-    if (item.op === 'createPartner') result.push(item.payload);
+    if (item.op === 'createPartner') { const lid = String(item.payload?.local_id || ''); if (!lid || !result.some((x: any) => String(x.local_id || '') === lid)) result.push(item.payload); }
     else if (item.op === 'updatePartner') {
       const idx = result.findIndex((x: any) => x.local_id === item.payload.local_id || x.id === item.payload.id);
       if (idx >= 0) result[idx] = { ...result[idx], ...item.payload };
@@ -3396,7 +3441,7 @@ export async function getBanks() {
   const q = await getQueue();
   const result = [...list];
   for (const item of q) {
-    if (item.op === 'createBank') result.push(item.payload);
+    if (item.op === 'createBank') { const lid = String(item.payload?.local_id || ''); if (!lid || !result.some((x: any) => String(x.local_id || '') === lid)) result.push(item.payload); }
     else if (item.op === 'deleteBank') {
       const idx = result.findIndex((x: any) => x.local_id === item.payload);
       if (idx >= 0) result.splice(idx, 1);
@@ -3454,8 +3499,11 @@ export async function getShippings() {
   const q = await getQueue();
   const result = [...list];
   for (const item of q) {
-    if (item.op === 'createShipping') result.push(item.payload);
-    else if (item.op === 'deleteShipping') {
+    if (item.op === 'createShipping') {
+      const lid = String(item.payload?.local_id || '');
+      if (lid && result.some((x: any) => String(x.local_id || '') === lid)) continue;
+      result.push(item.payload);
+    } else if (item.op === 'deleteShipping') {
       const idx = result.findIndex((x: any) => x.local_id === item.payload);
       if (idx >= 0) result.splice(idx, 1);
     }

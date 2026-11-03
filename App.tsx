@@ -7300,17 +7300,23 @@ function SearchSection({ showToast, onReturnSaved }: any) {
       
 
       if (anyPending) {
-
         const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows);
-
-        if (!ok) throw new Error('فاکتور آفلاین پیدا نشد');
-
-        alertMsg('✅ موفق', 'تغییرات روی فاکتور آفلاین ذخیره شد');
-
+        if (ok) {
+          alertMsg('✅ موفق', 'تغییرات روی فاکتور آفلاین ذخیره شد');
+          setEditing(null); setEditRows([]); setDirty(false); load();
+          return;
+        }
+        const metaFallback: any = editing.type === 'sales'
+          ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '' }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '' };
+        if (editing.type === 'sales') {
+          await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        } else {
+          await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        }
+        alertMsg('✅ موفق', 'تغییرات ذخیره شد');
         setEditing(null); setEditRows([]); setDirty(false); load();
-
         return;
-
       }
 
       // ═══ ذخیره فاکتور سینک‌شده (آفلاین یا آنلاین) ═══
@@ -10086,6 +10092,7 @@ function ShippingsSection({ showToast }: any) {
 function SourcesSection({ showToast }: any) {
   const [sub, setSub] = useState<'parties' | 'products' | 'partners' | 'banks' | 'shippings'>('parties');
   return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
         <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
@@ -10098,6 +10105,7 @@ function SourcesSection({ showToast }: any) {
       </ScrollView>
       {sub === 'parties' ? <PartiesSection showToast={showToast} /> : sub === 'products' ? <ProductsSection showToast={showToast} /> : sub === 'partners' ? <PartnersSection showToast={showToast} /> : sub === 'banks' ? <BanksSection showToast={showToast} /> : <ShippingsSection showToast={showToast} />}
     </View>
+    </KeyboardAvoidingView>
   );
 }
 

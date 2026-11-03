@@ -171,22 +171,22 @@ export default function LedgerScreen({ onBack, showToast }) {
   }
 
   const openParty = (p: any) => {
-    if (activeTab === 'parties') {
-      setSelectedParty(p);
-      setInvoiceList(buildInvoicesList(p));
-      setInvoiceDetailRows([]);
-      setInvoiceDetailMeta(null);
-      setPartyViewMode('all');
-      setInvoiceModalVisible(true);
-      return;
-    }
+  if (activeTab === 'parties') {
     setSelectedParty(p);
-    setPartyFilter('all');
-    setTreeMode('flat');
-    setActiveGroup('');
-    setActiveCounterparty('');
-    setModalVisible(true);
-  };
+    setInvoiceList(buildInvoicesList(p));
+    setInvoiceDetailRows([]);
+    setInvoiceDetailMeta(null);
+    setPartyViewMode(String(p?.type || '').includes('مشتری') ? 'out' : 'in');
+    setInvoiceModalVisible(true);
+    return;
+  }
+  setSelectedParty(p);
+  setPartyFilter('all');
+  setTreeMode('flat');
+  setActiveGroup('');
+  setActiveCounterparty('');
+  setModalVisible(true);
+};;;
   const partyDetails = selectedParty ? selectedParty.transactions : [];
   const filteredPartyDetails = (partyDetails || []).filter((t: any) => {
     if (partyFilter === 'all') return true;

@@ -318,7 +318,9 @@ export async function getProducts() {
 }
 export async function createProduct(p: any) {
   const list: any[] = (await getLocal('products')) || [];
-  const item = { ...p, _localId: Date.now() };
+  const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const nowPr = new Date().toISOString();
+  const item = { ...p, _localId: Date.now(), local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)), updated_at: nowPr, device_id: devPr };
   list.push(item);
   await setLocal('products', list);
   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
@@ -337,7 +339,7 @@ export async function updateProduct(id: string, p: any) {
   const list: any[] = (await getLocal('products')) || [];
   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
-  if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+  if (idx >= 0) { list[idx] = { ...list[idx], ...p, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('products', list); }
   try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
 
   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
@@ -392,8 +394,13 @@ async function _localUpsertSale(payload: any) {
     const old = (await getLocal<any[]>('sales')) || [];
     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    const now = new Date().toISOString();
     const rows = items.map((it: any, idx: number) => ({
       invoice_number: inv,
+      local_id: 'sale_' + inv + '_' + idx,
+      device_id: dev,
+      updated_at: now,
       manual_invoice: payload.manualInvoice || '',
       customer_code: payload.customerCode || payload.customer_code || '',
       customer_name: payload.customerName || payload.customer_name || '',
@@ -431,8 +438,13 @@ async function _localUpsertPurchase(payload: any) {
     const old = (await getLocal<any[]>('purchases')) || [];
     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+    const devP = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    const nowP = new Date().toISOString();
     const rows = items.map((it: any, idx: number) => ({
       invoice_number: inv,
+      local_id: 'purchase_' + inv + '_' + idx,
+      device_id: devP,
+      updated_at: nowP,
       manual_invoice: payload.manualInvoice || '',
       supplier_code: payload.supplierCode || payload.supplier_code || '',
       supplier_name: payload.supplierName || payload.supplier_name || '',
@@ -1041,10 +1053,13 @@ function _groupSalesRows(rows: any[]) {
     if (!groups[inv]) {
       groups[inv] = {
         invoice: inv,
+        local_id: 'grp_sale_' + inv,
         name: r.customer_name || '',
         phone: r.customer_phone || '',
         total: 0, paid: 0, items: [],
         date: r.date_reg || r.date_factor || r.created_at || '',
+        updated_at: r.updated_at || r.updatedAt || '',
+        device_id: r.device_id || '',
       };
     }
     const g = groups[inv];
@@ -1055,6 +1070,9 @@ function _groupSalesRows(rows: any[]) {
     g.items.push(r);
     if (r.customer_name) g.name = r.customer_name;
     if (r.customer_phone) g.phone = r.customer_phone;
+    const rUpd = String(r.updated_at || r.updatedAt || '');
+    if (rUpd && (!g.updated_at || rUpd > g.updated_at)) g.updated_at = rUpd;
+    if (r.device_id && !g.device_id) g.device_id = r.device_id;
   }
   return Object.values(groups);
 }
@@ -1067,11 +1085,14 @@ function _groupPurchaseRows(rows: any[]) {
     if (!groups[inv]) {
       groups[inv] = {
         invoice: inv,
+        local_id: 'grp_purchase_' + inv,
         manual: r.manual_invoice || '',
         name: r.supplier_name || '',
         phone: r.supplier_phone || '',
         total: 0, paid: 0, items: [],
         date: r.date_reg || r.date_factor || r.created_at || '',
+        updated_at: r.updated_at || r.updatedAt || '',
+        device_id: r.device_id || '',
       };
     }
     const g = groups[inv];
@@ -1082,8 +1103,16 @@ function _groupPurchaseRows(rows: any[]) {
     g.items.push(r);
     if (r.supplier_name) g.name = r.supplier_name;
     if (r.supplier_phone) g.phone = r.supplier_phone;
+    const rUpdP = String(r.updated_at || r.updatedAt || '');
+    if (rUpdP && (!g.updated_at || rUpdP > g.updated_at)) g.updated_at = rUpdP;
+    if (r.device_id && !g.device_id) g.device_id = r.device_id;
   }
   return Object.values(groups);
+}
+
+function _tsLocal(v: any): number {
+  const t = Date.parse(String(v || ''));
+  return isNaN(t) ? 0 : t;
 }
 
 export async function getSalesGrouped() {
@@ -1095,9 +1124,24 @@ export async function getSalesGrouped() {
   const localSalesRows = (await getLocal<any[]>('sales')) || [];
   if (localSalesRows.length) {
     const groupedFromSales = _groupSalesRows(localSalesRows);
+    const localUpMap: Record<string, number> = {};
+    for (const r of localSalesRows) {
+      const inv = String(r.invoice_number || '').trim();
+      if (!inv) continue;
+      const up = _tsLocal(r.updated_at || r.updatedAt);
+      if (!localUpMap[inv] || up > localUpMap[inv]) localUpMap[inv] = up;
+    }
     const map: Record<string, any> = {};
     for (const g of serverList) map[String(g.invoice || '')] = g;
-    for (const g of groupedFromSales) map[String(g.invoice || '')] = g;
+    for (const g of groupedFromSales) {
+      const k = String(g.invoice || '');
+      if (!k) continue;
+      const existing = map[k];
+      if (!existing) { map[k] = g; continue; }
+      const exUp = _tsLocal(existing.updated_at || existing.updatedAt);
+      const newUp = localUpMap[k] || 0;
+      if (newUp > exUp) map[k] = g;
+    }
     serverList = Object.values(map);
   }
 
@@ -1256,9 +1300,24 @@ export async function getPurchasesGrouped() {
   const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
   if (localPurchaseRows.length) {
     const groupedFromPurchases = _groupPurchaseRows(localPurchaseRows);
+    const localUpMapP: Record<string, number> = {};
+    for (const r of localPurchaseRows) {
+      const inv = String(r.invoice_number || '').trim();
+      if (!inv) continue;
+      const up = _tsLocal(r.updated_at || r.updatedAt);
+      if (!localUpMapP[inv] || up > localUpMapP[inv]) localUpMapP[inv] = up;
+    }
     const map: Record<string, any> = {};
     for (const g of serverList) map[String(g.invoice || '')] = g;
-    for (const g of groupedFromPurchases) map[String(g.invoice || '')] = g;
+    for (const g of groupedFromPurchases) {
+      const k = String(g.invoice || '');
+      if (!k) continue;
+      const existing = map[k];
+      if (!existing) { map[k] = g; continue; }
+      const exUp = _tsLocal(existing.updated_at || existing.updatedAt);
+      const newUp = localUpMapP[k] || 0;
+      if (newUp > exUp) map[k] = g;
+    }
     serverList = Object.values(map);
   }
 
@@ -1418,6 +1477,40 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
     }
     return rows;
   }
+
+  // fallback: اگر فاکتور از شیت در grouped آمده باشد
+  try {
+    const groupedKey = type === 'purchase' ? 'purchases_grouped' : 'sales_grouped';
+    const grouped = (await getLocal<any[]>(groupedKey)) || [];
+    const g = grouped.find((x: any) => String(x.invoice || '') === invoiceNumber);
+    if (g) {
+      const isPurchase = groupedKey === 'purchases_grouped';
+      return (g.items || []).map((it: any, idx: number) => ({
+        id: 'grouped_' + idx,
+        invoice_number: invoiceNumber,
+        customer_code: isPurchase ? '' : (g.customerCode || g.code || ''),
+        customer_name: isPurchase ? '' : (g.name || ''),
+        customer_phone: isPurchase ? '' : (g.phone || ''),
+        supplier_code: isPurchase ? (g.supplierCode || g.code || '') : '',
+        supplier_name: isPurchase ? (g.name || '') : '',
+        supplier_phone: isPurchase ? (g.phone || '') : '',
+        model_code: it.modelCode || it.model_code || '',
+        model_name: it.modelName || it.model_name || '',
+        shelf: it.shelf || '',
+        quantity: Number(it.quantity) || 0,
+        price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+        payment: idx === 0 ? (Number(g.paid) || 0) : 0,
+        deposit_date: idx === 0 ? (g.depositDate || g.deposit_date || '') : '',
+        bank_name: idx === 0 ? (g.bank || g.bank_name || '') : '',
+        account_holder: idx === 0 ? (g.holder || g.account_holder || '') : '',
+        account_holder_code: idx === 0 ? (g.holderCode || g.account_holder_code || '') : '',
+        description: it.description || '',
+        date_factor: g.date || '',
+        date_reg: g.date || '',
+        _grouped: true,
+      }));
+    }
+  } catch {}
 
   // اگر type مشخص نبود، جدول دیگر را هم امتحان کن
   if (!type) {
@@ -1663,7 +1756,9 @@ export async function getFxTrades(): Promise<any[]> {
   });
 }
 export async function createFxTrade(p: any): Promise<any> {
-  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  const devE = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const nowE = new Date().toISOString();
+  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: nowE, updated_at: nowE, device_id: devE };
   const local = (await getLocal<any[]>('fx_trades')) || [];
   await setLocal('fx_trades', [item, ...local]);
   if (MODE === 'online') {
@@ -1717,7 +1812,9 @@ export async function getExpenses(): Promise<any[]> {
   return Object.values(merged);
 }
 export async function createExpense(p: any): Promise<any> {
-  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  const devEm = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const nowEm = new Date().toISOString();
+  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: nowEm, updated_at: nowEm, device_id: devEm };
   const local = (await getLocal<any[]>('expenses')) || [];
   await setLocal('expenses', [item, ...local]);
   try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
@@ -1771,7 +1868,9 @@ export async function getEmployees(): Promise<any[]> {
   });
 }
 export async function createEmployee(p: any): Promise<any> {
-  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+  const devAt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const nowAt = new Date().toISOString();
+  const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: nowAt, updated_at: nowAt, device_id: devAt };
   const local = (await getLocal<any[]>('employees')) || [];
   await setLocal('employees', [item, ...local]);
   try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
@@ -2383,7 +2482,9 @@ export async function getStockAdjustments(code?: string) {
   return all;
 }
 export async function createStockAdjustment(p: any) {
-  const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || new Date().toISOString() };
+  const devA = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const nowA = new Date().toISOString();
+  const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || nowA, updated_at: nowA, device_id: devA };
   const list = (await getLocal<any[]>('stock_adjustments')) || [];
   await setLocal('stock_adjustments', [item, ...list]);
   if (await serverBusinessAllowed()) {
@@ -3152,6 +3253,7 @@ export async function createParty(p: any) {
     local_id: p.local_id || ('party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
     created_at: p.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
   };
   const list = (await getLocal<any[]>('parties')) || [];
   await setLocal('parties', [item, ...list]);
@@ -3176,7 +3278,7 @@ export async function updateParty(idOrPayload: any, pArg?: any) {
   const list = (await getLocal<any[]>('parties')) || [];
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
   if (idx >= 0) {
-    list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString() };
+    list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
     await setLocal('parties', list);
   }
   try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
@@ -3329,7 +3431,9 @@ export async function getPartners() {
   return result.sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
 }
 export async function createPartner(p: any) {
-  const item = { ...p, local_id: p.local_id || ('pt_' + Date.now()), created_at: new Date().toISOString() };
+  const devPt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const nowPt = new Date().toISOString();
+  const item = { ...p, local_id: p.local_id || ('pt_' + Date.now()), created_at: nowPt, updated_at: nowPt, device_id: devPt };
   const list = (await getLocal<any[]>('partners')) || [];
   await setLocal('partners', [...list, item]);
   try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
@@ -3346,7 +3450,7 @@ export async function updatePartner(id: string, p: any) {
   const item = { ...p, local_id: p.local_id || id };
   const list = (await getLocal<any[]>('partners')) || [];
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
-  if (idx >= 0) { list[idx] = { ...list[idx], ...item }; await setLocal('partners', list); }
+  if (idx >= 0) { list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('partners', list); }
   try { await _pushAudit({ type: 'partner_update', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش شریک' }); } catch {}
   if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
   else { await enqueue('updatePartner', item); }
@@ -3450,7 +3554,9 @@ export async function getBanks() {
   return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 export async function createBank(p: any) {
-  const item = { ...p, local_id: p.local_id || ('bank_' + Date.now()) };
+  const devB = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const nowB = new Date().toISOString();
+  const item = { ...p, local_id: p.local_id || ('bank_' + Date.now()), created_at: nowB, updated_at: nowB, device_id: devB };
   const list = (await getLocal<any[]>('banks')) || [];
   await setLocal('banks', [...list, item]);
   try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
@@ -3468,7 +3574,7 @@ export async function updateBank(id: string, p: any) {
   const list = (await getLocal<any[]>('banks')) || [];
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
   if (idx >= 0) {
-    list[idx] = { ...list[idx], ...item };
+    list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
     await setLocal('banks', list);
   }
   try { await _pushAudit({ type: 'bank_update', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش بانک' }); } catch {}
@@ -3511,7 +3617,9 @@ export async function getShippings() {
   return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 export async function createShipping(p: any) {
-  const item = { ...p, local_id: p.local_id || ('ship_' + Date.now()) };
+  const devS = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const nowS = new Date().toISOString();
+  const item = { ...p, local_id: p.local_id || ('ship_' + Date.now()), created_at: nowS, updated_at: nowS, device_id: devS };
   const list = (await getLocal<any[]>('shippings')) || [];
   await setLocal('shippings', [...list, item]);
   try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
@@ -3529,7 +3637,7 @@ export async function updateShipping(id: string, p: any) {
   const list = (await getLocal<any[]>('shippings')) || [];
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
   if (idx >= 0) {
-    list[idx] = { ...list[idx], ...item };
+    list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
     await setLocal('shippings', list);
   }
   try { await _pushAudit({ type: 'shipping_update', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش باربری' }); } catch {}

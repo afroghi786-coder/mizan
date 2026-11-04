@@ -1,7 +1,7 @@
 import { Platform, Linking } from 'react-native';
 import { supabase } from './lib';
 import AsyncStorage from './lib.storage';
-import { syncToServer, getQueue, getDirtyTables, removeDirtyTables, setDirtyTables } from './lib.offline';
+import { syncToServer, getQueue, getDirtyTables, removeDirtyTables, setDirtyTables, getSalesGrouped, getPurchasesGrouped } from './lib.offline';
 
 const FN_BASE = 'https://paslxvwlbojdzflbmyoh.supabase.co/functions/v1';
 const DEST_KEY = '@mizan_sync_destination';
@@ -439,10 +439,29 @@ export async function syncBridgeTables(onProgress?: (done: number, total: number
     }
     try {
       const useSave = (t.tab === '_deleted' || t.tab === '_audit');
-      if (!hasDirtyKey || useSave) {
+      if (useSave) {
         await bridgeSaveTable(t.tab, rows);
       } else {
-        await bridgeUpsertTable(t.tab, rows);
+        let finalRows = rows;
+        if (t.tab === 'sales') {
+          try {
+            const grouped = await getSalesGrouped();
+            const map: Record<string, any> = {};
+            for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
+            for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
+            finalRows = Object.values(map);
+          } catch {}
+        }
+        if (t.tab === 'purchases') {
+          try {
+            const grouped = await getPurchasesGrouped();
+            const map: Record<string, any> = {};
+            for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
+            for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
+            finalRows = Object.values(map);
+          } catch {}
+        }
+        await bridgeUpsertTable(t.tab, finalRows);
       }
       results.push({ tab: t.tab, ok: true, rows: rows.length });
     } catch (e: any) {
@@ -548,6 +567,7 @@ export async function disconnectPrivate() {
 
 const PULL_TABLES = [
   '_deleted','_audit','sales','purchases',
+  'sales_returns','purchase_returns',
   'expenses','employees','salary_payments','employee_loans','attendance',
   'employee_leaves','payroll_batches','parties','partners','partner_transactions',
   'partner_bank_accounts','products','settings','banks','shippings','stock_adjustments',

@@ -2364,9 +2364,23 @@ function DigitalDashboard({ refreshKey, settings }: any) {
 
 
 
+  const rangeRef = useRef<string>(settings?.dashboard_range || 'month');
+  useEffect(() => { rangeRef.current = settings?.dashboard_range || 'month'; }, [settings?.dashboard_range]);
+  const cycleRange = async () => {
+    try {
+      const keys = Object.keys(DASH_RANGE_LABELS);
+      if (!keys.length) return;
+      const idx = keys.indexOf(rangeRef.current);
+      const next = keys[(idx + 1) % keys.length];
+      rangeRef.current = next;
+      try { await updateSettings({ ...(settings || {}), dashboard_range: next }); } catch {}
+      try { setStats(await getDashboardStats(next, settings?.dashboard_filter || 'both')); } catch {}
+    } catch {}
+  };
+
   const load = useCallback(async () => {
 
-    try { setStats(await getDashboardStats(settings?.dashboard_range || 'month', settings?.dashboard_filter || 'both')); }
+    try { setStats(await getDashboardStats(rangeRef.current, settings?.dashboard_filter || 'both')); }
 
     catch {} finally { setLoading(false); }
 
@@ -2424,11 +2438,9 @@ function DigitalDashboard({ refreshKey, settings }: any) {
 
       <View style={{ alignItems: 'center', marginBottom: 10 }}>
 
-        <View style={dash.rangeBadge}>
-
+        <TouchableOpacity activeOpacity={0.7} onPress={cycleRange} style={dash.rangeBadge}>
           <Text style={dash.rangeBadgeTxt}>{rangeLabel}</Text>
-
-        </View>
+        </TouchableOpacity>
 
       </View>
 
@@ -2442,7 +2454,7 @@ function DigitalDashboard({ refreshKey, settings }: any) {
 
         <View style={{ alignItems: 'center', gap: 2 }}>
 
-          <Text style={dash.dateSmall}>{date}</Text>
+          
 
           <Text style={dash.dateElapsed}>{elapsed}</Text>
 
@@ -2482,7 +2494,7 @@ function DigitalDashboard({ refreshKey, settings }: any) {
 
               <Text style={dash.dLbl}>{c.i} {c.l}</Text>
 
-              <Text style={[dash.dVal, { color: c.c, textShadowColor: c.c }]} numberOfLines={1}>{fmt(c.v)}</Text>
+              <Text style={[dash.dVal, { color: c.c, textShadowColor: c.c }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.55}>{fmt(c.v)}</Text>
 
             </View>
 
@@ -10894,7 +10906,7 @@ const s = StyleSheet.create({
 
   profitLbl: { color: '#94a3b8', fontSize: 13, marginBottom: 10, fontWeight: 'bold', letterSpacing: 1 },
 
-  profitVal: { fontSize: 48, fontFamily: 'Orbitron_900Black', letterSpacing: 4, lineHeight: 56, textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20 },
+  profitVal: { fontSize: 32, fontFamily: 'Orbitron_900Black', letterSpacing: 2.5, lineHeight: 40, textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 },
 
   profitUnit: { color: '#64748b', fontSize: 12, marginTop: 8, letterSpacing: 3 },
 
@@ -10904,7 +10916,7 @@ const s = StyleSheet.create({
 
   dLbl: { color: '#94a3b8', fontSize: 10, marginBottom: 5 },
 
-  dVal: { fontSize: 17, fontFamily: 'Orbitron_700Bold', letterSpacing: 1.5, textShadowColor: 'rgba(0,255,136,0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
+  dVal: { fontSize: 15, fontFamily: 'Orbitron_700Bold', letterSpacing: 0.8, textAlign: 'center', textShadowColor: 'rgba(0,255,136,0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
 
 
 

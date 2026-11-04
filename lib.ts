@@ -1082,6 +1082,8 @@ async function _empUpsert(table: string, p: any) {
   if (!id) throw new Error('local_id لازم');
   let clean: any = { ...p };
   delete clean.id; delete clean.user_id;
+  clean.updated_at = new Date().toISOString();
+  clean.device_id = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   for (let attempt = 0; attempt < 6; attempt++) {
     const { error: delErr } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
     if (delErr) throw delErr;
@@ -1107,6 +1109,8 @@ async function _empDelete(table: string, id: string) {
 async function _empCreate(table: string, p: any) {
   let clean: any = { ...p };
   delete clean.id; delete clean.user_id;
+  clean.updated_at = new Date().toISOString();
+  clean.device_id = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   for (let attempt = 0; attempt < 6; attempt++) {
     const { error } = await supabase.from(table).insert(clean);
     if (!error) return;

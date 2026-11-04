@@ -997,7 +997,6 @@ export async function prepareOffline(): Promise<boolean> {
 //  شماره فاکتور و کد مشتری آفلاین
 // ═══════════════════════════════════════════
 export async function generateInvoiceNumber(): Promise<string> {
-  // BUSINESS_LOCAL_AND_SHEET_ONLY — شماره فاکتور فقط محلی
   try {
     const d = new Date();
     const ds = String(d.getFullYear()).slice(-2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
@@ -1016,6 +1015,13 @@ export async function generateInvoiceNumber(): Promise<string> {
         if (n > maxN) maxN = n;
       }
     }
+    try {
+      const { bridgeNextNumber } = await import('./lib.sheets');
+      const central = await bridgeNextNumber('sale', maxN);
+      if (central && central > maxN) {
+        return ds + '-' + String(central).padStart(4, '0');
+      }
+    } catch {}
     return ds + '-' + String(maxN + 1).padStart(4, '0');
   } catch {
     const d = new Date();
@@ -1024,9 +1030,6 @@ export async function generateInvoiceNumber(): Promise<string> {
 }
 
 export async function generateCustomerCode(): Promise<string> {
-  if (MODE === 'online') {
-    try { return await lib.generateCustomerCode(); } catch {}
-  }
   const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
   const queue = await getQueue();
   let maxN = 1000;
@@ -1038,6 +1041,13 @@ export async function generateCustomerCode(): Promise<string> {
     const m = String(ccode).match(/^M_(\d+)$/);
     if (m) { const n = +m[1]; if (n > maxN) maxN = n; }
   }
+  try {
+    const { bridgeNextNumber } = await import('./lib.sheets');
+    const central = await bridgeNextNumber('customer', maxN);
+    if (central && central > maxN) {
+      return 'M_' + central;
+    }
+  } catch {}
   return 'M_' + (maxN + 1);
 }
 
@@ -1260,6 +1270,13 @@ async function genPurchaseInvoiceNumber() {
       if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
     }
   }
+  try {
+    const { bridgeNextNumber } = await import('./lib.sheets');
+    const central = await bridgeNextNumber('purchase', maxN);
+    if (central && central > maxN) {
+      return 'P-' + ds + '-' + central;
+    }
+  } catch {}
   return 'P-' + ds + '-' + (maxN + 1);
 }
 

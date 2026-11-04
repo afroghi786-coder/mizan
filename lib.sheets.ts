@@ -141,6 +141,24 @@ export async function bridgePing() {
   return data;
 }
 
+export async function bridgeNextNumber(kind: 'sale' | 'purchase' | 'customer', min: number): Promise<number | null> {
+  try {
+    const cfg = await getBridgeConfig();
+    if (!cfg.url || !cfg.key) return null;
+    const res = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'next-number', key: cfg.key, kind: kind, min: Number(min) || 1000 }),
+    });
+    const txt = await res.text();
+    let data: any = null;
+    try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
+    if (!res.ok || !data || data.ok !== true) return null;
+    const n = Number(data.next) || 0;
+    return n > 0 ? n : null;
+  } catch { return null; }
+}
+
 export async function bridgePull() {
   const cfg = await getBridgeConfig();
   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');

@@ -317,23 +317,41 @@ export async function getProducts() {
   return local || [];
 }
 export async function createProduct(p: any) {
-  const list: any[] = (await getLocal('products')) || [];
   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   const nowPr = new Date().toISOString();
-  const item = { ...p, _localId: Date.now(), local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)), updated_at: nowPr, device_id: devPr };
-  list.push(item);
-  await setLocal('products', list);
-  try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
-  if (await serverBusinessAllowed()) {
-    try {
-      await lib.createProduct(p);
-      await setLocal('products', await lib.getProducts());
-        try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+  const item = {
+    ...p,
+    _localId: Date.now(),
+    local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+    created_at: p.created_at || nowPr,
+    updated_at: nowPr,
+    device_id: devPr,
+  };
+
+  // پاک کردن tombstone قدیمی برای همان code/local_id تا کالای جدید پاک نشود
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      const keys = new Set<string>();
+      if (item.local_id) keys.add(String(item.local_id));
+      if (item.code) keys.add(String(item.code));
+      const filtered = arr.filter((t: any) => {
+        if (!t) return false;
+        if (String(t.table || '') !== 'products') return true;
+        return !keys.has(String(t.key || ''));
+      });
+      if (filtered.length !== arr.length) {
+        await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(filtered));
+      }
     }
-    catch { await enqueue('createProduct', p); }
-  } else {
-    await enqueue('createProduct', p);
-  }
+  } catch {}
+
+  const list: any[] = (await getLocal('products')) || [];
+  await setLocal('products', [...list, item]);
+  try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: nowPr, device_id: devPr, summary: 'ثبت کالا' }); } catch {}
+  await enqueue('createProduct', item);
 }
 export async function updateProduct(id: string, p: any) {
   const list: any[] = (await getLocal('products')) || [];
@@ -361,29 +379,53 @@ export async function updateProduct(id: string, p: any) {
   }
 }
 export async function deleteProduct(id: string) {
+  if (!id) { console.log('[deleteProduct] id empty, skip'); return; }
   const list: any[] = (await getLocal('products')) || [];
-  const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
+  const found = list.find((x: any) =>
+    x.id === id || x._localId === id || x.local_id === id || x.code === id
+  );
   const code = found?.code;
-  await recordTombstone('products', String(code || id));
-  await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
-  try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
+  const localId = found?.local_id;
+  const anyId = found?.id;
+  const anyLocalId = found?._localId;
 
-  // اگر این محصول هنوز در صف createProduct است → از صف حذف کن (چیزی برای حذف از سرور نیست)
+  const keys = new Set<string>();
+  if (localId) keys.add(String(localId));
+  if (anyId) keys.add(String(anyId));
+  if (anyLocalId) keys.add(String(anyLocalId));
+  // فقط وقتی هیچ شناسه یکتایی نداریم، از code استفاده کن
+  if (!localId && !anyId && !anyLocalId) {
+    if (code) keys.add(String(code));
+    keys.add(String(id));
+  }
+  for (const k of keys) await recordTombstone('products', k);
+
+  await setLocal('products', list.filter((x: any) => {
+    if (x.id && x.id === id) return false;
+    if (x._localId && x._localId === id) return false;
+    if (x.local_id && x.local_id === id) return false;
+    if (x.code && x.code === id) return false;
+    if (localId && x.local_id === localId) return false;
+    if (anyId && x.id === anyId) return false;
+    if (anyLocalId && x._localId === anyLocalId) return false;
+    return true;
+  }));
+
+  try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(localId || code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
+
   const q = await getQueue();
-  const hasCreate = q.some((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
-  if (hasCreate) {
-    const newQ = q.filter((it: any) => !(it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code))));
-    await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
-    console.log('[deleteProduct] removed pending createProduct from queue');
-    return;
-  }
+  const newQ = q.filter((it: any) => {
+    if (it.op === 'createProduct') {
+      const p = it.payload || {};
+      if (anyLocalId && String(p._localId || '') === String(anyLocalId)) return false;
+      if (localId && String(p.local_id || '') === String(localId)) return false;
+      if (anyId && String(p.id || '') === String(anyId)) return false;
+    }
+    return true;
+  });
+  if (newQ.length !== q.length) await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
 
-  const payload = { id, code };
-  if (await serverBusinessAllowed()) {
-    try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
-  } else {
-    await enqueue('deleteProduct', payload);
-  }
+  await enqueue('deleteProduct', { id, local_id: localId, code });
 }
 
 async function _localUpsertSale(payload: any) {
@@ -951,46 +993,9 @@ export async function lookupCodeByName(name: string) {
 //  prepareOffline — کامل و مطمئن
 // ═══════════════════════════════════════════
 export async function prepareOffline(): Promise<boolean> {
-  try {
-    const results = await Promise.allSettled([
-      lib.getProducts(),
-      lib.getSalesGrouped(),
-      lib.getPurchasesGrouped(),
-      lib.getUnpaidInvoices(),
-      lib.getSettings(),
-      lib.supabase.from('sales').select('*'),
-      lib.supabase.from('purchases').select('supplier_code, supplier_name, supplier_phone'),
-    ]);
-
-    const [products, salesGrouped, purchasesGrouped, unpaid, settings, allSales, allPurchases] = results;
-
-    if (products.status === 'fulfilled') await setLocal('products', products.value);
-    if (salesGrouped.status === 'fulfilled') await setLocal('sales_grouped', salesGrouped.value);
-    if (purchasesGrouped.status === 'fulfilled') await setLocal('purchases_grouped', purchasesGrouped.value);
-    if (unpaid.status === 'fulfilled') await setLocal('unpaid_invoices', unpaid.value);
-    if (settings.status === 'fulfilled') await setLocal('settings', settings.value);
-    if (allSales.status === 'fulfilled') {
-      const full = allSales.value.data || [];
-      // برای lookup
-      await setLocal('all_sales_for_lookup', full.map((r: any) => ({
-        customer_code: r.customer_code,
-        customer_name: r.customer_name,
-        customer_phone: r.customer_phone,
-        customer_address: r.customer_address,
-      })));
-      // ⭐ برای محاسبه مانده — همه فیلدها
-      await setLocal('all_sales_full', full);
-    }
-    if (allPurchases.status === 'fulfilled') await setLocal('all_purchases_for_lookup', allPurchases.value.data || []);
-
-    // چک نهایی
-    const customerCount = (await getLocal<any[]>('all_sales_for_lookup'))?.length || 0;
-    console.log('prepareOffline done. Customers cached:', customerCount);
-    return true;
-  } catch (e) {
-    console.log('prepareOffline error:', e);
-    return false;
-  }
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — بخش تجاری از Supabase خوانده نمی‌شود.
+  // حافظه محلی و صف دست‌نخورده می‌مانند.
+  return true;
 }
 
 // ═══════════════════════════════════════════
@@ -1015,13 +1020,15 @@ export async function generateInvoiceNumber(): Promise<string> {
         if (n > maxN) maxN = n;
       }
     }
-    try {
-      const { bridgeNextNumber } = await import('./lib.sheets');
-      const central = await bridgeNextNumber('sale', maxN);
-      if (central && central > maxN) {
-        return ds + '-' + String(central).padStart(4, '0');
-      }
-    } catch {}
+    if (MODE === 'online') {
+      try {
+        const { bridgeNextNumber } = await import('./lib.sheets');
+        const central = await bridgeNextNumber('sale', maxN);
+        if (central && central > maxN) {
+          return ds + '-' + String(central).padStart(4, '0');
+        }
+      } catch {}
+    }
     return ds + '-' + String(maxN + 1).padStart(4, '0');
   } catch {
     const d = new Date();
@@ -1041,13 +1048,15 @@ export async function generateCustomerCode(): Promise<string> {
     const m = String(ccode).match(/^M_(\d+)$/);
     if (m) { const n = +m[1]; if (n > maxN) maxN = n; }
   }
-  try {
-    const { bridgeNextNumber } = await import('./lib.sheets');
-    const central = await bridgeNextNumber('customer', maxN);
-    if (central && central > maxN) {
-      return 'M_' + central;
-    }
-  } catch {}
+  if (MODE === 'online') {
+    try {
+      const { bridgeNextNumber } = await import('./lib.sheets');
+      const central = await bridgeNextNumber('customer', maxN);
+      if (central && central > maxN) {
+        return 'M_' + central;
+      }
+    } catch {}
+  }
   return 'M_' + (maxN + 1);
 }
 
@@ -1066,6 +1075,13 @@ function _groupSalesRows(rows: any[]) {
         local_id: 'grp_sale_' + inv,
         name: r.customer_name || '',
         phone: r.customer_phone || '',
+        customerCode: r.customer_code || '',
+        manual: r.manual_invoice || '',
+        bank: r.bank_name || '',
+        holder: r.account_holder || '',
+        holderCode: r.account_holder_code || '',
+        depositDate: r.deposit_date || '',
+        shipping: r.shipping || '',
         total: 0, paid: 0, items: [],
         date: r.date_reg || r.date_factor || r.created_at || '',
         updated_at: r.updated_at || r.updatedAt || '',
@@ -1080,6 +1096,13 @@ function _groupSalesRows(rows: any[]) {
     g.items.push(r);
     if (r.customer_name) g.name = r.customer_name;
     if (r.customer_phone) g.phone = r.customer_phone;
+    if (!g.customerCode && r.customer_code) g.customerCode = r.customer_code;
+    if (!g.manual && r.manual_invoice) g.manual = r.manual_invoice;
+    if (!g.bank && r.bank_name) g.bank = r.bank_name;
+    if (!g.holder && r.account_holder) g.holder = r.account_holder;
+    if (!g.holderCode && r.account_holder_code) g.holderCode = r.account_holder_code;
+    if (!g.depositDate && r.deposit_date) g.depositDate = r.deposit_date;
+    if (!g.shipping && r.shipping) g.shipping = r.shipping;
     const rUpd = String(r.updated_at || r.updatedAt || '');
     if (rUpd && (!g.updated_at || rUpd > g.updated_at)) g.updated_at = rUpd;
     if (r.device_id && !g.device_id) g.device_id = r.device_id;
@@ -1099,6 +1122,12 @@ function _groupPurchaseRows(rows: any[]) {
         manual: r.manual_invoice || '',
         name: r.supplier_name || '',
         phone: r.supplier_phone || '',
+        supplierCode: r.supplier_code || '',
+        bank: r.bank_name || '',
+        holder: r.account_holder || '',
+        holderCode: r.payer_code || r.account_holder_code || '',
+        depositDate: r.deposit_date || '',
+        shipping: r.shipping || '',
         total: 0, paid: 0, items: [],
         date: r.date_reg || r.date_factor || r.created_at || '',
         updated_at: r.updated_at || r.updatedAt || '',
@@ -1113,6 +1142,13 @@ function _groupPurchaseRows(rows: any[]) {
     g.items.push(r);
     if (r.supplier_name) g.name = r.supplier_name;
     if (r.supplier_phone) g.phone = r.supplier_phone;
+    if (!g.supplierCode && r.supplier_code) g.supplierCode = r.supplier_code;
+    if (!g.manual && r.manual_invoice) g.manual = r.manual_invoice;
+    if (!g.bank && r.bank_name) g.bank = r.bank_name;
+    if (!g.holder && r.account_holder) g.holder = r.account_holder;
+    if (!g.holderCode && (r.payer_code || r.account_holder_code)) g.holderCode = r.payer_code || r.account_holder_code;
+    if (!g.depositDate && r.deposit_date) g.depositDate = r.deposit_date;
+    if (!g.shipping && r.shipping) g.shipping = r.shipping;
     const rUpdP = String(r.updated_at || r.updatedAt || '');
     if (rUpdP && (!g.updated_at || rUpdP > g.updated_at)) g.updated_at = rUpdP;
     if (r.device_id && !g.device_id) g.device_id = r.device_id;
@@ -1270,13 +1306,15 @@ async function genPurchaseInvoiceNumber() {
       if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
     }
   }
-  try {
-    const { bridgeNextNumber } = await import('./lib.sheets');
-    const central = await bridgeNextNumber('purchase', maxN);
-    if (central && central > maxN) {
-      return 'P-' + ds + '-' + central;
-    }
-  } catch {}
+  if (MODE === 'online') {
+    try {
+      const { bridgeNextNumber } = await import('./lib.sheets');
+      const central = await bridgeNextNumber('purchase', maxN);
+      if (central && central > maxN) {
+        return 'P-' + ds + '-' + central;
+      }
+    } catch {}
+  }
   return 'P-' + ds + '-' + (maxN + 1);
 }
 
@@ -2608,6 +2646,8 @@ export async function getLedgerData(): Promise<any[]> {
           customer_code: _g.customerCode || _g.code || '',
           customer_name: _g.name || '',
           customer_phone: _g.phone || '',
+          account_holder: _g.holder || _g.account_holder || '',
+          account_holder_code: _g.holderCode || _g.account_holder_code || '',
           quantity: Number(_it.quantity) || 0,
           price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
           payment: Number(_it.payment) || 0,
@@ -2616,9 +2656,10 @@ export async function getLedgerData(): Promise<any[]> {
           model_name: _it.modelName || _it.model_name || '',
           date_factor: _g.date || '',
           date_reg: _g.date || '',
-          manual_invoice: _g.manual || '',
-          bank_name: _g.bank || '',
+          manual_invoice: _g.manual || _g.manual_invoice || '',
+          bank_name: _g.bank || _g.bank_name || '',
           deposit_date: _g.depositDate || _g.deposit_date || '',
+          shipping: _g.shipping || '',
           description: _it.description || '',
         });
       }
@@ -2638,6 +2679,8 @@ export async function getLedgerData(): Promise<any[]> {
           supplier_code: _g.supplierCode || _g.code || '',
           supplier_name: _g.name || '',
           supplier_phone: _g.phone || '',
+          account_holder: _g.holder || _g.account_holder || _g.payerName || '',
+          payer_code: _g.holderCode || _g.account_holder_code || _g.payerCode || '',
           quantity: Number(_it.quantity) || 0,
           price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
           payment: Number(_it.payment) || 0,
@@ -2646,9 +2689,10 @@ export async function getLedgerData(): Promise<any[]> {
           model_name: _it.modelName || _it.model_name || '',
           date_factor: _g.date || '',
           date_reg: _g.date || '',
-          manual_invoice: _g.manual || '',
-          bank_name: _g.bank || '',
+          manual_invoice: _g.manual || _g.manual_invoice || '',
+          bank_name: _g.bank || _g.bank_name || '',
           deposit_date: _g.depositDate || _g.deposit_date || '',
+          shipping: _g.shipping || '',
           description: _it.description || '',
         });
       }
@@ -3075,8 +3119,12 @@ export async function getLedgerData(): Promise<any[]> {
   const partnerResult: any[] = [];
   try {
     const partnersList = await getPartners();
-    for (const p of partnersList) {
-      const txns = await getPartnerTransactions(p.code);
+    const _partnerTxns = await Promise.all(
+      partnersList.map((p: any) => getPartnerTransactions(p.code).catch(() => []))
+    );
+    for (let _pi = 0; _pi < partnersList.length; _pi++) {
+      const p = partnersList[_pi];
+      const txns = _partnerTxns[_pi];
       if (!txns || !txns.length) continue;
 
       let capital = 0, current = 0, drawings = 0;
@@ -3324,22 +3372,29 @@ export async function getLedgerData(): Promise<any[]> {
 //  Parties — آفلاین + صف
 // ═══════════════════════════════════════════
 export async function getParties(type?: string) {
-  const base = (await cachedRead('parties', () => lib.getParties())) || [];
-  let list = base.slice();
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — طرف‌حساب‌ها فقط محلی + صف
+  const list = (await getLocal<any[]>('parties')) || [];
   const q = await getQueue();
+  const result = [...list];
   for (const item of q) {
-    if (item.op === 'createParty') list.push(item.payload);
-    else if (item.op === 'updateParty') {
+    if (item.op === 'createParty') {
+      const lid = String(item.payload?.local_id || '');
+      if (lid && result.some((x: any) => String(x.local_id || '') === lid)) continue;
+      result.push(item.payload);
+    } else if (item.op === 'updateParty') {
       const id = item.payload.local_id || item.payload.id;
-      const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
-      if (idx >= 0) list[idx] = { ...list[idx], ...item.payload };
+      const idx = result.findIndex((x: any) => x.local_id === id || x.id === id);
+      if (idx >= 0) result[idx] = { ...result[idx], ...item.payload };
     } else if (item.op === 'deleteParty') {
       const id = item.payload.local_id || item.payload.id || item.payload;
-      list = list.filter((x: any) => x.local_id !== id && x.id !== id);
+      const filtered = result.filter((x: any) => x.local_id !== id && x.id !== id);
+      result.length = 0;
+      result.push(...filtered);
     }
   }
-  if (type) list = list.filter((x: any) => x.type === type || x.type === 'both');
-  return list;
+  let out = result;
+  if (type) out = out.filter((x: any) => x.type === type || x.type === 'both');
+  return out.sort((a: any, b: any) => String(a.code || '').localeCompare(String(b.code || '')));
 }
 
 export async function createParty(p: any) {
@@ -3381,7 +3436,7 @@ export async function updateParty(idOrPayload: any, pArg?: any) {
   const pendingCreate = q.find((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
   if (pendingCreate) {
     pendingCreate.payload = { ...pendingCreate.payload, ...payload };
-    await saveQueue(q);
+    await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
     return pendingCreate.payload;
   }
   const item = { ...payload, local_id: payload.local_id || id };
@@ -3405,7 +3460,7 @@ export async function deleteParty(idOrPayload: any) {
   const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
   if (pendingCreate) {
     const newQ = q.filter((it: any) => !(it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id)));
-    await saveQueue(newQ);
+    await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
     return;
   }
   if (await serverBusinessAllowed()) {

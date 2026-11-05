@@ -10104,7 +10104,14 @@ function ShippingsSection({ showToast }: any) {
 function SourcesSection({ showToast }: any) {
   const [sub, setSub] = useState<'parties' | 'products' | 'partners' | 'banks' | 'shippings'>('parties');
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      nestedScrollEnabled
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 240 }}
+    >
     <View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
         <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
@@ -10117,6 +10124,7 @@ function SourcesSection({ showToast }: any) {
       </ScrollView>
       {sub === 'parties' ? <PartiesSection showToast={showToast} /> : sub === 'products' ? <ProductsSection showToast={showToast} /> : sub === 'partners' ? <PartnersSection showToast={showToast} /> : sub === 'banks' ? <BanksSection showToast={showToast} /> : <ShippingsSection showToast={showToast} />}
     </View>
+    </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -10204,7 +10212,7 @@ function ProductsSection({ showToast }: any) {
   const remove = async (p: any) => {
     const ok = await confirmMsg('حذف کالا', '«' + (p.name || '') + '» حذف شود؟');
     if (!ok) return;
-    try { await deleteProduct(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+    try { await deleteProduct(p.local_id || p.id || p._localId || p.code); load(); showToast('✅ حذف شد'); }
     catch (e: any) { showToast(e?.message || String(e), true); }
   };
 

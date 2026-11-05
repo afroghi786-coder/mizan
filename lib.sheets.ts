@@ -1034,6 +1034,24 @@ function buildGroupedFromSheet(rows: any[]): any[] {
         items: [],
       };
     }
+    let rowItems = r.items;
+    if (typeof rowItems === 'string') {
+      try { rowItems = JSON.parse(rowItems); } catch { rowItems = null; }
+    }
+    if (Array.isArray(rowItems) && rowItems.length) {
+      for (const it2 of rowItems) {
+        map[key].items.push({
+          modelCode: it2.modelCode || it2.model_code || '',
+          modelName: it2.modelName || it2.model_name || '',
+          quantity: Number(it2.quantity) || 0,
+          priceUnit: Number(it2.priceUnit != null ? it2.priceUnit : it2.price_unit) || 0,
+          payment: Number(it2.payment) || 0,
+          description: it2.description || '',
+          shelf: it2.shelf || '',
+        });
+      }
+      continue;
+    }
     const it = {
       modelCode: r.model_code || '',
       modelName: r.model_name || '',

@@ -267,20 +267,38 @@ export default function SettingsSheets({ showToast }: any) {
   };;;
   const copyBridgeCode = () => copyText(BRIDGE_CODE, '✅ کد واسط کپی شد');
   const copyBridgeKey = () => copyText(bridgeSuggestedKey, '✅ کلید تصادفی کپی شد');
-  const openNewSheet = () => {
-    if (Platform.OS !== 'web') return;
+  const openNewSheet = async () => {
     const already = !!(bridgeUrl || bridgeKey);
     if (already) {
-      const ok = window.confirm(
-        'شما از قبل به یک شیت وصل هستید.\n' +
-        'اگر شیت جدید بسازید، میزان به شیت جدید وصل می‌شود و شیت قبلی استفاده نمی‌شود.\n\n' +
-        'آیا مطمئن هستید؟'
-      );
-      if (!ok) return;
+      if (Platform.OS === 'web') {
+        const ok = window.confirm(
+          'با باز کردن شیت جدید و اتصال به آن، شیت قبلی از برنامه قطع می‌شود.\n' +
+          'اگر می‌خواهی داده‌های قبلی منتقل شوند، اکنون روی شیت قبلی «تست خواندن» را بزن و صبر کن تا تمام شود.\n\n' +
+          'آیا مطمئنی می‌خواهی ادامه دهی؟'
+        );
+        if (!ok) return;
+      } else {
+        const { Alert } = require('react-native');
+        const ok = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'شیت جدید',
+            'با باز کردن شیت جدید، اتصال فعلی قطع می‌شود. ادامه؟',
+            [
+              { text: 'لغو', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'ادامه', onPress: () => resolve(true) },
+            ]
+          );
+        });
+        if (!ok) return;
+      }
     }
-    window.open('https://sheets.new', '_blank');
+    if (Platform.OS === 'web') window.open('https://sheets.new', '_blank');
+    else await Linking.openURL('https://sheets.new');
+  };;
+  const openAppsScript = async () => {
+    if (Platform.OS === 'web') window.open('https://script.google.com/home', '_blank');
+    else await Linking.openURL('https://script.google.com/home');
   };
-  const openAppsScript = () => { if (Platform.OS === 'web') window.open('https://script.google.com/home', '_blank'); };
 
   const genBridgeKey = () => {
     try {
@@ -300,10 +318,12 @@ export default function SettingsSheets({ showToast }: any) {
 
   const copyKeyAndOpenScript = async () => {
     try {
-      if (Platform.OS === 'web') {
-        if (bridgeSuggestedKey) await navigator.clipboard.writeText(bridgeSuggestedKey);
-        window.open('https://script.google.com/home', '_blank');
+      if (bridgeSuggestedKey) {
+        if (Platform.OS === 'web') { try { await navigator.clipboard.writeText(bridgeSuggestedKey); } catch {} }
+        else { try { const Clipboard = await import('expo-clipboard'); await Clipboard.setStringAsync(bridgeSuggestedKey); } catch {} }
       }
+      if (Platform.OS === 'web') window.open('https://script.google.com/home', '_blank');
+      else await Linking.openURL('https://script.google.com/home');
       showToast?.('کلید کپی شد — در Script Properties با نام BRIDGE_KEY بگذارید');
     } catch { showToast?.('خطا در کپی یا باز کردن Apps Script', true); }
   };

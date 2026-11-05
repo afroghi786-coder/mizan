@@ -2594,6 +2594,67 @@ export async function getLedgerData(): Promise<any[]> {
   if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
   if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
 
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — اگر داده خام از pull نیامده، از grouped بساز
+  try {
+    const _salesHave = new Set(allSales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+    const _sg = (await getLocal<any[]>('sales_grouped')) || [];
+    for (const _g of _sg) {
+      const _inv = String(_g.invoice || '').trim();
+      if (!_inv) continue;
+      if (_salesHave.has(_inv)) continue;
+      for (const _it of (_g.items || [])) {
+        allSales.push({
+          invoice_number: _inv,
+          customer_code: _g.customerCode || _g.code || '',
+          customer_name: _g.name || '',
+          customer_phone: _g.phone || '',
+          quantity: Number(_it.quantity) || 0,
+          price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
+          payment: Number(_it.payment) || 0,
+          total: (Number(_it.quantity) || 0) * (Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0),
+          model_code: _it.modelCode || _it.model_code || '',
+          model_name: _it.modelName || _it.model_name || '',
+          date_factor: _g.date || '',
+          date_reg: _g.date || '',
+          manual_invoice: _g.manual || '',
+          bank_name: _g.bank || '',
+          deposit_date: _g.depositDate || _g.deposit_date || '',
+          description: _it.description || '',
+        });
+      }
+    }
+  } catch {}
+
+  try {
+    const _purchHave = new Set(allPurchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+    const _pg = (await getLocal<any[]>('purchases_grouped')) || [];
+    for (const _g of _pg) {
+      const _inv = String(_g.invoice || '').trim();
+      if (!_inv) continue;
+      if (_purchHave.has(_inv)) continue;
+      for (const _it of (_g.items || [])) {
+        allPurchases.push({
+          invoice_number: _inv,
+          supplier_code: _g.supplierCode || _g.code || '',
+          supplier_name: _g.name || '',
+          supplier_phone: _g.phone || '',
+          quantity: Number(_it.quantity) || 0,
+          price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
+          payment: Number(_it.payment) || 0,
+          total: (Number(_it.quantity) || 0) * (Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0),
+          model_code: _it.modelCode || _it.model_code || '',
+          model_name: _it.modelName || _it.model_name || '',
+          date_factor: _g.date || '',
+          date_reg: _g.date || '',
+          manual_invoice: _g.manual || '',
+          bank_name: _g.bank || '',
+          deposit_date: _g.depositDate || _g.deposit_date || '',
+          description: _it.description || '',
+        });
+      }
+    }
+  } catch {}
+
   const q = await getQueue();
   for (const item of q) {
     // حذف آفلاین فروش
@@ -2917,6 +2978,19 @@ export async function getLedgerData(): Promise<any[]> {
   } catch (e) { console.log('[ledger] purchaseReturns effect fail:', e); }
 
   const result: any[] = [];
+  const _partnerCodesWithTx = new Set<string>();
+  const _partnerNamesWithTx = new Set<string>();
+  try {
+    const _partnersList = await getPartners();
+    for (const _p of _partnersList) {
+      const _txns = await getPartnerTransactions(_p.code);
+      if (_txns && _txns.length) {
+        if (_p.code) _partnerCodesWithTx.add(String(_p.code).trim());
+        if (_p.name) _partnerNamesWithTx.add(String(_p.name).trim());
+      }
+    }
+  } catch {}
+
   Object.keys(accounts).forEach(function(k) {
     const acc = accounts[k];
     let debit = 0, credit = 0;
@@ -2935,6 +3009,10 @@ export async function getLedgerData(): Promise<any[]> {
       if (t.type === 'purchase') hasPurchase = true;
     });
     const typeStr = (hasSale && hasPurchase) ? 'مشتری/تأمین‌کننده' : hasSale ? 'مشتری' : hasPurchase ? 'تأمین‌کننده' : '—';
+    const _accCodes = Object.keys(acc.codes).map((x: any) => String(x).trim());
+    const _accNames = Object.keys(acc.names).map((x: any) => String(x).trim());
+    const _isPartnerWithTx = _accCodes.some((c: string) => _partnerCodesWithTx.has(c)) || _accNames.some((n: string) => _partnerNamesWithTx.has(n));
+    if (_isPartnerWithTx) return;
     result.push({
       key: acc.key,
       name: Object.keys(acc.names)[0] || '—',

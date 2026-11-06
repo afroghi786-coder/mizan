@@ -85,7 +85,15 @@ export async function getQueue(): Promise<any[]> {
   const raw = await AsyncStorage.getItem(QUEUE);
   return raw ? JSON.parse(raw) : [];
 }
-const AUDIT_OPS: Record<string, { table: string; type: string; summary: string }> = {
+const AUDIT_OPS: Record<string, {
+  createPTX: { table: 'partner_transactions' },
+  deletePTX: { table: 'partner_transactions' },
+  createPBA: { table: 'partner_bank_accounts' },
+  deletePBA: { table: 'partner_bank_accounts' },
+  createPTX: { table: 'partner_transactions' },
+  deletePTX: { table: 'partner_transactions' },
+  createPBA: { table: 'partner_bank_accounts' },
+  deletePBA: { table: 'partner_bank_accounts' }, table: string; type: string; summary: string }> = {
   createProduct: { table: 'products', type: 'product_create', summary: 'ثبت کالا' },
   updateProduct: { table: 'products', type: 'product_update', summary: 'ویرایش کالا' },
   deleteProduct: { table: 'products', type: 'product_delete', summary: 'حذف کالا' },
@@ -214,6 +222,18 @@ export async function enqueue(op: string, payload: any) {
   try {
     const meta = (typeof AUDIT_OPS !== 'undefined') ? AUDIT_OPS[op] : null;
     if (meta && meta.table) await markTableDirty(meta.table);
+  } catch {}
+
+  // PARTNER_DIRTY_FALLBACK — همان روال markTableDirty
+  try {
+    const opTable: Record<string, string> = {
+      createPTX: 'partner_transactions',
+      deletePTX: 'partner_transactions',
+      createPBA: 'partner_bank_accounts',
+      deletePBA: 'partner_bank_accounts',
+    };
+    const t = opTable[op];
+    if (t) await markTableDirty(t);
   } catch {}
 }
 export async function getQueueCount() { return (await getQueue()).length; }
@@ -1840,31 +1860,24 @@ export async function deleteFxTrade(localId: string) {
 //  هزینه‌ها (Expenses)
 // ═══════════════════════════════════════════
 export async function getExpenses(): Promise<any[]> {
+  // BUSINESS_LOCAL_ONLY — فقط حافظه محلی + صف، بدون Supabase
   const local = (await getLocal<any[]>('expenses')) || [];
-  if (MODE === 'offline') return local;
-  let server: any[] = [];
-  try {
-    const { data } = await lib.supabase.from('expenses').select('*').order('created_at', { ascending: false });
-    server = data || [];
-  } catch {}
-  const merged: Record<string, any> = {};
-  local.forEach(x => { merged[x.local_id || x.id] = x; });
-  server.forEach(x => { merged[x.local_id || x.id] = x; });
+  const map: Record<string, any> = {};
+  for (const x of local) { const k = String(x.local_id || x.id || ''); if (k) map[k] = x; }
   try {
     const q = await getQueue();
-    q.forEach((it: any) => {
-      if (it.op === 'createExpense' && it.payload) {
-        const p = it.payload;
-        const id = p.local_id || p.id;
-        if (id) merged[id] = p;
-      }
-      if (it.op === 'deleteExpense') {
+    for (const it of q) {
+      if (it.op === 'createExpense' || it.op === 'updateExpense') {
+        const p = it.payload || {};
+        const k = String(p.local_id || p.id || '');
+        if (k) map[k] = { ...(map[k] || {}), ...p };
+      } else if (it.op === 'deleteExpense') {
         const id = typeof it.payload === 'string' ? it.payload : (it.payload?.local_id || it.payload?.id);
-        if (id) delete merged[id];
+        if (id) delete map[id];
       }
-    });
+    }
   } catch {}
-  return Object.values(merged);
+  return Object.values(map);
 }
 export async function createExpense(p: any): Promise<any> {
   const devEm = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -1917,10 +1930,8 @@ export async function deleteExpense(localId: string) {
 //  کارمندان (Employees)
 // ═══════════════════════════════════════════
 export async function getEmployees(): Promise<any[]> {
-  return cachedRead('employees', async () => {
-    const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
-    return data || [];
-  });
+  // BUSINESS_LOCAL_ONLY — فقط حافظه محلی
+  return (await getLocal<any[]>('employees')) || [];
 }
 export async function createEmployee(p: any): Promise<any> {
   const devAt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -1959,10 +1970,8 @@ export async function deleteEmployee(localId: string) {
 //  حضور (Attendance)
 // ═══════════════════════════════════════════
 export async function getAttendance(): Promise<any[]> {
-  return cachedRead('attendance', async () => {
-    const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
-    return data || [];
-  });
+  // BUSINESS_LOCAL_ONLY — فقط حافظه محلی
+  return (await getLocal<any[]>('attendance')) || [];
 }
 export async function createAttendance(p: any): Promise<any> {
   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
@@ -3600,7 +3609,34 @@ export async function updatePartner(id: string, p: any) {
   const item = { ...p, local_id: p.local_id || id };
   const list = (await getLocal<any[]>('partners')) || [];
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
-  if (idx >= 0) { list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('partners', list); }
+  const old = idx >= 0 ? list[idx] : null;
+  const oldCode = String(old?.code || '').trim();
+  const newCode = String(item.code || oldCode).trim();
+  const localId = String(item.local_id || old?.local_id || old?.id || id);
+
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...item, code: newCode, local_id: localId, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
+    await setLocal('partners', list);
+  }
+
+  if (oldCode && newCode && oldCode !== newCode) {
+    for (const prefix of ['ptx_', 'pba_']) {
+      const oldKey = prefix + oldCode;
+      const newKey = prefix + newCode;
+      const oldRows = (await getLocal<any[]>(oldKey)) || [];
+      const newRows = (await getLocal<any[]>(newKey)) || [];
+      const migrated = oldRows.map((r: any) => ({ ...r, partner_code: newCode, partner_local_id: localId, updated_at: new Date().toISOString() }));
+      const map: Record<string, any> = {};
+      for (const r of newRows) map[String(r.local_id || r.id || JSON.stringify(r))] = r;
+      for (const r of migrated) map[String(r.local_id || r.id || JSON.stringify(r))] = r;
+      await setLocal(oldKey, []);
+      await setLocal(newKey, Object.values(map));
+      for (const r of migrated) {
+        await enqueue(prefix === 'ptx_' ? 'createPTX' : 'createPBA', r);
+      }
+    }
+  }
+
   try { await _pushAudit({ type: 'partner_update', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش شریک' }); } catch {}
   if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
   else { await enqueue('updatePartner', item); }
@@ -3615,76 +3651,122 @@ export async function deletePartner(id: string) {
   else { await enqueue('deletePartner', id); }
 }
 
-export async function getPartnerBankAccounts(partnerCode: string) {
-  const list = (await cachedRead('pba_' + partnerCode, () => lib.getPartnerBankAccounts(partnerCode))) || [];
+async function _resolvePartnerLocalId(code: string): Promise<string> {
+  const c = String(code || '').trim();
+  if (!c) return '';
+  const list = (await getLocal<any[]>('partners')) || [];
+  const found = list.find((p: any) => String(p.code || '').trim() === c);
+  if (found && (found.local_id || found.id)) return String(found.local_id || found.id);
   const q = await getQueue();
-  const result = [...list];
   for (const item of q) {
-    if (item.op === 'createPBA' && item.payload.partner_code === partnerCode) result.push(item.payload);
-    else if (item.op === 'deletePBA') {
-      const idx = result.findIndex((x: any) => x.local_id === item.payload);
+    if (item.op === 'createPartner' && String(item.payload?.code || '').trim() === c) {
+      return String(item.payload?.local_id || item.payload?.id || '');
+    }
+  }
+  return '';
+}
+
+async function _readPartnerKeyUnion(prefix: string, code: string): Promise<any[]> {
+  const result: any[] = [];
+  const seen = new Set<string>();
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const target = '_local_' + prefix + code;
+    for (const k of allKeys) {
+      if (k === '@mizan_local_' + prefix + code || k.includes(target)) {
+        const v = await AsyncStorage.getItem(k);
+        if (v) {
+          try {
+            const arr = JSON.parse(v);
+            if (Array.isArray(arr)) {
+              for (const x of arr) {
+                const id = String(x.local_id || x.id || '');
+                if (!id || !seen.has(id)) {
+                  result.push(x);
+                  if (id) seen.add(id);
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+    }
+  } catch {}
+  return result;
+}
+
+export async function getPartnerBankAccounts(partnerCode: string) {
+  const code = String(partnerCode || '').trim();
+  const result = await _readPartnerKeyUnion('pba_', code);
+  const seen = new Set<string>(result.map((x: any) => String(x.local_id || x.id || '')));
+
+  const q = await getQueue();
+  for (const item of q) {
+    if (item.op === 'createPBA' && String(item.payload?.partner_code || '').trim() === code) {
+      const k = String(item.payload?.local_id || item.payload?.id || '');
+      if (!k || !seen.has(k)) { result.push(item.payload); if (k) seen.add(k); }
+    } else if (item.op === 'deletePBA') {
+      const idx = result.findIndex((x: any) => x.local_id === item.payload || x.id === item.payload);
       if (idx >= 0) result.splice(idx, 1);
     }
   }
   return result;
 }
 export async function createPartnerBankAccount(p: any) {
-  const item = { ...p, local_id: p.local_id || ('pba_' + Date.now()) };
-  const list = (await getLocal<any[]>('pba_' + item.partner_code)) || [];
-  await setLocal('pba_' + item.partner_code, [...list, item]);
-  try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
-  if (await serverBusinessAllowed()) {
-    try {
-      await lib.createPartnerBankAccount(item);
-        try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
-    } catch { await enqueue('createPBA', item); }
-  }
-  else { await enqueue('createPBA', item); }
+  const code = String(p.partner_code || '').trim();
+  const localId = String(p.partner_local_id || '') || await _resolvePartnerLocalId(code);
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const now = new Date().toISOString();
+  const item = { ...p, partner_code: code, partner_local_id: localId, local_id: p.local_id || ('pba_' + Date.now()), created_at: p.created_at || now, updated_at: now, device_id: dev };
+  const list = (await getLocal<any[]>('pba_' + code)) || [];
+  await setLocal('pba_' + code, [...list, item]);
+  try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: now, device_id: dev, summary: 'ثبت بانک شریک' }); } catch {}
+  await enqueue('createPBA', item);
   return item;
 }
 export async function deletePartnerBankAccount(id: string, partnerCode: string) {
   await recordTombstone('partner_bank_accounts', String(id));
   const list = (await getLocal<any[]>('pba_' + partnerCode)) || [];
   await setLocal('pba_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
-  try { await _pushAudit({ type: 'pba_delete', table: 'partner_bank_accounts', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حساب بانکی شریک' }); } catch {}
-  if (await serverBusinessAllowed()) { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
-  else { await enqueue('deletePBA', id); }
+  try { await _pushAudit({ type: 'pba_delete', table: 'partner_bank_accounts', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف بانک شریک' }); } catch {}
+  await enqueue('deletePBA', id);
 }
 
 export async function getPartnerTransactions(partnerCode: string) {
-  const list = (await cachedRead('ptx_' + partnerCode, () => lib.getPartnerTransactions(partnerCode))) || [];
+  const code = String(partnerCode || '').trim();
+  const result = await _readPartnerKeyUnion('ptx_', code);
+  const seen = new Set<string>(result.map((x: any) => String(x.local_id || x.id || '')));
+
   const q = await getQueue();
-  const result = [...list];
   for (const item of q) {
-    if (item.op === 'createPTX' && item.payload.partner_code === partnerCode) result.push(item.payload);
-    else if (item.op === 'deletePTX') {
-      const idx = result.findIndex((x: any) => x.local_id === item.payload);
+    if (item.op === 'createPTX' && String(item.payload?.partner_code || '').trim() === code) {
+      const k = String(item.payload?.local_id || item.payload?.id || '');
+      if (!k || !seen.has(k)) { result.push(item.payload); if (k) seen.add(k); }
+    } else if (item.op === 'deletePTX') {
+      const idx = result.findIndex((x: any) => x.local_id === item.payload || x.id === item.payload);
       if (idx >= 0) result.splice(idx, 1);
     }
   }
   return result.sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || '')));
 }
 export async function createPartnerTransaction(p: any) {
-  const item = { ...p, local_id: p.local_id || ('ptx_' + Date.now()) };
-  const list = (await getLocal<any[]>('ptx_' + item.partner_code)) || [];
-  await setLocal('ptx_' + item.partner_code, [...list, item]);
-  try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
-  if (await serverBusinessAllowed()) {
-    try {
-      await lib.createPartnerTransaction(item);
-        try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
-    } catch { await enqueue('createPTX', item); }
-  }
-  else { await enqueue('createPTX', item); }
+  const code = String(p.partner_code || '').trim();
+  const localId = String(p.partner_local_id || '') || await _resolvePartnerLocalId(code);
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const now = new Date().toISOString();
+  const item = { ...p, partner_code: code, partner_local_id: localId, local_id: p.local_id || ('ptx_' + Date.now()), created_at: p.created_at || now, updated_at: now, device_id: dev };
+  const list = (await getLocal<any[]>('ptx_' + code)) || [];
+  await setLocal('ptx_' + code, [...list, item]);
+  try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: now, device_id: dev, summary: 'ثبت سرمایه شریک' }); } catch {}
+  await enqueue('createPTX', item);
   return item;
 }
 export async function deletePartnerTransaction(id: string, partnerCode: string) {
   await recordTombstone('partner_transactions', String(id));
   const list = (await getLocal<any[]>('ptx_' + partnerCode)) || [];
   await setLocal('ptx_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
-  try { await _pushAudit({ type: 'ptx_delete', table: 'partner_transactions', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حرکت شریک' }); } catch {}
-  if (await serverBusinessAllowed()) { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
-  else { await enqueue('deletePTX', id); }
+  try { await _pushAudit({ type: 'ptx_delete', table: 'partner_transactions', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف سرمایه شریک' }); } catch {}
+  await enqueue('deletePTX', id);
 }
 // ═══════════════════════════════════════════
 //  Banks Offline
@@ -4119,32 +4201,24 @@ export async function findPartnerByNameOrCode(nameOrCode: string) {
 //  getSalaryPayments — خواندن حقوق‌ها (کش + صف)
 // ═══════════════════════════════════════════
 export async function getSalaryPayments(): Promise<any[]> {
+  // BUSINESS_LOCAL_ONLY — فقط حافظه محلی + صف، بدون Supabase
   const local = (await getLocal<any[]>('salary_payments')) || [];
-  if (MODE === 'offline') return local;
-  let server: any[] = [];
-  try {
-    const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
-    server = data || [];
-  } catch {}
-  const merged: Record<string, any> = {};
-  local.forEach(x => { merged[x.local_id || x.id] = x; });
-  server.forEach(x => { merged[x.local_id || x.id] = x; });
+  const map: Record<string, any> = {};
+  for (const x of local) { const k = String(x.local_id || x.id || ''); if (k) map[k] = x; }
   try {
     const q = await getQueue();
-    q.forEach((it: any) => {
-      const p = it.payload;
-      if (!p) return;
+    for (const it of q) {
       if (it.op === 'createSalaryPayment' || it.op === 'updateSalaryPayment') {
-        const id = p.local_id || p.id;
-        if (id) merged[id] = { ...(merged[id] || {}), ...p };
+        const p = it.payload || {};
+        const k = String(p.local_id || p.id || '');
+        if (k) map[k] = { ...(map[k] || {}), ...p };
+      } else if (it.op === 'deleteSalaryPayment') {
+        const id = typeof it.payload === 'string' ? it.payload : (it.payload?.local_id || it.payload?.id);
+        if (id) delete map[id];
       }
-      if (it.op === 'deleteSalaryPayment') {
-        const id = typeof p === 'string' ? p : (p.local_id || p.id);
-        if (id) delete merged[id];
-      }
-    });
+    }
   } catch {}
-  return Object.values(merged);
+  return Object.values(map);
 }
 
 
@@ -4152,32 +4226,24 @@ export async function getSalaryPayments(): Promise<any[]> {
 //  getLoans — خواندن وام‌ها (کش + صف)
 // ═══════════════════════════════════════════
 export async function getLoans(): Promise<any[]> {
+  // BUSINESS_LOCAL_ONLY — فقط حافظه محلی + صف، بدون Supabase
   const local = (await getLocal<any[]>('employee_loans')) || [];
-  if (MODE === 'offline') return local;
-  let server: any[] = [];
-  try {
-    const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
-    server = data || [];
-  } catch {}
-  const merged: Record<string, any> = {};
-  local.forEach(x => { merged[x.local_id || x.id] = x; });
-  server.forEach(x => { merged[x.local_id || x.id] = x; });
+  const map: Record<string, any> = {};
+  for (const x of local) { const k = String(x.local_id || x.id || ''); if (k) map[k] = x; }
   try {
     const q = await getQueue();
-    q.forEach((it: any) => {
-      const p = it.payload;
-      if (!p) return;
+    for (const it of q) {
       if (it.op === 'createLoan' || it.op === 'updateLoan') {
-        const id = p.local_id || p.id;
-        if (id) merged[id] = { ...(merged[id] || {}), ...p };
+        const p = it.payload || {};
+        const k = String(p.local_id || p.id || '');
+        if (k) map[k] = { ...(map[k] || {}), ...p };
+      } else if (it.op === 'deleteLoan') {
+        const id = typeof it.payload === 'string' ? it.payload : (it.payload?.local_id || it.payload?.id);
+        if (id) delete map[id];
       }
-      if (it.op === 'deleteLoan') {
-        const id = typeof p === 'string' ? p : (p.local_id || p.id);
-        if (id) delete merged[id];
-      }
-    });
+    }
   } catch {}
-  return Object.values(merged);
+  return Object.values(map);
 }
 
 

@@ -651,6 +651,60 @@ async function computeLocalInventory() {
   const settings = (settingsRaw as any) || {};
   const threshold = settings.inventory_threshold ?? 5;
   let adjAll = (adjRaw || []).slice();
+
+  // BUSINESS_LOCAL_ONLY — Merge grouped (device 2) + apply tombstones
+  try {
+    const _grpS = (await getLocal<any[]>('sales_grouped')) || [];
+    const _grpP = (await getLocal<any[]>('purchases_grouped')) || [];
+    const _haveS = new Set(sales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+    const _haveP = new Set(purchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+    for (const _g of _grpS) {
+      const _inv = String(_g.invoice || '').trim();
+      if (!_inv || _haveS.has(_inv)) continue;
+      for (const _it of (_g.items || [])) {
+        sales.push({
+          invoice_number: _inv,
+          customer_code: _g.customerCode || '',
+          customer_name: _g.name || '',
+          model_code: _it.modelCode || _it.model_code || '',
+          model_name: _it.modelName || _it.model_name || '',
+          quantity: Number(_it.quantity) || 0,
+          price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
+          payment: Number(_it.payment) || 0,
+          date_factor: _g.date || '',
+          date_reg: _g.date || '',
+        });
+      }
+    }
+    for (const _g of _grpP) {
+      const _inv = String(_g.invoice || '').trim();
+      if (!_inv || _haveP.has(_inv)) continue;
+      for (const _it of (_g.items || [])) {
+        purchases.push({
+          invoice_number: _inv,
+          supplier_code: _g.supplierCode || '',
+          supplier_name: _g.name || '',
+          model_code: _it.modelCode || _it.model_code || '',
+          model_name: _it.modelName || _it.model_name || '',
+          quantity: Number(_it.quantity) || 0,
+          price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
+          payment: Number(_it.payment) || 0,
+          date_factor: _g.date || '',
+          date_reg: _g.date || '',
+        });
+      }
+    }
+    const _tomb = await getTombstones();
+    const _deadS = new Set<string>();
+    const _deadP = new Set<string>();
+    for (const _t of _tomb) {
+      if (String(_t.table || '') === 'sales') _deadS.add(String(_t.key || '').trim());
+      if (String(_t.table || '') === 'purchases') _deadP.add(String(_t.key || '').trim());
+    }
+    if (_deadS.size) sales = sales.filter((s: any) => !_deadS.has(String(s.invoice_number || '').trim()));
+    if (_deadP.size) purchases = purchases.filter((p: any) => !_deadP.has(String(p.invoice_number || '').trim()));
+  } catch (e) { console.log('[inventory] merge/tombstone fail:', e); }
+
   const q = await getQueue();
   
   // --- Merge Deletions (حذف‌های آفلاین) ---
@@ -1040,15 +1094,6 @@ export async function generateInvoiceNumber(): Promise<string> {
         if (n > maxN) maxN = n;
       }
     }
-    if (MODE === 'online') {
-      try {
-        const { bridgeNextNumber } = await import('./lib.sheets');
-        const central = await bridgeNextNumber('sale', maxN);
-        if (central && central > maxN) {
-          return ds + '-' + String(central).padStart(4, '0');
-        }
-      } catch {}
-    }
     return ds + '-' + String(maxN + 1).padStart(4, '0');
   } catch {
     const d = new Date();
@@ -1058,24 +1103,17 @@ export async function generateInvoiceNumber(): Promise<string> {
 
 export async function generateCustomerCode(): Promise<string> {
   const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+  const salesRaw = (await getLocal<any[]>('sales')) || [];
   const queue = await getQueue();
   let maxN = 1000;
   const all: string[] = [
     ...salesGrouped.map((g: any) => g.customerCode || ''),
-    ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.customerCode || ''),
+    ...salesRaw.map((r: any) => r.customer_code || ''),
+    ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload?.customerCode || ''),
   ];
   for (const ccode of all) {
     const m = String(ccode).match(/^M_(\d+)$/);
     if (m) { const n = +m[1]; if (n > maxN) maxN = n; }
-  }
-  if (MODE === 'online') {
-    try {
-      const { bridgeNextNumber } = await import('./lib.sheets');
-      const central = await bridgeNextNumber('customer', maxN);
-      if (central && central > maxN) {
-        return 'M_' + central;
-      }
-    } catch {}
   }
   return 'M_' + (maxN + 1);
 }
@@ -1578,7 +1616,22 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
         deposit_date: idx === 0 ? (g.depositDate || g.deposit_date || '') : '',
         bank_name: idx === 0 ? (g.bank || g.bank_name || '') : '',
         account_holder: idx === 0 ? (g.holder || g.account_holder || '') : '',
-        account_holder_code: idx === 0 ? (g.holderCode || g.account_holder_code || '') : '',
+        account_holder_code: idx === 0 ? (g.holderCode || g.account_holder_code || g.customerCode || g.supplierCode || '') : '',
+        payer_code: idx === 0 ? (g.holderCode || g.account_holder_code || g.payerCode || '') : '',
+        payer_name: idx === 0 ? (g.holder || g.account_holder || g.payerName || '') : '',
+        receiver_code: idx === 0 ? (g.holderCode || g.account_holder_code || '') : '',
+        receiver_name: idx === 0 ? (g.holder || g.account_holder || '') : '',
+        shipping: idx === 0 ? (() => {
+          if (g.shipping) return g.shipping;
+          if (g.shipping_name) return g.shipping_name;
+          if (g.items && g.items[0] && g.items[0].shipping) return g.items[0].shipping;
+          try {
+            const rawKey = isPurchase ? 'purchases' : 'sales';
+            // defensive: look in raw rows
+            return '';
+          } catch { return ''; }
+        })() : '',
+        manual_invoice: g.manual || g.manual_invoice || '',
         description: it.description || '',
         date_factor: g.date || '',
         date_reg: g.date || '',
@@ -1765,6 +1818,11 @@ export async function findCustomerByPhoneOffline(phone: string) {
 //  lookupCustomerByPhone — با چک صف
 // ═══════════════════════════════════════════
 export async function lookupCustomerByPhone(phone: string) {
+  // BUSINESS_LOCAL_ONLY — اول محلی، بعد اگر خالی بود Supabase
+  const cached = await getLocal<any>('cust_' + phone);
+  if (cached) return cached;
+  const local = await findCustomerByPhoneOffline(phone);
+  if (local) return local;
   if (MODE === 'online') {
     try {
       const fresh = await lib.lookupCustomerByPhone(phone);
@@ -1772,17 +1830,9 @@ export async function lookupCustomerByPhone(phone: string) {
         await setLocal('cust_' + phone, fresh);
         return fresh;
       }
-      // اگه سرور پیدا نکرد، صف رو چک کن (چون ممکنه آفلاین ثبت شده باشه)
-      const fromQueue = await findCustomerByPhoneOffline(phone);
-      return fromQueue;
-    } catch {
-      return await findCustomerByPhoneOffline(phone);
-    }
+    } catch {}
   }
-  // آفلاین: اول cache، بعد صف
-  const cached = await getLocal<any>('cust_' + phone);
-  if (cached) return cached;
-  return await findCustomerByPhoneOffline(phone);
+  return null;
 }
 
 // ═══════════════════════════════════════════
@@ -2231,6 +2281,73 @@ async function computeLocalDashboardStats(range, filter) {
 
   var localPurchases = (await getLocal("purchases")) || [];
   var localSales = (await getLocal("sales")) || [];
+
+  // BUSINESS_LOCAL_ONLY — Merge grouped (device 2) + apply tombstones
+  try {
+    var _grpS2 = (await getLocal("sales_grouped")) || [];
+    var _grpP2 = (await getLocal("purchases_grouped")) || [];
+    var _haveS2 = {};
+    for (var _si2 = 0; _si2 < localSales.length; _si2++) {
+      var _iv2 = String(localSales[_si2].invoice_number || '').trim();
+      if (_iv2) _haveS2[_iv2] = true;
+    }
+    var _haveP2 = {};
+    for (var _pi2 = 0; _pi2 < localPurchases.length; _pi2++) {
+      var _ivp2 = String(localPurchases[_pi2].invoice_number || '').trim();
+      if (_ivp2) _haveP2[_ivp2] = true;
+    }
+    for (var _gs2 = 0; _gs2 < _grpS2.length; _gs2++) {
+      var _gS2 = _grpS2[_gs2];
+      var _invS2 = String(_gS2.invoice || '').trim();
+      if (!_invS2 || _haveS2[_invS2]) continue;
+      var _itemsS2 = _gS2.items || [];
+      for (var _is2 = 0; _is2 < _itemsS2.length; _is2++) {
+        var _itS2 = _itemsS2[_is2];
+        localSales.push({
+          invoice_number: _invS2,
+          customer_code: _gS2.customerCode || '',
+          customer_name: _gS2.name || '',
+          model_code: _itS2.modelCode || _itS2.model_code || '',
+          model_name: _itS2.modelName || _itS2.model_name || '',
+          quantity: Number(_itS2.quantity) || 0,
+          price_unit: Number(_itS2.priceUnit != null ? _itS2.priceUnit : _itS2.price_unit) || 0,
+          payment: Number(_itS2.payment) || 0,
+          date_factor: _gS2.date || '',
+          date_reg: _gS2.date || '',
+        });
+      }
+    }
+    for (var _gp2 = 0; _gp2 < _grpP2.length; _gp2++) {
+      var _gP2 = _grpP2[_gp2];
+      var _invP2 = String(_gP2.invoice || '').trim();
+      if (!_invP2 || _haveP2[_invP2]) continue;
+      var _itemsP2 = _gP2.items || [];
+      for (var _ip2 = 0; _ip2 < _itemsP2.length; _ip2++) {
+        var _itP2 = _itemsP2[_ip2];
+        localPurchases.push({
+          invoice_number: _invP2,
+          supplier_code: _gP2.supplierCode || '',
+          supplier_name: _gP2.name || '',
+          model_code: _itP2.modelCode || _itP2.model_code || '',
+          model_name: _itP2.modelName || _itP2.model_name || '',
+          quantity: Number(_itP2.quantity) || 0,
+          price_unit: Number(_itP2.priceUnit != null ? _itP2.priceUnit : _itP2.price_unit) || 0,
+          payment: Number(_itP2.payment) || 0,
+          date_factor: _gP2.date || '',
+          date_reg: _gP2.date || '',
+        });
+      }
+    }
+    var _tomb2 = await getTombstones();
+    var _deadS2 = {}; var _deadP2 = {};
+    for (var _ti2 = 0; _ti2 < _tomb2.length; _ti2++) {
+      var _t2 = _tomb2[_ti2];
+      if (String(_t2.table || '') === 'sales') _deadS2[String(_t2.key || '').trim()] = true;
+      if (String(_t2.table || '') === 'purchases') _deadP2[String(_t2.key || '').trim()] = true;
+    }
+    if (Object.keys(_deadS2).length) localSales = localSales.filter(function(r) { return !_deadS2[String(r.invoice_number || '').trim()]; });
+    if (Object.keys(_deadP2).length) localPurchases = localPurchases.filter(function(r) { return !_deadP2[String(r.invoice_number || '').trim()]; });
+  } catch (e) { console.log('[dashboard] merge/tombstone fail:', e); }
 
   var q = await getQueue();
   var queuePurchases = [];
@@ -2706,6 +2823,19 @@ export async function getLedgerData(): Promise<any[]> {
         });
       }
     }
+  } catch {}
+
+  // BUSINESS_LOCAL_ONLY — Apply tombstones (sales/purchases)
+  try {
+    const _tombL = await getTombstones();
+    const _deadSL = new Set<string>();
+    const _deadPL = new Set<string>();
+    for (const _t of _tombL) {
+      if (String(_t.table || '') === 'sales') _deadSL.add(String(_t.key || '').trim());
+      if (String(_t.table || '') === 'purchases') _deadPL.add(String(_t.key || '').trim());
+    }
+    if (_deadSL.size) allSales = allSales.filter((s: any) => !_deadSL.has(String(s.invoice_number || '').trim()));
+    if (_deadPL.size) allPurchases = allPurchases.filter((p: any) => !_deadPL.has(String(p.invoice_number || '').trim()));
   } catch {}
 
   const q = await getQueue();

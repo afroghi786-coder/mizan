@@ -321,7 +321,7 @@ export async function syncPrivateTables(onProgress?: (done: number, total: numbe
   if (hasDirtyKey) { try { dirty = JSON.parse(rawDirty as string); } catch { dirty = []; } }
   if (!Array.isArray(dirty)) dirty = [];
 
-  const always = ['_deleted', '_audit'];
+  const always = ['_deleted', '_audit', 'partner_transactions', 'partner_bank_accounts'];
   let tablesToSync: { tab: string; keys: string[] }[] = [];
   if (!hasDirtyKey) {
     tablesToSync = TAB_TASKS;
@@ -405,7 +405,7 @@ export async function pullBridgeTables(onProgress?: (done: number, total: number
 
 export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
   const cfg = await getBridgeConfig();
-  if (!cfg.url || !cfg.key) throw new Error('واسط امن تنظیم نشده است');
+  if (!cfg.url || !cfg.key) throw new Error('آدرس یا کلید پل تنظیم نشده است');
 
   const rawDirty = await AsyncStorage.getItem('@mizan_dirty_tables');
   const hasDirtyKey = rawDirty !== null;
@@ -413,7 +413,7 @@ export async function syncBridgeTables(onProgress?: (done: number, total: number
   if (hasDirtyKey) { try { dirty = JSON.parse(rawDirty as string); } catch { dirty = []; } }
   if (!Array.isArray(dirty)) dirty = [];
 
-  const always = ['_deleted', '_audit'];
+  const always = ['_deleted', '_audit', 'partner_transactions', 'partner_bank_accounts'];
   let tablesToSync: { tab: string; keys: string[] }[] = [];
   if (!hasDirtyKey) {
     tablesToSync = TAB_TASKS;
@@ -422,71 +422,96 @@ export async function syncBridgeTables(onProgress?: (done: number, total: number
     tablesToSync = TAB_TASKS.filter(t => set.has(t.tab));
   }
 
-  if (!tablesToSync.length) return [];
-
-  const allKeys = await getAllMizanKeys();
-  const total = tablesToSync.length;
-  let done = 0;
   const results: any[] = [];
+  let done = 0;
+  const total = tablesToSync.length;
 
-  for (const t of tablesToSync) {
-    const rows: any[] = [];
-    for (const key of t.keys) {
-      if (key.endsWith('_')) {
-        for (const k of allKeys) {
-          if (k.startsWith(key)) {
-            const v = await AsyncStorage.getItem(k);
-            if (v) {
-              try {
-                const arr = JSON.parse(v);
-                if (Array.isArray(arr)) rows.push(...arr);
-              } catch {}
+  if (tablesToSync.length) {
+    const allKeys = await getAllMizanKeys();
+    for (const t of tablesToSync) {
+      const rows: any[] = [];
+      for (const key of t.keys) {
+        if (key.endsWith('_')) {
+          const baseName = key.replace('@mizan_local_', '');
+          for (const k of allKeys) {
+            if (k.startsWith(key) || k.includes('_local_' + baseName)) {
+              const v = await AsyncStorage.getItem(k);
+              if (v) {
+                try {
+                  const arr = JSON.parse(v);
+                  if (Array.isArray(arr)) rows.push(...arr);
+                } catch {}
+              }
             }
           }
-        }
-      } else {
-        const v = await AsyncStorage.getItem(key);
-        if (v) {
-          try {
-            const arr = JSON.parse(v);
-            if (Array.isArray(arr)) rows.push(...arr);
-            else if (arr && typeof arr === 'object') rows.push(arr);
-          } catch {}
+        } else {
+          const v = await AsyncStorage.getItem(key);
+          if (v) {
+            try {
+              const arr = JSON.parse(v);
+              if (Array.isArray(arr)) rows.push(...arr);
+              else if (arr && typeof arr === 'object') rows.push(arr);
+            } catch {}
+          }
         }
       }
-    }
-    try {
-      const useSave = (t.tab === '_deleted' || t.tab === '_audit');
-      if (useSave) {
-        await bridgeSaveTable(t.tab, rows);
-      } else {
-        let finalRows = rows;
-        if (t.tab === 'sales') {
-          try {
-            const grouped = await getSalesGrouped();
-            const map: Record<string, any> = {};
-            for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
-            for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
-            finalRows = Object.values(map);
-          } catch {}
+      try {
+        const useSave = (t.tab === '_deleted' || t.tab === '_audit');
+        if (useSave) {
+          await bridgeSaveTable(t.tab, rows);
+        } else {
+          let finalRows = rows;
+          if (t.tab === 'sales') {
+            try {
+              const grouped = await getSalesGrouped();
+              const map: Record<string, any> = {};
+              for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
+              for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
+              finalRows = Object.values(map);
+            } catch {}
+          }
+          if (t.tab === 'purchases') {
+            try {
+              const grouped = await getPurchasesGrouped();
+              const map: Record<string, any> = {};
+              for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
+              for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
+              finalRows = Object.values(map);
+            } catch {}
+          }
+          await bridgeUpsertTable(t.tab, finalRows);
         }
-        if (t.tab === 'purchases') {
-          try {
-            const grouped = await getPurchasesGrouped();
-            const map: Record<string, any> = {};
-            for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
-            for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
-            finalRows = Object.values(map);
-          } catch {}
-        }
-        await bridgeUpsertTable(t.tab, finalRows);
+        results.push({ tab: t.tab, ok: true, rows: rows.length });
+      } catch (e: any) {
+        results.push({ tab: t.tab, ok: false, error: e?.message || String(e) });
       }
-      results.push({ tab: t.tab, ok: true, rows: rows.length });
-    } catch (e: any) {
-      results.push({ tab: t.tab, ok: false, error: e?.message || String(e) });
+      done++;
+      if (onProgress) onProgress(done, total, t.tab);
     }
-    done++;
-    if (onProgress) onProgress(done, total, t.tab);
+  }
+
+  // FORCE_PARTNER_TABLES — هم کلید عادی هم namespaced
+  try {
+    const allKeys2 = await getAllMizanKeys();
+    const forceTabs = [
+      { tab: 'partner_transactions', prefix: '@mizan_local_ptx_', base: 'ptx_' },
+      { tab: 'partner_bank_accounts', prefix: '@mizan_local_pba_', base: 'pba_' },
+    ];
+    for (const f of forceTabs) {
+      const rows: any[] = [];
+      for (const k of allKeys2) {
+        if (!k.startsWith(f.prefix) && !k.includes('_local_' + f.base)) continue;
+        const v = await AsyncStorage.getItem(k);
+        if (!v) continue;
+        try { const arr = JSON.parse(v); if (Array.isArray(arr)) rows.push(...arr); } catch {}
+      }
+      if (rows.length) {
+        await bridgeUpsertTable(f.tab, rows);
+        results.push({ tab: f.tab, ok: true, rows: rows.length, forced: true });
+      }
+    }
+  } catch (e: any) {
+    results.push({ tab: 'partner_force', ok: false, error: e?.message || String(e) });
   }
 
   const successful = results.filter(r => r.ok).map(r => r.tab);

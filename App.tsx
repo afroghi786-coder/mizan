@@ -5759,63 +5759,71 @@ function InventoryScreen({ showToast }: any) {
 
 
   const _mkHtml = (data: any) => {
-
     var cur = getCurrencySync().label || 'افغانی';
 
     var pRows = (data.purchases || []).map(function(r: any, i: number) {
-
       var d = r.date_factor || r.date_reg || r.created_at || '';
-
       var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
-
       var qty = Number(r.quantity) || 0;
-
       var price = Number(r.price_unit) || 0;
-
       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
-
     }).join('');
 
     var sRows = (data.sales || []).map(function(r: any, i: number) {
-
       var d = r.date_factor || r.date_reg || r.created_at || '';
-
       var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
-
       var qty = Number(r.quantity) || 0;
-
       var price = Number(r.price_unit) || 0;
-
       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+    }).join('');
 
+    var srRows = (data.salesReturns || []).map(function(r: any, i: number) {
+      var d = r.date_factor || r.date_reg || r.created_at || '';
+      var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+      var qty = Number(r.quantity) || 0;
+      var price = Number(r.price_unit) || 0;
+      return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+    }).join('');
+
+    var prRows = (data.purchaseReturns || []).map(function(r: any, i: number) {
+      var d = r.date_factor || r.date_reg || r.created_at || '';
+      var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+      var qty = Number(r.quantity) || 0;
+      var price = Number(r.price_unit) || 0;
+      return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+    }).join('');
+
+    var adjRows = (data.adjustments || []).map(function(r: any, i: number) {
+      var d = r.adjustment_date || r.created_at || '';
+      var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+      var qty = Number(r.adjustment) || 0;
+      return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty >= 0 ? '+' : '') + fmt(qty) + '</td><td style="text-align:right">' + (r.note || '') + '</td></tr>';
     }).join('');
 
     var totalP = (data.purchases || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
-
     var totalS = (data.sales || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
-
     var totalBoughtQty = (data.purchases || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
-
     var totalSoldQty = (data.sales || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+    var totalSRQty = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+    var totalPRQty = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+    var totalAdj = (data.adjustments || []).reduce(function(a: number, r: any) { return a + (Number(r.adjustment) || 0); }, 0);
+    var stock = totalBoughtQty - totalSoldQty + totalSRQty - totalPRQty + totalAdj;
 
-    var stock = totalBoughtQty - totalSoldQty;
-
-    var summary = '<div class="info"><b>📦 موجودی:</b> ' + fmt(stock) + ' &nbsp;|&nbsp; <b>🛒 خرید:</b> ' + fmt(totalBoughtQty) + ' &nbsp;|&nbsp; <b>🛍️ فروش:</b> ' + fmt(totalSoldQty) + ' &nbsp;|&nbsp; <b>💵 جمع خرید:</b> ' + fmt(totalP) + ' ' + cur + ' &nbsp;|&nbsp; <b>💰 جمع فروش:</b> ' + fmt(totalS) + ' ' + cur + '</div>';
+    var summary = '<div class="info"><b>📦 موجودی:</b> ' + fmt(stock) + ' &nbsp;|&nbsp; <b>⬇ خرید:</b> ' + fmt(totalBoughtQty) + ' &nbsp;|&nbsp; <b>⬆ فروش:</b> ' + fmt(totalSoldQty) + ' &nbsp;|&nbsp; <b>↩ برگشت فروش:</b> ' + fmt(totalSRQty) + ' &nbsp;|&nbsp; <b>↪ برگشت خرید:</b> ' + fmt(totalPRQty) + ' &nbsp;|&nbsp; <b>⚖ تعدیل:</b> ' + fmt(totalAdj) + '</div>';
+    var summary2 = '<div class="info"><b>💵 جمع خرید:</b> ' + fmt(totalP) + ' ' + cur + ' &nbsp;|&nbsp; <b>💰 جمع فروش:</b> ' + fmt(totalS) + ' ' + cur + '</div>';
 
     var serial = 'MK-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (data.model && data.model.code || '');
-
     var meta = '<div class="info"><b>📄 شماره سند:</b> ' + serial + ' &nbsp;|&nbsp; <b>📅 تاریخ:</b> ' + new Date().toLocaleDateString('fa-IR') + '</div>';
 
-    var pTable = data.purchases.length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">🛒 خریدها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + pRows + '</table>' : '';
-
-    var sTable = data.sales.length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">🛍️ فروش‌ها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + sRows + '</table>' : '';
+    var pTable = (data.purchases || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬇ خریدها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + pRows + '</table>' : '';
+    var sTable = (data.sales || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬆ فروش‌ها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + sRows + '</table>' : '';
+    var srTable = (data.salesReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↩ برگشت از فروش</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + srRows + '</table>' : '';
+    var prTable = (data.purchaseReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↪ برگشت از خرید</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + prRows + '</table>' : '';
+    var adjTable = (data.adjustments || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">⚖ تعدیلات انبار</h3><table><tr><th>#</th><th>تاریخ</th><th>دلیل</th><th>مقدار</th><th>یادداشت</th></tr>' + adjRows + '</table>' : '';
 
     var signs = mizanSignaturesHtml(['امضای انباردار', 'امضای مدیر مالی', 'مهر شرکت']);
-
     var note = mizanComputerNoteHtml();
-
-    return buildStandardHtml('کاردکس مدل: ' + data.name, meta + summary + pTable + sTable + signs + note, '📦 ' + (data.model && data.model.code || ''));
-
+    return buildStandardHtml('کاردکس مدل: ' + data.name, meta + summary + summary2 + pTable + sTable + srTable + prTable + adjTable + signs + note, '📦 ' + (data.model && data.model.code || ''));
   };
 
 
@@ -5833,19 +5841,15 @@ function InventoryScreen({ showToast }: any) {
   };
 
   const _mkExcel = async () => {
-
     try {
-
       var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.supplier_name || r.payer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
-
       var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
-
-      var r = await exportExcel([{ name: 'خرید', data: pData }, { name: 'فروش', data: sData }], 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.xlsx');
-
+      var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+      var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.supplier_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+      var adjData = (modelKardexData.adjustments || []).map(function(r: any, i: number) { return { 'نوع': 'تعدیل', '#': i + 1, 'تاریخ': r.adjustment_date || r.created_at || '', 'دلیل': r.reason || '', 'مقدار': Number(r.adjustment) || 0, 'یادداشت': r.note || '' }; });
+      var r = await exportExcel([{ name: 'خرید', data: pData }, { name: 'فروش', data: sData }, { name: 'برگشت فروش', data: srData }, { name: 'برگشت خرید', data: prData }, { name: 'تعدیلات', data: adjData }], 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.xlsx');
       showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
-
     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
-
   };
 
   const modelKardexMenu = () => {
@@ -6436,7 +6440,7 @@ function InventoryScreen({ showToast }: any) {
 
                 <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginBottom: 8 }}>
 
-                  <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+                  <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) + (modelKardexData.salesReturns || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexData.purchaseReturns || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) + (modelKardexData.adjustments || []).reduce((a: number, r: any) => a + (Number(r.adjustment) || 0), 0))}</Text>
 
                   <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>🛒 خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
 
@@ -6568,7 +6572,38 @@ function InventoryScreen({ showToast }: any) {
 
                 )}
 
-                {(modelKardexData.purchases || []).length === 0 && (modelKardexData.sales || []).length === 0 && (
+                
+{(modelKardexData.salesReturns || []).length > 0 && (
+  <View style={{ marginTop: 8 }}>
+    <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>↩️ برگشت از فروش ({modelKardexData.salesReturns.length})</Text>
+    {modelKardexData.salesReturns.map((r: any, i: number) => (
+      <View key={'sr' + i} style={{ flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 4 }}>
+        <Text style={{ width: 30, textAlign: 'center', fontSize: 10 }}>{i + 1}</Text>
+        <Text style={{ width: 80, fontSize: 10 }}>{displayDateOnly ? displayDateOnly(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+        <Text style={{ width: 90, fontSize: 10, color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+        <Text style={{ flex: 1, fontSize: 10 }}>{r.customer_name || '—'}</Text>
+        <Text style={{ width: 40, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+        <Text style={{ width: 60, fontSize: 10, textAlign: 'left' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+      </View>
+    ))}
+  </View>
+)}
+{(modelKardexData.purchaseReturns || []).length > 0 && (
+  <View style={{ marginTop: 8 }}>
+    <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>↪️ برگشت از خرید ({modelKardexData.purchaseReturns.length})</Text>
+    {modelKardexData.purchaseReturns.map((r: any, i: number) => (
+      <View key={'pr' + i} style={{ flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 4 }}>
+        <Text style={{ width: 30, textAlign: 'center', fontSize: 10 }}>{i + 1}</Text>
+        <Text style={{ width: 80, fontSize: 10 }}>{displayDateOnly ? displayDateOnly(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+        <Text style={{ width: 90, fontSize: 10, color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+        <Text style={{ flex: 1, fontSize: 10 }}>{r.supplier_name || '—'}</Text>
+        <Text style={{ width: 40, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+        <Text style={{ width: 60, fontSize: 10, textAlign: 'left' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+      </View>
+    ))}
+  </View>
+)}
+{(modelKardexData.purchases || []).length === 0 && (modelKardexData.sales || []).length === 0 && (
 
                   <Text style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>هیچ تراکنشی برای این مدل ثبت نشده</Text>
 

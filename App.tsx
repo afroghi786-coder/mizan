@@ -5763,7 +5763,7 @@ function InventoryScreen({ showToast }: any) {
 
     var pRows = (data.purchases || []).map(function(r: any, i: number) {
       var d = r.date_factor || r.date_reg || r.created_at || '';
-      var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+      var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
       var qty = Number(r.quantity) || 0;
       var price = Number(r.price_unit) || 0;
       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
@@ -5771,7 +5771,7 @@ function InventoryScreen({ showToast }: any) {
 
     var sRows = (data.sales || []).map(function(r: any, i: number) {
       var d = r.date_factor || r.date_reg || r.created_at || '';
-      var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+      var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
       var qty = Number(r.quantity) || 0;
       var price = Number(r.price_unit) || 0;
       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
@@ -5779,7 +5779,7 @@ function InventoryScreen({ showToast }: any) {
 
     var srRows = (data.salesReturns || []).map(function(r: any, i: number) {
       var d = r.date_factor || r.date_reg || r.created_at || '';
-      var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+      var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
       var qty = Number(r.quantity) || 0;
       var price = Number(r.price_unit) || 0;
       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
@@ -5787,7 +5787,7 @@ function InventoryScreen({ showToast }: any) {
 
     var prRows = (data.purchaseReturns || []).map(function(r: any, i: number) {
       var d = r.date_factor || r.date_reg || r.created_at || '';
-      var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+      var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
       var qty = Number(r.quantity) || 0;
       var price = Number(r.price_unit) || 0;
       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
@@ -5795,9 +5795,11 @@ function InventoryScreen({ showToast }: any) {
 
     var adjRows = (data.adjustments || []).map(function(r: any, i: number) {
       var d = r.adjustment_date || r.created_at || '';
-      var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+      var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
       var qty = Number(r.adjustment) || 0;
-      return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty >= 0 ? '+' : '') + fmt(qty) + '</td><td style="text-align:right">' + (r.note || '') + '</td></tr>';
+      var uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+      var totalVal = qty * uCost;
+      return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty >= 0 ? '+' : '') + fmt(qty) + '</td><td>' + fmt(uCost) + '</td><td style="font-weight:bold">' + fmt(totalVal) + '</td><td style="text-align:right">' + (r.note || '') + '</td></tr>';
     }).join('');
 
     var totalP = (data.purchases || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
@@ -5810,16 +5812,19 @@ function InventoryScreen({ showToast }: any) {
     var stock = totalBoughtQty - totalSoldQty + totalSRQty - totalPRQty + totalAdj;
 
     var summary = '<div class="info"><b>📦 موجودی:</b> ' + fmt(stock) + ' &nbsp;|&nbsp; <b>⬇ خرید:</b> ' + fmt(totalBoughtQty) + ' &nbsp;|&nbsp; <b>⬆ فروش:</b> ' + fmt(totalSoldQty) + ' &nbsp;|&nbsp; <b>↩ برگشت فروش:</b> ' + fmt(totalSRQty) + ' &nbsp;|&nbsp; <b>↪ برگشت خرید:</b> ' + fmt(totalPRQty) + ' &nbsp;|&nbsp; <b>⚖ تعدیل:</b> ' + fmt(totalAdj) + '</div>';
-    var summary2 = '<div class="info"><b>💵 جمع خرید:</b> ' + fmt(totalP) + ' ' + cur + ' &nbsp;|&nbsp; <b>💰 جمع فروش:</b> ' + fmt(totalS) + ' ' + cur + '</div>';
+    var _totalSRVal = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+    var _totalPRVal = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+    var _totalAdjVal = (data.adjustments || []).reduce(function(a: number, r: any) { return a + ((Number(r.adjustment) || 0) * (Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0)); }, 0);
+    var summary2 = '<div class="info"><b>💵 جمع خرید:</b> ' + fmt(totalP) + ' ' + cur + ' &nbsp;|&nbsp; <b>💰 جمع فروش:</b> ' + fmt(totalS) + ' ' + cur + ' &nbsp;|&nbsp; <b>↩ جمع برگشت فروش:</b> ' + fmt(_totalSRVal) + ' ' + cur + ' &nbsp;|&nbsp; <b>↪ جمع برگشت خرید:</b> ' + fmt(_totalPRVal) + ' ' + cur + ' &nbsp;|&nbsp; <b>⚖ جمع ارزش تعدیل:</b> ' + fmt(_totalAdjVal) + ' ' + cur + '</div>';
 
     var serial = 'MK-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (data.model && data.model.code || '');
     var meta = '<div class="info"><b>📄 شماره سند:</b> ' + serial + ' &nbsp;|&nbsp; <b>📅 تاریخ:</b> ' + new Date().toLocaleDateString('fa-IR') + '</div>';
 
-    var pTable = (data.purchases || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬇ خریدها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + pRows + '</table>' : '';
-    var sTable = (data.sales || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬆ فروش‌ها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + sRows + '</table>' : '';
-    var srTable = (data.salesReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↩ برگشت از فروش</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + srRows + '</table>' : '';
-    var prTable = (data.purchaseReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↪ برگشت از خرید</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + prRows + '</table>' : '';
-    var adjTable = (data.adjustments || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">⚖ تعدیلات انبار</h3><table><tr><th>#</th><th>تاریخ</th><th>دلیل</th><th>مقدار</th><th>یادداشت</th></tr>' + adjRows + '</table>' : '';
+    var pTable = (data.purchases || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬇ خریدها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + pRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="4" style="text-align:right">جمع</td><td>' + fmt(totalBoughtQty) + '</td><td></td><td>' + fmt(totalP) + '</td></tr></table>' : '';
+    var sTable = (data.sales || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬆ فروش‌ها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + sRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="4" style="text-align:right">جمع</td><td>' + fmt(totalSoldQty) + '</td><td></td><td>' + fmt(totalS) + '</td></tr></table>' : '';
+    var srTable = (data.salesReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↩ برگشت از فروش</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + srRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="5" style="text-align:right">جمع</td><td>' + fmt(totalSRQty) + '</td><td></td><td>' + fmt(_totalSRVal) + '</td></tr></table>' : '';
+    var prTable = (data.purchaseReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↪ برگشت از خرید</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + prRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="5" style="text-align:right">جمع</td><td>' + fmt(totalPRQty) + '</td><td></td><td>' + fmt(_totalPRVal) + '</td></tr></table>' : '';
+    var adjTable = (data.adjustments || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">⚖ تعدیلات انبار</h3><table><tr><th>#</th><th>تاریخ</th><th>دلیل</th><th>مقدار</th><th>بهای واحد</th><th>ارزش کل</th><th>یادداشت</th></tr>' + adjRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="3" style="text-align:right">جمع</td><td>' + fmt(totalAdj) + '</td><td></td><td>' + fmt(_totalAdjVal) + '</td><td></td></tr></table>' : '';
 
     var signs = mizanSignaturesHtml(['امضای انباردار', 'امضای مدیر مالی', 'مهر شرکت']);
     var note = mizanComputerNoteHtml();
@@ -5846,7 +5851,11 @@ function InventoryScreen({ showToast }: any) {
       var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
       var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
       var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.supplier_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
-      var adjData = (modelKardexData.adjustments || []).map(function(r: any, i: number) { return { 'نوع': 'تعدیل', '#': i + 1, 'تاریخ': r.adjustment_date || r.created_at || '', 'دلیل': r.reason || '', 'مقدار': Number(r.adjustment) || 0, 'یادداشت': r.note || '' }; });
+      var adjData = (modelKardexData.adjustments || []).map(function(r: any, i: number) {
+        var _qty = Number(r.adjustment) || 0;
+        var _uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+        return { 'نوع': 'تعدیل', '#': i + 1, 'تاریخ': r.adjustment_date || r.created_at || '', 'دلیل': r.reason || '', 'مقدار': _qty, 'بهای واحد': _uCost, 'ارزش کل': _qty * _uCost, 'یادداشت': r.note || '' };
+      });
       var r = await exportExcel([{ name: 'خرید', data: pData }, { name: 'فروش', data: sData }, { name: 'برگشت فروش', data: srData }, { name: 'برگشت خرید', data: prData }, { name: 'تعدیلات', data: adjData }], 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.xlsx');
       showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
@@ -5887,26 +5896,17 @@ function InventoryScreen({ showToast }: any) {
 
 
   const openAdjustment = async (m: any) => {
-
-    setAdjModel(m);
-
-    setAdjForm({ type: 'in', amount: '', reason: 'شمارش فیزیکی', adjustment_date: toStorageDateFull(new Date()), note: '' });
-
-    setAdjModal(true);
-
-    setAdjLoading(true);
-
-    try {
-
-      const list = await getStockAdjustments(m.code);
-
-      setAdjList(list || []);
-
-    } catch (e) { console.log('adj load err:', e); }
-
-    finally { setAdjLoading(false); }
-
-  };
+  setAdjModel(m);
+  const _defCost = Number(m.unitCost) || Number(m.lastPrice) || 0;
+  setAdjForm({ type: 'in', amount: '', unit_cost: String(_defCost), reason: 'تصحیح موجودی', adjustment_date: toStorageDateFull(new Date()), note: '' });
+  setAdjModal(true);
+  setAdjLoading(true);
+  try {
+    const list = await getStockAdjustments(m.code);
+    setAdjList(list || []);
+  } catch (e) { console.log('adj load err:', e); }
+  finally { setAdjLoading(false); }
+};
 
 
 
@@ -5929,6 +5929,7 @@ function InventoryScreen({ showToast }: any) {
         model_name: adjModel.name || adjModel.code,
 
         adjustment: signed,
+        unit_cost: Number(adjForm.unit_cost) || Number(adjModel.unitCost) || Number(adjModel.lastPrice) || 0,
 
         reason: adjForm.reason || 'سایر',
 
@@ -5974,7 +5975,14 @@ function InventoryScreen({ showToast }: any) {
 
       setAdjList(list || []);
 
-      load();
+      await load();
+
+      // re-fetch adjModel از inventory جدید
+      try {
+        const inv = await getInventory();
+        const freshM = (inv.list || []).find((x: any) => String(x.code) === String(adjModel?.code));
+        if (freshM) setAdjModel(freshM);
+      } catch {}
 
     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
 
@@ -6298,7 +6306,7 @@ function InventoryScreen({ showToast }: any) {
 
                 <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی فعلی: {fmt(adjModel?.currentQty || 0)}</Text>
 
-                <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>📊 مجموع تعدیلات: {(adjModel?.adjustment || 0) > 0 ? '+' : ''}{fmt(adjModel?.adjustment || 0)}</Text>
+                <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>📊 مجموع تعدیلات: {(() => { const _s = (adjList || []).reduce((a: number, r: any) => a + (Number(r.adjustment) || 0), 0); return (_s > 0 ? '+' : '') + fmt(_s); })()}</Text>
 
               </View>
 
@@ -6325,6 +6333,16 @@ function InventoryScreen({ showToast }: any) {
               <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>مقدار تعدیل</Text>
 
               <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 10, fontSize: 13, textAlign: 'right', marginBottom: 8 }} value={String(adjForm.amount)} onChangeText={(v: string) => setAdjForm({ ...adjForm, amount: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="مثلاً 5" placeholderTextColor="#94a3b8" />
+<View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 8 }}>
+  <Text style={{ width: 90, fontSize: 11, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }}>بهای واحد:</Text>
+  <TextInput
+    value={String(adjForm.unit_cost || '')}
+    onChangeText={(v) => setAdjForm({ ...adjForm, unit_cost: v })}
+    placeholder="بهای واحد"
+    keyboardType="numeric"
+    style={{ flex: 1, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, textAlign: 'center', backgroundColor: '#fff' }}
+  />
+</View>
 
               <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>دلیل</Text>
 
@@ -6376,9 +6394,10 @@ function InventoryScreen({ showToast }: any) {
 
                     <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
 
-                    <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                    <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
 
-                    <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+                    <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+                    <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>بهای واحد</Text>
 
                     <Text style={{ flex: 1, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'right', paddingRight: 4 }}>دلیل</Text>
 
@@ -6392,9 +6411,10 @@ function InventoryScreen({ showToast }: any) {
 
                       <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
 
-                      <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(r.adjustment_date || r.created_at) : '—'}</Text>
+                      <Text style={{ width: 130, fontSize: 10, textAlign: 'center' }}>{r.adjustment_date || r.created_at ? (displayDate ? displayDate(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.created_at).slice(0, 19)) : '—'}</Text>
 
-                      <Text style={{ width: 90, fontSize: 11, textAlign: 'center', fontWeight: 'bold', color: (Number(r.adjustment) || 0) > 0 ? '#059669' : '#dc2626' }}>{(Number(r.adjustment) || 0) > 0 ? '+' : ''}{fmt(Number(r.adjustment) || 0)}</Text>
+                      <Text style={{ width: 70, fontSize: 11, textAlign: 'center', fontWeight: 'bold', color: (Number(r.adjustment) || 0) > 0 ? '#059669' : '#dc2626' }}>{(Number(r.adjustment) || 0) > 0 ? '+' : ''}{fmt(Number(r.adjustment) || 0)}</Text>
+                      <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0)}</Text>
 
                       <Text style={{ flex: 1, fontSize: 10, textAlign: 'right', paddingRight: 4, color: '#475569' }} numberOfLines={1}>{r.reason || '—'}{r.note ? ' — ' + r.note : ''}</Text>
 
@@ -6445,6 +6465,11 @@ function InventoryScreen({ showToast }: any) {
                   <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>🛒 خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
 
                   <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 11 }}>🛍️ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+                  <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>💵 جمع مبلغ خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)), 0))}</Text>
+                  <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع مبلغ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)), 0))}</Text>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↩️ جمع برگشت فروش: {fmt((modelKardexData.salesReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)), 0))}</Text>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↪️ جمع برگشت خرید: {fmt((modelKardexData.purchaseReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)), 0))}</Text>
+                  <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>⚖️ جمع ارزش تعدیل: {fmt((modelKardexData.adjustments || []).reduce((a: number, r: any) => a + ((Number(r.adjustment) || 0) * (Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0)), 0))}</Text>
 
                   <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)), 0))}</Text>
 
@@ -6470,7 +6495,7 @@ function InventoryScreen({ showToast }: any) {
 
                           <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
 
-                          <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                          <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
 
                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
 
@@ -6490,7 +6515,7 @@ function InventoryScreen({ showToast }: any) {
 
                             <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
 
-                            <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+                            <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
 
                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
 
@@ -6528,7 +6553,7 @@ function InventoryScreen({ showToast }: any) {
 
                           <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
 
-                          <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+                          <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
 
                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
 
@@ -6548,7 +6573,7 @@ function InventoryScreen({ showToast }: any) {
 
                             <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
 
-                            <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+                            <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
 
                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
 
@@ -6574,33 +6599,99 @@ function InventoryScreen({ showToast }: any) {
 
                 
 {(modelKardexData.salesReturns || []).length > 0 && (
-  <View style={{ marginTop: 8 }}>
-    <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>↩️ برگشت از فروش ({modelKardexData.salesReturns.length})</Text>
-    {modelKardexData.salesReturns.map((r: any, i: number) => (
-      <View key={'sr' + i} style={{ flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 4 }}>
-        <Text style={{ width: 30, textAlign: 'center', fontSize: 10 }}>{i + 1}</Text>
-        <Text style={{ width: 80, fontSize: 10 }}>{displayDateOnly ? displayDateOnly(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
-        <Text style={{ width: 90, fontSize: 10, color: '#7c3aed' }}>{r.return_number || '—'}</Text>
-        <Text style={{ flex: 1, fontSize: 10 }}>{r.customer_name || '—'}</Text>
-        <Text style={{ width: 40, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
-        <Text style={{ width: 60, fontSize: 10, textAlign: 'left' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+  <View style={{ marginBottom: 12 }}>
+    <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>↩️ برگشت از فروش ({modelKardexData.salesReturns.length})</Text>
+    <ScrollView horizontal>
+      <View>
+        <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+          <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+          <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+          <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>برگشت</Text>
+          <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+          <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مشتری</Text>
+          <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+          <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+          <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+        </View>
+        {modelKardexData.salesReturns.map((r: any, i: number) => (
+          <View key={'sr' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+            <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+            <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+            <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+            <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+            <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+            <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+            <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+            <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+          </View>
+        ))}
       </View>
-    ))}
+    </ScrollView>
   </View>
 )}
 {(modelKardexData.purchaseReturns || []).length > 0 && (
-  <View style={{ marginTop: 8 }}>
-    <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>↪️ برگشت از خرید ({modelKardexData.purchaseReturns.length})</Text>
-    {modelKardexData.purchaseReturns.map((r: any, i: number) => (
-      <View key={'pr' + i} style={{ flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 4 }}>
-        <Text style={{ width: 30, textAlign: 'center', fontSize: 10 }}>{i + 1}</Text>
-        <Text style={{ width: 80, fontSize: 10 }}>{displayDateOnly ? displayDateOnly(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
-        <Text style={{ width: 90, fontSize: 10, color: '#7c3aed' }}>{r.return_number || '—'}</Text>
-        <Text style={{ flex: 1, fontSize: 10 }}>{r.supplier_name || '—'}</Text>
-        <Text style={{ width: 40, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
-        <Text style={{ width: 60, fontSize: 10, textAlign: 'left' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+  <View style={{ marginBottom: 12 }}>
+    <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>↪️ برگشت از خرید ({modelKardexData.purchaseReturns.length})</Text>
+    <ScrollView horizontal>
+      <View>
+        <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+          <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+          <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+          <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>برگشت</Text>
+          <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+          <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+          <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+          <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+          <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+        </View>
+        {modelKardexData.purchaseReturns.map((r: any, i: number) => (
+          <View key={'pr' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+            <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+            <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+            <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+            <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+            <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || '—'}</Text>
+            <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+            <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+            <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+          </View>
+        ))}
       </View>
-    ))}
+    </ScrollView>
+  </View>
+)}
+{(modelKardexData.adjustments || []).length > 0 && (
+  <View style={{ marginBottom: 12 }}>
+    <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>⚖️ تعدیلات انبار ({modelKardexData.adjustments.length})</Text>
+    <ScrollView horizontal>
+      <View>
+        <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+          <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+          <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+          <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>دلیل</Text>
+          <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+          <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>بهای واحد</Text>
+          <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>ارزش کل</Text>
+          <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>یادداشت</Text>
+        </View>
+        {modelKardexData.adjustments.map((r: any, i: number) => {
+          var adjVal = Number(r.adjustment) || 0;
+          var uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+          var totalVal = adjVal * uCost;
+          return (
+            <View key={'adj' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+              <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+              <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.created_at || '').slice(0, 10)}</Text>
+              <Text style={{ width: 140, fontSize: 10, textAlign: 'right' }}>{r.reason || '—'}</Text>
+              <Text style={{ width: 70, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: adjVal >= 0 ? '#059669' : '#dc2626' }}>{(adjVal >= 0 ? '+' : '') + fmt(adjVal)}</Text>
+              <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(uCost)}</Text>
+              <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#d4af37' }}>{fmt(totalVal)}</Text>
+              <Text style={{ width: 140, fontSize: 10, textAlign: 'right' }}>{r.note || '—'}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </ScrollView>
   </View>
 )}
 {(modelKardexData.purchases || []).length === 0 && (modelKardexData.sales || []).length === 0 && (

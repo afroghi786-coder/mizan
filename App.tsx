@@ -88,12 +88,15 @@ import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib
 import SettingsSheets from './SettingsSheets';
 import SettingsAssistant from './SettingsAssistant';
 import AssistantHome from './AssistantHome';
+import SupportSection from './SupportSection';
 import { syncByDestination } from './lib.sheets';
 
 import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, currencyLabel, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
 
 import CurrencyField from './lib.currencyfield';
 import { setStorageUserId, canUseDevice, setDeviceLock } from './lib.storage';
+import NetInfo from '@react-native-community/netinfo';
+import { AppState as RNAppState } from 'react-native';
 import Storage from './lib.storage';// Safely load expo-notifications (fix for Expo Go)
 
 import { hydrateFromSettings, getCurrencySync } from './lib.currency';let Notifications: any = null;
@@ -1041,6 +1044,39 @@ export default function App() {
 
 
 
+  // MANUAL_AUTOREFRESH_MANAGEMENT — جلوگیری از خروج خودکار آفلاین
+  useEffect(() => {
+    try {
+      if (supabase && supabase.auth) {
+        supabase.auth.stopAutoRefresh();
+        const netUnsub = NetInfo.addEventListener((state: any) => {
+          const online = state && state.isConnected && state.isInternetReachable !== false;
+          try {
+            if (online) supabase.auth.startAutoRefresh();
+            else supabase.auth.stopAutoRefresh();
+          } catch {}
+        });
+        const appSub = RNAppState.addEventListener('change', (next: string) => {
+          if (next === 'active') {
+            NetInfo.fetch().then((state: any) => {
+              const online = state && state.isConnected && state.isInternetReachable !== false;
+              try {
+                if (online) supabase.auth.startAutoRefresh();
+                else supabase.auth.stopAutoRefresh();
+              } catch {}
+            }).catch(() => {});
+          } else {
+            try { supabase.auth.stopAutoRefresh(); } catch {}
+          }
+        });
+        return () => {
+          try { netUnsub(); } catch {}
+          try { appSub.remove(); } catch {}
+        };
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
 
     // چک خودکار لایسنس هر ۱۲ ساعت
@@ -1228,6 +1264,8 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   const [curLang, setCurLang] = useState(getLang());
 
   const [tab, setTab] = useState('dashboard');
+  const [supportOpenTicketId, setSupportOpenTicketId] = useState<string>('');
+  const [supportUnread, setSupportUnread] = useState(0);
   const [ledgerOpen, setLedgerOpen] = useState(false);
 
   const [plus, setPlus] = useState(false);
@@ -1239,11 +1277,40 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
 
   useEffect(() => {
-
     (globalThis as any).__nav = { setTab };
-
     console.warn('NAV_BRIDGE_READY');
+  }, []);
 
+  // کلیک روی نوتیف support_reply → باز کردن تب پشتیبانی و همان تیکت
+  useEffect(() => {
+    try {
+      const sub = Notifications?.addNotificationResponseReceivedListener?.((resp: any) => {
+        try {
+          const data = resp?.notification?.request?.content?.data || {};
+          const t = String(data?.type || '');
+          const tid = String(data?.ticket_id || '');
+          if (t === 'support_reply' || tid) {
+            if (tid) setSupportOpenTicketId(tid);
+            setTab('support');
+          }
+        } catch {}
+      });
+      return () => { try { sub?.remove?.(); } catch {} };
+    } catch { return; }
+  }, []);
+
+  // SUPPORT_BADGE_POLL — شمارش پاسخ‌های خوانده‌نشده ادمین
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      try {
+        const c = await getSupportUnreadCount();
+        if (alive) setSupportUnread(Number(c) || 0);
+      } catch {}
+    };
+    tick();
+    const iv = setInterval(tick, 15000);
+    return () => { alive = false; clearInterval(iv); };
   }, []);
 
   useEffect(() => {
@@ -1533,6 +1600,9 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
               hawala_new: `📤 ${p.from_name || ''} حواله ${p.amount || 0} ${p.currency || ''}`,
 
+              new_message: `💬 پیام جدید از ${p.from_name || p.from_email || "کاربر"}${p.last_text ? ": " + p.last_text : ""}`,
+              support_reply: `💬 پاسخ جدید پشتیبانی${p.last_text ? ": " + p.last_text : ""}`,
+              support_new: `📩 پیام جدید از کاربر${p.from_name ? " - " + p.from_name : ""}`,
               fx_expired: `⌛ آگهی شما منقضی شد`,
 
               hawala_expired: `⌛ حواله شما منقضی شد`,
@@ -1694,7 +1764,9 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     { key: 'expenses', icon: '💸', label: t('هزینه‌ها'), color: '#7f1d1d' },
 
   
-    { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },];
+    { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },
+
+    { key: 'support', icon: '🎧', label: t('پشتیبانی') + (supportUnread > 0 ? ' (' + supportUnread + ')' : ''), color: '#0891b2' },];
 
 
 
@@ -1889,6 +1961,12 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
 
       {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
+
+      {tab === 'support' && (
+        <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 120 }}>
+          <SupportSection showToast={showToast} initialTicketId={supportOpenTicketId} />
+        </ScrollView>
+      )}
 
       {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
 
@@ -2468,7 +2546,7 @@ function DigitalDashboard({ refreshKey, settings }: any) {
 
       <View style={dash.profitBox}>
 
-        <EL text="💰 سود خالص" style={dash.profitLbl}>{rangeLabel}</EL>
+        <EL text="💰 سود خالص " style={dash.profitLbl}>{rangeLabel}</EL>
 
         <Text style={[dash.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88', textShadowColor: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>
 
@@ -2667,9 +2745,9 @@ function SalesScreen({ showToast }: any) {
 
         const f = await lookupCustomerByPhone(d);
 
-        if (f) { setCustomerStatus('✅ قبلی'); if (f.customer_name && !name) setName(f.customer_name); if (f.customer_address && !address) setAddress(f.customer_address); }
+        if (f) { setCustomerStatus('✅ قبلی'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); }
 
-        else setCustomerStatus('🆕 جدید');
+        else { setCustomerStatus('🆕 جدید'); setName(''); setAddress(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount(''); }
 
       } catch { setCustomerStatus(''); }
 
@@ -4077,7 +4155,7 @@ function PurchaseScreen({ showToast }: any) {
 
     setSName(v);
 
-    try { const party = await lookupPartyByName(v); if (party) { if (party.code && !sCode) setSCode(party.code); if (party.phone && !sPhone) setSPhone(party.phone); } else { const f = await lookupSupplierByName(v); if (f) { if (f.supplier_code && !sCode) setSCode(f.supplier_code); if (f.supplier_phone && !sPhone) setSPhone(f.supplier_phone); } } } catch {}
+    setSCode(''); setSPhone(''); try { const party = await lookupPartyByName(v); if (party) { if (party.code) setSCode(party.code); if (party.phone) setSPhone(party.phone); } else { const f = await lookupSupplierByName(v); if (f) { if (f.supplier_code) setSCode(f.supplier_code); if (f.supplier_phone) setSPhone(f.supplier_phone); } else { setSCode(''); setSPhone(''); setPayerName(''); setPayerCode(''); setBankAcc(''); setReceiverAcc(''); } } } catch {}
 
   };
 
@@ -7056,7 +7134,7 @@ function NewOrderSection({ showToast }: any) {
 
       setStatus('⏳');
 
-      try { const f = await lookupCustomerByPhone(d); if (f) { setStatus('✅'); if (f.customer_name && !name) setName(f.customer_name); if (f.customer_address && !address) setAddress(f.customer_address); } else setStatus('🆕'); } catch {}
+      try { const f = await lookupCustomerByPhone(d); if (f) { setStatus('✅'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); } else { setStatus('🆕'); setName(''); setAddress(''); if (typeof setReceiverName === 'function') { setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount(''); } } } catch {}
 
     }
 

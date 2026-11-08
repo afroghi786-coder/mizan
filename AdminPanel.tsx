@@ -3,6 +3,7 @@ import { displayDate, displayDateOnly } from './lib-date';
 import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Modal } from 'react-native';;
 import { supabaseAdmin as supabase } from './lib.supabase.admin';
+import SupportAdminPanel from './SupportAdminPanel';
 
 const DURATIONS = [
   { k: '1h', l: '🕐 ۱ ساعت', interval: '1 hour', days: 1/24, hours: 1 },
@@ -295,7 +296,7 @@ export default function AdminPanel({ showToast }: any) {
   const [listLoading, setListLoading] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
-  const [tab, setTab] = useState<'issue' | 'requests' | 'list' | 'admins'>('issue');
+  const [tab, setTab] = useState<'issue' | 'requests' | 'list' | 'admins' | 'support'>('issue');
   const [listSearch, setListSearch] = useState('');
   const [passModal, setPassModal] = useState(false);
   const [passEmail, setPassEmail] = useState('');
@@ -591,6 +592,9 @@ export default function AdminPanel({ showToast }: any) {
           <TouchableOpacity accessibilityLabel="ادمین‌ها" onPress={() => setTab('admins')} style={[s.tab, tab === 'admins' && s.tabActive]}>
             <Text style={[s.tabTxt, tab === 'admins' && s.tabTxtActive]}>👥 ادمین‌ها</Text>
           </TouchableOpacity>
+      <TouchableOpacity onPress={() => setTab('support')} style={[s.tab, tab === 'support' && s.tabActive]}>
+        <Text style={[s.tabTxt, tab === 'support' && s.tabTxtActive]}>پشتیبانی</Text>
+      </TouchableOpacity>
       </View>
 
       {/* ═══ تب صدور ═══ */}
@@ -770,6 +774,7 @@ export default function AdminPanel({ showToast }: any) {
         </View>
       )}
     
+            {tab === 'support' && <SupportAdminPanel showToast={showToast} />}
       {tab === 'admins' && (
         <View>
           {/* لیست ادمین‌ها */}

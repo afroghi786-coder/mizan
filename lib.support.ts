@@ -1,6 +1,5 @@
 import AsyncStorage from './lib.storage';
 import { supabase } from './lib';
-import NetInfo from '@react-native-community/netinfo';
 
 const QUEUE_KEY = '@mizan_support_queue';
 const TICKETS_CACHE = '@mizan_support_tickets_cache';
@@ -8,8 +7,10 @@ const MESSAGES_CACHE = '@mizan_support_messages_cache_';
 
 async function _isOnline(): Promise<boolean> {
   try {
-    const s = await NetInfo.fetch();
-    return !!(s && s.isConnected && s.isInternetReachable !== false);
+    if (typeof navigator !== 'undefined' && typeof (navigator as any).onLine === 'boolean') {
+      return (navigator as any).onLine !== false;
+    }
+    return true;
   } catch { return true; }
 }
 

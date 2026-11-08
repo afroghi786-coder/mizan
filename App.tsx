@@ -95,7 +95,6 @@ import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, 
 
 import CurrencyField from './lib.currencyfield';
 import { setStorageUserId, canUseDevice, setDeviceLock } from './lib.storage';
-import NetInfo from '@react-native-community/netinfo';
 import { AppState as RNAppState } from 'react-native';
 import Storage from './lib.storage';// Safely load expo-notifications (fix for Expo Go)
 
@@ -1049,22 +1048,43 @@ export default function App() {
     try {
       if (supabase && supabase.auth) {
         supabase.auth.stopAutoRefresh();
-        const netUnsub = NetInfo.addEventListener((state: any) => {
-          const online = state && state.isConnected && state.isInternetReachable !== false;
+        const _isOnline = () => {
           try {
-            if (online) supabase.auth.startAutoRefresh();
-            else supabase.auth.stopAutoRefresh();
+            if (typeof navigator !== 'undefined' && typeof (navigator as any).onLine === 'boolean') {
+              return (navigator as any).onLine !== false;
+            }
+            return true;
+          } catch { return true; }
+        };
+        const onOnline = () => {
+          try { supabase.auth.startAutoRefresh(); } catch {}
+        };
+        const onOffline = () => {
+          try { supabase.auth.stopAutoRefresh(); } catch {}
+        };
+        const netUnsub = () => {
+          try {
+            if (typeof window !== 'undefined' && window.removeEventListener) {
+              window.removeEventListener('online', onOnline);
+              window.removeEventListener('offline', onOffline);
+            }
           } catch {}
-        });
+        };
+        if (typeof window !== 'undefined' && window.addEventListener) {
+          window.addEventListener('online', onOnline);
+          window.addEventListener('offline', onOffline);
+        }
+        // بررسی اولیه
+        try {
+          if (_isOnline()) supabase.auth.startAutoRefresh();
+          else supabase.auth.stopAutoRefresh();
+        } catch {}
         const appSub = RNAppState.addEventListener('change', (next: string) => {
           if (next === 'active') {
-            NetInfo.fetch().then((state: any) => {
-              const online = state && state.isConnected && state.isInternetReachable !== false;
-              try {
-                if (online) supabase.auth.startAutoRefresh();
-                else supabase.auth.stopAutoRefresh();
-              } catch {}
-            }).catch(() => {});
+            try {
+              if (_isOnline()) supabase.auth.startAutoRefresh();
+              else supabase.auth.stopAutoRefresh();
+            } catch {}
           } else {
             try { supabase.auth.stopAutoRefresh(); } catch {}
           }

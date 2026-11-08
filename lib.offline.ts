@@ -241,7 +241,7 @@ export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
 
 const TOMBSTONES_KEY = '@mizan_tombstones';
 
-export async function recordTombstone(table: string, key: string) {
+export async function recordTombstone(table: string, key: string, meta?: any) {
   if (!table || !key) return;
   try {
     const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
@@ -251,7 +251,9 @@ export async function recordTombstone(table: string, key: string) {
     const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
     const now = new Date().toISOString();
     const clean = arr.filter((x: any) => !(x && x.table === table && String(x.key) === String(key)));
-    clean.push({ table: table, key: String(key), deleted_at: now, device_id: dev });
+    const entry: any = { table: table, key: String(key), deleted_at: now, device_id: dev };
+    if (meta) entry.meta = meta;
+    clean.push(entry);
     await AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(clean));
   } catch (e) { console.log('[recordTombstone]', e); }
 }
@@ -262,6 +264,43 @@ export async function getTombstones(): Promise<any[]> {
     const arr = raw ? JSON.parse(raw) : [];
     return Array.isArray(arr) ? arr : [];
   } catch { return []; }
+}
+
+let _deletedPartiesCache: { phones: Set<string>, codes: Set<string>, names: Set<string>, ts: number } | null = null;
+
+async function _getDeletedParties() {
+  if (_deletedPartiesCache && Date.now() - _deletedPartiesCache.ts < 5000) {
+    return _deletedPartiesCache;
+  }
+  const phones = new Set<string>();
+  const codes = new Set<string>();
+  const names = new Set<string>();
+  try {
+    const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t || t.table !== 'parties' || !t.meta) continue;
+        let meta = t.meta;
+        if (typeof meta === 'string') {
+          try { meta = JSON.parse(meta); } catch { continue; }
+        }
+        if (!meta || typeof meta !== 'object') continue;
+        const p = String(meta.phone || '').replace(/[^0-9]/g, '');
+        const c = String(meta.code || '').trim();
+        const n = String(meta.name || '').trim();
+        if (p) phones.add(p);
+        if (c) codes.add(c);
+        if (n) names.add(n);
+      }
+    }
+  } catch {}
+  _deletedPartiesCache = { phones, codes, names, ts: Date.now() };
+  return _deletedPartiesCache;
+}
+
+function _invalidateDeletedPartiesCache() {
+  _deletedPartiesCache = null;
 }
 
 
@@ -331,10 +370,32 @@ async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T>
   try { return await fetcher(); } catch { throw new Error('داده‌ای موجود نیست'); }
 }
 
+async function _applyTombstones(table: string, arr: any[]) {
+  try {
+    const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+    let list: any[] = [];
+    try { list = raw ? JSON.parse(raw) : []; } catch { list = []; }
+    if (!Array.isArray(list)) list = [];
+    const deleted = new Set<string>();
+    for (const t of list) {
+      if (t && String(t.table || '') === table) {
+        const k = String(t.key || '').trim();
+        if (k) deleted.add(k);
+      }
+    }
+    if (!deleted.size) return arr;
+    return (arr || []).filter((x: any) => {
+      const keys = [x.local_id, x.id, x.invoice_number, x.code, x.phone, x.name, x.return_number]
+        .map(v => String(v || '').trim()).filter(Boolean);
+      return !keys.some(k => deleted.has(k));
+    });
+  } catch { return arr; }
+}
+
 export async function getProducts() {
   // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
   const local = await getLocal<any[]>('products');
-  return local || [];
+  return _applyTombstones('products', local || []);
 }
 export async function createProduct(p: any) {
   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -822,12 +883,59 @@ async function computeLocalInventory() {
       }
     }
     if (item.op === 'createStockAdjustment' && item.payload) adjAll = adjAll.concat([item.payload]);
+    if (item.op === 'deleteStockAdjustment' && item.payload) {
+      const _delId = typeof item.payload === 'string' ? item.payload : String(item.payload?.local_id || item.payload?.id || '');
+      if (_delId) adjAll = adjAll.filter((r: any) => String(r.local_id || '') !== _delId && String(r.id || '') !== _delId);
+    }
   }
+  // BUSINESS_LOCAL_ONLY — tombstone filter for adjustments (final safety)
+  try {
+    const _rawT = await AsyncStorage.getItem('@mizan_tombstones');
+    let _arrT: any[] = [];
+    try { _arrT = _rawT ? JSON.parse(_rawT) : []; } catch { _arrT = []; }
+    if (Array.isArray(_arrT)) {
+      const _delAdj = new Set<string>();
+      for (const _t of _arrT) {
+        if (!_t) continue;
+        if (String(_t.table || '') !== 'stock_adjustments') continue;
+        const _k = String(_t.key || '').trim();
+        if (_k) _delAdj.add(_k);
+      }
+      if (_delAdj.size) {
+        adjAll = adjAll.filter((r: any) => {
+          const k1 = String(r.local_id || '').trim();
+          const k2 = String(r.id || '').trim();
+          if (k1 && _delAdj.has(k1)) return false;
+          if (k2 && _delAdj.has(k2)) return false;
+          return true;
+        });
+      }
+    }
+  } catch {}
+
+  // Dedupe adjAll by local_id — جلوگیری از شمارش دوبرابر (queue + local)
+  try {
+    const _adjSeen = new Set<string>();
+    adjAll = adjAll.filter((r: any) => {
+      const k = String(r.local_id || r.id || '');
+      if (!k) return true;
+      if (_adjSeen.has(k)) return false;
+      _adjSeen.add(k);
+      return true;
+    });
+  } catch {}
+
   const adjustmentMap: Record<string, number> = {};
+  const adjustmentValueMap: Record<string, number> = {};
   adjAll.forEach(function(r: any) {
     const c = String(r.model_code || '').trim();
     if (!c) return;
-    adjustmentMap[c] = (adjustmentMap[c] || 0) + (Number(r.adjustment) || 0);
+    const _qty = Number(r.adjustment) || 0;
+    const _cost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+    adjustmentMap[c] = (adjustmentMap[c] || 0) + _qty;
+    if (_qty > 0 && _cost > 0) {
+      adjustmentValueMap[c] = (adjustmentValueMap[c] || 0) + (_qty * _cost);
+    }
   });
   const productMap: Record<string, any> = {};
   products.forEach((p: any) => { productMap[p.code] = p; });
@@ -906,7 +1014,11 @@ async function computeLocalInventory() {
     if (stock < 0) status = 'negative';
     else if (stock === 0) status = 'out';
     else if (stock < threshold) status = 'low';
-    const unitCost = m.bought > 0 ? Math.round(m.boughtValue / m.bought) : 0;
+    const _adjValue = adjustmentValueMap[m.code] || 0;
+    const _posAdj = Math.max(0, adj);
+    const _effBought = m.bought + _posAdj;
+    const _effBoughtValue = m.boughtValue + _adjValue;
+    const unitCost = _effBought > 0 ? Math.round(_effBoughtValue / _effBought) : 0;
     const totalValue = stock * unitCost;
     const potentialRevenue = stock * (m.lastSalePrice || 0);
     const lastPurchaseDate = m.lastPurchaseTime ? new Date(m.lastPurchaseTime) : null;
@@ -1038,6 +1150,11 @@ export async function findCodeByNameOffline(name: string) {
 
 
 export async function lookupSupplierByName(name: string) {
+  const _nm = String(name || '').trim();
+  if (_nm) {
+    const _dp = await _getDeletedParties();
+    if (_dp.names.has(_nm)) return null;
+  }
   if (MODE === 'online') {
     try {
       const fresh = await lib.lookupSupplierByName(name);
@@ -1819,6 +1936,11 @@ export async function findCustomerByPhoneOffline(phone: string) {
 // ═══════════════════════════════════════════
 export async function lookupCustomerByPhone(phone: string) {
   // BUSINESS_LOCAL_ONLY — اول محلی، بعد اگر خالی بود Supabase
+  const _p = String(phone || '').replace(/[^0-9]/g, '');
+  if (_p) {
+    const _dp = await _getDeletedParties();
+    if (_dp.phones.has(_p)) return null;
+  }
   const cached = await getLocal<any>('cust_' + phone);
   if (cached) return cached;
   const local = await findCustomerByPhoneOffline(phone);
@@ -1841,10 +1963,14 @@ export async function lookupCustomerByPhone(phone: string) {
 async function getCustomerList(): Promise<any[]> {
   const result: any[] = [];
   const seen = new Set<string>();
+  const _dp = await _getDeletedParties();
 
   // از all_sales_for_lookup
   const all = (await getLocal<any[]>('all_sales_for_lookup')) || [];
   for (const s of all) {
+    const p = String(s.customer_phone || '').replace(/[^0-9]/g, '');
+    const c = String(s.customer_code || '').trim();
+    if ((p && _dp.phones.has(p)) || (c && _dp.codes.has(c))) continue;
     const key = String(s.customer_phone || '') + '_' + String(s.customer_code || '');
     if (!seen.has(key)) {
       seen.add(key);
@@ -1855,6 +1981,9 @@ async function getCustomerList(): Promise<any[]> {
   // از sales_grouped
   const grouped = (await getLocal<any[]>('sales_grouped')) || [];
   for (const g of grouped) {
+    const p = String(g.phone || '').replace(/[^0-9]/g, '');
+    const c = String(g.customerCode || g.code || '').trim();
+    if ((p && _dp.phones.has(p)) || (c && _dp.codes.has(c))) continue;
     const key = String(g.phone || '') + '_' + String(g.customerCode || g.code || '');
     if (!seen.has(key) && g.phone) {
       seen.add(key);
@@ -1927,7 +2056,7 @@ export async function getExpenses(): Promise<any[]> {
       }
     }
   } catch {}
-  return Object.values(map);
+  return _applyTombstones('expenses', Object.values(map));
 }
 export async function createExpense(p: any): Promise<any> {
   const devEm = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -1981,7 +2110,7 @@ export async function deleteExpense(localId: string) {
 // ═══════════════════════════════════════════
 export async function getEmployees(): Promise<any[]> {
   // BUSINESS_LOCAL_ONLY — فقط حافظه محلی
-  return (await getLocal<any[]>('employees')) || [];
+  return _applyTombstones('employees', (await getLocal<any[]>('employees')) || []);
 }
 export async function createEmployee(p: any): Promise<any> {
   const devAt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -2021,7 +2150,7 @@ export async function deleteEmployee(localId: string) {
 // ═══════════════════════════════════════════
 export async function getAttendance(): Promise<any[]> {
   // BUSINESS_LOCAL_ONLY — فقط حافظه محلی
-  return (await getLocal<any[]>('attendance')) || [];
+  return _applyTombstones('attendance', (await getLocal<any[]>('attendance')) || []);
 }
 export async function createAttendance(p: any): Promise<any> {
   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
@@ -2431,7 +2560,7 @@ async function computeLocalDashboardStats(range, filter) {
     if (filter !== "sales" && inRange(r.date_factor)) {
       totalPurchases += Number(r.amount || (r.quantity * r.price_unit)) || 0;
       supplierPaid += Number(r.payment) || 0;
-      supplierDebt += Number(r.balance) || 0;
+      supplierDebt += (Number(r.amount || (r.quantity * r.price_unit)) || 0) - (Number(r.payment) || 0);
     }
   });
   Object.keys(purchaseByCode).forEach(function(k) {
@@ -2493,10 +2622,39 @@ async function computeLocalDashboardStats(range, filter) {
   try { salesReturns = await getSalesReturns(); } catch {}
   try { purchaseReturns = await getPurchaseReturns(); } catch {}
 
+  // BUSINESS_LOCAL_ONLY — گزینه C: فقط تعدیل منفی روی سود اثر می‌گذارد
+  var _adjLoss = 0;
+  try {
+    var _adjAll = (await getLocal('stock_adjustments')) || [];
+    var _adjSeen: Record<string, boolean> = {};
+    for (var _ai = 0; _ai < _adjAll.length; _ai++) {
+      var _a = _adjAll[_ai];
+      var _ak = String(_a.local_id || _a.id || '');
+      if (_ak && _adjSeen[_ak]) continue;
+      if (_ak) _adjSeen[_ak] = true;
+      var _qty = Number(_a.adjustment) || 0;
+      if (_qty >= 0) continue; // فقط منفی
+      var _cost = Number(_a.unit_cost != null ? _a.unit_cost : (_a.unitCost != null ? _a.unitCost : _a.cost)) || 0;
+      if (!_cost) {
+        var _code = String(_a.model_code || '').trim();
+        if (_code) {
+          var _d = parseDateAny(_a.adjustment_date || _a.created_at) || now;
+          var _info = findPurchaseForSale(_code, _d.getTime());
+          _cost = _info.price || 0;
+        }
+      }
+      if (_cost > 0) _adjLoss += Math.abs(_qty) * _cost;
+    }
+  } catch {}
+  totalProfit -= _adjLoss;
+
   var customerDebtVar = totalSales - customerPaid;
   var supplierDebtVar = supplierDebt;
 
   salesReturns.forEach(function(r: any) {
+    // BUSINESS_LOCAL_ONLY — فقط برگشت‌های داخل بازه
+    var _rDateS = parseDateAny(r.date || r.created_at);
+    if (startDate && (!_rDateS || _rDateS < startDate || _rDateS > now)) return;
     var items = r.items || [];
     var subtotal = 0;
     items.forEach(function(it: any) {
@@ -2531,6 +2689,9 @@ async function computeLocalDashboardStats(range, filter) {
   });
 
   purchaseReturns.forEach(function(r: any) {
+    // BUSINESS_LOCAL_ONLY — فقط برگشت‌های داخل بازه
+    var _rDateP = parseDateAny(r.date || r.created_at);
+    if (startDate && (!_rDateP || _rDateP < startDate || _rDateP > now)) return;
     var items = r.items || [];
     var subtotal = 0;
     items.forEach(function(it: any) {
@@ -2553,10 +2714,11 @@ async function computeLocalDashboardStats(range, filter) {
         var avgSale = m.totalSales / m.totalQty;
         var estUnit = avgSale * margin;
         m.purchasePrice = avgSale - estUnit;
-        m.totalProfit = estUnit * m.totalQty;
+        var _estProfit = estUnit * m.totalQty;
+        m.totalProfit += _estProfit;
         m.priceSource = "estimated";
         m.estimated = true;
-        totalProfit += m.totalProfit;
+        totalProfit += _estProfit;
         estimatedCount++;
       }
     });
@@ -2568,6 +2730,7 @@ async function computeLocalDashboardStats(range, filter) {
     customerDebt: customerDebtVar,
     supplierPaid: supplierPaid, supplierDebt: supplierDebtVar,
     profit: totalProfit,
+    adjustmentLoss: _adjLoss,
     models: models, estimatedCount: estimatedCount,
     defaultMargin: margin,
     rangeLabel: DASH_LBL[range] || range
@@ -2583,9 +2746,66 @@ export async function getInventoryByModel(code: string) {
 
   const localPurchases = (await getLocal<any[]>('purchases')) || [];
   const localSales = (await getLocal<any[]>('sales')) || [];
+  const grpPurchases = (await getLocal<any[]>('purchases_grouped')) || [];
+  const grpSales = (await getLocal<any[]>('sales_grouped')) || [];
 
-  var pAll = localPurchases.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
-  var sAll = localSales.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — merge grouped for device 2
+  const _allP: any[] = [...localPurchases];
+  const _allS: any[] = [...localSales];
+  try {
+    const _haveP = new Set(localPurchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+    const _haveS = new Set(localSales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+    for (const g of grpPurchases) {
+      const inv = String(g.invoice || '').trim();
+      if (!inv || _haveP.has(inv)) continue;
+      for (const it of (g.items || [])) {
+        _allP.push({
+          invoice_number: inv,
+          supplier_code: g.supplierCode || '',
+          supplier_name: g.name || '',
+          model_code: it.modelCode || it.model_code || '',
+          model_name: it.modelName || it.model_name || '',
+          quantity: Number(it.quantity) || 0,
+          price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+          payment: Number(it.payment) || 0,
+          date_factor: g.date || '',
+          date_reg: g.date || '',
+        });
+      }
+    }
+    for (const g of grpSales) {
+      const inv = String(g.invoice || '').trim();
+      if (!inv || _haveS.has(inv)) continue;
+      for (const it of (g.items || [])) {
+        _allS.push({
+          invoice_number: inv,
+          customer_code: g.customerCode || '',
+          customer_name: g.name || '',
+          model_code: it.modelCode || it.model_code || '',
+          model_name: it.modelName || it.model_name || '',
+          quantity: Number(it.quantity) || 0,
+          price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+          payment: Number(it.payment) || 0,
+          date_factor: g.date || '',
+          date_reg: g.date || '',
+        });
+      }
+    }
+  } catch {}
+  try {
+    const _tomb = await getTombstones();
+    const _deadS = new Set<string>();
+    const _deadP = new Set<string>();
+    for (const _t of _tomb) {
+      if (String(_t.table || '') === 'sales') _deadS.add(String(_t.key || '').trim());
+      if (String(_t.table || '') === 'purchases') _deadP.add(String(_t.key || '').trim());
+    }
+    if (_deadP.size) { for (let _i = _allP.length - 1; _i >= 0; _i--) { if (_deadP.has(String(_allP[_i].invoice_number || '').trim())) _allP.splice(_i, 1); } }
+    if (_deadS.size) { for (let _i = _allS.length - 1; _i >= 0; _i--) { if (_deadS.has(String(_allS[_i].invoice_number || '').trim())) _allS.splice(_i, 1); } }
+  } catch {}
+
+  var pAll = _allP.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+  var sAll = _allS.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
 
   const q = await getQueue();
   for (const item of q) {
@@ -2634,28 +2854,109 @@ export async function getInventoryByModel(code: string) {
 
   const adjs = (await getLocal<any[]>('stock_adjustments')) || [];
   const myAdjs = adjs.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
-  return { purchases: pAll, sales: sAll, adjustments: myAdjs };
+
+  // برگشت‌ها (getSalesReturns / getPurchaseReturns خودشان tombstone را اعمال می‌کنند)
+  var sRet: any[] = [];
+  var pRet: any[] = [];
+  try {
+    const allSR = await getSalesReturns();
+    for (const sr of allSR || []) {
+      for (const it of (sr.items || [])) {
+        const itCode = String(it.modelCode || it.model_code || '').trim();
+        if (itCode !== c) continue;
+        sRet.push({
+          return_number: sr.return_number || sr.local_id || '',
+          original_invoice_number: sr.original_invoice_number || '',
+          customer_code: sr.party_code || '',
+          customer_name: sr.party_name || '',
+          model_code: itCode,
+          model_name: it.modelName || it.model_name || '',
+          quantity: Number(it.returnQty || it.quantity) || 0,
+          price_unit: Number(it.priceUnit || it.price_unit) || 0,
+          date_factor: sr.date || sr.created_at || '',
+          date_reg: sr.date || sr.created_at || '',
+          description: it.description || '',
+          _return: 'sales_return',
+        });
+      }
+    }
+  } catch {}
+  try {
+    const allPR = await getPurchaseReturns();
+    for (const pr of allPR || []) {
+      for (const it of (pr.items || [])) {
+        const itCode = String(it.modelCode || it.model_code || '').trim();
+        if (itCode !== c) continue;
+        pRet.push({
+          return_number: pr.return_number || pr.local_id || '',
+          original_invoice_number: pr.original_invoice_number || '',
+          supplier_code: pr.party_code || '',
+          supplier_name: pr.party_name || '',
+          model_code: itCode,
+          model_name: it.modelName || it.model_name || '',
+          quantity: Number(it.returnQty || it.quantity) || 0,
+          price_unit: Number(it.priceUnit || it.price_unit) || 0,
+          date_factor: pr.date || pr.created_at || '',
+          date_reg: pr.date || pr.created_at || '',
+          description: it.description || '',
+          _return: 'purchase_return',
+        });
+      }
+    }
+  } catch {}
+
+  sRet.sort(function(a: any, b: any) { return new Date(a.date_factor || 0).getTime() - new Date(b.date_factor || 0).getTime(); });
+  pRet.sort(function(a: any, b: any) { return new Date(a.date_factor || 0).getTime() - new Date(b.date_factor || 0).getTime(); });
+
+  return { purchases: pAll, sales: sAll, salesReturns: sRet, purchaseReturns: pRet, adjustments: myAdjs };
 }
 // ═══════════════════════════════════════════
 //  Stock Adjustments (offline + queue)
 // ═══════════════════════════════════════════
 export async function getStockAdjustments(code?: string) {
+  // BUSINESS_LOCAL_ONLY — فقط محلی، بدون Supabase (رفع کندی)
   let list = (await getLocal<any[]>('stock_adjustments')) || [];
-  if (MODE === 'online') {
-    try {
-      const fresh = await lib.getStockAdjustments(code);
-      if (fresh && fresh.length) {
-        await setLocal('stock_adjustments', fresh);
-        list = fresh;
-      }
-    } catch (e) { console.log('[getStockAdjustments] online failed:', e); }
-  }
   const q = await getQueue();
   const pending: any[] = [];
   for (const item of q) {
     if (item.op === 'createStockAdjustment' && item.payload) pending.push(item.payload);
   }
-  let all = pending.concat(list);
+  // Tombstones — فیلتر تعدیل‌های حذف‌شده
+  const _deletedAdj = new Set<string>();
+  try {
+    const _rawT = await AsyncStorage.getItem('@mizan_tombstones');
+    let _arrT: any[] = [];
+    try { _arrT = _rawT ? JSON.parse(_rawT) : []; } catch { _arrT = []; }
+    if (Array.isArray(_arrT)) {
+      for (const _t of _arrT) {
+        if (!_t) continue;
+        if (String(_t.table || '') !== 'stock_adjustments') continue;
+        const _k = String(_t.key || '').trim();
+        if (_k) _deletedAdj.add(_k);
+      }
+    }
+  } catch {}
+  const _notDeletedAdj = (r: any) => {
+    const k1 = String(r.local_id || '').trim();
+    const k2 = String(r.id || '').trim();
+    if (k1 && _deletedAdj.has(k1)) return false;
+    if (k2 && _deletedAdj.has(k2)) return false;
+    return true;
+  };
+  // Dedupe by local_id — جلوگیری از تکرار تعدیل
+  const _seen = new Set<string>();
+  const _merged: any[] = [];
+  for (const r of list) {
+    if (!_notDeletedAdj(r)) continue;
+    const k = String(r.local_id || r.id || '');
+    if (k && !_seen.has(k)) { _seen.add(k); _merged.push(r); }
+  }
+  for (const r of pending) {
+    if (!_notDeletedAdj(r)) continue;
+    const k = String(r.local_id || r.id || '');
+    if (k && !_seen.has(k)) { _seen.add(k); _merged.push(r); }
+  }
+  let all = _merged;
   if (code) {
     const c = String(code).trim();
     all = all.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
@@ -3533,7 +3834,7 @@ export async function getParties(type?: string) {
   }
   let out = result;
   if (type) out = out.filter((x: any) => x.type === type || x.type === 'both');
-  return out.sort((a: any, b: any) => String(a.code || '').localeCompare(String(b.code || '')));
+  return _applyTombstones('parties', out.sort((a: any, b: any) => String(a.code || '').localeCompare(String(b.code || ''))));
 }
 
 export async function createParty(p: any) {
@@ -3591,8 +3892,12 @@ export async function updateParty(idOrPayload: any, pArg?: any) {
 export async function deleteParty(idOrPayload: any) {
   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
-  await recordTombstone('parties', String(id));
-  const list = (await getLocal<any[]>('parties')) || [];
+  const _list = (await getLocal<any[]>('parties')) || [];
+  const _target = _list.find((x: any) => x.local_id === id || x.id === id);
+  const _meta = _target ? { phone: String(_target.phone || '').replace(/[^0-9]/g, ''), code: String(_target.code || '').trim(), name: String(_target.name || '').trim() } : undefined;
+  await recordTombstone('parties', String(id), _meta);
+  try { _invalidateDeletedPartiesCache(); } catch {}
+  const list = _list;
   await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
   try { await _pushAudit({ type: 'party_delete', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف طرف‌حساب' }); } catch {}
   const q = await getQueue();
@@ -3717,7 +4022,7 @@ export async function getPartners() {
       if (idx >= 0) result.splice(idx, 1);
     }
   }
-  return result.sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+  return _applyTombstones('partners', result.sort((a, b) => String(a.code || '').localeCompare(String(b.code || ''))));
 }
 export async function createPartner(p: any) {
   const devPt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -3840,7 +4145,7 @@ export async function getPartnerBankAccounts(partnerCode: string) {
       if (idx >= 0) result.splice(idx, 1);
     }
   }
-  return result;
+  return _applyTombstones('partner_bank_accounts', result);
 }
 export async function createPartnerBankAccount(p: any) {
   const code = String(p.partner_code || '').trim();
@@ -3877,7 +4182,7 @@ export async function getPartnerTransactions(partnerCode: string) {
       if (idx >= 0) result.splice(idx, 1);
     }
   }
-  return result.sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || '')));
+  return _applyTombstones('partner_transactions', result.sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || ''))));
 }
 export async function createPartnerTransaction(p: any) {
   const code = String(p.partner_code || '').trim();
@@ -3913,7 +4218,7 @@ export async function getBanks() {
       if (idx >= 0) result.splice(idx, 1);
     }
   }
-  return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  return _applyTombstones('banks', result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
 }
 export async function createBank(p: any) {
   const devB = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -3976,7 +4281,7 @@ export async function getShippings() {
       if (idx >= 0) result.splice(idx, 1);
     }
   }
-  return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  return _applyTombstones('shippings', result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
 }
 export async function createShipping(p: any) {
   const devS = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -4348,7 +4653,7 @@ export async function getSalaryPayments(): Promise<any[]> {
       }
     }
   } catch {}
-  return Object.values(map);
+  return _applyTombstones('salary_payments', Object.values(map));
 }
 
 
@@ -4373,7 +4678,7 @@ export async function getLoans(): Promise<any[]> {
       }
     }
   } catch {}
-  return Object.values(map);
+  return _applyTombstones('employee_loans', Object.values(map));
 }
 
 

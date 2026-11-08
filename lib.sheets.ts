@@ -211,6 +211,23 @@ export async function bridgeSaveTable(table: string, rows: any[]) {
   return data;
 }
 
+export async function bridgeDeleteTable(table: string, keys: string[]) {
+  const cfg = await getBridgeConfig();
+  if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
+  if (!cfg.key) throw new Error('کلید امن واسط وارد نشده است');
+  const res = await fetch(cfg.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'delete', key: cfg.key, table: table, keys: keys || [] }),
+  });
+  const txt = await res.text();
+  let data: any = null;
+  try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
+  if (!res.ok) throw new Error('خطای واسط: ' + (data?.error || res.status));
+  if (!data || data.ok !== true) throw new Error('پاسخ نامعتبر: ' + (data?.error || txt.slice(0, 120)));
+  return data;
+}
+
 export async function bridgeUpsertTable(table: string, rows: any[]) {
   const cfg = await getBridgeConfig();
   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
@@ -364,6 +381,35 @@ export async function syncPrivateTables(onProgress?: (done: number, total: numbe
     done++;
     if (onProgress) onProgress(done, total, t.tab);
   }
+
+  // PHASE_D_SHEET_DELETE — حذف واقعی ردیف‌های tombstone از شیت
+  try {
+    const _rawT = await AsyncStorage.getItem('@mizan_tombstones');
+    let _arrT: any[] = [];
+    try { _arrT = _rawT ? JSON.parse(_rawT) : []; } catch { _arrT = []; }
+    if (Array.isArray(_arrT) && _arrT.length) {
+      const _byTable: Record<string, string[]> = {};
+      for (const _t of _arrT) {
+        if (!_t) continue;
+        const _tab = String(_t.table || '').trim();
+        const _k = String(_t.key || '').trim();
+        if (!_tab || !_k) continue;
+        if (_tab === '_deleted' || _tab === '_audit') continue;
+        if (!_byTable[_tab]) _byTable[_tab] = [];
+        _byTable[_tab].push(_k);
+      }
+      for (const _tab of Object.keys(_byTable)) {
+        const _keys = _byTable[_tab];
+        if (!_keys.length) continue;
+        try {
+          await bridgeDeleteTable(_tab, _keys);
+          results.push({ tab: _tab, ok: true, deleted: _keys.length, _phaseD: true });
+        } catch (e: any) {
+          results.push({ tab: _tab, ok: false, error: e?.message || String(e), _phaseD: true });
+        }
+      }
+    }
+  } catch {}
 
   const successful = results.filter(r => r.ok).map(r => r.tab);
   if (!hasDirtyKey) {
@@ -1178,6 +1224,28 @@ async function mergeGroupedInvoices(localKey: string, rows: any[]) {
     await AsyncStorage.setItem(localKey, JSON.stringify(Array.from(localMap.values())));
   }
   return { added, updated, removed };
+
+
+  // PHASE_A_RAW_CLEANUP — پاک‌سازی رکوردهای حذف‌شده از حافظه محلی خام
+  try {
+    const _rawKey = table === 'purchases' ? '@mizan_local_purchases' : '@mizan_local_sales';
+    const _rawData = await AsyncStorage.getItem(_rawKey);
+    let _rawArr: any[] = [];
+    try { _rawArr = _rawData ? JSON.parse(_rawData) : []; } catch { _rawArr = []; }
+    if (Array.isArray(_rawArr) && _rawArr.length) {
+      const _tombKeys = Object.keys(tombstones);
+      if (_tombKeys.length) {
+        const _tombSet = new Set(_tombKeys);
+        const _cleaned = _rawArr.filter((x: any) => {
+          const inv = String(x.invoice_number || '').trim();
+          return !inv || !_tombSet.has(inv);
+        });
+        if (_cleaned.length !== _rawArr.length) {
+          await AsyncStorage.setItem(_rawKey, JSON.stringify(_cleaned));
+        }
+      }
+    }
+  } catch {}
 }
 
 async function mergeTombstones(rows: any[]) {
@@ -1200,12 +1268,18 @@ async function mergeTombstones(rows: any[]) {
     const oldTs = old ? Date.parse(String(old.deleted_at || '')) : 0;
     const newTs = Date.parse(String(r.deleted_at || ''));
     if (!old || (newTs && newTs > oldTs)) {
-      map[k] = {
+      let _m = r.meta || (old && old.meta);
+      if (typeof _m === 'string') {
+        try { _m = JSON.parse(_m); } catch { _m = undefined; }
+      }
+      const _entry: any = {
         table: String(r.table),
         key: String(r.key),
         deleted_at: r.deleted_at || new Date().toISOString(),
         device_id: r.device_id || '',
       };
+      if (_m) _entry.meta = _m;
+      map[k] = _entry;
       if (old) updated++; else added++;
     }
   }

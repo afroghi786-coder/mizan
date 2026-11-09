@@ -1,0 +1,51 @@
+
+=== lib.bot.worker.ts ===
+3: import { processRubikaUpdates } from './lib.assistant.rubika';
+8: export async function startGlobalBotWorker() {
+19: await processRubikaUpdates(config.rubika_token);
+24: timer = setTimeout(loop, 4000); // هر ۴ ثانیه
+31: export function stopGlobalBotWorker() {
+
+=== lib.assistant.rubika.ts ===
+60: if (offsetId) body.offset_id = offsetId;
+164: if (inlineKeypad) body.inline_keypad = inlineKeypad;
+202: inline_keypad: inlineKeypad,
+279: if (offsetId) body.offset_id = offsetId;
+343: const body: any = { chat_id: chatId, text: text || '', inline_keypad: inlineKeypad };
+416: body.chat_keypad = keypad;
+417: body.chat_keypad_type = 'New';
+429: async function getBotOffset(): Promise<string> {
+432: async function setBotOffset(v: string): Promise<void> {
+554: export async function processRubikaUpdates(token: string): Promise<{ ok: boolean; processed: number; error?: string }> {
+559: const offset = await getBotOffset();
+561: if (offset) body.offset_id = offset;
+706: if (nextOffset && nextOffset !== offset) await setBotOffset(nextOffset);
+714: export async function resetBotOffset() {
+
+=== AssistantHome.tsx ===
+4: import { rubikaSendMessage, buildChannelPostText, rubikaSendPhoto, resetBotOffset, rubikaRemoveWebhook, forceFixBot, getBotLastError, processRubikaUpdates } from './lib.assistant.rubika';
+236: const t = setInterval(() => { flushProductPostQueue(); }, 30000);
+244: const r = await processRubikaUpdates(bot.rubika_token);
+298: <TouchableOpacity onPress={async () => { await resetBotOffset(); showToast?.('✅ offset ریست شد'); }} style={[btnStyle, { backgroundColor: '#ef4444' }]}>
+
+=== App.tsx ===
+1: import { startGlobalBotWorker } from './lib.bot.worker';
+727: startGlobalBotWorker();
+940: useEffect(() => { const t = setTimeout(() => setFontTimeout(true), 3000); return () => clearTimeout(t); }, []);
+996: setTimeout(() => setToast(null), 3000);
+1044: const licTimer = setInterval(() => {
+1050: const failsafe = setTimeout(() => setLoading(false), 5000);
+1250: setTimeout(() => { try { require('./lib.voice').speakText('سیستم آماده است', 'fa-IR'); } catch(e) { console.warn('TTS_STARTUP_ERR', e); } }, 1500);
+1469: const iv = setInterval(load, 120000);
+1573: setTimeout(() => { _gPlaying.current = false; }, 1500);
+1583: const iv = setInterval(tick, 2000);
+1649: setTimeout(() => { _gPlaying.current = false; }, 1500);
+1657: const iv = setInterval(tick, 1500);
+1840: {tab === 'dashboard' && <DashboardScreen lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabK
+1916: if (sub) setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200);
+1918: setTimeout(() => {
+2348: useEffect(() => { const i = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(i); }, []);
+2362: useEffect(() => { load(); const r = setInterval(load, 30000); return () => clearInterval(r); }, [load, refreshKey]);
+2735: await new Promise(r => setTimeout(r, 100));
+2810: await new Promise(r => setTimeout(r, 100));
+9824: setTimeout(() => { w.focus(); w.print(); }, 800);

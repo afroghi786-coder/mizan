@@ -1,0 +1,1171 @@
+══════ lib.offline.ts — توابع حذف ══════
+
+─── lib.offline.ts — deleteSale (خط 191) ───
+191: export async function deleteSale(inv: string) {
+192:   const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+193:   await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+194:   if (MODE === 'online') {
+195:     try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+196:   } else {
+197:     await enqueue('deleteSale', inv);
+198:   }
+199: }
+200: 
+201: export async function deletePurchase(inv: string) {
+202:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+203:   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+204:   if (MODE === 'online') {
+205:     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+206:   } else {
+207:     await enqueue('deletePurchase', inv);
+208:   }
+209: }
+210: 
+211: export async function getSettings() {
+212:   return cachedRead('settings', () => lib.getSettings());
+213: }
+214: export async function updateSettings(s: any) {
+215:   await setLocal('settings', s);
+216:   if (MODE === 'online') {
+217:     try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+218:   } else {
+219:     await enqueue('updateSettings', s);
+220:   }
+221: }
+222: 
+223: async function computeLocalInventory() {
+224:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+225:     getLocal<any[]>('products'),
+226:     getLocal<any[]>('sales'),
+227:     getLocal<any[]>('purchases'),
+228:     getLocal<any>('settings'),
+229:     getLocal<any[]>('stock_adjustments'),
+230:   ]);
+231:   const products = productsRaw || [];
+232:   let sales = salesRaw || [];
+233:   let purchases = purchasesRaw || [];
+234:   const settings = (settingsRaw as any) || {};
+235:   const threshold = settings.inventory_threshold ?? 5;
+236:   const adjAll = (adjRaw || []).slice();
+237:   const q = await getQueue();
+238:   
+239:   // --- Merge Deletions (حذف‌های آفلاین) ---
+240:   for (const item of q) {
+
+─── lib.offline.ts — deletePurchase (خط 201) ───
+201: export async function deletePurchase(inv: string) {
+202:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+203:   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+204:   if (MODE === 'online') {
+205:     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+206:   } else {
+207:     await enqueue('deletePurchase', inv);
+208:   }
+209: }
+210: 
+211: export async function getSettings() {
+212:   return cachedRead('settings', () => lib.getSettings());
+213: }
+214: export async function updateSettings(s: any) {
+215:   await setLocal('settings', s);
+216:   if (MODE === 'online') {
+217:     try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+218:   } else {
+219:     await enqueue('updateSettings', s);
+220:   }
+221: }
+222: 
+223: async function computeLocalInventory() {
+224:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+225:     getLocal<any[]>('products'),
+226:     getLocal<any[]>('sales'),
+227:     getLocal<any[]>('purchases'),
+228:     getLocal<any>('settings'),
+229:     getLocal<any[]>('stock_adjustments'),
+230:   ]);
+231:   const products = productsRaw || [];
+232:   let sales = salesRaw || [];
+233:   let purchases = purchasesRaw || [];
+234:   const settings = (settingsRaw as any) || {};
+235:   const threshold = settings.inventory_threshold ?? 5;
+236:   const adjAll = (adjRaw || []).slice();
+237:   const q = await getQueue();
+238:   
+239:   // --- Merge Deletions (حذف‌های آفلاین) ---
+240:   for (const item of q) {
+241:     if (item.op === 'deleteSale') {
+242:       allSales = allSales.filter((s: any) => s.invoice_number !== item.payload);
+243:     }
+244:     if (item.op === 'deletePurchase') {
+245:       allPurchases = allPurchases.filter((p: any) => p.invoice_number !== item.payload);
+246:     }
+247:   }
+248: 
+249:   // --- Merge Updates (ویرایش‌های آفلاین فاکتورهای سینک‌شده) ---
+250:   for (const item of q) {
+
+─── lib.offline.ts — deleteExpense (خط 1158) ───
+1158: export async function deleteExpense(localId: string) {
+1159:   const local = (await getLocal<any[]>('expenses')) || [];
+1160:   await setLocal('expenses', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1161:   if (MODE === 'online') {
+1162:     try { await lib.supabase.from('expenses').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1163:   }
+1164: }
+1165: 
+1166: // ═══════════════════════════════════════════
+1167: //  کارمندان (Employees)
+1168: // ═══════════════════════════════════════════
+1169: export async function getEmployees(): Promise<any[]> {
+1170:   return cachedRead('employees', async () => {
+1171:     const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+1172:     return data || [];
+1173:   });
+1174: }
+1175: export async function createEmployee(p: any): Promise<any> {
+1176:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1177:   const local = (await getLocal<any[]>('employees')) || [];
+1178:   await setLocal('employees', [item, ...local]);
+1179:   if (MODE === 'online') {
+1180:     try {
+1181:       const { error } = await lib.supabase.from('employees').insert({
+1182:         code: p.code, name: p.name, phone: p.phone || '', role: p.role || '',
+1183:         contract_type: p.contract_type, amount: p.amount || 0, overtime_rate: p.overtime_rate || 0,
+1184:         local_id: item.local_id,
+1185:       });
+1186:       if (error) throw error;
+1187:     } catch { await enqueue('createEmployee', p); }
+1188:   } else { await enqueue('createEmployee', p); }
+1189:   return item;
+1190: }
+1191: export async function deleteEmployee(localId: string) {
+1192:   const local = (await getLocal<any[]>('employees')) || [];
+1193:   await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1194:   if (MODE === 'online') {
+1195:     try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1196:   }
+1197: }
+1198: 
+1199: // ═══════════════════════════════════════════
+1200: //  حضور (Attendance)
+1201: // ═══════════════════════════════════════════
+1202: export async function getAttendance(): Promise<any[]> {
+1203:   return cachedRead('attendance', async () => {
+1204:     const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1205:     return data || [];
+1206:   });
+1207: }
+
+─── lib.offline.ts — deleteParty (خط 2403) ───
+2403: export async function deleteParty(idOrPayload: any) {
+2404:   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+2405:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+2406:   const list = (await getLocal<any[]>('parties')) || [];
+2407:   await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+2408:   const q = await getQueue();
+2409:   const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+2410:   if (pendingCreate) {
+2411:     const newQ = q.filter((it: any) => !(it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id)));
+2412:     await saveQueue(newQ);
+2413:     return;
+2414:   }
+2415:   if (MODE === 'online') {
+2416:     try { await lib.deleteParty(id); }
+2417:     catch { await enqueue('deleteParty', { local_id: id, id }); }
+2418:   } else {
+2419:     await enqueue('deleteParty', { local_id: id, id });
+2420:   }
+2421: }
+2422: 
+2423: export async function lookupPartyByPhone(phone: string) {
+2424:   if (MODE === 'online') {
+2425:     try { const r = await lib.lookupPartyByPhone(phone); if (r) return r; } catch {}
+2426:   }
+2427:   const list = await getParties();
+2428:   const p = String(phone || '').replace(/[^0-9]/g, '');
+2429:   return list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p) || null;
+2430: }
+2431: 
+2432: export async function lookupPartyByName(name: string) {
+2433:   if (MODE === 'online') {
+2434:     try { const r = await lib.lookupPartyByName(name); if (r) return r; } catch {}
+2435:   }
+2436:   const list = await getParties();
+2437:   const n = String(name || '').trim();
+2438:   return list.find((x: any) => String(x.name || '').trim() === n) || null;
+2439: }
+2440: // ═══════════════════════════════════════════
+2441: //  پیشنهاد کد خودکار طرف‌حساب و کالا
+2442: // ═══════════════════════════════════════════
+2443: function _normPhone(p: any) { return String(p || '').replace(/[^0-9]/g, ''); }
+2444: 
+2445: 
+2446: 
+2447: 
+2448: 
+2449: export async function suggestProductCode() {
+2450:   const list = await getProducts();
+2451:   if (!list.length) return '';
+2452:   const codes = list.map((x: any) => String(x.code || '')).filter(Boolean);
+
+─── lib.offline.ts — deletePartner (خط 2548) ───
+2548: export async function deletePartner(id: string) {
+2549:   const list = (await getLocal<any[]>('partners')) || [];
+2550:   await setLocal('partners', list.filter((x: any) => x.local_id !== id && x.id !== id));
+2551:   if (MODE === 'online') { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+2552:   else { await enqueue('deletePartner', id); }
+2553: }
+2554: 
+2555: export async function getPartnerBankAccounts(partnerCode: string) {
+2556:   const list = (await cachedRead('pba_' + partnerCode, () => lib.getPartnerBankAccounts(partnerCode))) || [];
+2557:   const q = await getQueue();
+2558:   const result = [...list];
+2559:   for (const item of q) {
+2560:     if (item.op === 'createPBA' && item.payload.partner_code === partnerCode) result.push(item.payload);
+2561:     else if (item.op === 'deletePBA') {
+2562:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2563:       if (idx >= 0) result.splice(idx, 1);
+2564:     }
+2565:   }
+2566:   return result;
+2567: }
+2568: export async function createPartnerBankAccount(p: any) {
+2569:   const item = { ...p, local_id: p.local_id || ('pba_' + Date.now()) };
+2570:   const list = (await getLocal<any[]>('pba_' + item.partner_code)) || [];
+2571:   await setLocal('pba_' + item.partner_code, [...list, item]);
+2572:   if (MODE === 'online') { try { await lib.createPartnerBankAccount(item); } catch { await enqueue('createPBA', item); } }
+2573:   else { await enqueue('createPBA', item); }
+2574:   return item;
+2575: }
+2576: export async function deletePartnerBankAccount(id: string, partnerCode: string) {
+2577:   const list = (await getLocal<any[]>('pba_' + partnerCode)) || [];
+2578:   await setLocal('pba_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+2579:   if (MODE === 'online') { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+2580:   else { await enqueue('deletePBA', id); }
+2581: }
+2582: 
+2583: export async function getPartnerTransactions(partnerCode: string) {
+2584:   const list = (await cachedRead('ptx_' + partnerCode, () => lib.getPartnerTransactions(partnerCode))) || [];
+2585:   const q = await getQueue();
+2586:   const result = [...list];
+2587:   for (const item of q) {
+2588:     if (item.op === 'createPTX' && item.payload.partner_code === partnerCode) result.push(item.payload);
+2589:     else if (item.op === 'deletePTX') {
+2590:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2591:       if (idx >= 0) result.splice(idx, 1);
+2592:     }
+2593:   }
+2594:   return result.sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || '')));
+2595: }
+2596: export async function createPartnerTransaction(p: any) {
+2597:   const item = { ...p, local_id: p.local_id || ('ptx_' + Date.now()) };
+
+─── lib.offline.ts — deleteProduct (خط 159) ───
+159: export async function deleteProduct(id: string) {
+160:   const list: any[] = (await getLocal('products')) || [];
+161:   const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
+162:   const code = found?.code;
+163:   await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+164: 
+165:   // اگر این محصول هنوز در صف createProduct است → از صف حذف کن (چیزی برای حذف از سرور نیست)
+166:   const q = await getQueue();
+167:   const hasCreate = q.some((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+168:   if (hasCreate) {
+169:     const newQ = q.filter((it: any) => !(it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code))));
+170:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+171:     console.log('[deleteProduct] removed pending createProduct from queue');
+172:     return;
+173:   }
+174: 
+175:   const payload = { id, code };
+176:   if (MODE === 'online') {
+177:     try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+178:   } else {
+179:     await enqueue('deleteProduct', payload);
+180:   }
+181: }
+182: 
+183: export async function createSale(payload: any) {
+184:   if (MODE === 'online') {
+185:     try { return await lib.createSale(payload); }
+186:     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+187:   }
+188:   await enqueue('createSale', payload);
+189:   return payload.invoiceNumber;
+190: }
+191: export async function deleteSale(inv: string) {
+192:   const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+193:   await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+194:   if (MODE === 'online') {
+195:     try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+196:   } else {
+197:     await enqueue('deleteSale', inv);
+198:   }
+199: }
+200: 
+201: export async function deletePurchase(inv: string) {
+202:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+203:   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+204:   if (MODE === 'online') {
+205:     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+206:   } else {
+207:     await enqueue('deletePurchase', inv);
+208:   }
+
+─── lib.offline.ts — deleteBank (خط 2634) ───
+2634: export async function deleteBank(id: string) {
+2635:   const list = (await getLocal<any[]>('banks')) || [];
+2636:   await setLocal('banks', list.filter((x: any) => x.local_id !== id && x.id !== id));
+2637:   if (MODE === 'online') { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+2638:   else { await enqueue('deleteBank', id); }
+2639: }
+2640: 
+2641: // ═══════════════════════════════════════════
+2642: //  Shippings Offline
+2643: // ═══════════════════════════════════════════
+2644: export async function getShippings() {
+2645:   const list = (await cachedRead('shippings', () => lib.getShippings())) || [];
+2646:   const q = await getQueue();
+2647:   const result = [...list];
+2648:   for (const item of q) {
+2649:     if (item.op === 'createShipping') result.push(item.payload);
+2650:     else if (item.op === 'deleteShipping') {
+2651:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2652:       if (idx >= 0) result.splice(idx, 1);
+2653:     }
+2654:   }
+2655:   return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+2656: }
+2657: export async function createShipping(p: any) {
+2658:   const item = { ...p, local_id: p.local_id || ('ship_' + Date.now()) };
+2659:   const list = (await getLocal<any[]>('shippings')) || [];
+2660:   await setLocal('shippings', [...list, item]);
+2661:   if (MODE === 'online') { try { await lib.createShipping(item); } catch { await enqueue('createShipping', item); } }
+2662:   else { await enqueue('createShipping', item); }
+2663:   return item;
+2664: }
+2665: export async function deleteShipping(id: string) {
+2666:   const list = (await getLocal<any[]>('shippings')) || [];
+2667:   await setLocal('shippings', list.filter((x: any) => x.local_id !== id && x.id !== id));
+2668:   if (MODE === 'online') { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+2669:   else { await enqueue('deleteShipping', id); }
+2670: }
+2671: // ═══════════════════════════════════════════
+2672: //  Universal Payer Lookup — طرف‌حساب‌ها + شرکا
+2673: // ═══════════════════════════════════════════
+2674: export async function lookupPayerUniversal(name: string) {
+2675:   const n = String(name || '').trim();
+2676:   if (!n) return null;
+2677: 
+2678:   // ۱. طرف‌حساب‌ها
+2679:   try {
+2680:     const parties = await getParties();
+2681:     const party = parties.find((x: any) => String(x.name || '').trim() === n);
+2682:     if (party) return { name: party.name, code: party.code, bank: '', account: '', source: 'parties' };
+2683:   } catch {}
+
+─── lib.offline.ts — deleteShipping (خط 2665) ───
+2665: export async function deleteShipping(id: string) {
+2666:   const list = (await getLocal<any[]>('shippings')) || [];
+2667:   await setLocal('shippings', list.filter((x: any) => x.local_id !== id && x.id !== id));
+2668:   if (MODE === 'online') { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+2669:   else { await enqueue('deleteShipping', id); }
+2670: }
+2671: // ═══════════════════════════════════════════
+2672: //  Universal Payer Lookup — طرف‌حساب‌ها + شرکا
+2673: // ═══════════════════════════════════════════
+2674: export async function lookupPayerUniversal(name: string) {
+2675:   const n = String(name || '').trim();
+2676:   if (!n) return null;
+2677: 
+2678:   // ۱. طرف‌حساب‌ها
+2679:   try {
+2680:     const parties = await getParties();
+2681:     const party = parties.find((x: any) => String(x.name || '').trim() === n);
+2682:     if (party) return { name: party.name, code: party.code, bank: '', account: '', source: 'parties' };
+2683:   } catch {}
+2684: 
+2685:   // ۲. شرکا
+2686:   try {
+2687:     const partners = await getPartners();
+2688:     const partner = partners.find((x: any) => String(x.name || '').trim() === n);
+2689:     if (partner) {
+2690:       let bank = '';
+2691:       let account = '';
+2692:       try {
+2693:         const banks = await getPartnerBankAccounts(partner.code);
+2694:         const b = banks && banks.length > 0 ? banks[0] : null;
+2695:         if (b) { bank = b.bank_name || ''; account = b.account_number || ''; }
+2696:       } catch {}
+2697:       return { name: partner.name, code: partner.code, bank, account, source: 'partners' };
+2698:     }
+2699:   } catch {}
+2700: 
+2701:   return null;
+2702: }
+2703: // ═══════════════════════════════════════════
+2704: //  Offline updateSale / updatePurchase
+2705: // ═══════════════════════════════════════════
+2706: export async function updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+2707:   if (MODE === 'online') {
+2708:     try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
+2709:   } else {
+2710:     await enqueue('updateSale', payload);
+2711:   }
+2712:   // آپدیت کش محلی 'sales'
+2713:   const list = (await getLocal<any[]>('sales')) || [];
+2714:   const meta = payload.meta || {};
+
+─── lib.offline.ts — deleteStockAdjustment (خط 1680) ───
+1680: export async function deleteStockAdjustment(id: string) {
+1681:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+1682:   await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
+1683:   if (MODE === 'online') {
+1684:     try { await lib.deleteStockAdjustment(id); }
+1685:     catch { await enqueue('deleteStockAdjustment', id); }
+1686:   } else {
+1687:     await enqueue('deleteStockAdjustment', id);
+1688:   }
+1689: }
+1690: // ═══════════════════════════════════════════
+1691: //  Report helpers (offline + queue merge)
+1692: // ═══════════════════════════════════════════
+1693: export async function getSalesRowsForReport(code: string) {
+1694:   const c2 = String(code || '').trim();
+1695:   if (!c2) return { customer: [], triang: [] };
+1696:   if (MODE === 'online') {
+1697:     try {
+1698:       const [r1, r2] = await Promise.all([
+1699:         lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+1700:         lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+1701:       ]);
+1702:       return { customer: r1.data || [], triang: r2.data || [] };
+1703:     } catch (e) { console.log('[getSalesRowsForReport] online fail:', e); }
+1704:   }
+1705:   const cachedSales = (await getLocal<any[]>('sales')) || [];
+1706:   const customer = cachedSales.filter(function(r: any) { return r.customer_code === c2; });
+1707:   const triang = cachedSales.filter(function(r: any) { return r.account_holder_code === c2; });
+1708:   const q = await getQueue();
+1709:   for (const item of q) {
+1710:     if (item.op !== 'createSale') continue;
+1711:     const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+1712:     for (const r of rows) {
+1713:       const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', customer_name: item.payload.customerName || '', customer_code: item.payload.customerCode || '', customer_phone: item.payload.customerPhone || '', account_holder: item.payload.holderName || '', account_holder_code: item.payload.holderCode || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+1714:       if (row.customer_code === c2) customer.push(row);
+1715:       if (row.account_holder_code === c2) triang.push(row);
+1716:     }
+1717:   }
+1718:   return { customer: customer, triang: triang };
+1719: }
+1720: export async function getPurchasesRowsForReport(code: string) {
+1721:   const c2 = String(code || '').trim();
+1722:   if (!c2) return { supplier: [] };
+1723:   if (MODE === 'online') {
+1724:     try {
+1725:       const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+1726:       return { supplier: r.data || [] };
+1727:     } catch (e) { console.log('[getPurchasesRowsForReport] online fail:', e); }
+1728:   }
+1729:   const cached = (await getLocal<any[]>('purchases')) || [];
+
+─── lib.offline.ts — deleteEmployee (خط 1191) ───
+1191: export async function deleteEmployee(localId: string) {
+1192:   const local = (await getLocal<any[]>('employees')) || [];
+1193:   await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1194:   if (MODE === 'online') {
+1195:     try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1196:   }
+1197: }
+1198: 
+1199: // ═══════════════════════════════════════════
+1200: //  حضور (Attendance)
+1201: // ═══════════════════════════════════════════
+1202: export async function getAttendance(): Promise<any[]> {
+1203:   return cachedRead('attendance', async () => {
+1204:     const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1205:     return data || [];
+1206:   });
+1207: }
+1208: export async function createAttendance(p: any): Promise<any> {
+1209:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1210:   const local = (await getLocal<any[]>('attendance')) || [];
+1211:   await setLocal('attendance', [item, ...local]);
+1212:   if (MODE === 'online') {
+1213:     try {
+1214:       const { error } = await lib.supabase.from('attendance').insert({
+1215:         employee_code: p.employee_code, employee_name: p.employee_name || '',
+1216:         date: p.date, status: p.status, hours: p.hours || 0, overtime: p.overtime || 0,
+1217:         local_id: item.local_id,
+1218:       });
+1219:       if (error) throw error;
+1220:     } catch { await enqueue('createAttendance', p); }
+1221:   } else { await enqueue('createAttendance', p); }
+1222:   return item;
+1223: }
+1224: export async function deleteAttendance(localId: string) {
+1225:   const local = (await getLocal<any[]>('attendance')) || [];
+1226:   await setLocal('attendance', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1227:   if (MODE === 'online') {
+1228:     try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1229:   }
+1230: }
+1231: 
+1232: 
+1233: // ═══════════════════════════════════════════
+1234: //  مشتریان صرافی (X_)
+1235: // ═══════════════════════════════════════════
+1236: export async function getFxCustomers(): Promise<any[]> {
+1237:   return cachedRead('fx_customers', async () => {
+1238:     const { data } = await lib.supabase.from('fx_customers').select('*').order('created_at', { ascending: false });
+1239:     return data || [];
+1240:   });
+⚠️ lib.offline.ts: deleteSalaryPayment پیدا نشد
+⚠️ lib.offline.ts: deleteLoan پیدا نشد
+
+─── lib.offline.ts — deleteAttendance (خط 1224) ───
+1224: export async function deleteAttendance(localId: string) {
+1225:   const local = (await getLocal<any[]>('attendance')) || [];
+1226:   await setLocal('attendance', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1227:   if (MODE === 'online') {
+1228:     try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1229:   }
+1230: }
+1231: 
+1232: 
+1233: // ═══════════════════════════════════════════
+1234: //  مشتریان صرافی (X_)
+1235: // ═══════════════════════════════════════════
+1236: export async function getFxCustomers(): Promise<any[]> {
+1237:   return cachedRead('fx_customers', async () => {
+1238:     const { data } = await lib.supabase.from('fx_customers').select('*').order('created_at', { ascending: false });
+1239:     return data || [];
+1240:   });
+1241: }
+1242: export async function createFxCustomer(p: any): Promise<any> {
+1243:   const local = (await getLocal<any[]>('fx_customers')) || [];
+1244:   // تولید کد خودکار
+1245:   let code = p.code || '';
+1246:   if (!code) {
+1247:     let maxN = 1000;
+1248:     local.forEach((x: any) => { const m = String(x.code || '').match(/^X_(\d+)$/); if (m) { const n = +m[1]; if (n > maxN) maxN = n; } });
+1249:     code = 'X_' + (maxN + 1);
+1250:   }
+1251:   const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1252:   await setLocal('fx_customers', [item, ...local]);
+1253:   if (MODE === 'online') {
+1254:     try {
+1255:       await lib.supabase.from('fx_customers').insert({
+1256:         code, name: p.name, phone: p.phone || '', bank: p.bank || '',
+1257:         holder_name: p.holder_name || '', holder_code: p.holder_code || '',
+1258:         notes: p.notes || '', local_id: item.local_id,
+1259:       });
+1260:     } catch { await enqueue('createFxCustomer', { ...p, code }); }
+1261:   } else { await enqueue('createFxCustomer', { ...p, code }); }
+1262:   return item;
+1263: }
+1264: export async function updateFxCustomer(localId: string, p: any) {
+1265:   const local = (await getLocal<any[]>('fx_customers')) || [];
+1266:   const newList = local.map((x: any) => (x.local_id === localId || x.id === localId) ? { ...x, ...p } : x);
+1267:   await setLocal('fx_customers', newList);
+1268:   if (MODE === 'online') {
+1269:     try { await lib.supabase.from('fx_customers').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1270:   }
+1271: }
+1272: export async function deleteFxCustomer(localId: string) {
+1273:   const local = (await getLocal<any[]>('fx_customers')) || [];
+⚠️ lib.offline.ts: deleteLeave پیدا نشد
+
+─── lib.offline.ts — deletePartnerTransaction (خط 2604) ───
+2604: export async function deletePartnerTransaction(id: string, partnerCode: string) {
+2605:   const list = (await getLocal<any[]>('ptx_' + partnerCode)) || [];
+2606:   await setLocal('ptx_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+2607:   if (MODE === 'online') { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+2608:   else { await enqueue('deletePTX', id); }
+2609: }
+2610: // ═══════════════════════════════════════════
+2611: //  Banks Offline
+2612: // ═══════════════════════════════════════════
+2613: export async function getBanks() {
+2614:   const list = (await cachedRead('banks', () => lib.getBanks())) || [];
+2615:   const q = await getQueue();
+2616:   const result = [...list];
+2617:   for (const item of q) {
+2618:     if (item.op === 'createBank') result.push(item.payload);
+2619:     else if (item.op === 'deleteBank') {
+2620:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2621:       if (idx >= 0) result.splice(idx, 1);
+2622:     }
+2623:   }
+2624:   return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+2625: }
+2626: export async function createBank(p: any) {
+2627:   const item = { ...p, local_id: p.local_id || ('bank_' + Date.now()) };
+2628:   const list = (await getLocal<any[]>('banks')) || [];
+2629:   await setLocal('banks', [...list, item]);
+2630:   if (MODE === 'online') { try { await lib.createBank(item); } catch { await enqueue('createBank', item); } }
+2631:   else { await enqueue('createBank', item); }
+2632:   return item;
+2633: }
+2634: export async function deleteBank(id: string) {
+2635:   const list = (await getLocal<any[]>('banks')) || [];
+2636:   await setLocal('banks', list.filter((x: any) => x.local_id !== id && x.id !== id));
+2637:   if (MODE === 'online') { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+2638:   else { await enqueue('deleteBank', id); }
+2639: }
+2640: 
+2641: // ═══════════════════════════════════════════
+2642: //  Shippings Offline
+2643: // ═══════════════════════════════════════════
+2644: export async function getShippings() {
+2645:   const list = (await cachedRead('shippings', () => lib.getShippings())) || [];
+2646:   const q = await getQueue();
+2647:   const result = [...list];
+2648:   for (const item of q) {
+2649:     if (item.op === 'createShipping') result.push(item.payload);
+2650:     else if (item.op === 'deleteShipping') {
+2651:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2652:       if (idx >= 0) result.splice(idx, 1);
+2653:     }
+
+─── lib.offline.ts — deletePartnerBankAccount (خط 2576) ───
+2576: export async function deletePartnerBankAccount(id: string, partnerCode: string) {
+2577:   const list = (await getLocal<any[]>('pba_' + partnerCode)) || [];
+2578:   await setLocal('pba_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+2579:   if (MODE === 'online') { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+2580:   else { await enqueue('deletePBA', id); }
+2581: }
+2582: 
+2583: export async function getPartnerTransactions(partnerCode: string) {
+2584:   const list = (await cachedRead('ptx_' + partnerCode, () => lib.getPartnerTransactions(partnerCode))) || [];
+2585:   const q = await getQueue();
+2586:   const result = [...list];
+2587:   for (const item of q) {
+2588:     if (item.op === 'createPTX' && item.payload.partner_code === partnerCode) result.push(item.payload);
+2589:     else if (item.op === 'deletePTX') {
+2590:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2591:       if (idx >= 0) result.splice(idx, 1);
+2592:     }
+2593:   }
+2594:   return result.sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || '')));
+2595: }
+2596: export async function createPartnerTransaction(p: any) {
+2597:   const item = { ...p, local_id: p.local_id || ('ptx_' + Date.now()) };
+2598:   const list = (await getLocal<any[]>('ptx_' + item.partner_code)) || [];
+2599:   await setLocal('ptx_' + item.partner_code, [...list, item]);
+2600:   if (MODE === 'online') { try { await lib.createPartnerTransaction(item); } catch { await enqueue('createPTX', item); } }
+2601:   else { await enqueue('createPTX', item); }
+2602:   return item;
+2603: }
+2604: export async function deletePartnerTransaction(id: string, partnerCode: string) {
+2605:   const list = (await getLocal<any[]>('ptx_' + partnerCode)) || [];
+2606:   await setLocal('ptx_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+2607:   if (MODE === 'online') { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+2608:   else { await enqueue('deletePTX', id); }
+2609: }
+2610: // ═══════════════════════════════════════════
+2611: //  Banks Offline
+2612: // ═══════════════════════════════════════════
+2613: export async function getBanks() {
+2614:   const list = (await cachedRead('banks', () => lib.getBanks())) || [];
+2615:   const q = await getQueue();
+2616:   const result = [...list];
+2617:   for (const item of q) {
+2618:     if (item.op === 'createBank') result.push(item.payload);
+2619:     else if (item.op === 'deleteBank') {
+2620:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2621:       if (idx >= 0) result.splice(idx, 1);
+2622:     }
+2623:   }
+2624:   return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+2625: }
+
+══════ lib.offline.ts — enqueue delete ══════
+177: try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+179: await enqueue('deleteProduct', payload);
+195: try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+197: await enqueue('deleteSale', inv);
+205: try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+207: await enqueue('deletePurchase', inv);
+1685: catch { await enqueue('deleteStockAdjustment', id); }
+1687: await enqueue('deleteStockAdjustment', id);
+2417: catch { await enqueue('deleteParty', { local_id: id, id }); }
+2419: await enqueue('deleteParty', { local_id: id, id });
+2551: if (MODE === 'online') { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+2552: else { await enqueue('deletePartner', id); }
+2579: if (MODE === 'online') { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+2580: else { await enqueue('deletePBA', id); }
+2607: if (MODE === 'online') { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+2608: else { await enqueue('deletePTX', id); }
+2637: if (MODE === 'online') { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+2638: else { await enqueue('deleteBank', id); }
+2668: if (MODE === 'online') { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+2669: else { await enqueue('deleteShipping', id); }
+
+══════ lib.ts — delete functions ══════
+
+─── lib.ts — deleteSale (خط 464) ───
+464: export async function deleteSale(invoiceNumber: string) {
+465:   const { error } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+466:   if (error) throw new Error(error.message);
+467: }
+468: export async function getUnpaidInvoices() {
+469:   const grouped: any[] = await getSalesGrouped();
+470:   return grouped.filter((g) => (g.paid || 0) === 0);
+471: }
+472: export async function searchAllInvoices(q: string) {
+473:   const [sales, purchases] = await Promise.all([
+474:     getSalesGrouped(),
+475:     getPurchasesGrouped(),
+476:   ]);
+477:   const query = (q || '').toLowerCase().trim();
+478:   const filt = (arr: any[], type: string) =>
+479:     arr.map((r) => ({ ...r, type, sheetType: type }))
+480:       .filter((r) => !query ||
+481:         `${r.invoice} ${r.name || ''} ${r.phone || ''}`.toLowerCase().includes(query));
+482:   return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
+483: }
+484: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+485:   const table = type === 'purchase' ? 'purchases' : 'sales';
+486:   const { data, error } = await supabase
+487:     .from(table).select('*')
+488:     .eq('invoice_number', invoiceNumber)
+489:     .order('created_at');
+490:   if (error) throw new Error(error.message);
+491:   if (data && data.length > 0) return data;
+492:   // اگر در جدول اصلی نبود، جدول دیگر را امتحان کن
+493:   if (!type) {
+
+─── lib.ts — deletePurchase (خط 596) ───
+596: export async function deletePurchase(invoiceNumber: string) {
+597:   const { error } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+598:   if (error) throw new Error(error.message);
+599: }
+600: 
+601: // ═══════════════════════════════════════════════════
+602: // 🗄️ DB — داشبورد و سود
+603: // ═══════════════════════════════════════════════════
+604: export async function getDashboardStats(range: string = 'month', filter: string = 'both') {
+605:   const settings = await getSettings();
+606:   const margin = settings.profit_margin ?? 0.10;
+607: 
+608:   const now = new Date();
+609:   let startDate: Date | null = null;
+610:   const calType = getCalType();
+611:   
+612:   if (range === 'today') {
+613:     startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+614:   } else if (range === 'month') {
+615:     try {
+616:       if (calType === 'jalali') {
+617:         const [jy, jm] = g2j(now.getFullYear(), now.getMonth() + 1, now.getDate());
+618:         const g = j2g(jy, jm, 1);
+619:         startDate = new Date(g.y, g.m - 1, g.d);
+620:       } else if (calType === 'hijri') {
+621:         const h = g2h(now);
+622:         const g = h2g(h.y, h.m, 1);
+623:         startDate = new Date(g.y, g.m - 1, g.d);
+624:       } else {
+625:         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+─── lib.ts — deleteExpense (خط 1070) ───
+1070: export async function deleteExpense(id: string) {
+1071:   if (!id) throw new Error('id لازم است');
+1072:   const { error } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1073:   if (error) throw error;
+1074: }
+1075: 
+1076: 
+1077: // ═══════════════════════════════════════════
+1078: //  Sync helpers for employees module (offline queue)
+1079: // ═══════════════════════════════════════════
+1080: async function _empUpsert(table: string, p: any) {
+1081:   const id = p?.local_id || p?.id;
+1082:   if (!id) throw new Error('local_id لازم');
+1083:   let clean: any = { ...p };
+1084:   delete clean.id; delete clean.user_id;
+1085:   for (let attempt = 0; attempt < 6; attempt++) {
+1086:     const { error: delErr } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1087:     if (delErr) throw delErr;
+1088:     const { error } = await supabase.from(table).insert(clean);
+1089:     if (!error) return;
+1090:     const m = error.message.match(/Could not find the '([^']+)' column|column "([^"]+)" of relation "[^"]+" does not exist/i);
+1091:     const missing = m && (m[1] || m[2]);
+1092:     if (missing && clean[missing] !== undefined) {
+1093:       clean = { ...clean };
+1094:       delete clean[missing];
+1095:       console.log('[upload] stripped missing column:', missing);
+1096:       continue;
+1097:     }
+1098:     throw error;
+1099:   }
+
+─── lib.ts — deleteParty (خط 1217) ───
+1217: export async function deleteParty(idOrPayload: any) {
+1218:   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+1219:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+1220:   const { error } = await supabase.from('parties').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1221:   if (error) throw new Error(error.message);
+1222: }
+1223: 
+1224: export async function lookupPartyByPhone(phone: string) {
+1225:   const p = String(phone || '').replace(/[^0-9]/g, '');
+1226:   if (!p) return null;
+1227:   const { data } = await supabase.from('parties').select('*').eq('phone', p).limit(1);
+1228:   return (data && data[0]) || null;
+1229: }
+1230: 
+1231: export async function lookupPartyByName(name: string) {
+1232:   const n = String(name || '').trim();
+1233:   if (!n) return null;
+1234:   const { data } = await supabase.from('parties').select('*').eq('name', n).limit(1);
+1235:   return (data && data[0]) || null;
+1236: }
+1237: // ═══════════════════════════════════════════
+1238: //  Partners & Bank Accounts & Transactions
+1239: // ═══════════════════════════════════════════
+1240: export async function getPartners() {
+1241:   const { data, error } = await supabase.from('partners').select('*').order('code', { ascending: true });
+1242:   if (error) { console.log('[getPartners]', error.message); return []; }
+1243:   return data || [];
+1244: }
+1245: export async function createPartner(p: any) {
+1246:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+
+─── lib.ts — deletePartner (خط 1257) ───
+1257: export async function deletePartner(id: string) {
+1258:   const { error } = await supabase.from('partners').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1259:   if (error) throw new Error(error.message);
+1260: }
+1261: 
+1262: export async function getPartnerBankAccounts(partnerCode: string) {
+1263:   const { data, error } = await supabase.from('partner_bank_accounts').select('*').eq('partner_code', partnerCode);
+1264:   if (error) { console.log('[getPBA]', error.message); return []; }
+1265:   return data || [];
+1266: }
+1267: export async function createPartnerBankAccount(p: any) {
+1268:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1269:   if (!clean.local_id) clean.local_id = 'pba_' + Date.now();
+1270:   const { error } = await supabase.from('partner_bank_accounts').insert(clean);
+1271:   if (error) throw new Error(error.message);
+1272:   return clean;
+1273: }
+1274: export async function updatePartnerBankAccount(id: string, p: any) {
+1275:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1276:   const { error } = await supabase.from('partner_bank_accounts').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1277:   if (error) throw new Error(error.message);
+1278: }
+1279: export async function deletePartnerBankAccount(id: string) {
+1280:   const { error } = await supabase.from('partner_bank_accounts').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1281:   if (error) throw new Error(error.message);
+1282: }
+1283: 
+1284: export async function getPartnerTransactions(partnerCode: string) {
+1285:   const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+1286:   if (error) { console.log('[getPT]', error.message); return []; }
+
+─── lib.ts — deleteProduct (خط 311) ───
+311: export async function deleteProduct(idOrPayload: any) {
+312:   // ۲ حالت: id رشته‌ای از UI، یا ({id, code}) از صف سینک
+313:   let id: any, code: any;
+314:   if (typeof idOrPayload === 'string') {
+315:     id = idOrPayload;
+316:   } else if (idOrPayload && typeof idOrPayload === 'object') {
+317:     id = idOrPayload.id; code = idOrPayload.code;
+318:   }
+319: 
+320:   const isLocal = !id || String(id).startsWith('l_') || String(id).startsWith('_');
+321: 
+322:   if (code) {
+323:     const { error } = await supabase.from('products').delete().eq('code', code);
+324:     if (error) throw new Error(error.message);
+325:     return;
+326:   }
+327: 
+328:   if (isLocal) return; // بدون code قابل حذف از سرور نیست
+329:   if (!id) return;
+330: 
+331:   const { error } = await supabase.from('products').delete().eq('id', id);
+332:   if (error) throw new Error(error.message);
+333: }
+334: 
+335: // ═══════════════════════════════════════════════════
+336: // 🗄️ DB — فروش
+337: // ═══════════════════════════════════════════════════
+338: export async function lookupCustomerByPhone(phone: string) {
+339:   const p = normPhone(phone);
+340:   if (p.length < 5) return null;
+
+─── lib.ts — deleteBank (خط 1320) ───
+1320: export async function deleteBank(id: string) {
+1321:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: 
+1325: // ═══════════════════════════════════════════
+1326: //  Shippings
+1327: // ═══════════════════════════════════════════
+1328: export async function getShippings() {
+1329:   const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+1330:   if (error) { console.log('[getShippings]', error.message); return []; }
+1331:   return data || [];
+1332: }
+1333: export async function createShipping(p: any) {
+1334:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1335:   if (!clean.local_id) clean.local_id = 'ship_' + Date.now();
+1336:   const { error } = await supabase.from('shippings').insert(clean);
+1337:   if (error) throw new Error(error.message);
+1338:   return clean;
+1339: }
+1340: export async function updateShipping(id: string, p: any) {
+1341:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1342:   const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1343:   if (error) throw new Error(error.message);
+1344: }
+1345: export async function deleteShipping(id: string) {
+1346:   const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1347:   if (error) throw new Error(error.message);
+1348: }
+1349: // ═══════════════════════════════════════════
+
+─── lib.ts — deleteShipping (خط 1345) ───
+1345: export async function deleteShipping(id: string) {
+1346:   const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1347:   if (error) throw new Error(error.message);
+1348: }
+1349: // ═══════════════════════════════════════════
+1350: //  Aliases for queue operations
+1351: //  (syncToServer uses item.op as function name)
+1352: // ═══════════════════════════════════════════
+1353: export const createPTX = createPartnerTransaction;
+1354: export const deletePTX = deletePartnerTransaction;
+1355: export const createPBA = createPartnerBankAccount;
+1356: export const deletePBA = deletePartnerBankAccount;
+1357: 
+1358: 
+1359: // ═══════════════════════════════════════════
+1360: //  getSalaryPayments — خواندن حقوق‌ها
+1361: // ═══════════════════════════════════════════
+1362: export async function getSalaryPayments(): Promise<any[]> {
+1363:   const { data, error } = await supabase
+1364:     .from('salary_payments')
+1365:     .select('*')
+1366:     .order('created_at', { ascending: false });
+1367:   if (error) throw new Error(error.message);
+1368:   return data || [];
+1369: }
+1370: 
+1371: 
+1372: // ═══════════════════════════════════════════
+1373: //  getLoans — خواندن وام‌های کارمندان
+1374: // ═══════════════════════════════════════════
+
+─── lib.ts — deleteStockAdjustment (خط 1179) ───
+1179: export async function deleteStockAdjustment(id: string) {
+1180:   const { error } = await supabase.from('stock_adjustments').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1181:   if (error) throw new Error(error.message);
+1182: }
+1183: // ═══════════════════════════════════════════
+1184: //  Parties — طرف‌حساب‌ها (تأمین‌کننده/مشتری/هر دو)
+1185: // ═══════════════════════════════════════════
+1186: export async function getParties(type?: string) {
+1187:   let q: any = supabase.from('parties').select('*').order('name', { ascending: true });
+1188:   if (type) q = q.in('type', [type, 'both']);
+1189:   const { data, error } = await q;
+1190:   if (error) { console.log('[getParties]', error.message); return []; }
+1191:   return data || [];
+1192: }
+1193: 
+1194: export async function createParty(p: any) {
+1195:   const clean: any = { ...p };
+1196:   delete clean.id; delete clean.user_id;
+1197:   if (!clean.local_id) clean.local_id = 'party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+1198:   if (!clean.created_at) clean.created_at = new Date().toISOString();
+1199:   clean.updated_at = new Date().toISOString();
+1200:   const { data, error } = await supabase.from('parties').insert(clean).select().single();
+1201:   if (error) throw new Error(error.message);
+1202:   return data || clean;
+1203: }
+1204: 
+1205: export async function updateParty(idOrPayload: any, pArg?: any) {
+1206:   const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
+1207:   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
+1208:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+
+─── lib.ts — deleteEmployee (خط 1127) ───
+1127: export const deleteEmployee = (id: string) => _empDelete('employees', id);
+1128: 
+1129: export const updateAttendance = (p: any) => _empUpsert('attendance', p);
+1130: export const deleteAttendance = (id: string) => _empDelete('attendance', id);
+1131: 
+1132: export const createLeave = (p: any) => _empCreate('employee_leaves', p);
+1133: export const updateLeave = (p: any) => _empUpsert('employee_leaves', p);
+1134: export const deleteLeave = (id: string) => _empDelete('employee_leaves', id);
+1135: 
+1136: export const createSalaryPayment = (p: any) => _empCreate('salary_payments', p);
+1137: export const updateSalaryPayment = (p: any) => _empUpsert('salary_payments', p);
+1138: export const deleteSalaryPayment = (id: string) => _empDelete('salary_payments', id);
+1139: 
+1140: export const createLoan = (p: any) => _empCreate('employee_loans', p);
+1141: export const updateLoan = (p: any) => _empUpsert('employee_loans', p);
+1142: export const deleteLoan = (id: string) => _empDelete('employee_loans', id);
+1143: 
+1144: export const createBatch = (p: any) => _empCreate('payroll_batches', p);
+1145: export const updateBatch = (p: any) => _empUpsert('payroll_batches', p);
+1146: export const deleteBatch = (id: string) => _empDelete('payroll_batches', id);
+1147: 
+1148: // ═══════════════════════════════════════════
+1149: //  getInventoryByModel — کاردکس مدل (خرید/فروش)
+1150: // ═══════════════════════════════════════════
+1151: export async function getInventoryByModel(code: string) {
+1152:   const c = String(code || '').trim();
+1153:   if (!c) return { purchases: [], sales: [] };
+1154:   const [{ data: pData, error: pErr }, { data: sData, error: sErr }] = await Promise.all([
+1155:     supabase.from('purchases').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1156:     supabase.from('sales').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+
+─── lib.ts — deleteSalaryPayment (خط 1138) ───
+1138: export const deleteSalaryPayment = (id: string) => _empDelete('salary_payments', id);
+1139: 
+1140: export const createLoan = (p: any) => _empCreate('employee_loans', p);
+1141: export const updateLoan = (p: any) => _empUpsert('employee_loans', p);
+1142: export const deleteLoan = (id: string) => _empDelete('employee_loans', id);
+1143: 
+1144: export const createBatch = (p: any) => _empCreate('payroll_batches', p);
+1145: export const updateBatch = (p: any) => _empUpsert('payroll_batches', p);
+1146: export const deleteBatch = (id: string) => _empDelete('payroll_batches', id);
+1147: 
+1148: // ═══════════════════════════════════════════
+1149: //  getInventoryByModel — کاردکس مدل (خرید/فروش)
+1150: // ═══════════════════════════════════════════
+1151: export async function getInventoryByModel(code: string) {
+1152:   const c = String(code || '').trim();
+1153:   if (!c) return { purchases: [], sales: [] };
+1154:   const [{ data: pData, error: pErr }, { data: sData, error: sErr }] = await Promise.all([
+1155:     supabase.from('purchases').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1156:     supabase.from('sales').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1157:   ]);
+1158:   if (pErr) console.log('[getInventoryByModel] purchases err:', pErr.message);
+1159:   if (sErr) console.log('[getInventoryByModel] sales err:', sErr.message);
+1160:   return { purchases: pData || [], sales: sData || [] };
+1161: }
+1162: // ═══════════════════════════════════════════
+1163: //  Stock Adjustments
+1164: // ═══════════════════════════════════════════
+1165: export async function getStockAdjustments(code?: string) {
+1166:   let q: any = supabase.from('stock_adjustments').select('*').order('created_at', { ascending: false });
+1167:   if (code) q = q.eq('model_code', String(code).trim());
+
+─── lib.ts — deleteLoan (خط 1142) ───
+1142: export const deleteLoan = (id: string) => _empDelete('employee_loans', id);
+1143: 
+1144: export const createBatch = (p: any) => _empCreate('payroll_batches', p);
+1145: export const updateBatch = (p: any) => _empUpsert('payroll_batches', p);
+1146: export const deleteBatch = (id: string) => _empDelete('payroll_batches', id);
+1147: 
+1148: // ═══════════════════════════════════════════
+1149: //  getInventoryByModel — کاردکس مدل (خرید/فروش)
+1150: // ═══════════════════════════════════════════
+1151: export async function getInventoryByModel(code: string) {
+1152:   const c = String(code || '').trim();
+1153:   if (!c) return { purchases: [], sales: [] };
+1154:   const [{ data: pData, error: pErr }, { data: sData, error: sErr }] = await Promise.all([
+1155:     supabase.from('purchases').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1156:     supabase.from('sales').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1157:   ]);
+1158:   if (pErr) console.log('[getInventoryByModel] purchases err:', pErr.message);
+1159:   if (sErr) console.log('[getInventoryByModel] sales err:', sErr.message);
+1160:   return { purchases: pData || [], sales: sData || [] };
+1161: }
+1162: // ═══════════════════════════════════════════
+1163: //  Stock Adjustments
+1164: // ═══════════════════════════════════════════
+1165: export async function getStockAdjustments(code?: string) {
+1166:   let q: any = supabase.from('stock_adjustments').select('*').order('created_at', { ascending: false });
+1167:   if (code) q = q.eq('model_code', String(code).trim());
+1168:   const { data, error } = await q;
+1169:   if (error) { console.log('[getStockAdjustments]', error.message); return []; }
+1170:   return data || [];
+1171: }
+
+─── lib.ts — deletePartnerTransaction (خط 1296) ───
+1296: export async function deletePartnerTransaction(id: string) {
+1297:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1298:   if (error) throw new Error(error.message);
+1299: }
+1300: // ═══════════════════════════════════════════
+1301: //  Banks
+1302: // ═══════════════════════════════════════════
+1303: export async function getBanks() {
+1304:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1305:   if (error) { console.log('[getBanks]', error.message); return []; }
+1306:   return data || [];
+1307: }
+1308: export async function createBank(p: any) {
+1309:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1310:   if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+1311:   const { error } = await supabase.from('banks').insert(clean);
+1312:   if (error) throw new Error(error.message);
+1313:   return clean;
+1314: }
+1315: export async function updateBank(id: string, p: any) {
+1316:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1317:   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1318:   if (error) throw new Error(error.message);
+1319: }
+1320: export async function deleteBank(id: string) {
+1321:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: 
+1325: // ═══════════════════════════════════════════
+
+─── lib.ts — deletePartnerBankAccount (خط 1279) ───
+1279: export async function deletePartnerBankAccount(id: string) {
+1280:   const { error } = await supabase.from('partner_bank_accounts').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1281:   if (error) throw new Error(error.message);
+1282: }
+1283: 
+1284: export async function getPartnerTransactions(partnerCode: string) {
+1285:   const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+1286:   if (error) { console.log('[getPT]', error.message); return []; }
+1287:   return data || [];
+1288: }
+1289: export async function createPartnerTransaction(p: any) {
+1290:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1291:   if (!clean.local_id) clean.local_id = 'ptx_' + Date.now();
+1292:   const { error } = await supabase.from('partner_transactions').insert(clean);
+1293:   if (error) throw new Error(error.message);
+1294:   return clean;
+1295: }
+1296: export async function deletePartnerTransaction(id: string) {
+1297:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1298:   if (error) throw new Error(error.message);
+1299: }
+1300: // ═══════════════════════════════════════════
+1301: //  Banks
+1302: // ═══════════════════════════════════════════
+1303: export async function getBanks() {
+1304:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1305:   if (error) { console.log('[getBanks]', error.message); return []; }
+1306:   return data || [];
+1307: }
+1308: export async function createBank(p: any) {
+
+══════ جستجوی hard delete در lib.ts ══════
+323: const { error } = await supabase.from('products').delete().eq('code', code);
+331: const { error } = await supabase.from('products').delete().eq('id', id);
+465: const { error } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+597: const { error } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+1015: const { error: delErr } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+1047: const { error: delErr } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+1064: const { error: delErr } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1072: const { error } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1086: const { error: delErr } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1104: const { error } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1180: const { error } = await supabase.from('stock_adjustments').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1220: const { error } = await supabase.from('parties').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1258: const { error } = await supabase.from('partners').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1280: const { error } = await supabase.from('partner_bank_accounts').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1297: const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1321: const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1346: const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);

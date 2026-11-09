@@ -1,0 +1,140 @@
+══════ محدوده returnModalOpen ══════
+2624: const [returnModalOpen, setReturnModalOpen] = useState(false);
+2625: const [returnInvoice, setReturnInvoice] = useState<any>(null);
+2626: const [returnRows, setReturnRows] = useState<any[]>([]);
+2627: const [returnSaving, setReturnSaving] = useState(false);
+7114: const [returnModalOpen, setReturnModalOpen] = useState(false);
+7115: const [returnInvoice, setReturnInvoice] = useState<any>(null);
+7116: const [returnRows, setReturnRows] = useState<any[]>([]);
+7117: const [returnSaving, setReturnSaving] = useState(false);
+7358: const openReturn = async (inv: string, type: string) => {
+7382: const submitReturn = async () => {
+7383: if (!returnInvoice) return;
+7384: const items = returnRows.filter((r: any) => Number(r.returnQty) > 0);
+7390: original_invoice_number: returnInvoice.invoice,
+7391: party_name: returnInvoice.name,
+7392: party_code: returnInvoice.code,
+7393: type: returnInvoice.type,
+7398: if (returnInvoice.type === 'sales') {
+7749: <TouchableOpacity onPress={() => openReturn(r.invoice, r.type)} style={{ backgroundColor: '#ede9fe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>↩️</Text></TouchableOpacity>
+7761: <Modal visible={returnModalOpen} transparent animationType="slide" onRequestClose={() => setReturnModalOpen(false)}>
+7765: ↩️ ثبت برگشت {returnInvoice?.type === 'sales' ? 'از فروش' : 'از خرید'}
+7768: فاکتور {returnInvoice?.invoice} — {returnInvoice?.name}
+7772: {returnRows.map((r: any, i: number) => (
+7779: const n = [...returnRows];
+7795: <TouchableOpacity onPress={submitReturn} disabled={returnSaving} style={{ flex: 2, backgroundColor: returnSaving ? '#94a3b8' : '#7c3aed', padding: 10, borderRadius: 6 }}>
+7796: <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>{returnSaving ? '⏳...' : '✅ ثبت برگشت'}</Text>
+
+══════ مودال برگشت (۳۰ خط قبل تا ۶۰ خط بعد از returnModalOpen) ══════
+7731: 
+7732:               <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(r.total)}</Text>
+7733: 
+7734:               <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.paid)}</Text>
+7735: 
+7736:               <Text style={[s.tdCell, { width: 130, fontSize: 12, color: r.total - r.paid > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{fmt(r.total - r.paid)}</Text>
+7737: 
+7738:               <View style={[s.tdCell, { width: 130, alignItems: 'center' }]}>
+7739: 
+7740:                 <Text style={{ backgroundColor: statusColorFn(r.total, r.paid) + '20', color: statusColorFn(r.total, r.paid), paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, fontSize: 10, fontWeight: 'bold' }}>{statusLabel(r.total, r.paid)}</Text>
+7741: 
+7742:               </View>
+7743: 
+7744:               <View style={[s.tdCell, { width: 120, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+7745: 
+7746:                 <TouchableOpacity onPress={() => openEdit(r.invoice, r.type)} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>✏️</Text></TouchableOpacity>
+7747: 
+7748:                 <TouchableOpacity onPress={() => remove(r.invoice, r.type)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>🗑</Text></TouchableOpacity>
+7749:                 <TouchableOpacity onPress={() => openReturn(r.invoice, r.type)} style={{ backgroundColor: '#ede9fe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>↩️</Text></TouchableOpacity>
+7750: 
+7751:               </View>
+7752: 
+7753:             </View>
+7754: 
+7755:           ))}
+7756: 
+7757:         </View>
+7758: 
+7759:       </ScrollView>
+7760: 
+7761:       <Modal visible={returnModalOpen} transparent animationType="slide" onRequestClose={() => setReturnModalOpen(false)}>
+7762:         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 16 }}>
+7763:           <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, maxHeight: '90%' }}>
+7764:             <Text style={{ fontSize: 15, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>
+7765:               ↩️ ثبت برگشت {returnInvoice?.type === 'sales' ? 'از فروش' : 'از خرید'}
+7766:             </Text>
+7767:             <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 8 }}>
+7768:               فاکتور {returnInvoice?.invoice} — {returnInvoice?.name}
+7769:             </Text>
+7770: 
+7771:             <ScrollView style={{ maxHeight: 380 }}>
+7772:               {returnRows.map((r: any, i: number) => (
+7773:                 <View key={i} style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+7774:                   <Text style={{ flex: 1, fontSize: 11, textAlign: 'right' }} numberOfLines={1}>{r.modelName || r.modelCode || '—'}</Text>
+7775:                   <Text style={{ width: 60, fontSize: 10, textAlign: 'center', color: '#64748b' }}>{toFaNum(r.quantity)}</Text>
+7776:                   <TextInput
+7777:                     value={String(r.returnQty || '')}
+7778:                     onChangeText={(v) => {
+7779:                       const n = [...returnRows];
+7780:                       n[i].returnQty = parseNum(v);
+7781:                       setReturnRows(n);
+7782:                     }}
+7783:                     keyboardType="numeric"
+7784:                     placeholder="برگشت"
+7785:                     style={{ width: 70, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 6, textAlign: 'center', fontSize: 11 }}
+7786:                   />
+7787:                 </View>
+7788:               ))}
+7789:             </ScrollView>
+7790: 
+7791:             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 12 }}>
+7792:               <TouchableOpacity onPress={() => setReturnModalOpen(false)} style={{ flex: 1, backgroundColor: '#64748b', padding: 10, borderRadius: 6 }}>
+7793:                 <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>انصراف</Text>
+7794:               </TouchableOpacity>
+7795:               <TouchableOpacity onPress={submitReturn} disabled={returnSaving} style={{ flex: 2, backgroundColor: returnSaving ? '#94a3b8' : '#7c3aed', padding: 10, borderRadius: 6 }}>
+7796:                 <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>{returnSaving ? '⏳...' : '✅ ثبت برگشت'}</Text>
+7797:               </TouchableOpacity>
+7798:             </View>
+7799:           </View>
+7800:         </View>
+7801:       </Modal>
+7802: 
+7803:       {!loading && !filtered.length && (<View style={s.emptyState}><Text style={{ fontSize: 48, opacity: 0.5 }}>🔍</Text><EL textKey="نتیجه‌ای یافت نشد" style={s.emptyStateTxt} /></View>)}
+7804: 
+7805:     </View>
+7806: 
+7807:   );
+7808: 
+7809: }
+7810: 
+7811: 
+7812: 
+7813: // ══════════════════════════════════════════════════════════
+7814: 
+7815: //  REPORTS SECTION
+7816: 
+7817: // ══════════════════════════════════════════════════════════
+7818: 
+7819: function ReportsSection({ showToast }: any) {
+7820: 
+7821:   const [type, setType] = useState('debtors');
+7822: 
+7823:   const [data, setData] = useState<any>(null);
+7824: 
+7825:   const [loading, setLoading] = useState(false);
+7826: 
+7827: 
+7828: 
+7829:   const load = async () => {
+7830: 
+7831:     setLoading(true);
+7832: 
+7833:     try {
+7834: 
+7835:       const locked = await isBusinessLocked();
+7836:       let sales: any[] = [];
+7837:       let purchases: any[] = [];
+7838:       if (locked) {
+7839:         sales = (await getSalesGrouped().catch(() => [])) || [];
+7840:         purchases = (await getPurchasesGrouped().catch(() => [])) || [];
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

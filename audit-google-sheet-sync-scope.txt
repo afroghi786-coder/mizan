@@ -1,0 +1,1069 @@
+══════════ ۱) lib.sheets.ts کامل ══════════
+
+─── lib.sheets.ts — syncByDestination (خط 466) ───
+466: export async function syncByDestination(onProgress?: (done: number, total: number) => void) {
+467:   const dest = await getSyncDestination();
+468:   const cfg = await getBridgeConfig();
+469:   const useBridge = !!(cfg.url && cfg.key);
+470: 
+471:   if (dest === 'private') {
+472:     // ابتدا صف غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+473:     // تجاری داخل syncToServer حذف می‌شود و به Supabase نمی‌رود.
+474:     const serverRes = await syncToServer(onProgress);
+475: 
+476:     if (!useBridge) {
+477:       if (Platform.OS !== 'web') {
+478:         throw new Error('برای سینک در گوشی، ابتدا واسط امن را تنظیم کنید');
+479:       }
+480:       await pullPrivateTables((d, t) => onProgress?.(d, t));
+481:       const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+482:       const ok = rows.filter(r => r.ok).length;
+483:       return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+484:     }
+485:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+486:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+487:     const ok = rows.filter(r => r.ok).length;
+488:     return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+489:   }
+490: 
+491:   if (dest === 'server') {
+492:     // بخش غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+493:     const serverRes = await syncToServer(onProgress);
+494: 
+495:     // بخش تجاری حتی با مقصد سرور، فقط به Google Sheets می‌رود.
+496:     if (!useBridge) {
+497:       if (Platform.OS !== 'web') {
+498:         return serverRes;
+499:       }
+500:       await pullPrivateTables((d, t) => onProgress?.(d, t));
+501:       const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+502:       const pOk = rows.filter(r => r.ok).length;
+503:       return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+504:     }
+505:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+506:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+507:     const pOk = rows.filter(r => r.ok).length;
+508:     return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+509:   }
+510: 
+511:   const serverRes = await syncToServer(onProgress);
+512:   if (useBridge) {
+513:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+514:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+515:     const pOk = rows.filter(r => r.ok).length;
+516:     return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+517:   }
+518:   if (Platform.OS !== 'web') {
+519:     return serverRes;
+520:   }
+521:   await pullPrivateTables((d, t) => onProgress?.(d, t));
+522:   const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+523:   const pOk = rows.filter(r => r.ok).length;
+524:   return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+525: }
+526: 
+527: export async function clearAuditInSheet() {
+528:   const token = await getToken();
+529:   if (!token) throw new Error('لطفاً وارد شوید');
+530:   const res = await fetch(FN_BASE + '/google-sheets-clear-audit', {
+531:     method: 'POST',
+532:     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+533:     body: JSON.stringify({}),
+534:   });
+535:   const data: any = await res.json();
+536:   if (!res.ok || data?.ok !== true) {
+537:     throw new Error(data?.error || data?.detail || 'خطا در پاک کردن تاریخچه شیت');
+538:   }
+539:   return true;
+540: }
+541: 
+542: export async function disconnectPrivate() {
+543:   const { data: { user } } = await supabase.auth.getUser();
+544:   if (!user) return;
+545:   await supabase.from('google_sheet_connections').delete().eq('user_id', user.id);
+546: }
+547: 
+548: 
+549: const PULL_TABLES = [
+550:   '_deleted','_audit','sales','purchases',
+551:   'expenses','employees','salary_payments','employee_loans','attendance',
+552:   'employee_leaves','payroll_batches','parties','partners','partner_transactions',
+553:   'partner_bank_accounts','products','settings','banks','shippings','stock_adjustments',
+554:   'fx_hawalas','fx_boxes','fx_transfers','fx_checks','fx_customers','fx_partners',
+555: ];
+556: 
+557: const PULL_LOCAL_KEYS: Record<string, string> = {
+558:   expenses: '@mizan_local_expenses',
+559:   employees: '@mizan_local_employees',
+560:   salary_payments: '@mizan_local_salary_payments',
+561:   employee_loans: '@mizan_local_employee_loans',
+562:   attendance: '@mizan_local_attendance',
+563:   employee_leaves: '@mizan_local_employee_leaves',
+564:   payroll_batches: '@mizan_local_payroll_batches',
+565:   parties: '@mizan_local_parties',
+566:   partners: '@mizan_local_partners',
+567:   products: '@mizan_local_products',
+568:   sales_returns: '@mizan_local_sales_returns',
+569:   purchase_returns: '@mizan_local_purchase_returns',
+570:   settings: '@mizan_local_settings',
+571:   banks: '@mizan_local_banks',
+572:   shippings: '@mizan_local_shippings',
+573:   stock_adjustments: '@mizan_local_stock_adjustments',
+574:   fx_hawalas: '@mizan_local_fx_hawalas',
+575:   fx_boxes: '@mizan_local_fx_boxes',
+576:   fx_transfers: '@mizan_local_fx_transfers',
+577:   fx_checks: '@mizan_local_fx_checks',
+578:   fx_customers: '@mizan_local_fx_customers',
+579:   fx_partners: '@mizan_local_fx_partners',
+580: };
+581: 
+582: function keyOfRow(r: any): string {
+583:   return String(r?.local_id || r?.id || r?.code || r?.name || '');
+584: }
+585: 
+586: function tsOf(v: any): number {
+587:   const t = Date.parse(String(v || ''));
+588:   return isNaN(t) ? 0 : t;
+589: }
+590: 
+591: async function getTombstones(): Promise<Record<string, string>> {
+592:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+593:   let arr: any[] = [];
+594:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+595:   const map: Record<string, string> = {};
+596:   if (Array.isArray(arr)) {
+597:     for (const t of arr) {
+598:       if (t && t.key) map[String(t.key)] = String(t.deleted_at || t.deletedAt || '');
+599:     }
+600:   }
+601:   return map;
+602: }
+603: 
+604: async function saveTombstones(map: Record<string, string>) {
+605:   const arr = Object.keys(map).map(k => ({ key: k, deleted_at: map[k] }));
+606:   await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(arr));
+607: }
+608: 
+609: async function getTombstonesForTable(table: string): Promise<Record<string, string>> {
+610:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+611:   let arr: any[] = [];
+612:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+613:   const map: Record<string, string> = {};
+614:   if (Array.isArray(arr)) {
+615:     for (const t of arr) {
+616:       if (t && t.table === table && t.key) {
+617:         map[String(t.key)] = String(t.deleted_at || t.deletedAt || '');
+618:       }
+619:     }
+620:   }
+621:   return map;
+622: }
+623: 
+624: async function saveTombstonesForTable(table: string, map: Record<string, string>) {
+625:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+626:   let arr: any[] = [];
+627:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+628:   if (!Array.isArray(arr)) arr = [];
+629:   const others = arr.filter((t: any) => !(t && t.table === table));
+630:   const mine = Object.keys(map).map(k => ({ table: table, key: k, deleted_at: map[k] }));
+631:   await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify([...others, ...mine]));
+632: }
+633: 
+634: 
+635: // ═══ گزارش تضاد ═══
+636: const CONFLICTS_KEY = '@mizan_conflicts';
+637: const CONFLICTS_MAX = 200;
+638: 
+639: const OP_TABLE: Record<string, string> = {
+640:   createProduct: 'products', updateProduct: 'products', deleteProduct: 'products',
+641:   createSale: 'sales', updateSale: 'sales', deleteSale: 'sales',
+642:   createPurchase: 'purchases', updatePurchase: 'purchases', deletePurchase: 'purchases',
+643:   createExpense: 'expenses', updateExpense: 'expenses', deleteExpense: 'expenses',
+644:   createEmployee: 'employees', updateEmployee: 'employees', deleteEmployee: 'employees',
+645:   createAttendance: 'attendance', updateAttendance: 'attendance', deleteAttendance: 'attendance',
+646:   createSalaryPayment: 'salary_payments', updateSalaryPayment: 'salary_payments', deleteSalaryPayment: 'salary_payments',
+647:   createLoan: 'employee_loans', updateLoan: 'employee_loans', deleteLoan: 'employee_loans',
+648:   createLeave: 'employee_leaves', updateLeave: 'employee_leaves', deleteLeave: 'employee_leaves',
+649:   createBatch: 'payroll_batches', updateBatch: 'payroll_batches', deleteBatch: 'payroll_batches',
+650:   createParty: 'parties', updateParty: 'parties', deleteParty: 'parties',
+651:   createPartner: 'partners', updatePartner: 'partners', deletePartner: 'partners',
+652:   createPBA: 'partner_bank_accounts', deletePBA: 'partner_bank_accounts',
+653:   createPTX: 'partner_transactions', deletePTX: 'partner_transactions',
+654:   createBank: 'banks', updateBank: 'banks', deleteBank: 'banks',
+655:   createShipping: 'shippings', updateShipping: 'shippings', deleteShipping: 'shippings',
+656:   createStockAdjustment: 'stock_adjustments', deleteStockAdjustment: 'stock_adjustments',
+657:   updateSettings: 'settings',
+658: };
+659: 
+660: function extractKeys(payload: any): string[] {
+661:   const out = new Set<string>();
+662:   if (typeof payload === 'string') { if (payload) out.add(payload); return Array.from(out); }
+663:   if (payload && typeof payload === 'object') {
+664:     const fields = ['local_id','id','code','_localId','invoice','invoiceNumber','invoice_number','employee_code','partner_code','source_id'];
+665:     for (const f of fields) {
+666:       const v = (payload as any)[f];
+667:       if (v !== undefined && v !== null && v !== '') out.add(String(v));
+668:     }
+669:     const p = (payload as any).p;
+670:     if (p && typeof p === 'object') {
+671:       if (p.local_id) out.add(String(p.local_id));
+672:       if (p.code) out.add(String(p.code));
+673:     }
+674:   }
+675:   return Array.from(out);
+676: }
+677: 
+678: async function getPendingKeysByTable(): Promise<Record<string, Set<string>>> {
+679:   const map: Record<string, Set<string>> = {};
+680:   try {
+681:     const q = await getQueue();
+682:     for (const item of q || []) {
+683:       const t = OP_TABLE[item?.op];
+684:       if (!t) continue;
+685:       const keys = extractKeys(item?.payload);
+686:       if (!keys.length) continue;
+687:       if (!map[t]) map[t] = new Set();
+688:       for (const k of keys) map[t].add(k);
+689:     }
+690:   } catch {}
+691:   return map;
+692: }
+693: 
+694: async function recordConflict(table: string, key: string, local: any, sheet: any) {
+695:   try {
+696:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+697:     let arr: any[] = [];
+698:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+699:     if (!Array.isArray(arr)) arr = [];
+700:     const dedup = String(table) + '|' + String(key) + '|' + String((sheet as any)?.updated_at || (sheet as any)?.updatedAt || '');
+701:     if (arr.some((x: any) => x && x.dedup === dedup)) return;
+702:     const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+703:     arr.push({
+704:       table: String(table),
+705:       key: String(key),
+706:       local: local || null,
+707:       sheet: sheet || null,
+708:       at: new Date().toISOString(),
+709:       device_id: dev,
+710:       resolved: false,
+711:       dedup: dedup,
+712:     });
+713:     if (arr.length > CONFLICTS_MAX) arr = arr.slice(arr.length - CONFLICTS_MAX);
+714:     await AsyncStorage.setItem(CONFLICTS_KEY, JSON.stringify(arr));
+715:   } catch {}
+716: }
+717: 
+718: function _conflictLocalKey(table: string): string {
+719:   if (table === 'partner_transactions') return '@mizan_local_ptx_';
+720:   if (table === 'partner_bank_accounts') return '@mizan_local_pba_';
+721:   if (table === 'sales') return '@mizan_local_sales_grouped';
+722:   if (table === 'purchases') return '@mizan_local_purchases_grouped';
+723:   return '@mizan_local_' + table;
+724: }
+725: 
+⚠️ lib.sheets.ts: pushToSheets پیدا نشد
+⚠️ lib.sheets.ts: uploadBackup پیدا نشد
+⚠️ lib.sheets.ts: pullFromSheets پیدا نشد
+⚠️ lib.sheets.ts: fetchFromSheets پیدا نشد
+⚠️ lib.sheets.ts: getSheetsData پیدا نشد
+⚠️ lib.sheets.ts: readFromSheets پیدا نشد
+
+══════════ ۲) کلیدها و جدول‌های ارسالی به شیت ══════════
+
+─── lib.sheets.ts — ارسال به شیت ───
+4: import { syncToServer, getQueue, getDirtyTables, removeDirtyTables, setDirtyTables } from './lib.offline';
+9: const TAB_TASKS: { tab: string; keys: string[] }[] = [
+10: { tab: 'sales', keys: ['@mizan_local_sales_grouped'] },
+11: { tab: 'purchases', keys: ['@mizan_local_purchases_grouped'] },
+12: { tab: 'sales_returns', keys: ['@mizan_local_sales_returns'] },
+13: { tab: 'purchase_returns', keys: ['@mizan_local_purchase_returns'] },
+14: { tab: 'expenses', keys: ['@mizan_local_expenses'] },
+15: { tab: 'employees', keys: ['@mizan_local_employees'] },
+16: { tab: 'salary_payments', keys: ['@mizan_local_salary_payments'] },
+17: { tab: 'employee_loans', keys: ['@mizan_local_employee_loans'] },
+18: { tab: 'attendance', keys: ['@mizan_local_attendance'] },
+19: { tab: 'employee_leaves', keys: ['@mizan_local_employee_leaves'] },
+20: { tab: 'payroll_batches', keys: ['@mizan_local_payroll_batches'] },
+21: { tab: 'parties', keys: ['@mizan_local_parties'] },
+22: { tab: 'partners', keys: ['@mizan_local_partners'] },
+23: { tab: 'partner_transactions', keys: ['@mizan_local_ptx_'] },
+24: { tab: 'partner_bank_accounts', keys: ['@mizan_local_pba_'] },
+25: { tab: 'products', keys: ['@mizan_local_products'] },
+26: { tab: 'settings', keys: ['@mizan_local_settings'] },
+27: { tab: 'banks', keys: ['@mizan_local_banks'] },
+28: { tab: 'shippings', keys: ['@mizan_local_shippings'] },
+29: { tab: 'stock_adjustments', keys: ['@mizan_local_stock_adjustments'] },
+30: { tab: 'fx_hawalas', keys: ['@mizan_local_fx_hawalas'] },
+31: { tab: 'fx_boxes', keys: ['@mizan_local_fx_boxes'] },
+32: { tab: 'fx_transfers', keys: ['@mizan_local_fx_transfers'] },
+33: { tab: 'fx_checks', keys: ['@mizan_local_fx_checks'] },
+34: { tab: 'fx_customers', keys: ['@mizan_local_fx_customers'] },
+35: { tab: 'fx_partners', keys: ['@mizan_local_fx_partners'] },
+36: { tab: '_deleted', keys: ['@mizan_tombstones'] },
+37: { tab: '_audit', keys: ['@mizan_audit_events'] },
+131: const res = await fetch(cfg.url, {
+134: body: JSON.stringify({ action: 'ping', key: cfg.key }),
+148: const res = await fetch(cfg.url, {
+151: body: JSON.stringify({ action: 'pull', key: cfg.key }),
+166: const res = await fetch(cfg.url, {
+169: body: JSON.stringify({ action: 'save', key: cfg.key, table: '_bridge_test', rows: [row] }),
+183: const res = await fetch(cfg.url, {
+186: body: JSON.stringify({ action: 'save', key: cfg.key, table: table, rows: rows || [] }),
+200: const res = await fetch(cfg.url, {
+203: body: JSON.stringify({ action: 'upsert', key: cfg.key, table: table, rows: rows || [] }),
+246: summary.push({ tab: t.tab, rows: rows.length });
+286: const res = await fetch(FN_BASE + '/google-oauth-start', {
+297: export async function syncPrivateTables(onProgress?: (done: number, total: number, tab: string) => void) {
+300: const rawDirty = await AsyncStorage.getItem('@mizan_dirty_tables');
+307: let tablesToSync: { tab: string; keys: string[] }[] = [];
+309: tablesToSync = TAB_TASKS;
+312: tablesToSync = TAB_TASKS.filter(t => set.has(t.tab));
+315: if (!tablesToSync.length) {
+319: const total = tablesToSync.length;
+323: for (const t of tablesToSync) {
+324: const miniBackup: any = { app: 'mizan', keys: {} };
+330: if (v) miniBackup.keys[k] = v;
+335: if (v) miniBackup.keys[key] = v;
+338: const res = await fetch(FN_BASE + '/google-sheets-sync', {
+341: body: JSON.stringify({ backup: miniBackup, tables: [t.tab] }),
+345: results.push({ tab: t.tab, ok, data });
+352: const failed = tablesToSync.filter(t => !successful.includes(t.tab)).map(t => t.tab);
+353: await setDirtyTables(failed);
+355: await removeDirtyTables(successful);
+360: export async function pullBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+364: const tables = data?.tables || {};
+365: const total = PULL_TABLES.length;
+369: for (const tab of PULL_TABLES) {
+370: const rows = tables[tab] || [];
+374: else if (tab === 'sales') r = await mergeGroupedInvoices('@mizan_local_sales_grouped', rows);
+375: else if (tab === 'purchases') r = await mergeGroupedInvoices('@mizan_local_purchases_grouped', rows);
+385: return { ok: true, added, updated, removed, totalTables: total };
+388: export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+392: const rawDirty = await AsyncStorage.getItem('@mizan_dirty_tables');
+399: let tablesToSync: { tab: string; keys: string[] }[] = [];
+401: tablesToSync = TAB_TASKS;
+404: tablesToSync = TAB_TASKS.filter(t => set.has(t.tab));
+407: if (!tablesToSync.length) return [];
+410: const total = tablesToSync.length;
+414: for (const t of tablesToSync) {
+447: results.push({ tab: t.tab, ok: true, rows: rows.length });
+449: results.push({ tab: t.tab, ok: false, error: e?.message || String(e) });
+457: const failed = tablesToSync.filter(t => !successful.includes(t.tab)).map(t => t.tab);
+458: await setDirtyTables(failed);
+460: await removeDirtyTables(successful);
+480: await pullPrivateTables((d, t) => onProgress?.(d, t));
+481: const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+485: await pullBridgeTables((d, t) => onProgress?.(d, t));
+486: const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+500: await pullPrivateTables((d, t) => onProgress?.(d, t));
+501: const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+505: await pullBridgeTables((d, t) => onProgress?.(d, t));
+506: const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+513: await pullBridgeTables((d, t) => onProgress?.(d, t));
+514: const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+521: await pullPrivateTables((d, t) => onProgress?.(d, t));
+522: const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+530: const res = await fetch(FN_BASE + '/google-sheets-clear-audit', {
+533: body: JSON.stringify({}),
+549: const PULL_TABLES = [
+550: '_deleted','_audit','sales','purchases',
+551: 'expenses','employees','salary_payments','employee_loans','attendance',
+552: 'employee_leaves','payroll_batches','parties','partners','partner_transactions',
+553: 'partner_bank_accounts','products','settings','banks','shippings','stock_adjustments',
+554: 'fx_hawalas','fx_boxes','fx_transfers','fx_checks','fx_customers','fx_partners',
+558: expenses: '@mizan_local_expenses',
+559: employees: '@mizan_local_employees',
+560: salary_payments: '@mizan_local_salary_payments',
+561: employee_loans: '@mizan_local_employee_loans',
+562: attendance: '@mizan_local_attendance',
+564: payroll_batches: '@mizan_local_payroll_batches',
+565: parties: '@mizan_local_parties',
+566: partners: '@mizan_local_partners',
+567: products: '@mizan_local_products',
+568: sales_returns: '@mizan_local_sales_returns',
+570: settings: '@mizan_local_settings',
+571: banks: '@mizan_local_banks',
+572: shippings: '@mizan_local_shippings',
+574: fx_hawalas: '@mizan_local_fx_hawalas',
+575: fx_boxes: '@mizan_local_fx_boxes',
+576: fx_transfers: '@mizan_local_fx_transfers',
+577: fx_checks: '@mizan_local_fx_checks',
+578: fx_customers: '@mizan_local_fx_customers',
+579: fx_partners: '@mizan_local_fx_partners',
+640: createProduct: 'products', updateProduct: 'products', deleteProduct: 'products',
+641: createSale: 'sales', updateSale: 'sales', deleteSale: 'sales',
+642: createPurchase: 'purchases', updatePurchase: 'purchases', deletePurchase: 'purchases',
+643: createExpense: 'expenses', updateExpense: 'expenses', deleteExpense: 'expenses',
+644: createEmployee: 'employees', updateEmployee: 'employees', deleteEmployee: 'employees',
+645: createAttendance: 'attendance', updateAttendance: 'attendance', deleteAttendance: 'attendance',
+646: createSalaryPayment: 'salary_payments', updateSalaryPayment: 'salary_payments', deleteSalaryPayment: 'salary_payments',
+647: createLoan: 'employee_loans', updateLoan: 'employee_loans', deleteLoan: 'employee_loans',
+649: createBatch: 'payroll_batches', updateBatch: 'payroll_batches', deleteBatch: 'payroll_batches',
+650: createParty: 'parties', updateParty: 'parties', deleteParty: 'parties',
+651: createPartner: 'partners', updatePartner: 'partners', deletePartner: 'partners',
+654: createBank: 'banks', updateBank: 'banks', deleteBank: 'banks',
+655: createShipping: 'shippings', updateShipping: 'shippings', deleteShipping: 'shippings',
+657: updateSettings: 'settings',
+681: const q = await getQueue();
+721: if (table === 'sales') return '@mizan_local_sales_grouped';
+722: if (table === 'purchases') return '@mizan_local_purchases_grouped';
+726: async function _removeQueueFor(table: string, key: string) {
+728: const raw = await AsyncStorage.getItem('@mizan_queue');
+746: await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
+781: if (table === 'settings') {
+818: await _removeQueueFor(c.table, c.key);
+852: if (localKey === '@mizan_local_settings') {
+965: const q = await getQueue();
+1016: const table = localKey.includes('purchases') ? 'purchases' : 'sales';
+1163: export async function pullPrivateTables(onProgress?: (done: number, total: number, tab: string) => void) {
+1166: const res = await fetch(FN_BASE + '/google-sheets-pull', {
+1169: body: JSON.stringify({ tables: PULL_TABLES }),
+1172: if (!res.ok || !data?.tables) throw new Error(data?.error || 'خطا در دریافت');
+1176: const total = PULL_TABLES.length;
+1178: for (const tab of PULL_TABLES) {
+1179: const rows = data.tables[tab] || [];
+1183: else if (tab === 'sales') r = await mergeGroupedInvoices('@mizan_local_sales_grouped', rows);
+1184: else if (tab === 'purchases') r = await mergeGroupedInvoices('@mizan_local_purchases_grouped', rows);
+1193: return { ok: true, added, updated, removed, totalTables: total };
+
+══════════ ۳) SyncControl.tsx ══════════
+
+─── SyncControl.tsx — SyncControl (خط 12) ───
+12: export default function SyncControl({ showToast, compact }: any) {
+13:   const [mode, setModeLocal] = useState<'online' | 'offline'>('online');
+14:   const [queue, setQueue] = useState(0);
+15:   const [conflictCount, setConflictCount] = useState(0);
+16:   const [auditUnseen, setAuditUnseen] = useState(0);
+17:   const [auditPreview, setAuditPreview] = useState<any[]>([]);
+18:   const [modal, setModal] = useState(false);
+19:   const [syncing, setSyncing] = useState(false);
+20:   const [syncProgress, setSyncProgress] = useState({ done: 0, total: 0 });
+21:   const [queueDetailModal, setQueueDetailModal] = useState(false);
+22:   const [queueDetailList, setQueueDetailList] = useState<any[]>([]);
+23: 
+24:   useEffect(() => {
+25:     loadMode().then(setModeLocal);
+26:     const unsub = subscribeMode(setModeLocal);
+27:     const tick = setInterval(async () => {
+28:       try { setQueue(await getQueueCount()); } catch {}
+29:       try { const c = await getConflicts(); setConflictCount(Array.isArray(c) ? c.length : 0); } catch {}
+30:       try { setAuditUnseen(await getUnseenAuditCount()); const evs = await getAuditEvents(); setAuditPreview(Array.isArray(evs) ? evs.slice(-3).reverse() : []); } catch {}
+31:     }, 3000);
+32:     return () => { unsub(); clearInterval(tick); };
+33:   }, []);
+34: 
+35:   const toggle = async () => {
+36:     if (mode === 'offline') {
+37:       setModal(true);
+38:     } else {
+39:       showToast('⏳ در حال آماده‌سازی آفلاین...');
+40:       await prepareOffline();
+41:       await setMode('offline');
+42:       showToast('🔴 آفلاین — همه‌چیز آماده است');
+43:     }
+44:   };
+45: 
+46:     const openQueueDetail = async () => {
+47:     const list = await getQueueDetails();
+48:     setQueueDetailList(list);
+49:     setQueueDetailModal(true);
+50:   };
+51:   const doRetryFailed = async () => {
+52:     const n = await retryFailed();
+53:     setQueueDetailList(await getQueueDetails());
+54:     setQueue(await getQueueCount());
+55:     if (showToast) showToast("🔄 " + n + " مورد برای تلاش مجدد");
+56:   };
+57:   const doClearFailed = async () => {
+58:     const n = await clearFailedItems();
+59:     setQueueDetailList(await getQueueDetails());
+60:     setQueue(await getQueueCount());
+61:     if (showToast) showToast("🗑️ " + n + " مورد پاک شد");
+62:   };
+63: const confirmSync = async () => {
+64:     setSyncing(true);
+65:     try {
+66:       await setMode('online');
+67:       setSyncProgress({ done: 0, total: 0 });
+68:       const dest = await getSyncDestination();
+69:       const r = await syncByDestination((done: number, total: number) => setSyncProgress({ done, total }));
+70:       if (dest !== 'private') { await pullFromServer(); }
+71:       setQueue(await getQueueCount());
+72:       const destLabel = dest === 'private' ? 'فضای اختصاصی' : dest === 'both' ? 'هر دو مقصد' : 'سرور مرکزی';
+73:       showToast('✅ ' + r.ok + ' مورد در ' + destLabel + ' ذخیره شد' + (r.fail ? ' — ' + r.fail + ' ناموفق' : ''));
+74:       setModal(false);
+75:     } catch (e: any) {
+76:       showToast(e?.message || 'خطا در sync', true);
+77:     } finally { setSyncing(false); }
+78:   };
+79: 
+80:   const skipSync = async () => {
+81:     await setMode('online');
+82:     setModal(false);
+83:     showToast('🟢 آنلاین — بدون sync');
+84:   };
+85: 
+86:   const OP_FA: Record<string, string> = {
+87:     createSale: 'ثبت فروش', updateSale: 'ویرایش فروش', deleteSale: 'حذف فروش',
+88:     createPurchase: 'ثبت خرید', updatePurchase: 'ویرایش خرید', deletePurchase: 'حذف خرید',
+89:     createExpense: 'ثبت هزینه', updateExpense: 'ویرایش هزینه', deleteExpense: 'حذف هزینه',
+90:     createEmployee: 'ثبت کارمند', updateEmployee: 'ویرایش کارمند', deleteEmployee: 'حذف کارمند',
+91:     createAttendance: 'ثبت حضور', updateAttendance: 'ویرایش حضور', deleteAttendance: 'حذف حضور',
+92:     createSalaryPayment: 'ثبت حقوق', updateSalaryPayment: 'ویرایش حقوق', deleteSalaryPayment: 'حذف حقوق',
+93:     createLoan: 'ثبت وام', updateLoan: 'ویرایش وام', deleteLoan: 'حذف وام',
+94:     createLeave: 'ثبت مرخصی', updateLeave: 'ویرایش مرخصی', deleteLeave: 'حذف مرخصی',
+95:     createBatch: 'ثبت لیست حقوق', updateBatch: 'ویرایش لیست حقوق', deleteBatch: 'حذف لیست حقوق',
+96:     createParty: 'ثبت طرف‌حساب', updateParty: 'ویرایش طرف‌حساب', deleteParty: 'حذف طرف‌حساب',
+97:     createPartner: 'ثبت شریک', updatePartner: 'ویرایش شریک', deletePartner: 'حذف شریک',
+98:     createPBA: 'ثبت حساب بانکی شریک', deletePBA: 'حذف حساب بانکی شریک',
+99:     createPTX: 'ثبت حرکت شریک', deletePTX: 'حذف حرکت شریک',
+100:     createBank: 'ثبت بانک', updateBank: 'ویرایش بانک', deleteBank: 'حذف بانک',
+101:     createShipping: 'ثبت باربری', updateShipping: 'ویرایش باربری', deleteShipping: 'حذف باربری',
+102:     createProduct: 'ثبت کالا', updateProduct: 'ویرایش کالا', deleteProduct: 'حذف کالا',
+103:     createStockAdjustment: 'ثبت تعدیل انبار', deleteStockAdjustment: 'حذف تعدیل انبار',
+104:     updateSettings: 'ویرایش تنظیمات',
+105:   };
+106:   const faOp = (op: string) => OP_FA[op] || op;
+107: 
+108:   const cancelSync = () => {
+109:     setModal(false);
+110:     showToast?.('لغو شد — حالت تغییر نکرد');
+111:   };
+112: 
+113: const modalJSX = (
+114:     <Modal visible={modal} transparent animationType="fade">
+115:       <View style={s.bg}>
+116:         <View style={s.box}>
+117:           <Text style={s.title}>📤 ذخیره داده‌ها</Text>
+118:           <Text style={s.desc}>
+119:             {queue > 0
+120:               ? queue + ' مورد در حالت آفلاین ذخیره شده.\nحالا در مقصد انتخاب‌شده ذخیره شود؟'
+121:               : 'موردی برای آپلود نیست.\nحالت به آنلاین تغییر کند؟'}
+122:           </Text>
+123:           {auditUnseen > 0 ? (
+124:             <View style={{ backgroundColor: '#e0f2fe', borderWidth: 1, borderColor: '#0ea5e9', borderRadius: 8, padding: 8, marginTop: 10 }}>
+125:               <Text style={{ fontSize: 11, color: '#075985', textAlign: 'right', fontWeight: 'bold' }}>
+126:                 📜 {auditUnseen} تغییر جدید در تاریخچه تعدیلات
+127:               </Text>
+128:               {auditPreview.length > 0 && (
+129:                 <View style={{ marginTop: 6 }}>
+130:                   {auditPreview.map((ev: any, i: number) => (
+131:                     <Text key={i} style={{ fontSize: 10, color: '#0c4a6e', textAlign: 'right', marginTop: 2 }} numberOfLines={1}>
+132:                       • {ev.summary || ev.type || 'رویداد'} {ev.table ? '(' + ev.table + ')' : ''} {ev.at ? '— ' + String(ev.at).slice(0, 16) : ''}
+133:                     </Text>
+134:                   ))}
+135:                 </View>
+136:               )}
+137:               <TouchableOpacity onPress={async () => { await markAuditSeen(); setAuditUnseen(0); setAuditPreview([]); }} style={{ marginTop: 6, backgroundColor: '#0ea5e9', paddingVertical: 6, borderRadius: 6 }}>
+138:                 <Text style={{ color: '#fff', textAlign: 'center', fontSize: 11, fontWeight: 'bold' }}>✅ دیدم</Text>
+139:               </TouchableOpacity>
+140:             </View>
+141:           ) : null}
+142:           {conflictCount > 0 ? (
+143:             <View style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 8, padding: 8, marginTop: 10 }}>
+144:               <Text style={{ fontSize: 11, color: '#92400e', textAlign: 'right' }}>
+145:                 ⚠️ {conflictCount} تضاد ثبت شده — از تنظیمات → گزارش تضاد بررسی کنید
+146:               </Text>
+147:             </View>
+148:           ) : null}
+149:           {mode === 'offline' && queue > 0 && (
+150:             <TouchableOpacity
+151:               style={{ backgroundColor: "#334155", paddingVertical: 10, borderRadius: 10, marginTop: 12, alignItems: "center" }}
+152:               onPress={openQueueDetail}
+153:             >
+154:               <Text style={{ color: "#fff", fontSize: 13, fontWeight: "bold" }}>📋 مشاهده صف ({queue})</Text>
+155:             </TouchableOpacity>
+156:           )}
+157: 
+158:           {syncing ? (
+159:             <View style={{ alignItems: 'center', marginTop: 16 }}>
+160:             <ActivityIndicator color="#059669" />
+161:             {syncProgress.total > 0 && (
+162:               <Text style={{ color: '#475569', marginTop: 8, fontSize: 12 }}>
+163:                 {syncProgress.done} / {syncProgress.total}
+164:               </Text>
+165:             )}
+166:           </View>
+167:           ) : (
+168:             <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 16 }}>
+169:                             <TouchableOpacity accessibilityLabel="انصراف" style={[s.btn, { backgroundColor: '#475569' }]} onPress={cancelSync}>
+170:                 <Text style={s.btnTxt}>انصراف</Text>
+171:               </TouchableOpacity>
+172: <TouchableOpacity accessibilityLabel="فقط آنلاین شو" style={[s.btn, { backgroundColor: '#64748b' }]} onPress={skipSync}>
+173:                 <Text style={s.btnTxt}>فقط آنلاین شو</Text>
+174:               </TouchableOpacity>
+175:               <TouchableOpacity accessibilityLabel="بله، آپلود کن" style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={confirmSync}>
+176:                 <Text style={s.btnTxt}>✅ بله، ذخیره کن</Text>
+177:               </TouchableOpacity>
+178:             </View>
+179:           )}
+180:         </View>
+181:       </View>
+182:     </Modal>
+183:   );
+184: 
+185:   // ─── حالت compact (دکمه کوچک) ───
+186:   const queueDetailModalJSX = (
+187:     <Modal visible={queueDetailModal} transparent animationType="slide" onRequestClose={() => setQueueDetailModal(false)}>
+188:       <View style={s.bg}>
+189:         <View style={[s.box, { maxHeight: 500 }]}>
+190:           <Text style={s.title}>📋 جزئیات صف ({queueDetailList.length})</Text>
+191:           <ScrollView style={{ maxHeight: 350, marginTop: 8 }}>
+192:             {queueDetailList.length === 0 && (
+193:               <Text style={{ color: "#64748b", textAlign: "center", padding: 20 }}>صف خالی است</Text>
+194:             )}
+195:             {queueDetailList.map(function(it, i) {
+196:               return (
+197:                 <View key={i} style={{ padding: 10, marginBottom: 6, borderRadius: 8, backgroundColor: it.failed ? "#fee2e2" : "#f1f5f9", borderWidth: 1, borderColor: it.failed ? "#ef4444" : "#e2e8f0" }}>
+198:                   <View style={{ flexDirection: "row-reverse", justifyContent: "space-between" }}>
+199:                     <Text style={{ color: "#0f2438", fontWeight: "bold", fontSize: 12 }}>{it.failed ? "❌ " : "⏳ "}{faOp(it.op)}</Text>
+200:                     <Text style={{ color: "#64748b", fontSize: 11 }}>تلاش: {it.attempts}</Text>
+201:                   </View>
+202:                   {it.label ? <Text style={{ color: "#334155", fontSize: 11, marginTop: 4 }} numberOfLines={1}>شناسه: {it.label}</Text> : null}
+203:                   {it.ts ? <Text style={{ color: "#64748b", fontSize: 10, marginTop: 2 }}>زمان: {new Date(it.ts).toLocaleString('fa-IR')}</Text> : null}
+204:                   {it.payload ? <Text style={{ color: "#475569", fontSize: 10, marginTop: 2 }} numberOfLines={1}>جزئیات: {typeof it.payload === 'string' ? it.payload : JSON.stringify(it.payload).slice(0, 90)}</Text> : null}
+205:                   {it.lastError ? <Text style={{ color: "#dc2626", fontSize: 10, marginTop: 2 }} numberOfLines={2}>خطا: {it.lastError}</Text> : null}
+206:                 </View>
+207:               );
+208:             })}
+209:           </ScrollView>
+210:           <View style={{ flexDirection: "row-reverse", gap: 8, marginTop: 12 }}>
+211:             <TouchableOpacity style={[s.btn, { backgroundColor: "#64748b" }]} onPress={() => setQueueDetailModal(false)}>
+212:               <Text style={s.btnTxt}>بستن</Text>
+213:             </TouchableOpacity>
+214:             {queueDetailList.some(function(x) { return x.failed; }) && (
+215:               <View style={{ flex: 2, flexDirection: "row-reverse", gap: 8 }}>
+216:                 <TouchableOpacity style={[s.btn, { backgroundColor: "#dc2626", flex: 1 }]} onPress={doClearFailed}>
+217:                   <Text style={s.btnTxt}>🗑️ پاک کردن ناموفق‌ها</Text>
+218:                 </TouchableOpacity>
+219:                 <TouchableOpacity style={[s.btn, { backgroundColor: "#059669", flex: 2 }]} onPress={doRetryFailed}>
+220:                   <Text style={s.btnTxt}>🔄 تلاش مجدد</Text>
+221:                 </TouchableOpacity>
+222:               </View>
+223:             )}
+224:           </View>
+225:         </View>
+226:       </View>
+227:     </Modal>
+228:   );
+229: 
+230:   if (compact) {
+231:     return (
+232:       <>
+233:         <TouchableOpacity onPress={toggle} style={[
+234:           s.compactBtn,
+235:           { borderColor: mode === 'online' ? '#059669' : '#64748b' },
+236:         ]}>
+237:           <Text style={{ fontSize: 18 }}>{mode === 'online' ? '🟢' : '🔴'}</Text>
+238:           {mode === 'offline' && queue > 0 && (
+239:             <View style={s.badge}>
+240:               <Text style={s.badgeTxt}>{queue}</Text>
+241:             </View>
+242:           )}
+243:         </TouchableOpacity>
+244:         {modalJSX}
+245:       {queueDetailModalJSX}
+246:       </>
+247:     );
+248:   }
+249: 
+250:   // ─── حالت نوار ───
+251:   return (
+252:     <>
+253:       <TouchableOpacity onPress={toggle} style={[
+254:         s.bar,
+255:         { backgroundColor: mode === 'online' ? '#059669' : '#64748b' },
+256:       ]}>
+257:         <Text style={s.txt}>
+258:           {mode === 'online' ? '🟢 آنلاین' : '🔴 آفلاین'}
+259:           {mode === 'offline' && queue > 0 ? '  •  ' + queue + ' مورد در انتظار' : ''}
+260:         </Text>
+261:       </TouchableOpacity>
+262:       {modalJSX}
+263:       {queueDetailModalJSX}
+264:     </>
+265:   );
+266: }
+267: 
+268: const s = StyleSheet.create({
+269:   bar: { paddingVertical: 6, alignItems: 'center' },
+270:   txt: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+271:   compactBtn: {
+
+─── SyncControl.tsx — مقصد سینک ───
+2: // SyncControl.tsx — کلید Online/Offline + مودال sync
+4: import { View, Text, TouchableOpacity, Modal, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+7: getQueueCount, syncToServer, pullFromServer, clearQueue, prepareOffline,
+8: } from './lib.offline';
+9: import { getQueueDetails, retryFailed, clearFailedItems, getUnseenAuditCount, markAuditSeen, getAuditEvents } from './lib.offline';
+10: import { syncByDestination, getSyncDestination, getConflicts } from './lib.sheets';
+13: const [mode, setModeLocal] = useState<'online' | 'offline'>('online');
+36: if (mode === 'offline') {
+40: await prepareOffline();
+41: await setMode('offline');
+66: await setMode('online');
+68: const dest = await getSyncDestination();
+69: const r = await syncByDestination((done: number, total: number) => setSyncProgress({ done, total }));
+70: if (dest !== 'private') { await pullFromServer(); }
+72: const destLabel = dest === 'private' ? 'فضای اختصاصی' : dest === 'both' ? 'هر دو مقصد' : 'سرور مرکزی';
+73: showToast('✅ ' + r.ok + ' مورد در ' + destLabel + ' ذخیره شد' + (r.fail ? ' — ' + r.fail + ' ناموفق' : ''));
+81: await setMode('online');
+149: {mode === 'offline' && queue > 0 && (
+235: { borderColor: mode === 'online' ? '#059669' : '#64748b' },
+237: <Text style={{ fontSize: 18 }}>{mode === 'online' ? '🟢' : '🔴'}</Text>
+238: {mode === 'offline' && queue > 0 && (
+255: { backgroundColor: mode === 'online' ? '#059669' : '#64748b' },
+258: {mode === 'online' ? '🟢 آنلاین' : '🔴 آفلاین'}
+259: {mode === 'offline' && queue > 0 ? '  •  ' + queue + ' مورد در انتظار' : ''}
+268: const s = StyleSheet.create({
+
+══════════ ۴) SettingsSheets.tsx ══════════
+
+─── SettingsSheets.tsx — SettingsSheets (خط 16) ───
+16: export default function SettingsSheets({ showToast }: any) {
+17:   if (!SHOW_PRIVATE_STORAGE) return null;
+18: 
+19:   const [conn, setConn] = useState<any>(null);
+20:   const [dest, setDest] = useState<SyncDestination>('server');
+21:   const [loading, setLoading] = useState(true);
+22:   const [busy, setBusy] = useState(false);
+23:   const [pulling, setPulling] = useState(false);
+24:   const [progress, setProgress] = useState('');
+25:   const [bridgeUrl, setBridgeUrl] = useState('');
+26:   const [bridgeKey, setBridgeKey] = useState('');
+27:   const [conflicts, setConflicts] = useState<any[]>([]);
+28:   const [auditEvents, setAuditEvents] = useState<any[]>([]);
+29:   const [auditModal, setAuditModal] = useState(false);
+30:   const [conflictModal, setConflictModal] = useState(false);
+31:   const [bridgeReady, setBridgeReady] = useState(false);
+32:   const [bridgeSuggestedKey, setBridgeSuggestedKey] = useState('');
+33:   const [bridgeBusy, setBridgeBusy] = useState(false);
+34:   const [bridgeTesting, setBridgeTesting] = useState(false);
+35:   const [bridgeStatus, setBridgeStatus] = useState('');
+36:   const [bridgePullBusy, setBridgePullBusy] = useState(false);
+37:   const [bridgePullStatus, setBridgePullStatus] = useState('');
+38:   const [bridgeSaveBusy, setBridgeSaveBusy] = useState(false);
+39:   const [bridgeSaveStatus, setBridgeSaveStatus] = useState('');
+40:   const [bridgePartiesBusy, setBridgePartiesBusy] = useState(false);
+41:   const [bridgePartiesStatus, setBridgePartiesStatus] = useState('');
+42:   const [bridgeAllBusy, setBridgeAllBusy] = useState(false);
+43:   const [bridgeAllStatus, setBridgeAllStatus] = useState('');
+44: 
+45:   const load = async () => {
+46:     setLoading(true);
+47:     try {
+48:       setConn(await getPrivateConnection());
+49:       setDest(await getSyncDestination());
+50:       try { setConflicts(await getConflicts()); } catch {}
+51:       try { setAuditEvents(await getAuditEvents()); } catch {}
+52:       let k = await AsyncStorage.getItem('@mizan_bridge_key_suggest');
+53:       if (!k) {
+54:         k = genBridgeKey();
+55:         await AsyncStorage.setItem('@mizan_bridge_key_suggest', k);
+56:       }
+57:       setBridgeSuggestedKey(k);
+58:       const b = await getBridgeConfig();
+59:       setBridgeUrl(b.url || '');
+60:       setBridgeKey(b.key || '');
+61:       setBridgeReady(!!(b.url && b.key));
+62:     } catch (e: any) { showToast?.(e.message, true); }
+63:     finally { setLoading(false); }
+64:   };
+65: 
+66:   useEffect(() => { load(); }, []);
+67: 
+68:   const chooseDest = async (v: SyncDestination) => {
+69:     if (Platform.OS !== 'web' && v !== 'private') {
+70:       showToast?.('در گوشی فقط فضای اختصاصی مجاز است', true);
+71:       return;
+72:     }
+73:     setDest(v);
+74:     await setSyncDestination(v);
+75:     showToast?.('مقصد ذخیره تغییر کرد');
+76:   };
+77: 
+78:   const connect = async () => {
+79:     setBusy(true);
+80:     try {
+81:       await startPrivateOAuth();
+82:       showToast?.('پس از تأیید، دوباره این صفحه را باز کنید');
+83:     } catch (e: any) { showToast?.(e.message, true); }
+84:     finally { setBusy(false); }
+85:   };
+86: 
+87:   const sync = async () => {
+88:     setBusy(true);
+89:     setProgress('در حال آماده‌سازی...');
+90:     try {
+91:       const r = await syncByDestination((d, t) => setProgress('ذخیره (' + d + '/' + t + ')'));
+92:       showToast?.('✅ ' + (r.ok || 0) + ' مورد ذخیره شد' + (r.fail ? ' — ' + r.fail + ' ناموفق' : ''));
+93:       await load();
+94:     } catch (e: any) {
+95:       showToast?.(e.message, true);
+96:     } finally {
+97:       setBusy(false);
+98:       setProgress('');
+99:     }
+100:   };;;
+101: 
+102:   const pull = async () => {
+103:     setPulling(true);
+104:     setProgress('در حال دریافت...');
+105:     try {
+106:       if (Platform.OS !== 'web' && !bridgeReady) {
+107:         showToast?.('برای دریافت در گوشی، اول واسط امن را تنظیم کنید', true);
+108:         return;
+109:       }
+110:       const r = bridgeReady
+111:         ? await pullBridgeTables((d, t, tab) => setProgress('دریافت ' + tab + ' (' + d + '/' + t + ')'))
+112:         : await pullPrivateTables((d, t, tab) => setProgress('دریافت ' + tab + ' (' + d + '/' + t + ')'));
+113:       showToast?.('✅ ' + (r.added || 0) + ' رکورد جدید دریافت شد');
+114:       await load();
+115:     } catch (e: any) {
+116:       showToast?.(e.message, true);
+117:     } finally {
+118:       setPulling(false);
+119:       setProgress('');
+120:     }
+121:   };;;
+122: 
+123:   const disconnect = async () => {
+124:     setBusy(true);
+125:     try {
+126:       if (bridgeReady) {
+127:         await setBridgeConfig('', '');
+128:         setBridgeUrl('');
+129:         setBridgeKey('');
+130:         setBridgeReady(false);
+131:         showToast?.('اتصال واسط امن قطع شد');
+132:       } else {
+133:         await disconnectPrivate();
+134:         setConn(null);
+135:         showToast?.('اتصال فضای اختصاصی قطع شد');
+136:       }
+137:     } catch (e: any) { showToast?.(e.message, true); }
+138:     finally { setBusy(false); }
+139:   };;
+140: 
+141:   const saveBridge = async () => {
+142:     setBridgeBusy(true);
+143:     try {
+144:       await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+145:       showToast?.('✅ تنظیمات واسط امن ذخیره شد');
+146:     } catch (e: any) { showToast?.(e.message, true); }
+147:     finally { setBridgeBusy(false); }
+148:   };
+149: 
+150:   const testBridge = async () => {
+151:     setBridgeTesting(true);
+152:     setBridgeStatus('');
+153:     try {
+154:       await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+155:       await bridgePing();
+156:       setBridgeStatus('✅ اتصال به واسط امن برقرار است');
+157:       showToast?.('✅ اتصال به واسط امن برقرار است');
+158:     } catch (e: any) {
+159:       setBridgeStatus('❌ ' + (e?.message || 'خطا در اتصال'));
+160:       showToast?.(e?.message || 'خطا در اتصال', true);
+161:     } finally { setBridgeTesting(false); }
+162:   };
+163: 
+164:   const testBridgePull = async () => {
+165:     setBridgePullBusy(true);
+166:     setBridgePullStatus('');
+167:     try {
+168:       await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+169:       const r = await bridgePull();
+170:       const tables = r?.tables || {};
+171:       let total = 0;
+172:       const names = Object.keys(tables);
+173:       for (const n of names) total += Array.isArray(tables[n]) ? tables[n].length : 0;
+174:       setBridgePullStatus('✅ ' + names.length + ' تب — ' + total + ' ردیف خوانده شد');
+175:       showToast?.('✅ دریافت از واسط انجام شد');
+176:     } catch (e: any) {
+177:       setBridgePullStatus('❌ ' + (e?.message || 'خطا در دریافت'));
+178:       showToast?.(e?.message || 'خطا در دریافت', true);
+179:     } finally { setBridgePullBusy(false); }
+180:   };
+181: 
+182:   const testBridgeSave = async () => {
+183:     setBridgeSaveBusy(true);
+184:     setBridgeSaveStatus('');
+185:     try {
+186:       await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+187:       const r = await bridgeSaveTest();
+188:       const pr = await bridgePull();
+189:       const rows = (pr?.tables && pr.tables._bridge_test) || [];
+190:       setBridgeSaveStatus('✅ ذخیره شد — ' + rows.length + ' ردیف در تب تست');
+191:       showToast?.('✅ تست ذخیره در واسط انجام شد');
+192:     } catch (e: any) {
+193:       setBridgeSaveStatus('❌ ' + (e?.message || 'خطا در ذخیره'));
+194:       showToast?.(e?.message || 'خطا در ذخیره', true);
+195:     } finally { setBridgeSaveBusy(false); }
+196:   };
+197: 
+198:   const testBridgeParties = async () => {
+199:     setBridgePartiesBusy(true);
+200:     setBridgePartiesStatus('');
+201:     try {
+202:       await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+203:       const raw = await (await import('./lib.storage')).default.getItem('@mizan_local_parties');
+204:       let rows: any[] = [];
+205:       try { rows = raw ? JSON.parse(raw) : []; } catch { rows = []; }
+206:       if (!Array.isArray(rows)) rows = [];
+207:       await bridgeSaveTable('parties', rows);
+208:       const pr = await bridgePull();
+209:       const back = (pr?.tables && pr.tables.parties) || [];
+210:       setBridgePartiesStatus('✅ ' + rows.length + ' طرف‌حساب ذخیره شد — ' + back.length + ' ردیف برگشت');
+211:       showToast?.('✅ تست طرف‌حساب‌ها انجام شد');
+212:     } catch (e: any) {
+213:       setBridgePartiesStatus('❌ ' + (e?.message || 'خطا در تست'));
+214:       showToast?.(e?.message || 'خطا در تست', true);
+215:     } finally { setBridgePartiesBusy(false); }
+216:   };
+217: 
+218:   const testBridgeAll = async () => {
+219:     setBridgeAllBusy(true);
+220:     setBridgeAllStatus('');
+221:     try {
+222:       await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+223:       const saveRes = await bridgeSaveAll();
+224:       const pr = await bridgePull();
+225:       const tables = pr?.tables || {};
+226:       let totalSaved = 0;
+227:       for (const it of (saveRes?.summary || [])) totalSaved += Number(it.rows) || 0;
+228:       let totalBack = 0;
+229:       const names = Object.keys(tables);
+230:       for (const n of names) totalBack += Array.isArray(tables[n]) ? tables[n].length : 0;
+231:       setBridgeAllStatus('✅ ' + (saveRes?.summary?.length || 0) + ' تب ذخیره شد — ' + totalSaved + ' ردیف ارسال — ' + totalBack + ' ردیف برگشت');
+232:       showToast?.('✅ تست همه جدول‌ها انجام شد');
+233:     } catch (e: any) {
+234:       setBridgeAllStatus('❌ ' + (e?.message || 'خطا در تست همه'));
+235:       showToast?.(e?.message || 'خطا در تست همه', true);
+236:     } finally { setBridgeAllBusy(false); }
+237:   };
+238: 
+239:   const openBridgeTemplate = async () => {
+240:     if (!BRIDGE_TEMPLATE_URL) {
+241:       showToast?.('لینک قالب هنوز تنظیم نشده است');
+242:       return;
+243:     }
+244:     try {
+245:       if (Platform.OS === 'web') window.open(BRIDGE_TEMPLATE_URL, '_blank');
+246:       else await Linking.openURL(BRIDGE_TEMPLATE_URL);
+247:     } catch (e: any) { showToast?.(e?.message || 'خطا در باز کردن قالب', true); }
+248:   };
+249: 
+250:   const copyText = async (txt: string, okMsg: string) => {
+251:     try {
+252:       if (Platform.OS === 'web') await navigator.clipboard.writeText(txt);
+253:       showToast?.(okMsg);
+254:     } catch { showToast?.('خطا در کپی', true); }
+255:   };
+256:   const copyBridgeCode = () => copyText(BRIDGE_CODE, '✅ کد واسط کپی شد');
+257:   const copyBridgeKey = () => copyText(bridgeSuggestedKey, '✅ کلید تصادفی کپی شد');
+258:   const openNewSheet = () => {
+259:     if (Platform.OS !== 'web') return;
+260:     const already = !!(bridgeUrl || bridgeKey);
+261:     if (already) {
+262:       const ok = window.confirm(
+263:         'شما از قبل به یک شیت وصل هستید.\n' +
+264:         'اگر شیت جدید بسازید، میزان به شیت جدید وصل می‌شود و شیت قبلی استفاده نمی‌شود.\n\n' +
+265:         'آیا مطمئن هستید؟'
+266:       );
+267:       if (!ok) return;
+268:     }
+269:     window.open('https://sheets.new', '_blank');
+270:   };
+271:   const openAppsScript = () => { if (Platform.OS === 'web') window.open('https://script.google.com/home', '_blank'); };
+272: 
+273:   const genBridgeKey = () => {
+274:     try {
+275:       if (Platform.OS === 'web' && typeof crypto !== 'undefined' && crypto.randomUUID) {
+
+─── SettingsSheets.tsx — تنظیمات شیت ───
+3: import AsyncStorage from './lib.storage';
+6: getPrivateConnection, startPrivateOAuth, syncPrivateTables, disconnectPrivate,
+7: getSyncDestination, setSyncDestination, SyncDestination, pullPrivateTables,
+8: getBridgeConfig, setBridgeConfig, bridgePing, bridgePull, bridgeSaveTest, bridgeSaveTable, bridgeSaveAll, pullBridgeTables, syncBridgeTables, syncByDestination, getConflicts, clearConflicts, applyConflictSheet, keepLocalConflict, getAuditEvents, clearAuditInSheet
+9: } from './lib.sheets';
+13: const BRIDGE_CODE = "const TABLES = [\n  'sales','purchases','sales_returns','purchase_returns','expenses','employees','salary_payments','employee_loans',\n  'attendance','employee_leaves','payroll_batches','parties','partners',\n  'partner_transactions','partner_bank_accounts','
+14: const BRIDGE_TEMPLATE_URL = 'لینک_گوگل_داک_را_اینجا_بگذار';
+16: export default function SettingsSheets({ showToast }: any) {
+20: const [dest, setDest] = useState<SyncDestination>('server');
+25: const [bridgeUrl, setBridgeUrl] = useState('');
+45: const load = async () => {
+49: setDest(await getSyncDestination());
+52: let k = await AsyncStorage.getItem('@mizan_bridge_key_suggest');
+55: await AsyncStorage.setItem('@mizan_bridge_key_suggest', k);
+59: setBridgeUrl(b.url || '');
+61: setBridgeReady(!!(b.url && b.key));
+68: const chooseDest = async (v: SyncDestination) => {
+74: await setSyncDestination(v);
+78: const connect = async () => {
+87: const sync = async () => {
+91: const r = await syncByDestination((d, t) => setProgress('ذخیره (' + d + '/' + t + ')'));
+102: const pull = async () => {
+123: const disconnect = async () => {
+128: setBridgeUrl('');
+141: const saveBridge = async () => {
+144: await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+150: const testBridge = async () => {
+154: await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+164: const testBridgePull = async () => {
+168: await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+182: const testBridgeSave = async () => {
+186: await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+198: const testBridgeParties = async () => {
+202: await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+218: const testBridgeAll = async () => {
+222: await setBridgeConfig(bridgeUrl.trim(), bridgeKey.trim());
+239: const openBridgeTemplate = async () => {
+240: if (!BRIDGE_TEMPLATE_URL) {
+245: if (Platform.OS === 'web') window.open(BRIDGE_TEMPLATE_URL, '_blank');
+246: else await Linking.openURL(BRIDGE_TEMPLATE_URL);
+250: const copyText = async (txt: string, okMsg: string) => {
+258: const openNewSheet = () => {
+260: const already = !!(bridgeUrl || bridgeKey);
+269: window.open('https://sheets.new', '_blank');
+271: const openAppsScript = () => { if (Platform.OS === 'web') window.open('https://script.google.com/home', '_blank'); };
+282: const makeBridgeKey = async () => {
+285: await AsyncStorage.setItem('@mizan_bridge_key_suggest', k);
+289: const copyKeyAndOpenScript = async () => {
+293: window.open('https://script.google.com/home', '_blank');
+295: showToast?.('کلید کپی شد — در Script Properties با نام BRIDGE_KEY بگذارید');
+296: } catch { showToast?.('خطا در کپی یا باز کردن Apps Script', true); }
+299: const doClearConflicts = async () => {
+307: const onApplyConflict = async (i: number) => {
+309: const ok = await applyConflictSheet(i);
+316: const onKeepLocal = async (i: number) => {
+325: const doClearAudit = async () => {
+333: const openAuditModal = async () => {
+338: const openConflictModal = async () => {
+372: <TouchableOpacity disabled={busy} onPress={sync} style={{ backgroundColor: busy ? '#94a3b8' : '#059669', padding: 10, borderRadius: 6, marginBottom: 8 }}>
+405: value={bridgeUrl}
+406: onChangeText={setBridgeUrl}
+451: ۱) شیت جدید بساز ۲) در همان شیت Extensions → Apps Script را بزن ۳) کد را پیست کن ۴) کلید را در Script Properties بگذار ۵) Deploy کن ۶) آدرس /exec را اینجا وارد کن.
+453: <TouchableOpacity onPress={openNewSheet} style={{ backgroundColor: '#059669', padding: 8, borderRadius: 6, marginBottom: 6 }}>
+468: مرحله ۴: در Apps Script → Project Settings → Script Properties، یک مورد با نام BRIDGE_KEY بسازید و کلید کپی‌شده را در Value بگذارید.
+470: <TouchableOpacity onPress={copyKeyAndOpenScript} style={{ backgroundColor: '#be123c', padding: 8, borderRadius: 6, marginBottom: 6 }}>
+471: <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>📋 کپی کلید و باز کردن Apps Script</Text>
+473: <TouchableOpacity onPress={openAppsScript} style={{ backgroundColor: '#f59e0b', padding: 8, borderRadius: 6 }}>
+474: <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>🧩 باز کردن Apps Script</Text>
+511: نسخه شیت: {c.sheet ? (c.sheet.updated_at || c.sheet.updatedAt || '—') : '—'}
+
+══════════ ۵) Apps Script یا doPost/doGet در پروژه ══════════
+
+─── lib.sheets.ts — Apps Script سمت شیت ───
+ℹ️ موردی پیدا نشد
+
+─── SettingsSheets.tsx — Apps Script سمت شیت ───
+13: const BRIDGE_CODE = "const TABLES = [\n  'sales','purchases','sales_returns','purchase_returns','expenses','employees','salary_payments','employee_loans',\n  'attendance','employee_leaves','payroll_batches','parties','partners',\n  'partner_transactions','partner_bank_accounts','
+
+─── SyncControl.tsx — Apps Script سمت شیت ───
+ℹ️ موردی پیدا نشد
+
+─── lib.backup.ts — Apps Script سمت شیت ───
+ℹ️ موردی پیدا نشد
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

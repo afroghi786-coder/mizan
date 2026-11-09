@@ -1,0 +1,260 @@
+
+─── App.tsx — بلوک سود خالص در داشبورد (2380 تا 2470) ───
+2380: 
+2381:   const time = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+2382: 
+2383:   const date = jalaliDisplay(now);
+2384: 
+2385:   const profit = stats?.profit || 0;
+2386: 
+2387:   const filter = settings?.dashboard_filter || 'both';
+2388: 
+2389:   const rangeLabel = stats?.rangeLabel || 'ماه جاری';
+2390: 
+2391: 
+2392: 
+2393:   // متن elapsed
+2394: 
+2395:   const j = g2j(now.getFullYear(), now.getMonth() + 1, now.getDate());
+2396: 
+2397:   const elapsed = `امروز: ${j[0]}/${pad2(j[1])}/${pad2(j[2])}`;
+2398: 
+2399: 
+2400: 
+2401:   const cards = [
+2402: 
+2403:     { i: '🛒', l: 'کل فروش', v: stats?.totalSales || 0, c: '#60a5fa', show: filter !== 'purchase' },
+2404: 
+2405:     { i: '📦', l: 'کل خرید', v: stats?.totalPurchases || 0, c: '#fb923c', show: filter !== 'sales' },
+2406: 
+2407:     { i: '💳', l: 'پرداخت مشتری', v: stats?.customerPaid || 0, c: '#34d399', show: filter !== 'purchase' },
+2408: 
+2409:     { i: '📌', l: 'بدهی مشتری', v: stats?.customerDebt || 0, c: '#fb923c', show: filter !== 'purchase' },
+2410: 
+2411:     { i: '💵', l: 'پرداخت به تأمین‌کننده', v: stats?.supplierPaid || 0, c: '#34d399', show: filter !== 'sales' },
+2412: 
+2413:     { i: '📌', l: 'بدهی به تأمین‌کننده', v: stats?.supplierDebt || 0, c: '#f87171', show: filter !== 'sales' },
+2414: 
+2415:   ].filter(c => c.show);
+2416: 
+2417: 
+2418: 
+2419:   return (
+2420: 
+2421:     <View style={dash.page}>
+2422: 
+2423:       {/* Badge بازه */}
+2424: 
+2425:       <View style={{ alignItems: 'center', marginBottom: 10 }}>
+2426: 
+2427:         <View style={dash.rangeBadge}>
+2428: 
+2429:           <Text style={dash.rangeBadgeTxt}>{rangeLabel}</Text>
+2430: 
+2431:         </View>
+2432: 
+2433:       </View>
+2434: 
+2435: 
+2436: 
+2437:       {/* ساعت + تاریخ */}
+2438: 
+2439:       <View style={dash.clockRow}>
+2440: 
+2441:         <Text style={dash.time}>{time}</Text>
+2442: 
+2443:         <View style={{ alignItems: 'center', gap: 2 }}>
+2444: 
+2445:           <Text style={dash.dateSmall}>{date}</Text>
+2446: 
+2447:           <Text style={dash.dateElapsed}>{elapsed}</Text>
+2448: 
+2449:         </View>
+2450: 
+2451:       </View>
+2452: 
+2453: 
+2454: 
+2455:       {/* سود خالص */}
+2456: 
+2457:       <View style={dash.profitBox}>
+2458: 
+2459:         <EL text="💰 سود خالص" style={dash.profitLbl}>{rangeLabel}</EL>
+2460: 
+2461:         <Text style={[dash.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88', textShadowColor: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>
+2462: 
+2463:           {fmt(profit)}
+2464: 
+2465:         </Text>
+2466: 
+2467:         <Text style={dash.profitUnit}>{typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : ''}</Text>
+2468: 
+2469:       </View>
+2470: 
+
+─── App.tsx — ProfitScreen — ابتدای تابع (5314 تا 5360) ───
+5314: function ProfitScreen({ showToast, settings }: any) {
+5315:   const profitRef = useRef<View>(null);
+5316: 
+5317:   const [models, setModels] = useState<any[]>([]);
+5318: 
+5319:   const [loading, setLoading] = useState(true);
+5320: 
+5321:   const [stats, setStats] = useState<any>(null);
+5322: 
+5323: 
+5324: 
+5325:   const load = async () => {
+5326: 
+5327:     setLoading(true);
+5328: 
+5329:     try { const d = await getDashboardStats(settings?.dashboard_range || 'month', settings?.dashboard_filter || 'both'); setModels(d.models); setStats(d); }
+5330: 
+5331:     catch (e: any) { showToast(e.message, true); } finally { setLoading(false); }
+5332: 
+5333:   };
+5334: 
+5335:   useEffect(() => { load(); }, [settings]);
+5336: 
+5337: 
+5338: 
+5339:   const total = models.reduce((a, m) => a + (m.totalProfit || 0), 0);
+5340: 
+5341:   const exportProfitPdf = async () => {
+5342:     if (!models.length) return showToast('داده‌ای برای خروجی نیست', true);
+5343:     try {
+5344:       var _p = [];
+5345:       var curLabel = (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : 'افغانی');
+5346:       var _serial = 'PRF-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + (settings?.dashboard_range || 'month');
+5347:       var _tracking = 'TRK-PRF-' + String(Date.now()).slice(-6);
+5348: 
+5349:       _p.push('<div class="info"><b>🆔 شماره سند:</b> ' + _serial + ' &nbsp;|&nbsp; <b>🔑 کد رهگیری:</b> ' + _tracking + '<br><b>📅 تاریخ گزارش:</b> ' + displayDate(new Date()) + ' &nbsp;|&nbsp; <b>📊 بازه:</b> ' + (stats?.rangeLabel || 'ماه جاری') + '</div>');
+5350: 
+5351:       _p.push('<div class="title">💹 گزارش سود به تفکیک مدل</div>');
+5352:       _p.push('<table><tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>خرید (میانگین)</th><th>فروش (میانگین)</th><th>سود هر واحد</th><th>تعداد فروش</th><th>جمع سود کل</th></tr>');
+5353: 
+5354:       var rows = models.map(function(m, i) {
+5355:         var avgSale = m.totalQty ? (m.totalSales / m.totalQty) : 0;
+5356:         var unitProfit = m.purchasePrice > 0 ? (avgSale - m.purchasePrice) : 0;
+5357:         return '<tr>' +
+5358:           '<td>' + (i + 1) + '</td>' +
+5359:           '<td>' + (m.code || '—') + '</td>' +
+5360:           '<td style="text-align:right">' + (m.name || '—') + '</td>' +
+
+─── App.tsx — ProfitScreen — بخش نمایش سود (5440 تا 5490) ───
+5440:         showToast('✅ تصویر آماده شد');
+5441:       } else {
+5442:         showToast('اشتراک‌گذاری پشتیبانی نمی‌شود', true);
+5443:       }
+5444:     } catch (e: any) { showToast(e.message, true); }
+5445:   };
+5446: 
+5447:   ;
+5448: 
+5449: 
+5450: 
+5451: 
+5452:   return (
+5453: 
+5454:     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+5455: 
+5456:       <DigitalDashboard refreshKey={0} settings={settings} />
+5457: 
+5458:       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10, gap: 8, marginTop: 8 }}>
+5459:         <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10, marginTop: 8, justifyContent: 'flex-end' }}>
+5460:           <TouchableOpacity onPress={exportProfitPdf} style={{ backgroundColor: '#8e44ad', padding: 10, borderRadius: 8, flex: 1, minWidth: 80, alignItems: 'center' }}>
+5461:             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>📄 PDF</Text>
+5462:           </TouchableOpacity>
+5463:           <TouchableOpacity onPress={printProfit} style={{ backgroundColor: '#0ea5e9', padding: 10, borderRadius: 8, flex: 1, minWidth: 80, alignItems: 'center' }}>
+5464:             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>🖨️ پرینت</Text>
+5465:           </TouchableOpacity>
+5466:           <TouchableOpacity onPress={shareProfitImage} style={{ backgroundColor: '#f59e0b', padding: 10, borderRadius: 8, flex: 1, minWidth: 80, alignItems: 'center' }}>
+5467:             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>📤 تصویر</Text>
+5468:           </TouchableOpacity>
+5469:         </View>
+5470:       </View>
+5471: 
+5472:       
+5473: 
+5474:       {stats?.estimatedCount > 0 && (<View style={s.warnBox}><Text style={s.warnTxt}>📊 {stats.estimatedCount} مدل بدون خرید — سود {Math.round((stats.defaultMargin || 0.1) * 100)}٪ تخمین زده شد</Text></View>)}
+5475: 
+5476:       <EL text="💹 سود به تفکیک مدل ({toFaNum(models.length)})" style={s.secT} />
+5477: 
+5478: 
+5479: 
+5480:       <ScrollView horizontal showsHorizontalScrollIndicator>
+5481: 
+5482:         <View>
+5483: 
+5484:           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+5485: 
+5486:             <Text style={HDR.cell}>#</Text>
+5487: 
+5488:             <EL textKey="کد" style={[s.thCell, { width: 90 }]} />
+5489: 
+5490:             <Text style={[HDR.cell, { width: 180 }]}>نام مدل</Text>
+
+─── App.tsx — استایل‌های profit (10850 تا 10910) ───
+10850: 
+10851:     maxWidth: 90,
+10852: 
+10853:     height: 78,
+10854: 
+10855:     borderWidth: 2,
+10856: 
+10857:     borderColor: 'transparent',
+10858: 
+10859:   },
+10860: 
+10861:   tabIcon: { fontSize: 22, marginBottom: 4 },
+10862: 
+10863:   tabLbl: { fontSize: 11, fontWeight: 'bold' },
+10864: 
+10865:   tabLblActive: { color: '#fff' },
+10866: 
+10867:   lock: { position: 'absolute', top: 4, left: 6, fontSize: 10 },
+10868: 
+10869: 
+10870: 
+10871:   // Toast
+10872: 
+10873:   toast: { position: 'absolute', bottom: 40, left: 20, right: 20, backgroundColor: '#059669', padding: 12, borderRadius: 10, alignItems: 'center', zIndex: 9999 },
+10874: 
+10875:   toastTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+10876: 
+10877: 
+10878: 
+10879:   // Dashboard
+10880: 
+10881:   dash: { margin: 10, padding: 14, borderRadius: 16, backgroundColor: '#080b13', borderWidth: 2, borderColor: '#1f3a5f' },
+10882: 
+10883:   rangeBadge: { backgroundColor: '#1e3a8a', paddingHorizontal: 16, paddingVertical: 5, borderRadius: 14, alignSelf: 'center' },
+10884: 
+10885:   rangeBadgeTxt: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+10886: 
+10887:   clockRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 12, marginVertical: 12, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,255,136,0.15)' },
+10888: 
+10889:   time: { color: '#00ff88', fontSize: 32, fontFamily: 'Orbitron_900Black', letterSpacing: 6, textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
+10890: 
+10891:   dateTxt: { color: '#4ade80', fontSize: 16, fontFamily: 'ShareTechMono_400Regular', letterSpacing: 2, textShadowColor: 'rgba(74,222,128,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
+10892: 
+10893:   profitBox: { alignItems: 'center', paddingVertical: 16, marginBottom: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(0,255,136,0.2)' },
+10894: 
+10895:   profitLbl: { color: '#94a3b8', fontSize: 13, marginBottom: 10, fontWeight: 'bold', letterSpacing: 1 },
+10896: 
+10897:   profitVal: { fontSize: 48, fontFamily: 'Orbitron_900Black', letterSpacing: 4, lineHeight: 56, textShadowColor: '#00ff88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20 },
+10898: 
+10899:   profitUnit: { color: '#64748b', fontSize: 12, marginTop: 8, letterSpacing: 3 },
+10900: 
+10901:   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+10902: 
+10903:   dItem: { width: '48%', padding: 11, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,255,136,0.18)', alignItems: 'center' },
+10904: 
+10905:   dLbl: { color: '#94a3b8', fontSize: 10, marginBottom: 5 },
+10906: 
+10907:   dVal: { fontSize: 17, fontFamily: 'Orbitron_700Bold', letterSpacing: 1.5, textShadowColor: 'rgba(0,255,136,0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
+10908: 
+10909: 
+10910: 
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

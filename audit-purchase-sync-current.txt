@@ -1,0 +1,830 @@
+══════════ ۱) createPurchase و _localUpsertPurchase ══════════
+
+─── lib.offline.ts — createPurchase (خط 1225) ───
+1225: export async function createPurchase(payload: any) {
+1226:   if (await serverBusinessAllowed()) {
+1227:     try {
+1228:       const r = await lib.createPurchase(payload);
+1229:       const inv = String(r || payload.invoiceNumber || '');
+1230:       if (inv) await _localUpsertPurchase({ ...payload, invoiceNumber: inv });
+1231:       try {
+1232:         await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1233:       } catch {}
+1234:       return r;
+1235:     } catch {}
+1236:   }
+1237: 
+1238:   const pInv = await genPurchaseInvoiceNumber();
+1239:   const newPayload = { ...payload, _pendingInvNumber: pInv, invoiceNumber: pInv };
+1240:   await _localUpsertPurchase(newPayload);
+1241:   await enqueue('createPurchase', newPayload);
+1242:   try {
+1243:     await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(pInv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1244:   } catch {}
+1245:   return pInv;
+1246: }
+1247: 
+1248: // ═══════════════════════════════════════════
+1249: //  getPurchasesGrouped — با شماره P-
+1250: // ═══════════════════════════════════════════
+1251: export async function getPurchasesGrouped() {
+1252:   let serverList: any[] = [];
+1253:   // BUSINESS_LOCAL_AND_SHEET_ONLY — خرید فقط محلی + صف
+1254:   serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+1255: 
+1256:   const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
+1257:   if (localPurchaseRows.length) {
+1258:     const groupedFromPurchases = _groupPurchaseRows(localPurchaseRows);
+1259:     const map: Record<string, any> = {};
+1260:     for (const g of serverList) map[String(g.invoice || '')] = g;
+1261:     for (const g of groupedFromPurchases) map[String(g.invoice || '')] = g;
+1262:     serverList = Object.values(map);
+1263:   }
+1264: 
+1265:   const queue = await getQueue();
+1266:   const deletedInvs = new Set<string>();
+1267:   for (const item of queue) {
+1268:     if (item.op === 'deletePurchase') {
+1269:       const inv = String(item.payload || '').trim();
+1270:       if (inv) deletedInvs.add(inv);
+1271:     }
+1272:   }
+1273:   try {
+1274:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1275:     let arr: any[] = [];
+1276:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+1277:     if (Array.isArray(arr)) {
+1278:       for (const t of arr) {
+1279:         if (!t) continue;
+1280:         if (String(t.table || '') !== 'purchases') continue;
+1281:         const k = String(t.key || '').trim();
+1282:         if (k) deletedInvs.add(k);
+1283:       }
+1284:     }
+1285:   } catch {}
+1286: 
+1287:   const pendingByInv: Record<string, any> = {};
+1288:   for (const item of queue) {
+1289:     if (item.op === 'createPurchase') {
+1290:       const p = item.payload;
+1291:       const inv = p._pendingInvNumber || p.invoiceNumber || 'P-PENDING';
+1292:       if (deletedInvs.has(String(inv))) continue;
+1293:       if (!pendingByInv[inv]) {
+1294:         pendingByInv[inv] = {
+1295:           invoice: inv,
+1296:           manual: p.manualInvoice || '',
+1297:           name: p.supplierName,
+1298:           phone: p.supplierPhone,
+1299:           total: 0, paid: 0, items: [],
+1300:           date: new Date(item.ts).toISOString(),
+1301:           _pending: true,
+1302:         };
+1303:       }
+1304:       const items = (p.items && p.items.length) ? p.items : [{ modelName: '—', quantity: 0, priceUnit: 0 }];
+
+─── lib.offline.ts — _localUpsertPurchase (خط 426) ───
+426: async function _localUpsertPurchase(payload: any) {
+427:   try {
+428:     const inv = String(payload.invoiceNumber || payload.invoice_number || payload._pendingInvNumber || '').trim();
+429:     if (!inv) return;
+430:     const items = payload.items || payload.rows || [];
+431:     const old = (await getLocal<any[]>('purchases')) || [];
+432:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+433:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+434:     const rows = items.map((it: any, idx: number) => ({
+435:       invoice_number: inv,
+436:       manual_invoice: payload.manualInvoice || '',
+437:       supplier_code: payload.supplierCode || payload.supplier_code || '',
+438:       supplier_name: payload.supplierName || payload.supplier_name || '',
+439:       supplier_phone: payload.supplierPhone || payload.supplier_phone || '',
+440:       account_holder: payload.payerName || payload.accountHolder || it.accountHolder || it.payerName || '',
+441:       payer_code: payload.payerCode || payload.accountHolderCode || it.accountHolderCode || it.payerCode || '',
+442:       model_code: it.modelCode || it.model_code || '',
+443:       model_name: it.modelName || it.model_name || '',
+444:       quantity: Number(it.quantity) || 0,
+445:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+446:       payment: (() => {
+447:         const rowPay = Number(it.payment) || 0;
+448:         if (rowPay > 0) return rowPay;
+449:         if (idx !== 0) return 0;
+450:         return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+451:       })(),
+452:       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+453:       bank_name: payload.bankAccount || payload.bank || it.bankName || '',
+454:       deposit_date: payload.paymentDate || payload.depositDate || it.depositDate || '',
+455:       shipping: payload.shipping || '',
+456:       date_factor: it.dateFactor || it.date_factor || baseDate,
+457:       date_reg: it.dateReg || it.date_reg || baseDate,
+458:       description: it.description || '',
+459:       _pending: true,
+460:     }));
+461:     await setLocal('purchases', [...filtered, ...rows]);
+462:   } catch {}
+463: }
+464: 
+465: export async function createSale(payload: any) {
+466:   await _localUpsertSale(payload);
+467:   if (await serverBusinessAllowed()) {
+468:     try {
+469:       const r = await lib.createSale(payload);
+470:         try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+471:       return r;
+472:     }
+473:     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+474:   }
+475:   await enqueue('createSale', payload);
+476:   try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+477:   return payload.invoiceNumber;
+478: }
+479: async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+480:   const inv = String(invoiceNumber || '').trim();
+481:   if (!inv) return false;
+482:   const key = type === 'sales' ? 'sales_returns' : 'purchase_returns';
+483:   const local = (await getLocal<any[]>(key)) || [];
+484:   const q = await getQueue();
+485: 
+486:   const deletedIds = new Set<string>();
+487:   for (const item of q) {
+488:     if (type === 'sales' && item.op === 'deleteSalesReturn') {
+489:       const id = String(item.payload || '').trim();
+490:       if (id) deletedIds.add(id);
+491:     }
+492:     if (type === 'purchase' && item.op === 'deletePurchaseReturn') {
+493:       const id = String(item.payload || '').trim();
+494:       if (id) deletedIds.add(id);
+495:     }
+496:   }
+497:   try {
+498:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+499:     let arr: any[] = [];
+500:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+501:     if (Array.isArray(arr)) {
+502:       for (const t of arr) {
+503:         if (!t) continue;
+504:         if (type === 'sales' && String(t.table || '') !== 'sales_returns') continue;
+505:         if (type === 'purchase' && String(t.table || '') !== 'purchase_returns') continue;
+
+══════════ ۲) getPurchasesGrouped و getSalesGrouped ══════════
+
+─── lib.offline.ts — getPurchasesGrouped (خط 1251) ───
+1251: export async function getPurchasesGrouped() {
+1252:   let serverList: any[] = [];
+1253:   // BUSINESS_LOCAL_AND_SHEET_ONLY — خرید فقط محلی + صف
+1254:   serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+1255: 
+1256:   const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
+1257:   if (localPurchaseRows.length) {
+1258:     const groupedFromPurchases = _groupPurchaseRows(localPurchaseRows);
+1259:     const map: Record<string, any> = {};
+1260:     for (const g of serverList) map[String(g.invoice || '')] = g;
+1261:     for (const g of groupedFromPurchases) map[String(g.invoice || '')] = g;
+1262:     serverList = Object.values(map);
+1263:   }
+1264: 
+1265:   const queue = await getQueue();
+1266:   const deletedInvs = new Set<string>();
+1267:   for (const item of queue) {
+1268:     if (item.op === 'deletePurchase') {
+1269:       const inv = String(item.payload || '').trim();
+1270:       if (inv) deletedInvs.add(inv);
+1271:     }
+1272:   }
+1273:   try {
+1274:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1275:     let arr: any[] = [];
+1276:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+1277:     if (Array.isArray(arr)) {
+1278:       for (const t of arr) {
+1279:         if (!t) continue;
+1280:         if (String(t.table || '') !== 'purchases') continue;
+1281:         const k = String(t.key || '').trim();
+1282:         if (k) deletedInvs.add(k);
+1283:       }
+1284:     }
+1285:   } catch {}
+1286: 
+1287:   const pendingByInv: Record<string, any> = {};
+1288:   for (const item of queue) {
+1289:     if (item.op === 'createPurchase') {
+1290:       const p = item.payload;
+1291:       const inv = p._pendingInvNumber || p.invoiceNumber || 'P-PENDING';
+1292:       if (deletedInvs.has(String(inv))) continue;
+1293:       if (!pendingByInv[inv]) {
+1294:         pendingByInv[inv] = {
+1295:           invoice: inv,
+1296:           manual: p.manualInvoice || '',
+1297:           name: p.supplierName,
+1298:           phone: p.supplierPhone,
+1299:           total: 0, paid: 0, items: [],
+1300:           date: new Date(item.ts).toISOString(),
+1301:           _pending: true,
+1302:         };
+1303:       }
+1304:       const items = (p.items && p.items.length) ? p.items : [{ modelName: '—', quantity: 0, priceUnit: 0 }];
+1305:       for (const it of items) {
+1306:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+1307:         pendingByInv[inv].items.push(it);
+1308:       }
+1309:       pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
+1310:     }
+1311:   }
+1312: 
+1313:   const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+1314:   const finalMap: Record<string, any> = {};
+1315:   for (const g of cleanedServer) {
+1316:     const k = String(g.invoice || '');
+1317:     if (k) finalMap[k] = g;
+1318:   }
+1319:   for (const g of Object.values(pendingByInv)) {
+1320:     const k = String((g as any).invoice || '');
+1321:     if (k) finalMap[k] = g;
+1322:   }
+1323:   return Object.values(finalMap);
+1324: }
+1325: 
+1326: // ═══════════════════════════════════════════
+1327: //  getInvoiceDetail — از صف یا سرور
+1328: // ═══════════════════════════════════════════
+1329: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+1330:   // ۱. صف آفلاین
+1331:   const queue = await getQueue();
+1332:   for (const item of queue) {
+1333:     if (item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber) {
+1334:       const p = item.payload;
+1335:       return (p.items || []).map((it: any, idx: number) => ({
+1336:         id: 'queued_' + idx,
+1337:         invoice_number: p.invoiceNumber,
+1338:         customer_code: p.customerCode,
+1339:         customer_name: p.customerName,
+1340:         customer_phone: p.customerPhone,
+1341:         customer_address: p.customerAddress,
+1342:         receiver_name: p.receiverName || '',
+1343:         receiver_code: p.receiverCode || '',
+1344:         receiver_bank: p.receiverBank || '',
+1345:         receiver_account: p.receiverAccount || '',
+1346:         shipping: p.shipping,
+1347:         model_code: it.modelCode,
+1348:         model_name: it.modelName,
+1349:         shelf: it.shelf || '',
+1350:         quantity: it.quantity,
+1351:         price_unit: it.priceUnit,
+1352:         payment: (() => {
+1353:           const rowPay = Number(it.payment) || 0;
+1354:           if (rowPay > 0) return rowPay;
+1355:           if (idx !== 0) return 0;
+1356:           return Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+1357:         })(),
+1358:         deposit_date: idx === 0 ? (p.payDate || p.depositDate || p.paymentDate || it.depositDate || '') : '',
+1359:         bank_name: idx === 0 ? (p.receiverBank || p.bankName || p.bank || it.bankName || '') : '',
+1360:         account_holder: idx === 0 ? (p.receiverName || p.holderName || p.accountHolder || it.accountHolder || '') : '',
+1361:         account_holder_code: idx === 0 ? (p.receiverCode || p.holderCode || p.accountHolderCode || it.accountHolderCode || '') : '',
+1362:         description: idx === 0 ? (p.note || it.description || '') : (it.description || ''),
+1363:         date_factor: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 10).replace(/-/g, '/'),
+1364:         date_reg: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+1365:         _pending: true,
+1366:       }));
+1367:     }
+1368:     if (item.op === 'createPurchase') {
+1369:       const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+1370:       if (pInv === invoiceNumber) {
+
+─── lib.offline.ts — getSalesGrouped (خط 1089) ───
+1089: export async function getSalesGrouped() {
+1090:   let serverList: any[] = [];
+1091:   // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
+1092:   serverList = (await getLocal<any[]>('sales_grouped')) || [];
+1093: 
+1094:   // ادغام فروش‌های محلی که هنوز گروه‌بندی نشده‌اند
+1095:   const localSalesRows = (await getLocal<any[]>('sales')) || [];
+1096:   if (localSalesRows.length) {
+1097:     const groupedFromSales = _groupSalesRows(localSalesRows);
+1098:     const map: Record<string, any> = {};
+1099:     for (const g of serverList) map[String(g.invoice || '')] = g;
+1100:     for (const g of groupedFromSales) map[String(g.invoice || '')] = g;
+1101:     serverList = Object.values(map);
+1102:   }
+1103: 
+1104:   const queue = await getQueue();
+1105:   const deletedInvs = new Set<string>();
+1106:   for (const item of queue) {
+1107:     if (item.op === 'deleteSale') {
+1108:       const inv = String(item.payload || '').trim();
+1109:       if (inv) deletedInvs.add(inv);
+1110:     }
+1111:   }
+1112:   try {
+1113:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1114:     let arr: any[] = [];
+1115:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+1116:     if (Array.isArray(arr)) {
+1117:       for (const t of arr) {
+1118:         if (!t) continue;
+1119:         if (String(t.table || '') !== 'sales') continue;
+1120:         const k = String(t.key || '').trim();
+1121:         if (k) deletedInvs.add(k);
+1122:       }
+1123:     }
+1124:   } catch {}
+1125: 
+1126:   const pendingByInv: Record<string, any> = {};
+1127:   for (const item of queue) {
+1128:     if (item.op === 'createSale') {
+1129:       const p = item.payload;
+1130:       const inv = p.invoiceNumber;
+1131:       if (deletedInvs.has(String(inv))) continue;
+1132:       if (!pendingByInv[inv]) {
+1133:         pendingByInv[inv] = {
+1134:           invoice: inv, name: p.customerName, phone: p.customerPhone,
+1135:           total: 0, paid: 0, items: [],
+1136:           date: new Date(item.ts).toISOString(),
+1137:           _pending: true,
+1138:         };
+1139:       }
+1140:       for (const it of p.items || []) {
+1141:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+1142:         pendingByInv[inv].paid += Number(it.payment) || 0;
+1143:         pendingByInv[inv].items.push(it);
+1144:       }
+1145:       if (!pendingByInv[inv].paid) {
+1146:         pendingByInv[inv].paid = Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+1147:       }
+1148:     }
+1149:   }
+1150: 
+1151:   const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+1152:   const finalMap: Record<string, any> = {};
+1153:   for (const g of cleanedServer) {
+1154:     const k = String(g.invoice || '');
+1155:     if (k) finalMap[k] = g;
+1156:   }
+1157:   for (const g of Object.values(pendingByInv)) {
+1158:     const k = String((g as any).invoice || '');
+1159:     if (k) finalMap[k] = g;
+1160:   }
+1161:   return Object.values(finalMap);
+1162: }
+1163: 
+1164: // ═══════════════════════════════════════════
+1165: //  getPurchasesGrouped — با ادغام صف
+1166: // ═══════════════════════════════════════════
+1167: 
+1168: // ═══════════════════════════════════════════
+1169: //  searchAllInvoices — با ادغام صف آفلاین
+1170: // ═══════════════════════════════════════════
+1171: export async function searchAllInvoices(q: string) {
+1172:   const [sales, purchases] = await Promise.all([
+1173:     getSalesGrouped(),
+1174:     getPurchasesGrouped(),
+1175:   ]);
+1176:   const query = (q || '').toLowerCase().trim();
+1177:   const filt = (arr: any[], type: string) =>
+1178:     arr.map((r) => ({ ...r, type, sheetType: type }))
+1179:       .filter((r) => !query ||
+1180:         (String(r.invoice) + ' ' + String(r.name || '') + ' ' + String(r.phone || '')).toLowerCase().includes(query));
+1181:   return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
+1182: }
+1183: 
+1184: // ═══════════════════════════════════════════
+1185: //  getInvoiceDetail — از صف یا سرور
+1186: // ═══════════════════════════════════════════
+1187: 
+1188: // ═══════════════════════════════════════════
+1189: //  deleteSale — اگه توی صف بود، از صف حذف کن
+1190: // ═══════════════════════════════════════════
+1191: 
+1192: 
+1193: // ═══════════════════════════════════════════
+1194: //  updateInvoiceInQueue — ویرایش فاکتور آفلاین
+1195: // ═══════════════════════════════════════════
+1196: 
+1197: // ═══════════════════════════════════════════
+1198: //  شماره فاکتور خرید آفلاین با P-
+1199: // ═══════════════════════════════════════════
+1200: async function genPurchaseInvoiceNumber() {
+1201:   const today = new Date();
+1202:   const ds = String(today.getFullYear()).slice(-2)
+1203:     + String(today.getMonth() + 1).padStart(2, '0')
+1204:     + String(today.getDate()).padStart(2, '0');
+1205:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+1206:   const queue = await getQueue();
+1207:   let maxN = 1000;
+1208:   for (const g of grouped) {
+
+══════════ ۳) syncBridgeTables و bridgeUpsertTable ══════════
+
+─── lib.sheets.ts — syncBridgeTables (خط 388) ───
+388: export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+389:   const cfg = await getBridgeConfig();
+390:   if (!cfg.url || !cfg.key) throw new Error('واسط امن تنظیم نشده است');
+391: 
+392:   const rawDirty = await AsyncStorage.getItem('@mizan_dirty_tables');
+393:   const hasDirtyKey = rawDirty !== null;
+394:   let dirty: string[] = [];
+395:   if (hasDirtyKey) { try { dirty = JSON.parse(rawDirty as string); } catch { dirty = []; } }
+396:   if (!Array.isArray(dirty)) dirty = [];
+397: 
+398:   const always = ['_deleted', '_audit'];
+399:   let tablesToSync: { tab: string; keys: string[] }[] = [];
+400:   if (!hasDirtyKey) {
+401:     tablesToSync = TAB_TASKS;
+402:   } else {
+403:     const set = new Set([...dirty.map(String), ...always]);
+404:     tablesToSync = TAB_TASKS.filter(t => set.has(t.tab));
+405:   }
+406: 
+407:   if (!tablesToSync.length) return [];
+408: 
+409:   const allKeys = await getAllMizanKeys();
+410:   const total = tablesToSync.length;
+411:   let done = 0;
+412:   const results: any[] = [];
+413: 
+414:   for (const t of tablesToSync) {
+415:     const rows: any[] = [];
+416:     for (const key of t.keys) {
+417:       if (key.endsWith('_')) {
+418:         for (const k of allKeys) {
+419:           if (k.startsWith(key)) {
+420:             const v = await AsyncStorage.getItem(k);
+421:             if (v) {
+422:               try {
+423:                 const arr = JSON.parse(v);
+424:                 if (Array.isArray(arr)) rows.push(...arr);
+425:               } catch {}
+426:             }
+427:           }
+428:         }
+429:       } else {
+430:         const v = await AsyncStorage.getItem(key);
+431:         if (v) {
+432:           try {
+433:             const arr = JSON.parse(v);
+434:             if (Array.isArray(arr)) rows.push(...arr);
+435:             else if (arr && typeof arr === 'object') rows.push(arr);
+436:           } catch {}
+437:         }
+438:       }
+439:     }
+440:     try {
+441:       const useSave = (t.tab === '_deleted' || t.tab === '_audit');
+442:       if (useSave) {
+443:         await bridgeSaveTable(t.tab, rows);
+444:       } else {
+445:         let finalRows = rows;
+446:         if (t.tab === 'sales' && (!finalRows || finalRows.length === 0)) {
+447:           try { finalRows = await getSalesGrouped(); } catch {}
+448:         }
+449:         if (t.tab === 'purchases' && (!finalRows || finalRows.length === 0)) {
+450:           try { finalRows = await getPurchasesGrouped(); } catch {}
+451:         }
+452:         await bridgeUpsertTable(t.tab, finalRows);
+453:       }
+454:       results.push({ tab: t.tab, ok: true, rows: rows.length });
+455:     } catch (e: any) {
+456:       results.push({ tab: t.tab, ok: false, error: e?.message || String(e) });
+457:     }
+458:     done++;
+459:     if (onProgress) onProgress(done, total, t.tab);
+460:   }
+461: 
+462:   const successful = results.filter(r => r.ok).map(r => r.tab);
+463:   if (!hasDirtyKey) {
+464:     const failed = tablesToSync.filter(t => !successful.includes(t.tab)).map(t => t.tab);
+465:     await setDirtyTables(failed);
+466:   } else if (successful.length) {
+467:     await removeDirtyTables(successful);
+468:   }
+469: 
+470:   return results;
+471: }
+472: 
+473: export async function syncByDestination(onProgress?: (done: number, total: number) => void) {
+474:   const dest = await getSyncDestination();
+475:   const cfg = await getBridgeConfig();
+476:   const useBridge = !!(cfg.url && cfg.key);
+477: 
+478:   if (dest === 'private') {
+479:     // ابتدا صف غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+480:     // تجاری داخل syncToServer حذف می‌شود و به Supabase نمی‌رود.
+481:     const serverRes = await syncToServer(onProgress);
+482: 
+483:     if (!useBridge) {
+484:       if (Platform.OS !== 'web') {
+485:         throw new Error('برای سینک در گوشی، ابتدا واسط امن را تنظیم کنید');
+486:       }
+487:       await pullPrivateTables((d, t) => onProgress?.(d, t));
+488:       const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+489:       const ok = rows.filter(r => r.ok).length;
+490:       return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+491:     }
+492:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+493:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+494:     const ok = rows.filter(r => r.ok).length;
+495:     return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+496:   }
+497: 
+498:   if (dest === 'server') {
+499:     // بخش غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+500:     const serverRes = await syncToServer(onProgress);
+501: 
+502:     // بخش تجاری حتی با مقصد سرور، فقط به Google Sheets می‌رود.
+503:     if (!useBridge) {
+504:       if (Platform.OS !== 'web') {
+505:         return serverRes;
+506:       }
+507:       await pullPrivateTables((d, t) => onProgress?.(d, t));
+
+─── lib.sheets.ts — bridgeUpsertTable (خط 196) ───
+196: export async function bridgeUpsertTable(table: string, rows: any[]) {
+197:   const cfg = await getBridgeConfig();
+198:   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
+199:   if (!cfg.key) throw new Error('کلید امن واسط وارد نشده است');
+200:   const res = await fetch(cfg.url, {
+201:     method: 'POST',
+202:     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+203:     body: JSON.stringify({ action: 'upsert', key: cfg.key, table: table, rows: rows || [] }),
+204:   });
+205:   const txt = await res.text();
+206:   let data: any = null;
+207:   try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
+208:   if (!res.ok) throw new Error('خطای واسط: ' + (data?.error || res.status));
+209:   if (!data || data.ok !== true) throw new Error('پاسخ نامعتبر: ' + (data?.error || txt.slice(0, 120)));
+210:   return data;
+211: }
+212: 
+213: export async function bridgeSaveAll() {
+214:   const cfg = await getBridgeConfig();
+215:   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
+216:   if (!cfg.key) throw new Error('کلید امن واسط وارد نشده است');
+217:   const allKeys = await getAllMizanKeys();
+218:   const summary: any[] = [];
+219:   for (const t of TAB_TASKS) {
+220:     const rows: any[] = [];
+221:     for (const key of t.keys) {
+222:       if (key.endsWith('_')) {
+223:         for (const k of allKeys) {
+224:           if (k.startsWith(key)) {
+225:             const v = await AsyncStorage.getItem(k);
+226:             if (v) {
+227:               try {
+228:                 const arr = JSON.parse(v);
+229:                 if (Array.isArray(arr)) rows.push(...arr);
+230:               } catch {}
+231:             }
+232:           }
+233:         }
+234:       } else {
+235:         const v = await AsyncStorage.getItem(key);
+236:         if (v) {
+237:           try {
+238:             const arr = JSON.parse(v);
+239:             if (Array.isArray(arr)) rows.push(...arr);
+240:             else if (arr && typeof arr === 'object') rows.push(arr);
+241:           } catch {}
+242:         }
+243:       }
+244:     }
+245:     await bridgeSaveTable(t.tab, rows);
+246:     summary.push({ tab: t.tab, rows: rows.length });
+247:   }
+248:   return { ok: true, summary };
+249: }
+250: 
+251: async function getToken() {
+252:   const { data } = await supabase.auth.getSession();
+253:   return data.session?.access_token || '';
+254: }
+255: 
+
+─── lib.sheets.ts — bridgeSaveTable (خط 179) ───
+179: export async function bridgeSaveTable(table: string, rows: any[]) {
+180:   const cfg = await getBridgeConfig();
+181:   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
+182:   if (!cfg.key) throw new Error('کلید امن واسط وارد نشده است');
+183:   const res = await fetch(cfg.url, {
+184:     method: 'POST',
+185:     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+186:     body: JSON.stringify({ action: 'save', key: cfg.key, table: table, rows: rows || [] }),
+187:   });
+188:   const txt = await res.text();
+189:   let data: any = null;
+190:   try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
+191:   if (!res.ok) throw new Error('خطای واسط: ' + (data?.error || res.status));
+192:   if (!data || data.ok !== true) throw new Error('پاسخ نامعتبر: ' + (data?.error || txt.slice(0, 120)));
+193:   return data;
+194: }
+195: 
+196: export async function bridgeUpsertTable(table: string, rows: any[]) {
+197:   const cfg = await getBridgeConfig();
+198:   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
+199:   if (!cfg.key) throw new Error('کلید امن واسط وارد نشده است');
+200:   const res = await fetch(cfg.url, {
+201:     method: 'POST',
+202:     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+203:     body: JSON.stringify({ action: 'upsert', key: cfg.key, table: table, rows: rows || [] }),
+204:   });
+205:   const txt = await res.text();
+206:   let data: any = null;
+207:   try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
+208:   if (!res.ok) throw new Error('خطای واسط: ' + (data?.error || res.status));
+209:   if (!data || data.ok !== true) throw new Error('پاسخ نامعتبر: ' + (data?.error || txt.slice(0, 120)));
+210:   return data;
+211: }
+212: 
+213: export async function bridgeSaveAll() {
+214:   const cfg = await getBridgeConfig();
+215:   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
+216:   if (!cfg.key) throw new Error('کلید امن واسط وارد نشده است');
+217:   const allKeys = await getAllMizanKeys();
+218:   const summary: any[] = [];
+219:   for (const t of TAB_TASKS) {
+220:     const rows: any[] = [];
+221:     for (const key of t.keys) {
+222:       if (key.endsWith('_')) {
+223:         for (const k of allKeys) {
+224:           if (k.startsWith(key)) {
+225:             const v = await AsyncStorage.getItem(k);
+226:             if (v) {
+227:               try {
+228:                 const arr = JSON.parse(v);
+229:                 if (Array.isArray(arr)) rows.push(...arr);
+230:               } catch {}
+231:             }
+232:           }
+233:         }
+234:       } else {
+235:         const v = await AsyncStorage.getItem(key);
+236:         if (v) {
+237:           try {
+238:             const arr = JSON.parse(v);
+
+══════════ ۴) PULL_TABLES و TAB_TASKS ══════════
+
+─── lib.sheets.ts — PULL_TABLES (خط 556) ───
+556: const PULL_TABLES = [
+557:   '_deleted','_audit','sales','purchases',
+558:   'expenses','employees','salary_payments','employee_loans','attendance',
+559:   'employee_leaves','payroll_batches','parties','partners','partner_transactions',
+560:   'partner_bank_accounts','products','settings','banks','shippings','stock_adjustments',
+561:   'fx_hawalas','fx_boxes','fx_transfers','fx_checks','fx_customers','fx_partners',
+562: ];
+563: 
+564: const PULL_LOCAL_KEYS: Record<string, string> = {
+565:   expenses: '@mizan_local_expenses',
+566:   employees: '@mizan_local_employees',
+567:   salary_payments: '@mizan_local_salary_payments',
+568:   employee_loans: '@mizan_local_employee_loans',
+569:   attendance: '@mizan_local_attendance',
+570:   employee_leaves: '@mizan_local_employee_leaves',
+571:   payroll_batches: '@mizan_local_payroll_batches',
+572:   parties: '@mizan_local_parties',
+573:   partners: '@mizan_local_partners',
+574:   products: '@mizan_local_products',
+575:   sales_returns: '@mizan_local_sales_returns',
+576:   purchase_returns: '@mizan_local_purchase_returns',
+577:   settings: '@mizan_local_settings',
+578:   banks: '@mizan_local_banks',
+579:   shippings: '@mizan_local_shippings',
+580:   stock_adjustments: '@mizan_local_stock_adjustments',
+581:   fx_hawalas: '@mizan_local_fx_hawalas',
+582:   fx_boxes: '@mizan_local_fx_boxes',
+583:   fx_transfers: '@mizan_local_fx_transfers',
+584:   fx_checks: '@mizan_local_fx_checks',
+585:   fx_customers: '@mizan_local_fx_customers',
+586:   fx_partners: '@mizan_local_fx_partners',
+587: };
+588: 
+589: function keyOfRow(r: any): string {
+590:   return String(r?.local_id || r?.id || r?.code || r?.name || '');
+591: }
+592: 
+593: function tsOf(v: any): number {
+594:   const t = Date.parse(String(v || ''));
+595:   return isNaN(t) ? 0 : t;
+⚠️ lib.sheets.ts: TAB_TASKS پیدا نشد
+
+══════════ ۵) فرم خرید در App.tsx ══════════
+
+─── App.tsx — confirmSubmit (خط 2781) ───
+2781:   const confirmSubmit = async (mode: string) => {
+2782:     if (!pendingConfirm) return;
+2783:     const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2 } = pendingConfirm;
+2784:     setPendingConfirm(null);
+2785:     setSaving(true);
+2786:     try {
+2787:       let customerCode = '';
+2788:       const found = await lookupCustomerByPhone(p);
+2789:       if (found?.customer_code && /^M_\d+$/.test(found.customer_code)) customerCode = found.customer_code;
+2790:       else customerCode = await generateCustomerCode();
+2791:       const inv = await generateInvoiceNumber();
+2792: 
+2793:       let finalItems = valid;
+2794:       if (mode === 'payment') {
+2795:         finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: n2, shelf: '' }];
+2796:       }
+2797: 
+2798:       await createSale({
+2799:         invoiceNumber: inv, customerCode, customerName: n, customerPhone: p,
+2800:         customerAddress: address, shipping, items: finalItems,
+2801:         paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+2802:         receiverName, receiverCode, receiverBank, receiverAccount
+2803:       });
+2804: 
+2805:       // ═══ اگر دریافت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+2806:       try {
+2807:         const partner = await findPartnerByNameOrCode(receiverName || receiverCode);
+2808:         if (partner && payAmt > 0) {
+2809:           const cur = (typeof getCurrencySync === 'function' ? ((getCurrencySync() as any).code || 'AFN') : 'AFN');
+2810:           await createPartnerAutoTx({
+2811:             partner_code: partner.code,
+2812:             partner_name: partner.name,
+2813:             type: 'deposit',
+2814:             amount: payAmt,
+2815:             currency: cur,
+2816:             account_type: 'current',
+2817:             counterpart_type: 'customer',
+2818:             counterpart_code: customerCode,
+2819:             source_type: 'sales',
+2820:             source_id: inv,
+2821:             transaction_date: invoiceDate || new Date().toISOString(),
+2822:             note: 'فروش به ' + n + ' - فاکتور ' + inv,
+2823:             bank_account_local_id: '',
+2824:           });
+2825:           console.log('[partner auto] sales deposit ثبت شد:', partner.name, payAmt);
+2826:         }
+2827:       } catch (e) { console.log('[partner auto sales]', e); }
+2828: 
+2829:       await new Promise(r => setTimeout(r, 100));
+2830:       const rows = await getInvoiceDetail(inv, 'sales');
+2831:       if (rows.length > 0) {
+2832:         const r = rows[0];
+2833:         const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, shelf: x.shelf, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
+2834:         const tot = its.reduce((a: number, it: any) => a + it.total, 0);
+2835:         const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+2836:         const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
+2837:         setInvoice({
+2838:           customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+2839:           current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+2840:           previous: prev,
+2841:           totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
+2842:           timeString: displayDate(r.date_reg),
+2843:         });
+2844:         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
+2845:         setView('invoice');
+2846:       } else {
+2847:         alertMsg('✅ موفق', 'فاکتور فروش ثبت شد:\n' + inv);
+2848:         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+2849:       }
+2850:     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+2851:     finally { setSaving(false); }
+2852:   };;
+2853: 
+2854: 
+2855: 
+2856:   const remove = async (inv: string) => {
+2857: 
+2858:     const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
+2859: 
+2860:     if (!ok) return;
+2861: 
+2862:     setHiddenSales([...hiddenSales, inv]);
+2863: 
+2864:     showToast('✅ از لیست پنهان شد');
+2865: 
+2866:   };
+2867: 
+2868: 
+2869: 
+2870:   const doReprint = async () => {
+2871: 
+2872:     if (!reprintInv.trim()) return showToast('شماره فاکتور را وارد کن', true);
+2873: 
+2874:     try {
+2875: 
+2876:       const rows = await getInvoiceDetail(reprintInv.trim());
+2877: 
+2878:       if (!rows.length) return showToast('فاکتور پیدا نشد', true);
+2879: 
+2880:       const r = rows[0];
+2881: 
+2882:       const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
+2883: 
+2884:       const total = its.reduce((a: number, it: any) => a + it.total, 0);
+2885: 
+2886:       const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+2887: 
+2888:       setInvoice({
+2889: 
+2890:         customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+2891: 
+2892:         current: { invoiceNumber: r.invoice_number, items: its, sales: total, payments: paid, balance: total - paid },
+2893: 
+2894:         previous: { sales: 0, payments: 0, balance: 0, invoiceCount: 0 },
+2895: 
+2896:         totals: { sales: total, payments: paid, balance: total - paid },
+2897: 
+2898:         timeString: displayDate(r.date_reg),
+2899: 
+2900:       });
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

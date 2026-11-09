@@ -1,0 +1,862 @@
+══════════ ۱) getInventory و computeLocalInventory ══════════
+
+─── lib.offline.ts — getInventory (خط 814) ───
+814: export async function getInventory() {
+815:   // BUSINESS_LOCAL_AND_SHEET_ONLY — انبار فقط محلی + صف
+816:   try {
+817:     return await computeLocalInventory();
+818:   } catch (e) {
+819:     console.log('[getInventory] error:', e);
+820:     return { list: [], stats: {}, threshold: 5 };
+821:   }
+822: }
+823: export async function getDashboardStats(r, f) {
+824:   // BUSINESS_LOCAL_AND_SHEET_ONLY — داشبورد فقط از داده محلی محاسبه می‌شود.
+825:   try {
+826:     return await computeLocalDashboardStats(r, f);
+827:   } catch (e) {
+828:     console.log("[getDashboardStats] local error:", e);
+829:     var cached = await getLocal("stats_" + r + "_" + f);
+830:     if (cached) return cached;
+831:     return { totalSales: 0, totalPurchases: 0, customerPaid: 0, customerDebt: 0, supplierPaid: 0, supplierDebt: 0, profit: 0, models: [], estimatedCount: 0, defaultMargin: 0.1, rangeLabel: r };
+832:   }
+833: }
+834: 
+835: // ═══════════════════════════════════════════
+836: //  wrappers اضافی — اینا رو هم کش کن
+837: // ═══════════════════════════════════════════
+838: 
+839: export async function getUnpaidInvoices() {
+840:   try {
+841:     var grouped = await getSalesGrouped();
+842:     var unpaid = grouped.filter(function(g) { return (g.paid || 0) === 0; });
+843:     await setLocal("unpaid_invoices", unpaid);
+844:     return unpaid;
+845:   } catch (e) {
+846:     console.log("[getUnpaidInvoices] err:", e);
+847:     return (await getLocal("unpaid_invoices")) || [];
+848:   }
+849: }
+850: 
+851: 
+852: 
+853: 
+
+─── lib.offline.ts — computeLocalInventory (خط 566) ───
+566: async function computeLocalInventory() {
+567:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+568:     getLocal<any[]>('products'),
+569:     getLocal<any[]>('sales'),
+570:     getLocal<any[]>('purchases'),
+571:     getLocal<any>('settings'),
+572:     getLocal<any[]>('stock_adjustments'),
+573:   ]);
+574:   const products = productsRaw || [];
+575:   let sales = salesRaw || [];
+576:   let purchases = purchasesRaw || [];
+577:   const settings = (settingsRaw as any) || {};
+578:   const threshold = settings.inventory_threshold ?? 5;
+579:   const adjAll = (adjRaw || []).slice();
+580:   const q = await getQueue();
+581:   
+582:   // --- Merge Deletions (حذف‌های آفلاین) ---
+583:   for (const item of q) {
+584:     if (item.op === 'deleteSale') {
+585:       sales = sales.filter((s: any) => s.invoice_number !== item.payload);
+586:     }
+587:     if (item.op === 'deletePurchase') {
+588:       purchases = purchases.filter((p: any) => p.invoice_number !== item.payload);
+589:     }
+590:   }
+591: 
+592:   // --- Merge Updates (ویرایش‌های آفلاین فاکتورهای سینک‌شده) ---
+593:   for (const item of q) {
+594:     if (item.op === 'updateSale' && item.payload) {
+595:       const inv = item.payload.invoiceNumber;
+596:       const oldRows = sales.filter((s: any) => s.invoice_number === inv);
+597:       if (oldRows.length > 0) {
+598:         const template = oldRows[0];
+599:         sales = sales.filter((s: any) => s.invoice_number !== inv);
+600:         for (const r of item.payload.rows) {
+601:           sales.push({
+602:             ...template,
+603:             model_code: r.modelCode || '',
+604:             model_name: r.modelName || '',
+605:             quantity: Number(r.quantity) || 0,
+606:             price_unit: Number(r.priceUnit) || 0,
+607:             payment: Number(r.payment) || 0,
+608:             total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+609:             description: r.description || '',
+610:             date_factor: r.dateFactor || template.date_factor,
+611:             date_reg: r.dateReg || template.date_reg
+612:           });
+613:         }
+614:       }
+615:     }
+616:     if (item.op === 'updatePurchase' && item.payload) {
+617:       const inv = item.payload.invoiceNumber;
+618:       const oldRows = purchases.filter((p: any) => p.invoice_number === inv);
+619:       if (oldRows.length > 0) {
+620:         const template = oldRows[0];
+621:         purchases = purchases.filter((p: any) => p.invoice_number !== inv);
+622:         for (const r of item.payload.rows) {
+623:           purchases.push({
+624:             ...template,
+625:             model_code: r.modelCode || '',
+626:             model_name: r.modelName || '',
+627:             quantity: Number(r.quantity) || 0,
+628:             price_unit: Number(r.priceUnit) || 0,
+629:             payment: Number(r.payment) || 0,
+630:             total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+631:             description: r.description || '',
+632:             date_factor: r.dateFactor || template.date_factor,
+633:             date_reg: r.dateReg || template.date_reg
+634:           });
+635:         }
+636:       }
+637:     }
+638:   }
+639: 
+640:   // --- Merge Creates (فاکتورهای آفلاین جدید) ---
+641:   for (const item of q) {
+642:     if (item.op === 'createSale' && item.payload) {
+643:       const rows = item.payload.rows || item.payload.items || [];
+644:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+645:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+646:       if (inv && sales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+647:       for (const r of rows) {
+648:         sales.push({
+649:           customer_code: item.payload.customerCode || item.payload.customer_code || '',
+650:           customer_name: item.payload.customerName || item.payload.customer_name || '',
+651:           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
+652:           model_code: r.model_code || r.modelCode || '',
+653:           model_name: r.model_name || r.modelName || '',
+654:           quantity: Number(r.quantity) || 0,
+655:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+656:           payment: Number(r.payment) || 0,
+657:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+658:           invoice_number: inv,
+659:           date_factor: r.date_factor || r.dateFactor || baseDate,
+660:           date_reg: r.date_reg || r.dateReg || baseDate,
+661:           description: r.description || '',
+662:           _pending: true,
+663:         });
+664:       }
+665:     }
+666:     if (item.op === 'createPurchase' && item.payload) {
+667:       const rows = item.payload.rows || item.payload.items || [];
+668:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+669:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+670:       if (inv && purchases.some((p: any) => String(p.invoice_number || '') === String(inv))) continue;
+671:       for (const r of rows) {
+672:         purchases.push({
+673:           supplier_code: item.payload.supplierCode || item.payload.supplier_code || '',
+674:           supplier_name: item.payload.supplierName || item.payload.supplier_name || '',
+675:           supplier_phone: item.payload.supplierPhone || item.payload.supplier_phone || '',
+676:           account_holder: item.payload.payerName || item.payload.accountHolder || r.accountHolder || r.account_holder || '',
+677:           quantity: Number(r.quantity) || 0,
+678:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+679:           payment: Number(r.payment) || 0,
+680:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+681:           model_code: r.model_code || r.modelCode || '',
+682:           model_name: r.model_name || r.modelName || '',
+683:           invoice_number: inv,
+684:           manual_invoice: item.payload.manualInvoice || '',
+685:           date_factor: r.date_factor || r.dateFactor || baseDate,
+686:           date_reg: r.date_reg || r.dateReg || baseDate,
+687:           bank_name: item.payload.bank || item.payload.bankName || item.payload.bankAccount || item.payload.receiverBank || r.bankName || r.bank_name || '',
+688:           deposit_date: item.payload.depositDate || item.payload.paymentDate || item.payload.payDate || r.depositDate || r.deposit_date || '',
+689:           shipping: item.payload.shipping || r.shipping || '',
+690:           description: r.description || '',
+691:           payer_code: item.payload.payerCode || item.payload.accountHolderCode || r.accountHolderCode || r.account_holder_code || r.payerCode || '',
+692:           _pending: true,
+693:         });
+694:       }
+695:     }
+696:     if (item.op === 'createStockAdjustment' && item.payload) adjAll = adjAll.concat([item.payload]);
+697:   }
+698:   const adjustmentMap: Record<string, number> = {};
+699:   adjAll.forEach(function(r: any) {
+700:     const c = String(r.model_code || '').trim();
+701:     if (!c) return;
+702:     adjustmentMap[c] = (adjustmentMap[c] || 0) + (Number(r.adjustment) || 0);
+703:   });
+704:   const productMap: Record<string, any> = {};
+705:   products.forEach((p: any) => { productMap[p.code] = p; });
+706:   const models: Record<string, any> = {};
+707:   const nowTs = Date.now();
+708:   const _pda = (lib && lib.parseDateAny) ? lib.parseDateAny : function(d: any) { return d ? new Date(d) : null; };
+709:   (purchases || []).forEach((r: any) => {
+710:     const c = String(r.model_code || '').trim();
+711:     if (!c) return;
+712:     if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+713:     const qty = Number(r.quantity) || 0;
+714:     const price = Number(r.price_unit) || 0;
+715:     models[c].bought += qty;
+716:     models[c].boughtValue += qty * price;
+717:     if (r.model_name) models[c].name = r.model_name;
+718:     if (price > 0) models[c].lastPrice = price;
+719:     const d = _pda(r.date_factor || r.date_reg);
+720:     if (d && d.getTime() > models[c].lastPurchaseTime) models[c].lastPurchaseTime = d.getTime();
+721:   });
+722:   (sales || []).forEach((r: any) => {
+723:     const c = String(r.model_code || '').trim();
+724:     if (!c) return;
+725:     if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+726:     const qty = Number(r.quantity) || 0;
+727:     const price = Number(r.price_unit) || 0;
+728:     models[c].sold += qty;
+729:     if (price > 0) models[c].lastSalePrice = price;
+730:     if (r.model_name && !models[c].name) models[c].name = r.model_name;
+731:     const d = _pda(r.date_factor || r.date_reg);
+732:     if (d && d.getTime() > models[c].lastSaleTime) models[c].lastSaleTime = d.getTime();
+733:   });
+734:   // ─── اثر برگشت از فروش: افزایش موجودی ───
+735:   try {
+736:     const salesReturns = await getSalesReturns();
+737:     for (const r of salesReturns || []) {
+738:       for (const it of (r.items || [])) {
+739:         const c = String(it.modelCode || it.model_code || '').trim();
+740:         if (!c) continue;
+741:         if (!models[c]) models[c] = { code: c, name: it.modelName || it.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+742:         const qty = Number(it.returnQty || it.quantity) || 0;
+743:         models[c].sold -= qty;
+744:         if (it.modelName || it.model_name) models[c].name = it.modelName || it.model_name;
+745:       }
+746:     }
+747:   } catch (e) { console.log('[inventory] salesReturns effect fail:', e); }
+748: 
+749:   // ─── اثر برگشت از خرید: کاهش موجودی ───
+750:   try {
+751:     const purchaseReturns = await getPurchaseReturns();
+752:     for (const r of purchaseReturns || []) {
+753:       for (const it of (r.items || [])) {
+754:         const c = String(it.modelCode || it.model_code || '').trim();
+755:         if (!c) continue;
+756:         if (!models[c]) models[c] = { code: c, name: it.modelName || it.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+757:         const qty = Number(it.returnQty || it.quantity) || 0;
+758:         const price = Number(it.priceUnit || it.price_unit) || 0;
+759:         models[c].bought -= qty;
+760:         models[c].boughtValue -= qty * price;
+761:         if (it.modelName || it.model_name) models[c].name = it.modelName || it.model_name;
+762:       }
+763:     }
+764:   } catch (e) { console.log('[inventory] purchaseReturns effect fail:', e); }
+765: 
+766:   products.forEach((p: any) => {
+767:     const code = String(p.code || '').trim();
+768:     if (!code) return;
+769:     if (models[code]) return;
+770:     const adj = adjustmentMap[code] || 0;
+771:     if (adj === 0) return; // کالای بدون خرید/فروش/تعدیل در انبار نمایش داده نشود
+772:     models[code] = { code: code, name: p.name, bought: 0, sold: 0, boughtValue: 0, lastPrice: p.price || 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+773:   });
+774:   const list = Object.values(models).map((m: any) => {
+775:     const adj = adjustmentMap[m.code] || 0;
+776:     const stock = m.bought - m.sold + adj;
+777:     let status = 'ok';
+778:     if (stock < 0) status = 'negative';
+779:     else if (stock === 0) status = 'out';
+780:     else if (stock < threshold) status = 'low';
+781:     const unitCost = m.bought > 0 ? Math.round(m.boughtValue / m.bought) : 0;
+782:     const totalValue = stock * unitCost;
+783:     const potentialRevenue = stock * (m.lastSalePrice || 0);
+784:     const lastPurchaseDate = m.lastPurchaseTime ? new Date(m.lastPurchaseTime) : null;
+785:     const lastSaleDate = m.lastSaleTime ? new Date(m.lastSaleTime) : null;
+786:     const daysSinceLastSale = lastSaleDate ? Math.floor((nowTs - m.lastSaleTime) / 86400000) : null;
+787:     const daysSincePurchase = lastPurchaseDate ? Math.floor((nowTs - m.lastPurchaseTime) / 86400000) : null;
+788:     return { ...m, currentQty: stock, adjustment: adj, shelf: productMap[m.code]?.shelf || '', status, unitCost, totalValue, potentialRevenue, lastPurchaseDate: lastPurchaseDate ? lastPurchaseDate.toISOString() : '', lastSaleDate: lastSaleDate ? lastSaleDate.toISOString() : '', daysSinceLastSale, daysSincePurchase };
+789:   });
+790:   const order: Record<string, number> = { negative: 0, out: 1, low: 2, ok: 3 };
+791:   list.sort((a: any, b: any) => {
+792:     if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+793:     return String(a.name).localeCompare(String(b.name), 'fa');
+794:   });
+795:   const stats = {
+796:     totalModels: list.length,
+797:     totalQty: list.reduce((a: number, m: any) => a + m.currentQty, 0),
+798:     lowStock: list.filter((m: any) => m.status === 'low').length,
+799:     outOfStock: list.filter((m: any) => m.status === 'out').length,
+800:     negative: list.filter((m: any) => m.status === 'negative').length,
+801:     totalValue: list.reduce((a: number, m: any) => a + m.totalValue, 0),
+802:     potentialRevenue: list.reduce((a: number, m: any) => a + m.potentialRevenue, 0),
+803:     topByValue: list.slice().sort((a: any, b: any) => b.totalValue - a.totalValue).slice(0, 5).map((m: any) => ({ code: m.code, name: m.name, value: m.totalValue, qty: m.currentQty })),
+804:     agingBuckets: {
+805:       healthy: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale <= 30).length,
+806:       slow: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale > 30 && m.daysSinceLastSale <= 60).length,
+807:       verySlow: list.filter((m: any) => m.currentQty > 0 && m.daysSinceLastSale !== null && m.daysSinceLastSale > 60 && m.daysSinceLastSale <= 90).length,
+808:       dead: list.filter((m: any) => m.currentQty > 0 && (m.daysSinceLastSale === null || m.daysSinceLastSale > 90)).length,
+809:     },
+810:   };
+811:   return { list, stats, threshold };
+812: }
+813: 
+814: export async function getInventory() {
+815:   // BUSINESS_LOCAL_AND_SHEET_ONLY — انبار فقط محلی + صف
+816:   try {
+817:     return await computeLocalInventory();
+818:   } catch (e) {
+819:     console.log('[getInventory] error:', e);
+820:     return { list: [], stats: {}, threshold: 5 };
+821:   }
+822: }
+823: export async function getDashboardStats(r, f) {
+824:   // BUSINESS_LOCAL_AND_SHEET_ONLY — داشبورد فقط از داده محلی محاسبه می‌شود.
+825:   try {
+
+══════════ ۲) ذخیره فروش و خرید محلی ══════════
+
+─── lib.offline.ts — _localUpsertSale (خط 387) ───
+387: async function _localUpsertSale(payload: any) {
+388:   try {
+389:     const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+390:     if (!inv) return;
+391:     const items = payload.items || payload.rows || [];
+392:     const old = (await getLocal<any[]>('sales')) || [];
+393:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+394:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+395:     const rows = items.map((it: any, idx: number) => ({
+396:       invoice_number: inv,
+397:       manual_invoice: payload.manualInvoice || '',
+398:       customer_code: payload.customerCode || payload.customer_code || '',
+399:       customer_name: payload.customerName || payload.customer_name || '',
+400:       customer_phone: payload.customerPhone || payload.customer_phone || '',
+401:       account_holder: payload.holderName || payload.accountHolder || payload.receiverName || it.accountHolder || it.holderName || '',
+402:       account_holder_code: payload.holderCode || payload.accountHolderCode || payload.receiverCode || it.accountHolderCode || it.holderCode || '',
+403:       model_code: it.modelCode || it.model_code || '',
+404:       model_name: it.modelName || it.model_name || '',
+405:       quantity: Number(it.quantity) || 0,
+406:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+407:       payment: (() => {
+408:         const rowPay = Number(it.payment) || 0;
+409:         if (rowPay > 0) return rowPay;
+410:         if (idx !== 0) return 0;
+411:         return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+412:       })(),
+413:       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+414:       bank_name: payload.bank || payload.bankName || payload.receiverBank || it.bankName || '',
+415:       deposit_date: payload.depositDate || payload.payDate || payload.paymentDate || it.depositDate || '',
+416:       shipping: payload.shipping || '',
+417:       date_factor: it.dateFactor || it.date_factor || baseDate,
+418:       date_reg: it.dateReg || it.date_reg || baseDate,
+419:       description: it.description || '',
+420:       _pending: true,
+421:     }));
+422:     await setLocal('sales', [...filtered, ...rows]);
+423:   } catch {}
+424: }
+425: 
+426: async function _localUpsertPurchase(payload: any) {
+427:   try {
+428:     const inv = String(payload.invoiceNumber || payload.invoice_number || payload._pendingInvNumber || '').trim();
+429:     if (!inv) return;
+430:     const items = payload.items || payload.rows || [];
+431:     const old = (await getLocal<any[]>('purchases')) || [];
+432:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+433:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+434:     const rows = items.map((it: any, idx: number) => ({
+435:       invoice_number: inv,
+436:       manual_invoice: payload.manualInvoice || '',
+437:       supplier_code: payload.supplierCode || payload.supplier_code || '',
+438:       supplier_name: payload.supplierName || payload.supplier_name || '',
+439:       supplier_phone: payload.supplierPhone || payload.supplier_phone || '',
+440:       account_holder: payload.payerName || payload.accountHolder || it.accountHolder || it.payerName || '',
+441:       payer_code: payload.payerCode || payload.accountHolderCode || it.accountHolderCode || it.payerCode || '',
+442:       model_code: it.modelCode || it.model_code || '',
+443:       model_name: it.modelName || it.model_name || '',
+444:       quantity: Number(it.quantity) || 0,
+445:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+446:       payment: (() => {
+447:         const rowPay = Number(it.payment) || 0;
+448:         if (rowPay > 0) return rowPay;
+449:         if (idx !== 0) return 0;
+450:         return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+451:       })(),
+452:       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+453:       bank_name: payload.bankAccount || payload.bank || it.bankName || '',
+454:       deposit_date: payload.paymentDate || payload.depositDate || it.depositDate || '',
+455:       shipping: payload.shipping || '',
+456:       date_factor: it.dateFactor || it.date_factor || baseDate,
+
+─── lib.offline.ts — _localUpsertPurchase (خط 426) ───
+426: async function _localUpsertPurchase(payload: any) {
+427:   try {
+428:     const inv = String(payload.invoiceNumber || payload.invoice_number || payload._pendingInvNumber || '').trim();
+429:     if (!inv) return;
+430:     const items = payload.items || payload.rows || [];
+431:     const old = (await getLocal<any[]>('purchases')) || [];
+432:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+433:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+434:     const rows = items.map((it: any, idx: number) => ({
+435:       invoice_number: inv,
+436:       manual_invoice: payload.manualInvoice || '',
+437:       supplier_code: payload.supplierCode || payload.supplier_code || '',
+438:       supplier_name: payload.supplierName || payload.supplier_name || '',
+439:       supplier_phone: payload.supplierPhone || payload.supplier_phone || '',
+440:       account_holder: payload.payerName || payload.accountHolder || it.accountHolder || it.payerName || '',
+441:       payer_code: payload.payerCode || payload.accountHolderCode || it.accountHolderCode || it.payerCode || '',
+442:       model_code: it.modelCode || it.model_code || '',
+443:       model_name: it.modelName || it.model_name || '',
+444:       quantity: Number(it.quantity) || 0,
+445:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+446:       payment: (() => {
+447:         const rowPay = Number(it.payment) || 0;
+448:         if (rowPay > 0) return rowPay;
+449:         if (idx !== 0) return 0;
+450:         return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+451:       })(),
+452:       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+453:       bank_name: payload.bankAccount || payload.bank || it.bankName || '',
+454:       deposit_date: payload.paymentDate || payload.depositDate || it.depositDate || '',
+455:       shipping: payload.shipping || '',
+456:       date_factor: it.dateFactor || it.date_factor || baseDate,
+457:       date_reg: it.dateReg || it.date_reg || baseDate,
+458:       description: it.description || '',
+459:       _pending: true,
+460:     }));
+461:     await setLocal('purchases', [...filtered, ...rows]);
+462:   } catch {}
+463: }
+464: 
+465: export async function createSale(payload: any) {
+466:   await _localUpsertSale(payload);
+467:   if (await serverBusinessAllowed()) {
+468:     try {
+469:       const r = await lib.createSale(payload);
+470:         try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+471:       return r;
+472:     }
+473:     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+474:   }
+475:   await enqueue('createSale', payload);
+476:   try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+477:   return payload.invoiceNumber;
+478: }
+479: async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+480:   const inv = String(invoiceNumber || '').trim();
+481:   if (!inv) return false;
+482:   const key = type === 'sales' ? 'sales_returns' : 'purchase_returns';
+483:   const local = (await getLocal<any[]>(key)) || [];
+484:   const q = await getQueue();
+485: 
+486:   const deletedIds = new Set<string>();
+487:   for (const item of q) {
+488:     if (type === 'sales' && item.op === 'deleteSalesReturn') {
+489:       const id = String(item.payload || '').trim();
+490:       if (id) deletedIds.add(id);
+491:     }
+492:     if (type === 'purchase' && item.op === 'deletePurchaseReturn') {
+493:       const id = String(item.payload || '').trim();
+494:       if (id) deletedIds.add(id);
+495:     }
+
+─── lib.offline.ts — createSale (خط 465) ───
+465: export async function createSale(payload: any) {
+466:   await _localUpsertSale(payload);
+467:   if (await serverBusinessAllowed()) {
+468:     try {
+469:       const r = await lib.createSale(payload);
+470:         try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+471:       return r;
+472:     }
+473:     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+474:   }
+475:   await enqueue('createSale', payload);
+476:   try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+477:   return payload.invoiceNumber;
+478: }
+479: async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+480:   const inv = String(invoiceNumber || '').trim();
+481:   if (!inv) return false;
+482:   const key = type === 'sales' ? 'sales_returns' : 'purchase_returns';
+483:   const local = (await getLocal<any[]>(key)) || [];
+484:   const q = await getQueue();
+485: 
+486:   const deletedIds = new Set<string>();
+487:   for (const item of q) {
+488:     if (type === 'sales' && item.op === 'deleteSalesReturn') {
+489:       const id = String(item.payload || '').trim();
+490:       if (id) deletedIds.add(id);
+491:     }
+492:     if (type === 'purchase' && item.op === 'deletePurchaseReturn') {
+493:       const id = String(item.payload || '').trim();
+494:       if (id) deletedIds.add(id);
+495:     }
+496:   }
+497:   try {
+498:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+499:     let arr: any[] = [];
+500:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+501:     if (Array.isArray(arr)) {
+502:       for (const t of arr) {
+503:         if (!t) continue;
+504:         if (type === 'sales' && String(t.table || '') !== 'sales_returns') continue;
+505:         if (type === 'purchase' && String(t.table || '') !== 'purchase_returns') continue;
+506:         const k = String(t.key || '').trim();
+507:         if (k) deletedIds.add(k);
+508:       }
+509:     }
+510:   } catch {}
+511: 
+512:   const pending = q
+513:     .filter(x => (type === 'sales' ? x.op === 'createSalesReturn' : x.op === 'createPurchaseReturn'))
+514:     .map(x => x.payload)
+
+─── lib.offline.ts — createPurchase (خط 1225) ───
+1225: export async function createPurchase(payload: any) {
+1226:   if (await serverBusinessAllowed()) {
+1227:     try {
+1228:       const r = await lib.createPurchase(payload);
+1229:       const inv = String(r || payload.invoiceNumber || '');
+1230:       if (inv) await _localUpsertPurchase({ ...payload, invoiceNumber: inv });
+1231:       try {
+1232:         await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1233:       } catch {}
+1234:       return r;
+1235:     } catch {}
+1236:   }
+1237: 
+1238:   const pInv = await genPurchaseInvoiceNumber();
+1239:   const newPayload = { ...payload, _pendingInvNumber: pInv, invoiceNumber: pInv };
+1240:   await _localUpsertPurchase(newPayload);
+1241:   await enqueue('createPurchase', newPayload);
+1242:   try {
+1243:     await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(pInv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1244:   } catch {}
+1245:   return pInv;
+1246: }
+1247: 
+1248: // ═══════════════════════════════════════════
+1249: //  getPurchasesGrouped — با شماره P-
+1250: // ═══════════════════════════════════════════
+1251: export async function getPurchasesGrouped() {
+1252:   let serverList: any[] = [];
+1253:   // BUSINESS_LOCAL_AND_SHEET_ONLY — خرید فقط محلی + صف
+1254:   serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+1255: 
+1256:   const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
+1257:   if (localPurchaseRows.length) {
+1258:     const groupedFromPurchases = _groupPurchaseRows(localPurchaseRows);
+1259:     const map: Record<string, any> = {};
+1260:     for (const g of serverList) map[String(g.invoice || '')] = g;
+1261:     for (const g of groupedFromPurchases) map[String(g.invoice || '')] = g;
+1262:     serverList = Object.values(map);
+1263:   }
+1264: 
+1265:   const queue = await getQueue();
+1266:   const deletedInvs = new Set<string>();
+1267:   for (const item of queue) {
+1268:     if (item.op === 'deletePurchase') {
+1269:       const inv = String(item.payload || '').trim();
+1270:       if (inv) deletedInvs.add(inv);
+1271:     }
+1272:   }
+1273:   try {
+1274:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1275:     let arr: any[] = [];
+1276:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+1277:     if (Array.isArray(arr)) {
+1278:       for (const t of arr) {
+1279:         if (!t) continue;
+1280:         if (String(t.table || '') !== 'purchases') continue;
+1281:         const k = String(t.key || '').trim();
+1282:         if (k) deletedInvs.add(k);
+1283:       }
+1284:     }
+
+══════════ ۳) getInventoryByModel و مودال محصول ══════════
+
+─── lib.offline.ts — getInventoryByModel (خط 2299) ───
+2299: export async function getInventoryByModel(code: string) {
+2300:   const c = String(code || '').trim();
+2301:   if (!c) return { purchases: [], sales: [] };
+2302:   // BUSINESS_LOCAL_AND_SHEET_ONLY — کاردکس فقط محلی
+2303: 
+2304:   const localPurchases = (await getLocal<any[]>('purchases')) || [];
+2305:   const localSales = (await getLocal<any[]>('sales')) || [];
+2306: 
+2307:   var pAll = localPurchases.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2308:   var sAll = localSales.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2309: 
+2310:   const q = await getQueue();
+2311:   for (const item of q) {
+2312:     if (item.op !== 'createPurchase' && item.op !== 'createSale') continue;
+2313:     const rows = (item.payload && (item.payload.items || item.payload.rows)) || [];
+2314:     for (const r of rows) {
+2315:       const rCode = String(r.model_code || r.modelCode || '').trim();
+2316:       if (rCode !== c) continue;
+2317:       const normalized = {
+2318:         invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+2319:         customer_name: item.payload.customerName || '',
+2320:         customer_phone: item.payload.customerPhone || '',
+2321:         customer_code: item.payload.customerCode || '',
+2322:         supplier_name: item.payload.supplierName || '',
+2323:         supplier_phone: item.payload.supplierPhone || '',
+2324:         supplier_code: item.payload.supplierCode || '',
+2325:         model_code: rCode,
+2326:         model_name: r.model_name || r.modelName || '',
+2327:         quantity: Number(r.quantity) || 0,
+2328:         price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+2329:         payment: Number(r.payment) || 0,
+2330:         balance: 0,
+2331:         date_factor: r.date_factor || r.dateFactor || item.payload.date || new Date(item.ts || Date.now()).toISOString(),
+2332:         date_reg: r.date_reg || r.dateReg || item.payload.date || new Date(item.ts || Date.now()).toISOString(),
+2333:         description: r.description || '',
+2334:         _pending: true,
+2335:       };
+2336:       if (item.op === 'createPurchase') {
+2337:         if (!pAll.some((x: any) => String(x.invoice_number || '') === String(normalized.invoice_number || ''))) pAll = pAll.concat([normalized]);
+2338:       } else {
+2339:         if (!sAll.some((x: any) => String(x.invoice_number || '') === String(normalized.invoice_number || ''))) sAll = sAll.concat([normalized]);
+2340:       }
+2341:     }
+2342:   }
+2343: 
+2344:   pAll.sort(function(a: any, b: any) {
+2345:     const da = new Date(a.date_factor || a.date_reg || a.created_at || 0).getTime();
+2346:     const db = new Date(b.date_factor || b.date_reg || b.created_at || 0).getTime();
+2347:     return da - db;
+2348:   });
+2349:   sAll.sort(function(a: any, b: any) {
+2350:     const da = new Date(a.date_factor || a.date_reg || a.created_at || 0).getTime();
+2351:     const db = new Date(b.date_factor || b.date_reg || b.created_at || 0).getTime();
+2352:     return da - db;
+2353:   });
+2354: 
+2355:   const adjs = (await getLocal<any[]>('stock_adjustments')) || [];
+2356:   const myAdjs = adjs.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2357:   return { purchases: pAll, sales: sAll, adjustments: myAdjs };
+2358: }
+2359: // ═══════════════════════════════════════════
+2360: //  Stock Adjustments (offline + queue)
+2361: // ═══════════════════════════════════════════
+2362: export async function getStockAdjustments(code?: string) {
+2363:   let list = (await getLocal<any[]>('stock_adjustments')) || [];
+2364:   if (MODE === 'online') {
+2365:     try {
+2366:       const fresh = await lib.getStockAdjustments(code);
+2367:       if (fresh && fresh.length) {
+2368:         await setLocal('stock_adjustments', fresh);
+2369:         list = fresh;
+2370:       }
+2371:     } catch (e) { console.log('[getStockAdjustments] online failed:', e); }
+2372:   }
+2373:   const q = await getQueue();
+2374:   const pending: any[] = [];
+2375:   for (const item of q) {
+2376:     if (item.op === 'createStockAdjustment' && item.payload) pending.push(item.payload);
+2377:   }
+2378:   let all = pending.concat(list);
+2379:   if (code) {
+2380:     const c = String(code).trim();
+2381:     all = all.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2382:   }
+2383:   return all;
+2384: }
+2385: export async function createStockAdjustment(p: any) {
+2386:   const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || new Date().toISOString() };
+2387:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2388:   await setLocal('stock_adjustments', [item, ...list]);
+2389:   if (await serverBusinessAllowed()) {
+2390:     try {
+2391:       await lib.createStockAdjustment(item);
+2392:         try { await _pushAudit({ type: 'stock_create', table: 'stock_adjustments', key: String(item.local_id || item.id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت تعدیل انبار' }); } catch {}
+2393:     }
+2394:     catch { await enqueue('createStockAdjustment', item); }
+2395:   } else {
+2396:     await enqueue('createStockAdjustment', item);
+2397:   }
+2398:   return item;
+
+─── App.tsx — انبار در App.tsx ───
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, update
+1887: {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
+1961: if (name === 'inventory') return <InventoryScreen showToast={showToast} />;
+5581: function InventoryScreen({ showToast }: any) {
+5715: const openModelKardex = async (m: any) => {
+5727: const d = await getInventoryByModel(m.code);
+5973: try { const d = await getInventory(); setList(d.list); setStats(d.stats); setThresholdInput(String(d.threshold)); }
+6199: <TouchableOpacity onPress={() => openModelKardex(m)} style={[s.tdCell, { width: 100 }]}><Text style={{ color: '#7c3aed', fontWeight: 'bold', textDecorationLine: 'underline' }}>{m.code}</Text></TouchableOpacity>
+8343: const d = await getInventory();
+
+══════════ ۴) محصولات، تنظیمات و تعدیلات ══════════
+
+─── lib.offline.ts — getProducts (خط 314) ───
+314: export async function getProducts() {
+315:   // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
+316:   const local = await getLocal<any[]>('products');
+317:   return local || [];
+318: }
+319: export async function createProduct(p: any) {
+320:   const list: any[] = (await getLocal('products')) || [];
+321:   const item = { ...p, _localId: Date.now() };
+322:   list.push(item);
+323:   await setLocal('products', list);
+324:   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+325:   if (await serverBusinessAllowed()) {
+326:     try {
+327:       await lib.createProduct(p);
+328:       await setLocal('products', await lib.getProducts());
+329:         try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+330:     }
+331:     catch { await enqueue('createProduct', p); }
+332:   } else {
+333:     await enqueue('createProduct', p);
+334:   }
+335: }
+336: export async function updateProduct(id: string, p: any) {
+337:   const list: any[] = (await getLocal('products')) || [];
+338:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+339:   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
+340:   if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+341:   try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+342: 
+343:   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
+
+─── lib.offline.ts — getSettings (خط 551) ───
+551: export async function getSettings() {
+552:   // BUSINESS_LOCAL_AND_SHEET_ONLY — تنظیمات فقط محلی
+553:   const local = await getLocal<any>('settings');
+554:   return local || {};
+555: }
+556: export async function updateSettings(s: any) {
+557:   await setLocal('settings', s);
+558:   try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+559:   if (await serverBusinessAllowed()) {
+560:     try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+561:   } else {
+562:     await enqueue('updateSettings', s);
+563:   }
+564: }
+565: 
+566: async function computeLocalInventory() {
+567:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+568:     getLocal<any[]>('products'),
+569:     getLocal<any[]>('sales'),
+570:     getLocal<any[]>('purchases'),
+571:     getLocal<any>('settings'),
+572:     getLocal<any[]>('stock_adjustments'),
+573:   ]);
+574:   const products = productsRaw || [];
+575:   let sales = salesRaw || [];
+576:   let purchases = purchasesRaw || [];
+577:   const settings = (settingsRaw as any) || {};
+578:   const threshold = settings.inventory_threshold ?? 5;
+579:   const adjAll = (adjRaw || []).slice();
+580:   const q = await getQueue();
+
+─── lib.offline.ts — getStockAdjustments (خط 2362) ───
+2362: export async function getStockAdjustments(code?: string) {
+2363:   let list = (await getLocal<any[]>('stock_adjustments')) || [];
+2364:   if (MODE === 'online') {
+2365:     try {
+2366:       const fresh = await lib.getStockAdjustments(code);
+2367:       if (fresh && fresh.length) {
+2368:         await setLocal('stock_adjustments', fresh);
+2369:         list = fresh;
+2370:       }
+2371:     } catch (e) { console.log('[getStockAdjustments] online failed:', e); }
+2372:   }
+2373:   const q = await getQueue();
+2374:   const pending: any[] = [];
+2375:   for (const item of q) {
+2376:     if (item.op === 'createStockAdjustment' && item.payload) pending.push(item.payload);
+2377:   }
+2378:   let all = pending.concat(list);
+2379:   if (code) {
+2380:     const c = String(code).trim();
+2381:     all = all.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2382:   }
+2383:   return all;
+2384: }
+2385: export async function createStockAdjustment(p: any) {
+2386:   const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || new Date().toISOString() };
+2387:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2388:   await setLocal('stock_adjustments', [item, ...list]);
+2389:   if (await serverBusinessAllowed()) {
+2390:     try {
+2391:       await lib.createStockAdjustment(item);
+2392:         try { await _pushAudit({ type: 'stock_create', table: 'stock_adjustments', key: String(item.local_id || item.id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت تعدیل انبار' }); } catch {}
+2393:     }
+2394:     catch { await enqueue('createStockAdjustment', item); }
+2395:   } else {
+2396:     await enqueue('createStockAdjustment', item);
+2397:   }
+2398:   return item;
+2399: }
+2400: export async function deleteStockAdjustment(id: string) {
+2401:   await recordTombstone('stock_adjustments', String(id));
+2402:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2403:   await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
+2404:   try { await _pushAudit({ type: 'stock_delete', table: 'stock_adjustments', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف تعدیل انبار' }); } catch {}
+2405:   if (await serverBusinessAllowed()) {
+2406:     try { await lib.deleteStockAdjustment(id); }
+2407:     catch { await enqueue('deleteStockAdjustment', id); }
+2408:   } else {
+2409:     await enqueue('deleteStockAdjustment', id);
+2410:   }
+2411: }
+2412: // ═══════════════════════════════════════════
+2413: //  Report helpers (offline + queue merge)
+2414: // ═══════════════════════════════════════════
+2415: export async function getSalesRowsForReport(code: string) {
+2416:   const c2 = String(code || '').trim();
+2417:   if (!c2) return { customer: [], triang: [] };
+2418:   if (MODE === 'online') {
+2419:     try {
+2420:       const [r1, r2] = await Promise.all([
+2421:         lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+
+─── lib.offline.ts — createStockAdjustment (خط 2385) ───
+2385: export async function createStockAdjustment(p: any) {
+2386:   const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || new Date().toISOString() };
+2387:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2388:   await setLocal('stock_adjustments', [item, ...list]);
+2389:   if (await serverBusinessAllowed()) {
+2390:     try {
+2391:       await lib.createStockAdjustment(item);
+2392:         try { await _pushAudit({ type: 'stock_create', table: 'stock_adjustments', key: String(item.local_id || item.id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت تعدیل انبار' }); } catch {}
+2393:     }
+2394:     catch { await enqueue('createStockAdjustment', item); }
+2395:   } else {
+2396:     await enqueue('createStockAdjustment', item);
+2397:   }
+2398:   return item;
+2399: }
+2400: export async function deleteStockAdjustment(id: string) {
+2401:   await recordTombstone('stock_adjustments', String(id));
+2402:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2403:   await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
+2404:   try { await _pushAudit({ type: 'stock_delete', table: 'stock_adjustments', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف تعدیل انبار' }); } catch {}
+2405:   if (await serverBusinessAllowed()) {
+2406:     try { await lib.deleteStockAdjustment(id); }
+2407:     catch { await enqueue('deleteStockAdjustment', id); }
+2408:   } else {
+2409:     await enqueue('deleteStockAdjustment', id);
+2410:   }
+2411: }
+2412: // ═══════════════════════════════════════════
+2413: //  Report helpers (offline + queue merge)
+2414: // ═══════════════════════════════════════════
+2415: export async function getSalesRowsForReport(code: string) {
+2416:   const c2 = String(code || '').trim();
+2417:   if (!c2) return { customer: [], triang: [] };
+2418:   if (MODE === 'online') {
+2419:     try {
+2420:       const [r1, r2] = await Promise.all([
+2421:         lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+2422:         lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+2423:       ]);
+2424:       return { customer: r1.data || [], triang: r2.data || [] };
+2425:     } catch (e) { console.log('[getSalesRowsForReport] online fail:', e); }
+2426:   }
+2427:   const cachedSales = (await getLocal<any[]>('sales')) || [];
+2428:   const customer = cachedSales.filter(function(r: any) { return r.customer_code === c2; });
+2429:   const triang = cachedSales.filter(function(r: any) { return r.account_holder_code === c2; });
+2430:   const q = await getQueue();
+2431:   for (const item of q) {
+2432:     if (item.op !== 'createSale') continue;
+2433:     const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+2434:     for (const r of rows) {
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

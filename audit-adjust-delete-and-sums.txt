@@ -1,0 +1,377 @@
+══════ ۱) دکمه حذف تعدیل در adjModal ══════
+5889: const [adjList, setAdjList] = useState<any[]>([]);
+5967: await deleteStockAdjustment(id);
+6369: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 6 }}>📋 تعدیلات اخیر ({adjList.length})</Text>
+6375: ) : adjList.length === 0 ? (
+6397: {adjList.map((r: any, i: number) => (
+
+══════ ۲) محدوده adjModal UI (لیست تعدیلات پایین) ══════
+
+══════ adjModal UI (خط 6277 تا 6456) ══════
+6277:       <Modal visible={adjModal} transparent animationType="slide" onRequestClose={() => setAdjModal(false)}>
+6278: 
+6279:         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 12 }}>
+6280: 
+6281:           <View style={{ backgroundColor: '#ffffff', borderRadius: 12, maxHeight: '92%', overflow: 'hidden' }}>
+6282: 
+6283:             <View style={{ backgroundColor: '#0f2438', padding: 12, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
+6284: 
+6285:               <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' }}>⚖️ تعدیل موجودی — {adjModel?.name || adjModel?.code || ''}</Text>
+6286: 
+6287:               <TouchableOpacity onPress={() => setAdjModal(false)}><Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>×</Text></TouchableOpacity>
+6288: 
+6289:             </View>
+6290: 
+6291:             <ScrollView style={{ padding: 12 }}>
+6292: 
+6293:               {/* Info */}
+6294: 
+6295:               <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginBottom: 10 }}>
+6296: 
+6297:                 <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی فعلی: {fmt(adjModel?.currentQty || 0)}</Text>
+6298: 
+6299:                 <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>📊 مجموع تعدیلات: {(adjModel?.adjustment || 0) > 0 ? '+' : ''}{fmt(adjModel?.adjustment || 0)}</Text>
+6300: 
+6301:               </View>
+6302: 
+6303:               {/* Form */}
+6304: 
+6305:               <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>نوع تعدیل</Text>
+6306: 
+6307:               <View style={{ flexDirection: 'row-reverse', gap: 8, marginBottom: 8 }}>
+6308: 
+6309:                 <TouchableOpacity onPress={() => setAdjForm({ ...adjForm, type: 'in' })} style={{ flex: 1, padding: 10, borderRadius: 6, backgroundColor: adjForm.type === 'in' ? '#059669' : '#e2e8f0', alignItems: 'center' }}>
+6310: 
+6311:                   <Text style={{ color: adjForm.type === 'in' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>➕ افزایشی</Text>
+6312: 
+6313:                 </TouchableOpacity>
+6314: 
+6315:                 <TouchableOpacity onPress={() => setAdjForm({ ...adjForm, type: 'out' })} style={{ flex: 1, padding: 10, borderRadius: 6, backgroundColor: adjForm.type === 'out' ? '#dc2626' : '#e2e8f0', alignItems: 'center' }}>
+6316: 
+6317:                   <Text style={{ color: adjForm.type === 'out' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>➖ کاهشی</Text>
+6318: 
+6319:                 </TouchableOpacity>
+6320: 
+6321:               </View>
+6322: 
+6323:               <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>مقدار تعدیل</Text>
+6324: 
+6325:               <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 10, fontSize: 13, textAlign: 'right', marginBottom: 8 }} value={String(adjForm.amount)} onChangeText={(v: string) => setAdjForm({ ...adjForm, amount: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="مثلاً 5" placeholderTextColor="#94a3b8" />
+6326: <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 8 }}>
+6327:   <Text style={{ width: 90, fontSize: 11, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }}>بهای واحد:</Text>
+6328:   <TextInput
+6329:     value={String(adjForm.unit_cost || '')}
+6330:     onChangeText={(v) => setAdjForm({ ...adjForm, unit_cost: v })}
+6331:     placeholder="بهای واحد"
+6332:     keyboardType="numeric"
+6333:     style={{ flex: 1, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, textAlign: 'center', backgroundColor: '#fff' }}
+6334:   />
+6335: </View>
+6336: 
+6337:               <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>دلیل</Text>
+6338: 
+6339:               <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+6340: 
+6341:                 {['شمارش فیزیکی', 'شکستگی', 'گم شدن', 'خرابی', 'برگشت از مشتری', 'سایر'].map((r: string) => (
+6342: 
+6343:                   <TouchableOpacity key={r} onPress={() => setAdjForm({ ...adjForm, reason: r })} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 15, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: adjForm.reason === r ? '#7c3aed' : '#ffffff' }}>
+6344: 
+6345:                     <Text style={{ color: adjForm.reason === r ? '#fff' : '#475569', fontSize: 11, fontWeight: 'bold' }}>{r}</Text>
+6346: 
+6347:                   </TouchableOpacity>
+6348: 
+6349:                 ))}
+6350: 
+6351:               </View>
+6352: 
+6353:               <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>تاریخ</Text>
+6354: 
+6355:               <DateField value={adjForm.adjustment_date || ''} onChange={(v: string) => setAdjForm({ ...adjForm, adjustment_date: v })} compact />
+6356: 
+6357:               <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginTop: 8, marginBottom: 4 }}>یادداشت</Text>
+6358: 
+6359:               <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 10, fontSize: 12, textAlign: 'right', minHeight: 50, marginBottom: 10 }} value={adjForm.note || ''} onChangeText={(v: string) => setAdjForm({ ...adjForm, note: v })} multiline placeholder="اختیاری" placeholderTextColor="#94a3b8" />
+6360: 
+6361:               <TouchableOpacity onPress={submitAdjustment} style={{ backgroundColor: '#059669', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12 }}>
+6362: 
+6363:                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>💾 ثبت تعدیل</Text>
+6364: 
+6365:               </TouchableOpacity>
+6366: 
+6367:               {/* Recent adjustments */}
+6368: 
+6369:               <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 6 }}>📋 تعدیلات اخیر ({adjList.length})</Text>
+6370: 
+6371:               {adjLoading ? (
+6372: 
+6373:                 <ActivityIndicator color="#d4af37" style={{ marginVertical: 20 }} />
+6374: 
+6375:               ) : adjList.length === 0 ? (
+6376: 
+6377:                 <Text style={{ color: '#64748b', textAlign: 'center', padding: 20 }}>تعدیلی ثبت نشده</Text>
+6378: 
+6379:               ) : (
+6380: 
+6381:                 <View>
+6382: 
+6383:                   <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+6384: 
+6385:                     <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+6386: 
+6387:                     <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+6388: 
+6389:                     <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+6390: 
+6391:                     <Text style={{ flex: 1, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'right', paddingRight: 4 }}>دلیل</Text>
+6392: 
+6393:                     <Text style={{ width: 50, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>حذف</Text>
+6394: 
+6395:                   </View>
+6396: 
+6397:                   {adjList.map((r: any, i: number) => (
+6398: 
+6399:                     <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', alignItems: 'center' }}>
+6400: 
+6401:                       <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6402: 
+6403:                       <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(r.adjustment_date || r.created_at) : '—'}</Text>
+6404: 
+6405:                       <Text style={{ width: 90, fontSize: 11, textAlign: 'center', fontWeight: 'bold', color: (Number(r.adjustment) || 0) > 0 ? '#059669' : '#dc2626' }}>{(Number(r.adjustment) || 0) > 0 ? '+' : ''}{fmt(Number(r.adjustment) || 0)}</Text>
+6406: 
+6407:                       <Text style={{ flex: 1, fontSize: 10, textAlign: 'right', paddingRight: 4, color: '#475569' }} numberOfLines={1}>{r.reason || '—'}{r.note ? ' — ' + r.note : ''}</Text>
+6408: 
+6409:                       <TouchableOpacity onPress={() => removeAdjustment(r.local_id || r.id)} style={{ width: 50, alignItems: 'center' }}><Text style={{ fontSize: 14 }}>🗑️</Text></TouchableOpacity>
+6410: 
+6411:                     </View>
+6412: 
+6413:                   ))}
+6414: 
+6415:                 </View>
+6416: 
+6417:               )}
+6418: 
+6419:             </ScrollView>
+6420: 
+6421:           </View>
+6422: 
+6423:         </View>
+6424: 
+6425:       </Modal>
+6426: 
+6427:       <Modal visible={modelKardexModal} transparent animationType="slide" onRequestClose={() => setModelKardexModal(false)}>
+6428: 
+6429:         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 10 }}>
+6430: 
+6431:           <View style={{ backgroundColor: '#ffffff', borderRadius: 12, maxHeight: '92%', overflow: 'hidden' }}>
+6432: 
+6433:             <View style={{ backgroundColor: '#0f2438', padding: 12, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
+6434: 
+6435:               <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' }}>📋 کاردکس مدل: {modelKardexData?.name || modelKardexCode}</Text>
+6436: 
+6437:               <TouchableOpacity onPress={() => setModelKardexModal(false)}><Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>×</Text></TouchableOpacity>
+6438: 
+6439:             </View>
+6440: 
+6441:             {modelKardexLoading ? (
+6442: 
+6443:               <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" size="large" /></View>
+6444: 
+6445:             ) : modelKardexData ? (
+6446: 
+6447:               <ScrollView style={{ padding: 10 }}>
+6448: 
+6449:                 <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginBottom: 8 }}>
+6450: 
+6451:                   <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) + (modelKardexData.salesReturns || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexData.purchaseReturns || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) + (modelKardexData.adjustments || []).reduce((a: number, r: any) => a + (Number(r.adjustment) || 0), 0))}</Text>
+6452: 
+6453:                   <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>🛒 خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+6454: 
+6455:                   <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 11 }}>🛍️ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+6456: 
+
+══════ ۳) getStockAdjustments — آیا tombstone اعمال می‌شود؟ ══════
+
+══════ getStockAdjustments (خط 2769 تا 2802) ══════
+2769: export async function getStockAdjustments(code?: string) {
+2770:   let list = (await getLocal<any[]>('stock_adjustments')) || [];
+2771:   if (MODE === 'online') {
+2772:     try {
+2773:       const fresh = await lib.getStockAdjustments(code);
+2774:       if (fresh && fresh.length) {
+2775:         await setLocal('stock_adjustments', fresh);
+2776:         list = fresh;
+2777:       }
+2778:     } catch (e) { console.log('[getStockAdjustments] online failed:', e); }
+2779:   }
+2780:   const q = await getQueue();
+2781:   const pending: any[] = [];
+2782:   for (const item of q) {
+2783:     if (item.op === 'createStockAdjustment' && item.payload) pending.push(item.payload);
+2784:   }
+2785:   // Dedupe by local_id — جلوگیری از تکرار تعدیل
+2786:   const _seen = new Set<string>();
+2787:   const _merged: any[] = [];
+2788:   for (const r of list) {
+2789:     const k = String(r.local_id || r.id || '');
+2790:     if (k && !_seen.has(k)) { _seen.add(k); _merged.push(r); }
+2791:   }
+2792:   for (const r of pending) {
+2793:     const k = String(r.local_id || r.id || '');
+2794:     if (k && !_seen.has(k)) { _seen.add(k); _merged.push(r); }
+2795:   }
+2796:   let all = _merged;
+2797:   if (code) {
+2798:     const c = String(code).trim();
+2799:     all = all.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2800:   }
+2801:   return all;
+2802: }
+
+══════ ۴) خلاصه بالای مودال کاردکس (برای افزودن جمع تعدیل) ══════
+
+══════ خلاصه مودال کاردکس (خط 5811 تا 5825) ══════
+5811:     var totalAdj = (data.adjustments || []).reduce(function(a: number, r: any) { return a + (Number(r.adjustment) || 0); }, 0);
+5812:     var stock = totalBoughtQty - totalSoldQty + totalSRQty - totalPRQty + totalAdj;
+5813: 
+5814:     var summary = '<div class="info"><b>📦 موجودی:</b> ' + fmt(stock) + ' &nbsp;|&nbsp; <b>⬇ خرید:</b> ' + fmt(totalBoughtQty) + ' &nbsp;|&nbsp; <b>⬆ فروش:</b> ' + fmt(totalSoldQty) + ' &nbsp;|&nbsp; <b>↩ برگشت فروش:</b> ' + fmt(totalSRQty) + ' &nbsp;|&nbsp; <b>↪ برگشت خرید:</b> ' + fmt(totalPRQty) + ' &nbsp;|&nbsp; <b>⚖ تعدیل:</b> ' + fmt(totalAdj) + '</div>';
+5815:     var summary2 = '<div class="info"><b>💵 جمع خرید:</b> ' + fmt(totalP) + ' ' + cur + ' &nbsp;|&nbsp; <b>💰 جمع فروش:</b> ' + fmt(totalS) + ' ' + cur + '</div>';
+5816: 
+5817:     var serial = 'MK-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (data.model && data.model.code || '');
+5818:     var meta = '<div class="info"><b>📄 شماره سند:</b> ' + serial + ' &nbsp;|&nbsp; <b>📅 تاریخ:</b> ' + new Date().toLocaleDateString('fa-IR') + '</div>';
+5819: 
+5820:     var pTable = (data.purchases || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬇ خریدها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + pRows + '</table>' : '';
+5821:     var sTable = (data.sales || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬆ فروش‌ها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + sRows + '</table>' : '';
+5822:     var srTable = (data.salesReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↩ برگشت از فروش</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + srRows + '</table>' : '';
+5823:     var prTable = (data.purchaseReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↪ برگشت از خرید</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + prRows + '</table>' : '';
+5824:     var adjTable = (data.adjustments || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">⚖ تعدیلات انبار</h3><table><tr><th>#</th><th>تاریخ</th><th>دلیل</th><th>مقدار</th><th>بهای واحد</th><th>ارزش کل</th><th>یادداشت</th></tr>' + adjRows + '</table>' : '';
+5825: 
+
+══════ ۵) خلاصه در _mkHtml (PDF/چاپ) ══════
+
+══════ _mkHtml کامل (خط 5761 تا 5829) ══════
+5761:   const _mkHtml = (data: any) => {
+5762:     var cur = getCurrencySync().label || 'افغانی';
+5763: 
+5764:     var pRows = (data.purchases || []).map(function(r: any, i: number) {
+5765:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5766:       var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+5767:       var qty = Number(r.quantity) || 0;
+5768:       var price = Number(r.price_unit) || 0;
+5769:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5770:     }).join('');
+5771: 
+5772:     var sRows = (data.sales || []).map(function(r: any, i: number) {
+5773:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5774:       var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+5775:       var qty = Number(r.quantity) || 0;
+5776:       var price = Number(r.price_unit) || 0;
+5777:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5778:     }).join('');
+5779: 
+5780:     var srRows = (data.salesReturns || []).map(function(r: any, i: number) {
+5781:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5782:       var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+5783:       var qty = Number(r.quantity) || 0;
+5784:       var price = Number(r.price_unit) || 0;
+5785:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5786:     }).join('');
+5787: 
+5788:     var prRows = (data.purchaseReturns || []).map(function(r: any, i: number) {
+5789:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5790:       var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+5791:       var qty = Number(r.quantity) || 0;
+5792:       var price = Number(r.price_unit) || 0;
+5793:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5794:     }).join('');
+5795: 
+5796:     var adjRows = (data.adjustments || []).map(function(r: any, i: number) {
+5797:       var d = r.adjustment_date || r.created_at || '';
+5798:       var dt = displayDateOnly ? displayDateOnly(d) : String(d).slice(0, 10);
+5799:       var qty = Number(r.adjustment) || 0;
+5800:       var uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+5801:       var totalVal = qty * uCost;
+5802:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty >= 0 ? '+' : '') + fmt(qty) + '</td><td>' + fmt(uCost) + '</td><td style="font-weight:bold">' + fmt(totalVal) + '</td><td style="text-align:right">' + (r.note || '') + '</td></tr>';
+5803:     }).join('');
+5804: 
+5805:     var totalP = (data.purchases || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+5806:     var totalS = (data.sales || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+5807:     var totalBoughtQty = (data.purchases || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5808:     var totalSoldQty = (data.sales || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5809:     var totalSRQty = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5810:     var totalPRQty = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5811:     var totalAdj = (data.adjustments || []).reduce(function(a: number, r: any) { return a + (Number(r.adjustment) || 0); }, 0);
+5812:     var stock = totalBoughtQty - totalSoldQty + totalSRQty - totalPRQty + totalAdj;
+5813: 
+5814:     var summary = '<div class="info"><b>📦 موجودی:</b> ' + fmt(stock) + ' &nbsp;|&nbsp; <b>⬇ خرید:</b> ' + fmt(totalBoughtQty) + ' &nbsp;|&nbsp; <b>⬆ فروش:</b> ' + fmt(totalSoldQty) + ' &nbsp;|&nbsp; <b>↩ برگشت فروش:</b> ' + fmt(totalSRQty) + ' &nbsp;|&nbsp; <b>↪ برگشت خرید:</b> ' + fmt(totalPRQty) + ' &nbsp;|&nbsp; <b>⚖ تعدیل:</b> ' + fmt(totalAdj) + '</div>';
+5815:     var summary2 = '<div class="info"><b>💵 جمع خرید:</b> ' + fmt(totalP) + ' ' + cur + ' &nbsp;|&nbsp; <b>💰 جمع فروش:</b> ' + fmt(totalS) + ' ' + cur + '</div>';
+5816: 
+5817:     var serial = 'MK-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (data.model && data.model.code || '');
+5818:     var meta = '<div class="info"><b>📄 شماره سند:</b> ' + serial + ' &nbsp;|&nbsp; <b>📅 تاریخ:</b> ' + new Date().toLocaleDateString('fa-IR') + '</div>';
+5819: 
+5820:     var pTable = (data.purchases || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬇ خریدها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + pRows + '</table>' : '';
+5821:     var sTable = (data.sales || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬆ فروش‌ها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + sRows + '</table>' : '';
+5822:     var srTable = (data.salesReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↩ برگشت از فروش</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + srRows + '</table>' : '';
+5823:     var prTable = (data.purchaseReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↪ برگشت از خرید</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + prRows + '</table>' : '';
+5824:     var adjTable = (data.adjustments || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">⚖ تعدیلات انبار</h3><table><tr><th>#</th><th>تاریخ</th><th>دلیل</th><th>مقدار</th><th>بهای واحد</th><th>ارزش کل</th><th>یادداشت</th></tr>' + adjRows + '</table>' : '';
+5825: 
+5826:     var signs = mizanSignaturesHtml(['امضای انباردار', 'امضای مدیر مالی', 'مهر شرکت']);
+5827:     var note = mizanComputerNoteHtml();
+5828:     return buildStandardHtml('کاردکس مدل: ' + data.name, meta + summary + summary2 + pTable + sTable + srTable + prTable + adjTable + signs + note, '📦 ' + (data.model && data.model.code || ''));
+5829:   };
+
+══════ ۶) جدول خریدها در مودال کاردکس (برای الگوی جمع ستون) ══════
+
+══════ جدول خریدها (خط 6469 تا 6519) ══════
+6469:                   <View style={{ marginBottom: 12 }}>
+6470: 
+6471:                     <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>🛒 خریدها ({modelKardexData.purchases.length})</Text>
+6472: 
+6473:                     <ScrollView horizontal>
+6474: 
+6475:                       <View>
+6476: 
+6477:                         <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+6478: 
+6479:                           <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+6480: 
+6481:                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+6482: 
+6483:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+6484: 
+6485:                           <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+6486: 
+6487:                           <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+6488: 
+6489:                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+6490: 
+6491:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+6492: 
+6493:                         </View>
+6494: 
+6495:                         {modelKardexData.purchases.map((r: any, i: number) => (
+6496: 
+6497:                           <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6498: 
+6499:                             <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6500: 
+6501:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+6502: 
+6503:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+6504: 
+6505:                             <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.payer_name || '—'}</Text>
+6506: 
+6507:                             <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+6508: 
+6509:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6510: 
+6511:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+6512: 
+6513:                           </View>
+6514: 
+6515:                         ))}
+6516: 
+6517:                       </View>
+6518: 
+6519:                     </ScrollView>
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

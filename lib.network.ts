@@ -763,23 +763,7 @@ export async function sendMessage(roomId: string, toEmail: string, text: string)
       console.log('✅ اعلان پیام insert شد | hawalaId:', _hawalaId);
     } catch (e) { console.log('msg notif insert err:', e); }
 
-    // ساخت اعلان جدید با کانتکست
-    await _sb.from('net_notifications').insert({
-      to_email: toEmail,
-      type: 'new_message',
-      payload: {
-        from_email: _myEmail,
-        from_name: _myName || _myEmail.split('@')[0],
-        room_id: roomId,
-        last_text: text.trim().slice(0, 80),
-        code: _hawalaCode,
-        hawalaId: _hawalaId,
-        hawalaType: _hawalaType,
-        beneficiaryName: _beneficiaryName,
-        amount: _amount,
-        currency: _currency,
-      },
-    });
+
   } catch (e) { console.log('msg notif error:', e); }
 
   return { success: true };

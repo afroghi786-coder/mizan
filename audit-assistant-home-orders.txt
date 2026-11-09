@@ -1,0 +1,82 @@
+=== ساختار state و useEffect ===
+1: import React, { useEffect, useState } from 'react';
+6: getOrders, getRateSnapshots, getRateSummary, getAdsQueue, getAdsHistory,
+12: const [loading, setLoading] = useState(true);
+13: const [section, setSection] = useState('dashboard');
+15: const [bot, setBot] = useState<any>({});
+16: const [watcher, setWatcher] = useState<any>({});
+17: const [sources, setSources] = useState<any[]>([]);
+18: const [ads, setAds] = useState<any>({});
+19: const [orders, setOrders] = useState<any[]>([]);
+20: const [snapshots, setSnapshots] = useState<any[]>([]);
+21: const [rateSummary, setRateSummary] = useState<any>({});
+22: const [adsQueue, setAdsQueue] = useState<any[]>([]);
+23: const [adsHistory, setAdsHistory] = useState<any[]>([]);
+24: const [auditCount, setAuditCount] = useState(0);
+26: useEffect(() => {
+31: getOrders(), getRateSnapshots(), getRateSummary(), getAdsQueue(), getAdsHistory(),
+37: setOrders(Array.isArray(o) ? o : []);
+
+=== بخش سفارش‌ها (section === orders) ===
+74:         <TouchableOpacity onPress={() => setSection('orders')} style={tabBtn(section === 'orders')}>
+75:           <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>🛒 سفارش‌ها</Text>
+76:         </TouchableOpacity>
+77:         <TouchableOpacity onPress={() => setSection('rates')} style={tabBtn(section === 'rates')}>
+78:           <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>📈 نرخ‌ها</Text>
+79:         </TouchableOpacity>
+80:         <TouchableOpacity onPress={() => setSection('ads')} style={tabBtn(section === 'ads')}>
+81:           <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>📣 تبلیغات</Text>
+82:         </TouchableOpacity>
+83:       </View>
+84: 
+85:       {section === 'dashboard' && (
+86:         <View>
+87:           <View style={cardStyle}>
+88:             <Text style={titleStyle}>🤝 دستیار فروش</Text>
+89:             <View style={rowStyle}><Text style={labelStyle}>تلگرام</Text><Text style={valueStyle}>{online(bot.telegram_enabled)}</Text></View>
+90:             <View style={rowStyle}><Text style={labelStyle}>روبیکا</Text><Text style={valueStyle}>{online(bot.rubika_enabled)}</Text></View>
+91:             <View style={rowStyle}><Text style={labelStyle}>واتساپ</Text><Text style={valueStyle}>{online(bot.whatsapp_enabled)}</Text></View>
+92:             <View style={rowStyle}><Text style={labelStyle}>سفارش‌ها</Text><Text style={valueStyle}>{orders.length}</Text></View>
+93:             <TouchableOpacity onPress={() => showToast?.('از تنظیمات → دستیار میزان → دستیار فروش پیکربندی کنید')} style={[btnStyle, { backgroundColor: '#7c3aed' }]}>
+94:               <Text style={{ color: '#fff', fontWeight: 'bold' }}>⚙️ تنظیمات دستیار فروش</Text>
+95:             </TouchableOpacity>
+96:           </View>
+97: 
+98:           <View style={cardStyle}>
+99:             <Text style={titleStyle}>👁️ دستیار دیده‌بان</Text>
+100:             <View style={rowStyle}><Text style={labelStyle}>وضعیت</Text><Text style={valueStyle}>{online(watcher.enabled)}</Text></View>
+101:             <View style={rowStyle}><Text style={labelStyle}>دسترسی Accessibility</Text><Text style={valueStyle}>{watcher.accessibility_granted ? '✅ فعال' : '❌ غیرفعال'}</Text></View>
+102:             <View style={rowStyle}><Text style={labelStyle}>کانال‌های مجاز</Text><Text style={valueStyle}>{sources.length}</Text></View>
+103:             <View style={rowStyle}><Text style={labelStyle}>نرخ‌های ثبت‌شده</Text><Text style={valueStyle}>{snapshots.length}</Text></View>
+104:             <TouchableOpacity onPress={() => showToast?.('از تنظیمات → دستیار میزان → دستیار دیده‌بان پیکربندی کنید')} style={[btnStyle, { backgroundColor: '#0ea5e9' }]}>
+105:               <Text style={{ color: '#fff', fontWeight: 'bold' }}>⚙️ تنظیمات دستیار دیده‌بان</Text>
+106:             </TouchableOpacity>
+107:           </View>
+108: 
+109:           <View style={cardStyle}>
+110:             <Text style={titleStyle}>📣 دستیار تبلیغات</Text>
+111:             <View style={rowStyle}><Text style={labelStyle}>وضعیت</Text><Text style={valueStyle}>{online(ads.enabled)}</Text></View>
+112:             <View style={rowStyle}><Text style={labelStyle}>کانال مقصد</Text><Text style={valueStyle}>{ads.channel_name || '—'}</Text></View>
+113:             <View style={rowStyle}><Text style={labelStyle}>در صف</Text><Text style={valueStyle}>{adsQueue.length}</Text></View>
+114:             <View style={rowStyle}><Text style={labelStyle}>ارسال‌شده</Text><Text style={valueStyle}>{adsHistory.length}</Text></View>
+115:             <TouchableOpacity onPress={() => showToast?.('از تنظیمات → دستیار میزان → دستیار تبلیغات پیکربندی کنید')} style={[btnStyle, { backgroundColor: '#f59e0b' }]}>
+116:               <Text style={{ color: '#fff', fontWeight: 'bold' }}>⚙️ تنظیمات دستیار تبلیغات</Text>
+117:             </TouchableOpacity>
+118:           </View>
+119: 
+120:           <View style={cardStyle}>
+121:             <Text style={titleStyle}>📊 خلاصه سریع</Text>
+122:             <View style={rowStyle}><Text style={labelStyle}>رویدادهای تاریخچه</Text><Text style={valueStyle}>{auditCount}</Text></View>
+123:             <View style={rowStyle}><Text style={labelStyle}>دستیارهای فعال</Text><Text style={valueStyle}>{(bot.telegram_enabled || bot.rubika_enabled || bot.whatsapp_enabled ? 1 : 0) + (watcher.enabled ? 1 : 0) + (ads.enabled ? 1 : 0)}</Text></View>
+124:           </View>
+125:         </View>
+126:       )}
+127: 
+128:       {section === 'orders' && (
+129:         <View>
+130:           <Text style={titleStyle}>🛒 سفارش‌های دستیار فروش ({orders.length})</Text>
+131:           {orders.length === 0 && <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 20 }}>هیچ سفارشی ثبت نشده.</Text>}
+132:           {orders.slice().reverse().map((o: any) => (
+133:             <View key={o.id} style={cardStyle}>
+
+=== کلیدهای موجود در سفارش‌ها ===

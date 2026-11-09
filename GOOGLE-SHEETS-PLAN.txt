@@ -1,0 +1,48 @@
+# طرح امن Google Sheets Backup — میزان
+
+## محدوده
+- فقط بخش‌های آفلاین به Google Sheets می‌روند.
+- بازار عمومی، بازار زنده صرافی، ادمین، مجوزها → در Supabase می‌مانند.
+- فاز اول فقط وب. گوشی و دسکتاپ دست‌نخورده.
+
+## ۱۳ شیت پیشنهادی
+1. sales
+2. purchases
+3. expenses
+4. employees
+5. salary_payments
+6. employee_loans
+7. parties
+8. partners
+9. partner_transactions (ادغام ptx_*)
+10. products
+11. settings
+12. banks
+13. shippings
+14. stock_adjustments
+
+## خارج از Google Sheets (در Supabase می‌مانند)
+- fx_trades, fx_customers, fx_partners
+- public_*, net_*
+- admin_users, licenses, license_requests, subscriptions, app_settings
+
+## اصول امنیتی
+- OAuth با scopeهای drive.file + spreadsheets
+- refresh token فقط در Supabase Edge Function (رمزنگاری‌شده)
+- RLS روی google_sheet_connections با auth.uid() = user_id
+- هر کاربر فقط به شیت خودش دسترسی دارد
+- هیچ داده‌ای پاک نمی‌شود
+
+## فازها
+- فاز 1: Google Cloud + OAuth (وب)
+- فاز 2: ساخت ۱۳ شیت
+- فاز 3: آپلود Snapshot
+- فاز 4: UI تنظیمات
+- فاز 5: تست چند کاربر
+- فاز 6: گوشی (بعد از تأیید وب)
+- فاز 7: بستن موقت Supabase برای بخش‌های آفلاین (اختیاری)
+
+## تعهد
+- هیچ تغییری در App.tsx، AdminPanel.tsx، lib.supabase.admin.ts، lib.offline.ts، lib.backup.ts در فاز ۱ تا ۵.
+- همه کد جدید در فایل‌های جدا.
+- Feature Flag برای فعال/غیرفعال.

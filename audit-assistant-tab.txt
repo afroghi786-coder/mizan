@@ -1,0 +1,1738 @@
+══════════ ۱) جستجوی تب دستیار در App.tsx ══════════
+
+─── App.tsx — دستیار ───
+23: import { unlockAudio, playNotifSound, vibrateNotif, showBrowserNotif, showNotifWithDetails } from './lib.notifications';
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, update
+75: import SuperAssistant from './SuperAssistant';
+79: import GlobalVoice from './GlobalVoice';
+89: import SettingsAssistant from './SettingsAssistant';
+90: import AssistantHome from './AssistantHome';
+152: console.log('AdminScreen load failed:', e?.message || e);
+182: console.log('AdminPanel load failed:', e?.message || e);
+268: async function getCustomerPreviousBalance(customerCode: string, currentInvoiceNumber: string) {
+279: const locked = await isBusinessLocked();
+282: const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
+293: const raw = await AsyncStorage.getItem('@mizan_local_all_sales_full');
+311: const groupedRaw = await AsyncStorage.getItem('@mizan_local_sales_grouped');
+327: invoice_number: g.invoice,
+335: payment: g.paid || 0,
+351: const queueRaw = await AsyncStorage.getItem('@mizan_queue');
+367: invoice_number: p.invoiceNumber,
+393: if (!allSales.length) return { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
+401: if (r.invoice_number === currentInvoiceNumber) return;
+403: if (!grouped[r.invoice_number]) grouped[r.invoice_number] = { sales: 0, payments: 0 };
+409: grouped[r.invoice_number].sales += qty * price;
+411: grouped[r.invoice_number].payments += Number(r.payment) || 0;
+417: let sales = 0, payments = 0, invoiceCount = 0;
+425: invoiceCount++;
+431: return { sales, payments, balance: sales - payments, invoiceCount };
+437: return { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
+818: // 🔔 تنظیم صدای اعلان (کانال اندروید)
+886: const { status } = await Notifications?.requestPermissionsAsync();
+974: await setPreset(k as any);
+1054: const failsafe = setTimeout(() => setLoading(false), 5000);
+1074: const chk = await canUseDevice(session.user.id);
+1076: try { await supabase.auth.signOut(); } catch {}
+1080: clearTimeout(failsafe);
+1091: await setDeviceLock(session.user.id);
+1096: clearTimeout(failsafe);
+1099: .catch(() => { setLoading(false); clearTimeout(failsafe); });
+1103: const chk = await canUseDevice(s.user.id);
+1105: try { await supabase.auth.signOut(); } catch {}
+1118: await setDeviceLock(s.user.id);
+1124: return () => { subscription.unsubscribe(); clearTimeout(failsafe); clearInterval(licTimer); };
+1184: <MainApp showToast={showToast} onCycleTheme={cycleTheme} langTick={langTick} />
+1202: //  MAIN
+1224: function MainApp({ showToast, onCycleTheme, langTick }: any) {
+1255: setTimeout(() => { try { require('./lib.voice').speakText('سیستم آماده است', 'fa-IR'); } catch(e) { console.warn('TTS_STARTUP_ERR', e); } }, 1500);
+1267: registerCommands('main', {
+1309: 'دستیار':       () => setTab('manualEntry'),
+1311: 'ربات':         () => setTab('aiAssistant'),
+1390: // ═══ SAFE_GLOBAL_POLLING — صدا در همه تب‌ها، امن برای APK ═══
+1462: const m = await import('./lib.network');
+1464: const p = await m.fetchPreferences();
+1496: const m = await import('./lib.network');
+1498: const list = await m.fetchAllNotifications();
+1560: showNotifWithDetails(title, msg, {
+1596: // Poll پیام‌های چت
+1610: const m = await import('./lib.network');
+1612: const list = await m.fetchMyUnreadMessages();
+1628: const sender = nw?.from_name || nw?.from_email?.split('@')[0] || 'کسی';
+1638: showNotifWithDetails('💬 پیام جدید', msg, {
+1697: { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },];
+1797: {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && tab !== 'mgr' && !ledgerOpen && (
+1799: <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
+1865: {tab === 'assistant' && (
+1866: <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+1867: <AssistantHome showToast={showToast} />
+1879: <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+1893: {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
+1947: <GlobalVoice
+2125: function Autocomplete({ value, onChange, onSelect, options, placeholder, label, containerStyle }) {
+2143: <View style={[{ marginBottom: 8 }, containerStyle]}>
+2185: function CellAutocomplete({ value, onChange, onSelect, options, placeholder, containerStyle, inputStyle }: any) {
+2376: try { await updateSettings({ ...(settings || {}), dashboard_range: next }); } catch {}
+2377: try { setStats(await getDashboardStats(next, settings?.dashboard_filter || 'both')); } catch {}
+2383: try { setStats(await getDashboardStats(rangeRef.current, settings?.dashboard_filter || 'both')); }
+2421: { i: '💳', l: 'پرداخت مشتری', v: stats?.customerPaid || 0, c: '#34d399', show: filter !== 'purchase' },
+2425: { i: '💵', l: 'پرداخت به تأمین‌کننده', v: stats?.supplierPaid || 0, c: '#34d399', show: filter !== 'sales' },
+2534: const [view, setView] = useState<'list' | 'form' | 'invoice' | 'reprint'>('list');
+2596: const [invoice, setInvoice] = useState<any>(null);
+2606: const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+2624: const f = await lookupPayerUniversal(v);
+2637: const [returnInvoice, setReturnInvoice] = useState<any>(null);
+2648: const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+2650: const load = async () => { setLoading(true); try { setList(await getSalesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+2668: const f = await lookupCustomerByPhone(d);
+2704: setInvoiceDate(toStorageDateFull(new Date()));
+2743: const found = await lookupCustomerByPhone(phone);
+2745: else customerCode = await generateCustomerCode();
+2746: const inv = await generateInvoiceNumber();
+2748: await createSale({
+2749: invoiceNumber: inv,
+2757: invoiceDate,
+2766: await new Promise(r => setTimeout(r, 100));
+2768: const rows = await getInvoiceDetail(inv, 'sales');
+2773: const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+2774: const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
+2775: setInvoice({
+2777: current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+2779: totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
+2783: setPaymentAmount(0); setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
+2785: setView('invoice');
+2800: const found = await lookupCustomerByPhone(p);
+2802: else customerCode = await generateCustomerCode();
+2803: const inv = await generateInvoiceNumber();
+2810: await createSale({
+2811: invoiceNumber: inv, customerCode, customerName: n, customerPhone: p,
+2813: paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+2819: const partner = await findPartnerByNameOrCode(receiverName || receiverCode);
+2822: await createPartnerAutoTx({
+2833: transaction_date: invoiceDate || new Date().toISOString(),
+2841: await new Promise(r => setTimeout(r, 100));
+2842: const rows = await getInvoiceDetail(inv, 'sales');
+2847: const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+2848: const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
+2849: setInvoice({
+2851: current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+2853: totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
+2857: setView('invoice');
+2870: const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
+2888: const rows = await getInvoiceDetail(reprintInv.trim());
+2898: const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+2900: setInvoice({
+2904: current: { invoiceNumber: r.invoice_number, items: its, sales: total, payments: paid, balance: total - paid },
+2906: previous: { sales: 0, payments: 0, balance: 0, invoiceCount: 0 },
+2908: totals: { sales: total, payments: paid, balance: total - paid },
+2914: setView('invoice');
+2922: if (view === 'invoice' && invoice) return <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView invoice={invoice} onBack={() => { setView('list'); setInvoice(null); load(); }} showToast={showToast} onNew={resetForm} /></View>;
+2930: <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 40 }}>
+2994: <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+3272: <DateField value={invoiceDate} onChange={setInvoiceDate} compact defaultToToday />
+3409: <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+3433: {loading ? <ActivityIndicator color={S.order} /> : list.filter((inv: any) => !hiddenSales.includes(inv.invoice)).map((inv: any) => (
+3435: <View key={inv.invoice} style={S.listCard}>
+3439: <Text style={S.listCardInvoice}>{inv.invoice}</Text>
+3441: <TouchableOpacity onPress={() => remove(inv.invoice)}>
+3451: <Text style={S.listCardStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
+3921: listCardInvoice: { fontSize: 13, fontWeight: 'bold', color: textClr } as any,
+4016: const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+4036: const load = async () => { setLoading(true); try { setList(await getPurchasesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+4038: const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+4041: const loadParties = async () => { try { setPartySuppliers(await getParties('supplier')); } catch {} };
+4080: try { const party = await lookupPartyByName(v); if (party) { if (party.code && !sCode) setSCode(party.code); if (party.phone && !sPhone) setSPhone(party.phone); } else { const f = await lookupSupplierByName(v); if (f) { if (f.supplier_code && !sCode) setSCode(
+4086: const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
+4102: const paidAmt = parseNum(payAmt);
+4104: const remaining = grandTotal - paidAmt;
+4134: const inv = await createPurchase({ invoiceNumber: '', manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: finalItems, paymentAmount: amt, paymentDate: payDate, invoiceDate: invoiceDate, bankAccount: bankAcc, payerN
+4138: const partner = await findPartnerByNameOrCode(payerName || payerCode);
+4141: await createPartnerAutoTx({
+4152: transaction_date: payDate || invoiceDate || new Date().toISOString(),
+4164: setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
+4176: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+4322: <View style={{ flex: 1 }}><EL textKey="💵 پرداخت" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: '#059669' }]}><Text style={[s.miniValueTxt, { color: '#059669' }]}>{paidAmt ? fmt(paidAmt) : 
+4324: <View style={{ flex: 1 }}><EL textKey="📌 مانده" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: remaining > 0
+4331: <DateField value={invoiceDate} onChange={setInvoiceDate} compact defaultToToday />
+4342: const f = await lookupPayerUniversal(v);
+4348: const c = await lookupCodeByName(v);
+4352: const c = await lookupCodeByName(v);
+4450: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+4460: {loading ? <ActivityIndicator color="#34d399" /> : list.filter((inv: any) => !hiddenPurchases.includes(inv.invoice)).map((inv: any) => (
+4462: <View key={inv.invoice} style={[s.invCard, { backgroundColor: C.card, borderRightColor: '#166534' }]}>
+4466: <Text style={s.invNum}>{inv.invoice}</Text>
+4468: <TouchableOpacity onPress={() => remove(inv.invoice)}>
+4478: <Text style={s.invStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
+4500: const [report, setReport] = useState<any>(null);
+4508: const loadReport = async () => {
+4518: const [_salesRpt, _purchRpt] = await Promise.all([
+4519: getSalesRowsForReport(c2),
+4520: getPurchasesRowsForReport(c2),
+4530: if (!hasAny) { showToast('داده‌ای برای این کد یافت نشد', true); setReport(null); return; }
+4548: date: r.date_reg || r.date_factor, invoice: r.invoice_number,
+4572: date: r.date_reg || r.date_factor, invoice: r.invoice_number,
+4574: manualInv: r.manual_invoice || '',
+4598: date: r.date_reg || r.date_factor, invoice: r.invoice_number,
+4614: const paidByCustomer = salesRows.reduce((a: number, r: any) => a + r.payment, 0);
+4618: const paidToSupplier = purchaseRows.reduce((a: number, r: any) => a + r.payment, 0);
+4624: const customerOwes = totalSales - paidByCustomer;
+4626: const weOwe = totalPurchases - paidToSupplier - totalTriang;
+4636: setReport({
+4639: totals: { totalSales, paidByCustomer, customerOwes, totalPurchases, paidToSupplier, weOwe, totalTriang, net },
+4659: const uri = await captureRef(ref, { format: 'jpg', quality: 0.95 });
+4661: if (mode === 'print') await Print.printAsync({ uri });
+4663: else if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+4673: if (!report) return;
+4679: const t = report.totals;
+4683: if (report.salesRows.length) {
+4685: const data = report.salesRows.map((r: any, i: number) => ({
+4687: '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice,
+4701: data.push({ 'نام مدل': 'جمع فروش', 'جمع': totals.totalSales, 'پرداخت': totals.paidByCustomer, 'مانده': totals.customerOwes } as any);
+4709: if (report.purchaseRows.length) {
+4711: const data = report.purchaseRows.map((r: any, i: number) => ({
+4713: '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'فاکتور دستی': r.manualInv,
+4727: data.push({ 'نام مدل': 'جمع خرید', 'جمع': totals.totalPurchases, 'پرداخت': totals.paidToSupplier, 'مانده': totals.weOwe + totals.totalTriang } as any);
+4735: if (report.triangRows.length) {
+4737: const data = report.triangRows.map((r: any, i: number) => ({
+4739: '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور فروش': r.invoice,
+4759: { 'شرح': 'نام', 'مقدار': report.name },
+4761: { 'شرح': 'کد', 'مقدار': report.code },
+4763: { 'شرح': 'تلفن', 'مقدار': report.phone },
+4767: { 'شرح': 'دریافت از ایشان', 'مقدار': totals.paidByCustomer },
+4773: { 'شرح': 'پرداخت ما به ایشان', 'مقدار': totals.paidToSupplier },
+4789: const path = (FileSystem as any).cacheDirectory + 'report-' + report.code + '-' + Date.now() + '.xlsx';
+4791: await FileSystem.writeAsStringAsync(path, wbout, { encoding: 'base64' });
+4793: if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(path);
+4802: if (!report) return;
+4804: const t = report.totals;
+4805: const curLabel = report.currency || 'افغانی';
+4808: const sRows = report.salesRows.map((r, i) => {
+4818: <td>${r.invoice || '-'}</td>
+4836: const pRows = report.purchaseRows.map((r, i) => {
+4846: <td>${r.invoice || '-'}</td>
+4894: <div style="font-size: 11px; color: #475569; margin-top: 4px;">گزارش جامع حساب (صورت‌حساب)</div>
+4897: <div>📅 تاریخ: ${report.timeString}</div>
+4898: <div>🆔 شماره سند: <b>${report.serial}</b></div>
+4899: <div>🔑 کد رهگیری: <b>${report.tracking}</b></div>
+4904: <div><b>👤 طرف حساب:</b> ${report.name}</div>
+4905: <div><b>🆔 کد حساب:</b> ${report.code}</div>
+4906: <div><b>📞 تلفن:</b> ${report.phone}</div>
+4909: ${report.salesRows.length > 0 ? `
+4923: <td>${fmt(t.paidByCustomer)}</td>
+4932: ${report.purchaseRows.length > 0 ? `
+4945: <td>${fmt(t.paidToSupplier)}</td>
+4972: const r = await shareHtmlAsPdf(html, 'statement-' + report.code + '.pdf');
+4979: const totals = report?.totals;
+4985: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
+4987: <EL text="{t('🖨️ گزارش جامع حساب')}" style={s.formTitle} />
+4993: <TouchableOpacity style={[s.btn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={loadReport} disabled={loading}>
+4995: {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>{t('🔍 نمایش گزارش کامل')}</Text>}
+5001: {report && t && (
+5009: <EL textKey="⚖️ گزارش جامع — میزان" style={{ fontSize: 15, fontWeight: 'bold', color: '#0f2438', textAlign: 'right' }} />
+5011: <Text style={{ fontSize: 9, color: '#64748b', textAlign: 'right', marginTop: 3 }}>📅 {report.timeString}</Text>
+5012: <Text style={{ fontSize: 9, color: '#0891b2', textAlign: 'right', marginTop: 2, fontWeight: 'bold' }}>🆔 {report.serial}  |  🔑 {report.tracking}</Text>
+5020: <Text style={{ fontSize: 11, color: '#1e3a5f', fontWeight: 'bold', textAlign: 'right' }}>👤 {report.name}</Text>
+5022: <Text style={{ fontSize: 10, color: '#475569', textAlign: 'right', marginTop: 2 }}>🆔 {report.code}   📞 {report.phone}</Text>
+5028: {report.salesRows.length > 0 && (
+5031: 🛒 فروش — {toFaNum(report.salesRows.length)} ردیف
+5055: return report.salesRows.map((r: any, i: number) => {
+5066: <Text style={{ width: 90, color: '#7c3aed', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{r.invoice || '—'}</Text>
+5094: <Text style={{ width: 80, fontSize: 12, fontWeight: 'bold', color: '#059669', textAlign: 'center' }}>{fmt(totals.paidByCustomer)}</Text>
+5109: {report.purchaseRows.length > 0 && (
+5112: 🛍️ خرید — {toFaNum(report.purchaseRows.length)} ردیف
+5136: return report.purchaseRows.map((r: any, i: number) => {
+5147: <Text style={{ width: 90, color: '#7c3aed', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{r.invoice || '—'}</Text>
+5174: <Text style={{ width: 80, fontSize: 12, fontWeight: 'bold', color: '#1e40af', textAlign: 'center' }}>{fmt(totals.paidToSupplier)}</Text>
+5190: {report.triangRows.length > 0 && (
+5196: 🔺 پرداخت مشتریان ما — {toFaNum(report.triangRows.length)} ردیف
+5228: {report.triangRows.map((r: any, i: number) => (
+5232: <Text style={{ width: 95, color: '#7c3aed', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{r.invoice || '—'}</Text>
+5341: try { const d = await getDashboardStats(settings?.dashboard_range || 'month', settings?.dashboard_filter || 'both'); setModels(d.models); setStats(d); }
+5361: _p.push('<div class="info"><b>🆔 شماره سند:</b> ' + _serial + ' &nbsp;|&nbsp; <b>🔑 کد رهگیری:</b> ' + _tracking + '<br><b>📅 تاریخ گزارش:</b> ' + displayDate(new Date()) + ' &nbsp;|&nbsp; <b>📊 بازه:</b> ' + (stats?.rangeLabel || 'ماه جاری') + '</div>');
+5363: _p.push('<div class="title">💹 گزارش سود به تفکیک مدل</div>');
+5394: var html = buildStandardHtml('گزارش سود و زیان — میزان', _p.join(''), '💹 گزارش سود');
+5397: var r = await shareHtmlAsPdf(html, 'profit-report-' + Date.now() + '.pdf');
+5415: var r = await exportExcel([{ name: 'سود', data: rows }], 'profit-report-' + Date.now() + '.xlsx');
+5425: _p.push('<div class="info"><b>📅 تاریخ گزارش:</b> ' + displayDate(new Date()) + ' &nbsp;|&nbsp; <b>📊 بازه:</b> ' + (stats?.rangeLabel || 'ماه جاری') + '</div>');
+5426: _p.push('<div class="title">💹 گزارش سود به تفکیک مدل</div>');
+5439: var html = buildStandardHtml('گزارش سود و زیان — میزان', _p.join(''), '💹 گزارش سود');
+5441: var r = await printHtml(html);
+5449: const uri = await captureRef(profitRef, { format: 'jpg', quality: 0.95 });
+5450: if (await Sharing.isAvailableAsync()) {
+5451: await Sharing.shareAsync(uri);
+5466: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+5643: return buildStandardHtml('گزارش موجودی انبار', meta + summary + table + words + signs + note, '📦 انبار');
+5655: const r = await shareHtmlAsPdf(html, 'inventory-' + Date.now() + '.pdf');
+5669: const r = await printHtml(html);
+5687: const r = await exportExcel([{ name: 'انبار', data }], 'inventory-' + Date.now() + '.xlsx');
+5739: const d = await getInventoryByModel(m.code);
+5775: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">
+5789: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * pr
+5825: try { const r = await shareHtmlAsPdf(_mkHtml(modelKardexData), 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.pdf'); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+5831: try { const r = await printHtml(_mkHtml(modelKardexData)); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+5839: var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.supplier_name || r.payer_name || '', 'تعداد': Number(r.qu
+5841: var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت'
+5843: var r = await exportExcel([{ name: 'خرید', data: pData }, { name: 'فروش', data: sData }], 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.xlsx');
+5897: const list = await getStockAdjustments(m.code);
+5921: await createStockAdjustment({
+5941: const list = await getStockAdjustments(adjModel.code);
+5961: if (Platform.OS !== 'web' && !(await new Promise<boolean>(res => { Alert.alert('حذف تعدیل', 'مطمئنی؟', [{ text: 'لغو', style: 'cancel', onPress: () => res(false) }, { text: 'حذف', style: 'destructive', onPress: () => res(true) }]); }))) return;
+5965: await deleteStockAdjustment(id);
+5969: const list = await getStockAdjustments(adjModel?.code);
+5985: try { const d = await getInventory(); setList(d.list); setStats(d.stats); setThresholdInput(String(d.threshold)); }
+6001: const _prods = await getProducts();
+6007: await updateProduct(_found.id || _found._localId || _found.local_id, { shelf: shelfVal });
+6011: await createProduct({ code: editItem.code, name: editItem.name, price: editItem.lastPrice || 0, shelf: shelfVal });
+6027: try { const settings = await getSettings(); await updateSettings({ ...settings, inventory_threshold: v }); showToast('✅ ذخیره شد'); load(); }
+6069: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+6147: <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
+6491: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+6549: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+6643: const [sub, setSub] = useState('unpaid');
+6659: { k: 'unpaid', l: '🗑️ پرداخت‌نشده' },
+6669: { k: 'reports', l: '📊 گزارشات' },
+6681: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+6683: <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
+6697: {sub === 'unpaid' && <UnpaidSection showToast={showToast} />}
+6707: {sub === 'reports' && <ReportsSection showToast={showToast} />}
+6709: {/* Settings moved to main tab */}
+6747: //  UNPAID SECTION — جدول ۸ ستونه
+6751: function UnpaidSection({ showToast }: any) {
+6761: const load = async () => { setLoading(true); try { setList(await getUnpaidInvoices()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+6771: else setSelected(new Set(list.map((x: any) => x.invoice)));
+6779: const ok = await confirmMsg('حذف', `${selected.size} فاکتور حذف شود؟`);
+6783: try { for (const inv of Array.from(selected)) await deleteSale(inv); showToast('✅ حذف شد'); setSelected(new Set()); load(); }
+6839: <TouchableOpacity key={inv.invoice} onPress={() => toggle(inv.invoice)} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, selected.has(inv.invoice) && { backgroundColor: '#fee2e2' }]}>
+6843: <Text style={{ fontSize: 18 }}>{selected.has(inv.invoice) ? '✅' : '⬜'}</Text>
+6849: <Text style={[s.tdCell, { width: 150, fontSize: 12, color: '#1e3a5f', fontWeight: 'bold', fontSize: 12 }]}>{inv.invoice}</Text>
+6857: <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#dc2626', fontWeight: 'bold' }]}>{fmt(inv.paid)}</Text>
+6899: const [invoice, setInvoice] = useState('');
+6915: generateInvoiceNumber().then(setInvoice);
+6933: try { const f = await lookupCustomerByPhone(d); if (f) { setStatus('✅'); if (f.customer_name && !name) setName(f.customer_name); if (f.customer_address && !address) setAddress(f.customer_address); } else setStatus('🆕'); } catch {}
+6967: const ok = await confirmMsg('📋 تأیید', `👤 ${name}\n📞 ${phone}\n📦 ${valid.length} مدل\n💰 ${fmt(grandTotal)}\n\nثبت شود؟`);
+6977: const f = await lookupCustomerByPhone(phone);
+6981: else code = await generateCustomerCode();
+6983: const inv = await generateInvoiceNumber();
+6985: await createSale({ invoiceNumber: inv, customerCode: code, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid, receiverName, receiverCode, receiverBank, receiverAccount });
+6993: setInvoice(await generateInvoiceNumber());
+7023: <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={invoice} editable={false} />
+7132: const [showInvoice, setShowInvoice] = useState<any>(null);
+7135: const [returnInvoice, setReturnInvoice] = useState<any>(null);
+7153: const f = await lookupPayerUniversal(v);
+7163: const load = async () => { setLoading(true); try { setList(await searchAllInvoices('')); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+7165: const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+7175: const balance = (r.total || 0) - (r.paid || 0);
+7177: let st = 'unpaid';
+7179: if (r.paid >= r.total && r.total > 0) st = 'paid';
+7181: else if (r.paid > 0) st = 'partial';
+7185: if (q) { const h = `${r.invoice} ${r.name || ''} ${r.phone || ''}`.toLowerCase(); if (!h.includes(q.toLowerCase())) return false; }
+7197: const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+7232: invoice: inv,
+7237: manualInv: isSales ? '' : (rows[0].manual_invoice || ''),
+7256: const previewInvoice = async () => {
+7268: let prev: any = { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
+7269: try { prev = await getCustomerPreviousBalance(editing.code, editing.invoice); } catch {}
+7270: setShowInvoice({
+7279: invoiceNumber: editing.invoice,
+7315: const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows);
+7325: await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+7327: await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+7337: const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+7343: await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta });
+7345: await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta });
+7349: setList((prev: any[]) => prev.map((x: any) => x.invoice === editing.invoice
+7350: ? { ...x, total: newTotal, paid: newPaid, name: editing.name, phone: editing.phone }
+7369: const ok = await confirmMsg('حذف', 'فاکتور ' + inv + ' حذف شود؟');
+7373: await deleteSale(inv);
+7375: await deletePurchase(inv);
+7394: const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+7404: setReturnInvoice({
+7405: invoice: inv,
+7424: if (!returnInvoice) return;
+7436: const savedType = returnInvoice.type;
+7448: original_invoice_number: returnInvoice.invoice,
+7449: party_name: returnInvoice.name,
+7450: party_code: returnInvoice.code,
+7468: await createSalesReturn(payload);
+7470: await createPurchaseReturn(payload);
+7475: setReturnInvoice(null);
+7491: if (showInvoice) return (
+7492: <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView
+7493: invoice={showInvoice}
+7494: onBack={() => { setShowInvoice(null); load(); }}
+7495: onNew={() => { setShowInvoice(null); setEditing(null); setEditRows([]); setDirty(false); }}
+7503: <ScrollView contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+7507: <TouchableOpacity onPress={async () => { if (dirty) { const ok = await confirmMsg('خروج', 'تغییرات ذخیره نشده — خارج شوی؟'); if (!ok) return; } setEditing(null); setEditRows([]); setDirty(false); }}>
+7515: <Text style={s.mgrHeadTxt}>✏️ {editing.invoice}</Text>
+7634: const f = await lookupPayerUniversal(v);
+7639: const code = await lookupCodeByName(v);
+7697: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#8e44ad' }]} onPress={previewInvoice}><Text style={s.btnTxt}>{t('🖨️ صدور مجدد')}</Text></TouchableOpacity>
+7714: const statusLabel = (total: number, paid: number) => paid >= total && total > 0 ? '✅ پرداخت‌شده' : paid > 0 ? '⏳ جزئی' : '❌ پرداخت‌نشده';
+7716: const statusColorFn = (total: number, paid: number) => paid >= total && total > 0 ? '#059669' : paid > 0 ? '#f39c12' : '#dc2626';
+7738: {[{ k: 'all', l: 'همه وضعیت' }, { k: 'paid', l: '✅ پرداخت‌شده' }, { k: 'unpaid', l: '❌ نشده' }, { k: 'partial', l: '⏳ جزئی' }].map((f) => (
+7790: <Text style={[s.tdCell, { width: 150, fontSize: 12, color: '#1e3a5f', fontWeight: 'bold', fontSize: 12 }]}>{r.invoice}</Text>
+7808: <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.paid)}</Text>
+7810: <Text style={[s.tdCell, { width: 130, fontSize: 12, color: r.total - r.paid > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{fmt(r.total - r.paid)}</Text>
+7814: <Text style={{ backgroundColor: statusColorFn(r.total, r.paid) + '20', color: statusColorFn(r.total, r.paid), paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, fontSize: 10, fontWeight: 'bold' }}>{statusLabel(r.total, r.paid)}</Text>
+7820: <TouchableOpacity onPress={() => openEdit(r.invoice, r.type)} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>✏️</Text></TouchableOpacity>
+7822: <TouchableOpacity onPress={() => remove(r.invoice, r.type)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>🗑</Text></TouchableOpacity>
+7823: <TouchableOpacity onPress={() => openReturn(r.invoice, r.type)} style={{ backgroundColor: '#ede9fe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>↩️</Text></TouchableOpacity>
+7839: ↩️ ثبت برگشت {returnInvoice?.type === 'sales' ? 'از فروش' : 'از خرید'}
+7842: فاکتور {returnInvoice?.invoice} — {returnInvoice?.name}
+7950: //  REPORTS SECTION
+7972: const data = type === 'sales' ? await getSalesReturns() : await getPurchaseReturns();
+7984: const ok = await confirmMsg('حذف برگشت', 'این برگشت حذف شود؟');
+7987: if (type === 'sales') await deleteSalesReturn(id);
+7988: else await deletePurchaseReturn(id);
+8046: if (type === 'sales') await updateSalesReturn(id, payload);
+8047: else await updatePurchaseReturn(id, payload);
+8071: _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.return_number || '—') + '</td><td>' + displayDateOnly(r.date || r.created_at || '') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.party_name || '—') + '</td><td styl
+8082: const r = await shareHtmlAsPdf(buildHtml(), 'returns-' + type + '-' + Date.now() + '.pdf');
+8089: const r = await printHtml(buildHtml());
+8100: 'فاکتور اصلی': r.original_invoice_number || '',
+8108: const r = await exportExcel([{ name: title, data: rows }], 'returns-' + type + '-' + Date.now() + '.xlsx');
+8116: const uri = await captureRef(viewRef, { format: 'jpg', quality: 0.95 });
+8118: await Share.share({ message: title, url: uri });
+8120: await Share.share({ message: title + '\n' + uri });
+8161: <Text style={[s.tdCell, { width: 150, fontSize: 11 }]}>{r.original_invoice_number || '—'}</Text>
+8189: {editReturn?.return_number || ''} — فاکتور {editReturn?.original_invoice_number || ''}
+8256: function ReportsSection({ showToast }: any) {
+8272: const locked = await isBusinessLocked();
+8276: sales = (await getSalesGrouped().catch(() => [])) || [];
+8277: purchases = (await getPurchasesGrouped().catch(() => [])) || [];
+8279: const [sRes, pRes] = await Promise.all([
+8299: if (!map[code]) map[code] = { code, name: r.customer_name, phone: r.customer_phone, total: 0, paid: 0 };
+8303: map[code].paid += Number(r.payment) || 0;
+8307: const rows = Object.values(map).map((m: any) => ({ ...m, balance: m.total - m.paid })).filter((r: any) => r.balance > 0);
+8323: if (!map[code]) map[code] = { code, name: r.supplier_name, phone: r.supplier_phone, total: 0, paid: 0 };
+8327: map[code].paid += Number(r.payment) || 0;
+8331: const rows = Object.values(map).map((m: any) => ({ ...m, balance: m.total - m.paid })).filter((r: any) => r.balance > 0);
+8355: const d = await getInventory();
+8385: XLSX.utils.book_append_sheet(wb, ws, 'گزارش');
+8389: const path = (FileSystem as any).cacheDirectory + `report-${type}-${Date.now()}.xlsx`;
+8391: await FileSystem.writeAsStringAsync(path, wbout, { encoding: 'base64' });
+8393: if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(path);
+8407: <EL text="{t('📊 نوع گزارش')}" style={s.secT} />
+8485: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.paid)}</Text>
+8501: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.paid)}</Text>
+8509: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#7c3aed', fontWeight: 'bold' }]}>{r.invoice_number}</Text>
+8587: await setPreset(k as any);
+8708: const [emailInput, setEmailInput] = useState('');
+8711: const [schedDailyEnabled, setSchedDailyEnabled] = useState(false);
+8712: const [schedDailyHour, setSchedDailyHour] = useState('21');
+8713: const [schedDailyDays, setSchedDailyDays] = useState<string[]>([]);
+8714: const [schedDailyType, setSchedDailyType] = useState('daily-combined');
+8724: const sd = settings.sched_daily || {};
+8725: setSchedDailyEnabled(!!sd.enabled);
+8726: setSchedDailyHour(String(sd.hour ?? 21));
+8727: setSchedDailyDays(sd.days || []);
+8728: setSchedDailyType(sd.type || 'daily-combined');
+8740: const last = await getLastAutoBackup();
+8744: await autoBackup();
+8745: const last2 = await getLastAutoBackup();
+8754: await updateSettings({
+8758: sched_daily: { enabled: schedDailyEnabled, hour: parseInt(schedDailyHour, 10), days: schedDailyDays, type: schedDailyType },
+8768: const emails: string[] = settings.emails || [];
+8769: const addEmail = () => {
+8770: if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) return showToast('ایمیل معتبر نیست', true);
+8771: setSettings({ ...settings, emails: [...emails, emailInput] });
+8772: setEmailInput('');
+8774: const removeEmail = (i: number) => setSettings({ ...settings, emails: emails.filter((_, idx) => idx !== i) });
+8775: const toggleDay = (d: string) => setSchedDailyDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
+8783: { k: 'assistant', l: '🤝 دستیار میزان' },
+8847: {emails.map((e, i) => (
+8848: <View key={i} style={[s.emailRow, { backgroundColor: C.cardAlt }]}>
+8849: <Text style={[s.emailTxt, { color: C.text }]} numberOfLines={1}>{e}</Text>
+8850: <TouchableOpacity onPress={() => removeEmail(i)}><Text>❌</Text></TouchableOpacity>
+8854: <TextInput accessibilityLabel="ایمیل معتبر..." style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={emailInput} onChangeText={setEmailInput} placeholder="ایمیل معتبر..." placeholderTextColor={C.textMut} keyboardTy
+8855: <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#7c3aed' }]} onPress={addEmail}><Text style={s.btnTxt}>＋</Text></TouchableOpacity>
+8910: await updateSettings({ ...settings, tab_pins: pins });
+8923: const ok = await confirmMsg('خروج', 'از حساب خارج می‌شوی؟');
+8932: const ok2 = await confirmMsg('هشدار خروج', warn);
+8934: await supabase.auth.signOut();
+8959: <Switch value={!!settings.payroll_deduct_unpaid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_unpaid_leave: v })} />
+8962: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_unpaid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_unpaid_leave_rate: parseFloat(v) || 0 })} keyboardTyp
+8966: <Switch value={!!settings.payroll_deduct_paid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_paid_leave: v })} />
+8969: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_paid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_paid_leave_rate: parseFloat(v) || 0 })} keyboardType="d
+9000: {settingsTab === 'assistant' && (
+9002: <SettingsAssistant showToast={showToast} />
+9017: const r = await exportBackup();
+9026: const r = await importBackup();
+9042: <EL text="{t('📨 گزارش روزانه')}" style={s.secT} />
+9043: <View style={s.rowBetween}><EL text="{t('فعال')}" style={[s.lbl, { color: C.textMut }]} /><Switch value={schedDailyEnabled} onValueChange={setSchedDailyEnabled} /></View>
+9045: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={schedDailyHour} onChangeText={setSchedDailyHour} keyboardType="numeric" />
+9049: <TouchableOpacity key={i} onPress={() => toggleDay(String(i))} style={[s.chip, schedDailyDays.includes(String(i)) && s.chipActive]}>
+9050: <Text style={[s.chipTxt, schedDailyDays.includes(String(i)) && s.chipTxtActive]}>{d}</Text>
+9055: <EL text="{t('📬 گزارش هفتگی')}" style={s.secT} />
+9094: const data = await getParties();
+9189: if (editing.id || editing.local_id) await updateParty(editing.local_id || editing.id, payload);
+9190: else await createParty(payload);
+9198: const ok = await confirmMsg('حذف طرف‌حساب', '«' + (p.name || '') + '» حذف شود؟');
+9200: try { await deleteParty(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9249: try { await createParty(d); success++; }
+9426: const data = await getPartners();
+9465: if (editing.id || editing.local_id) await updatePartner(editing.local_id || editing.id, payload);
+9466: else await createPartner(payload);
+9474: const ok = await confirmMsg('حذف شریک', '«' + (p.name || '') + '» حذف شود؟');
+9476: try { await deletePartner(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9499: try { await createPartner(d); success++; } catch (e: any) { showToast('خطا: ' + (e?.message || String(e)), true); }
+9506: try { const data = await getPartnerBankAccounts(partner.code); setBankList(data || []); } catch {}
+9509: const openBanks = async (partner: any) => { setBankPartner(partner); setBankDrafts([]); await loadBanks(partner); };
+9517: try { await createPartnerBankAccount({ ...d, partner_code: bankPartner.code, partner_name: bankPartner.name }); success++; } catch (e: any) { showToast('خطا: ' + (e?.message || String(e)), true); }
+9519: if (success) { showToast('✅ ' + success + ' کارت ذخیره شد'); setBankDrafts([]); await loadBanks(bankPartner); }
+9522: const ok = await confirmMsg('حذف کارت', 'حذف شود؟');
+9524: try { await deletePartnerBankAccount(b.local_id || b.id, bankPartner.code); await loadBanks(bankPartner); showToast('✅ حذف شد'); } catch (e: any) { showToast(e?.message || String(e), true); }
+9531: const txns = await getPartnerTransactions(partner.code);
+9533: const banks = await getPartnerBankAccounts(partner.code);
+9542: const txns = await getPartnerTransactions(txnPartner.code);
+9574: await createPartnerTransaction({ ...base, type: 'transfer_out', to_partner_code: toPartner.code, to_currency: txnForm.to_currency || base.currency, to_amount: toAmt, transfer_group: group, box_effect: 'none' });
+9575: await createPartnerTransaction({ ...base, partner_code: toPartner.code, partner_name: toPartner.name, type: 'transfer_in', currency: txnForm.to_currency || base.currency, amount: toAmt, to_partner_code: txnPartner.code, to_currency: base.currency, to_amount: a
+9578: await createPartnerTransaction({ ...base, type });
+9582: await reloadTransactions();
+9588: const ok = await confirmMsg('حذف حرکت', 'حذف شود؟');
+9590: try { await deletePartnerTransaction(t.local_id || t.id, txnPartner.code); await reloadTransactions(); showToast('✅ حذف شد'); }
+9891: try { setList(await getBanks()); } catch {}
+9905: if (editing.id || editing.local_id) await updateBank(editing.local_id || editing.id, payload);
+9906: else await createBank(payload);
+9912: const ok = await confirmMsg('حذف بانک', '«' + (p.name || '') + '» حذف شود؟');
+9914: try { await deleteBank(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9931: for (const d of drafts) { try { await createBank(d); success++; } catch (e: any) { showToast(e?.message || String(e), true); } }
+10002: try { setList(await getShippings()); } catch {}
+10016: if (editing.id || editing.local_id) await updateShipping(editing.local_id || editing.id, payload);
+10017: else await createShipping(payload);
+10023: const ok = await confirmMsg('حذف باربری', '«' + (p.name || '') + '» حذف شود؟');
+10025: try { await deleteShipping(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+10042: for (const d of drafts) { try { await createShipping(d); success++; } catch (e: any) { showToast(e?.message || String(e), true); } }
+10134: const data = await getProducts();
+10196: if (editing.id || editing.local_id) await updateProduct(editing.local_id || editing.id, payload);
+10197: else await createProduct(payload);
+10205: const ok = await confirmMsg('حذف کالا', '«' + (p.name || '') + '» حذف شود؟');
+10207: try { await deleteProduct(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+10251: try { await createProduct(d); success++; }
+10354: //  INVOICE A5 VIEW
+10358: function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
+10362: const c = invoice.customer, cur = invoice.current, tot = invoice.totals;
+10368: const uri = await captureRef(ref, { format: 'jpg', quality: 0.92 });
+10392: if (mode === 'print') await Print.printAsync({ uri });
+10393: else if (await Sharing.isAvailableAsync()) { await Sharing.shareAsync(uri); if (mode === 'save') showToast('✅ ذخیره شد'); }
+10403: <ScrollView style={[s.content, { backgroundColor: C.bg, flex: 1 }]} contentContainerStyle={{ padding: 10, paddingBottom: 60 }}>
+10405: <View ref={ref} collapsable={false} style={s.invoiceContainer}>
+10437: <Text style={s.invDateTxt}>📅 {invoice.timeString}</Text>
+10453: <View style={s.invCell}><EL textKey="شماره فاکتور" style={s.invCellL} /><Text style={s.invCellV}>{cur.invoiceNumber}</Text></View>
+10510: {invoice.previous && invoice.previous.invoiceCount > 0 && (
+10514: <SumRow l="📁 تعداد فاکتورهای قبلی" v={toFaNum(invoice.previous.invoiceCount) + ' فاکتور'} />
+10516: <SumRow l="💰 جمع خریدهای قبلی" v={fmt(invoice.previous.sales) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} />
+10518: <SumRow l="💳 جمع پرداخت‌های قبلی" v={fmt(invoice.previous.payments) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} green />
+10522: l={invoice.previous.balance > 0 ? '⚖️ بدهی از قبل' : invoice.previous.balance < 0 ? '💰 بستانکاری از قبل' : '✅ تسویه شده از قبل'}
+10524: v={invoice.previous.balance !== 0 ? fmt(Math.abs(invoice.previous.balance)) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '') : 'بدون بدهی'}
+10689: const [email, setEmail] = useState('');
+10699: if (!email || !pass) return showToast('ایمیل و رمز را وارد کن', true);
+10703: if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('ایمیل معتبر وارد کن', true);
+10711: let loginEmail = email.trim();
+10715: if (!loginEmail.includes('@')) {
+10719: const { data: fetchedEmail } = await supabase.rpc('get_email_by_phone', { p_phone: loginEmail });
+10721: if (!fetchedEmail) {
+10727: loginEmail = fetchedEmail;
+10733: const { error: e1 } = await supabase.auth.signInWithPassword({ email: loginEmail, password: pass });
+10737: const { error: e2 } = await supabase.auth.signUp({ email, password: pass });
+10741: const { error: e3 } = await supabase.auth.signInWithPassword({ email, password: pass });
+10769: <TextInput accessibilityLabel="ایمیل" style={s.loginInp} value={email} onChangeText={setEmail} placeholder="ایمیل" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" />
+11027: // Invoice card
+11143: emailRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8, marginBottom: 6 },
+11145: emailTxt: { flex: 1, fontSize: 12, textAlign: 'right' },
+11149: // Invoice A5
+11151: invoiceContainer: { backgroundColor: '#fff', borderRadius: 12, padding: 12 },
+11223: searchInvoice: { color: '#1e3a5f', fontSize: 15, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+
+══════════ ۲) توابع مشکوک دستیار در App.tsx ══════════
+
+══════════ ۳) جستجو در lib.offline.ts و lib.ts ══════════
+
+─── lib.offline.ts — lib.offline.ts — دستیار ───
+15: const m = await AsyncStorage.getItem(MODE_KEY);
+56: const v = await AsyncStorage.getItem(BUSINESS_LOCK_KEY);
+62: await AsyncStorage.setItem(BUSINESS_LOCK_KEY, open ? 'open' : 'locked');
+68: await AsyncStorage.setItem(MODE_KEY, m);
+77: const raw = await AsyncStorage.getItem(LOCAL + k);
+81: await AsyncStorage.setItem(LOCAL + k, JSON.stringify(v));
+85: const raw = await AsyncStorage.getItem(QUEUE);
+141: const fields = ['local_id','id','code','_localId','invoiceNumber','invoice_number','invoice','employee_code','partner_code'];
+161: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+162: await _pushAudit({ type: meta.type, table: meta.table, key, at: new Date().toISOString(), device_id: dev, summary: meta.summary });
+170: const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+180: const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+186: await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(arr));
+193: await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(clean));
+199: const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+205: await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(next));
+210: const q = await getQueue();
+212: await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+213: await _maybeAuditFromEnqueue(op, payload);
+216: if (meta && meta.table) await markTableDirty(meta.table);
+219: export async function getQueueCount() { return (await getQueue()).length; }
+220: export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
+227: const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+231: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+235: await AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(clean));
+241: const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+248: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+249: const q = await getQueue();
+250: const remaining: any[] = [];
+251: let ok = 0, fail = 0;
+254: try { dest = (await AsyncStorage.getItem(SYNC_DEST_KEY)) || ''; } catch {}
+259: if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+267: await (lib as any)[item.op](item.payload);
+275: remaining.push({ ...item, attempts, lastError: msg, failed: true });
+277: remaining.push({ ...item, attempts, lastError: msg });
+279: fail++;
+284: await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+285: await new Promise(r => setTimeout(r, 10));
+288: await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+289: return { ok, fail };
+300: const fresh = await fetcher();
+301: await setLocal(key, fresh);
+304: const cached = await getLocal<T>(key);
+309: const cached = await getLocal<T>(key);
+311: try { return await fetcher(); } catch { throw new Error('داده‌ای موجود نیست'); }
+316: const local = await getLocal<any[]>('products');
+320: const list: any[] = (await getLocal('products')) || [];
+321: const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+325: await setLocal('products', list);
+326: try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+327: if (await serverBusinessAllowed()) {
+329: await lib.createProduct(p);
+330: await setLocal('products', await lib.getProducts());
+331: try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+333: catch { await enqueue('createProduct', p); }
+335: await enqueue('createProduct', p);
+339: const list: any[] = (await getLocal('products')) || [];
+342: if (idx >= 0) { list[idx] = { ...list[idx], ...p, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('products', list); }
+343: try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+346: const q = await getQueue();
+351: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+357: if (await serverBusinessAllowed()) {
+358: try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+360: await enqueue('updateProduct', payload);
+364: const list: any[] = (await getLocal('products')) || [];
+367: await recordTombstone('products', String(code || id));
+368: await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+369: try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
+372: const q = await getQueue();
+376: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+382: if (await serverBusinessAllowed()) {
+383: try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+385: await enqueue('deleteProduct', payload);
+391: const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+394: const old = (await getLocal<any[]>('sales')) || [];
+395: const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+396: const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+397: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+400: invoice_number: inv,
+404: manual_invoice: payload.manualInvoice || '',
+418: return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+429: await setLocal('sales', [...filtered, ...rows]);
+435: const inv = String(payload.invoiceNumber || payload.invoice_number || payload._pendingInvNumber || '').trim();
+438: const old = (await getLocal<any[]>('purchases')) || [];
+439: const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+440: const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+441: const devP = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+444: invoice_number: inv,
+448: manual_invoice: payload.manualInvoice || '',
+462: return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+473: await setLocal('purchases', [...filtered, ...rows]);
+478: await _localUpsertSale(payload);
+479: if (await serverBusinessAllowed()) {
+481: const r = await lib.createSale(payload);
+482: try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+485: catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+487: await enqueue('createSale', payload);
+488: try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+489: return payload.invoiceNumber;
+491: async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+492: const inv = String(invoiceNumber || '').trim();
+495: const local = (await getLocal<any[]>(key)) || [];
+496: const q = await getQueue();
+510: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+530: return all.some((r: any) => String(r.original_invoice_number || '').trim() === inv);
+534: if (await hasActiveReturns(inv, 'sales')) {
+537: await recordTombstone('sales', String(inv));
+538: const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+539: await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+540: try { await _pushAudit({ type: 'sale_delete', table: 'sales', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور فروش' }); } catch {}
+541: if (await serverBusinessAllowed()) {
+542: try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+544: await enqueue('deleteSale', inv);
+549: if (await hasActiveReturns(inv, 'purchase')) {
+552: await recordTombstone('purchases', String(inv));
+553: const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+554: await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+555: try { await _pushAudit({ type: 'purchase_delete', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور خرید' }); } catch {}
+556: if (await serverBusinessAllowed()) {
+557: try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+559: await enqueue('deletePurchase', inv);
+565: const local = await getLocal<any>('settings');
+569: await setLocal('settings', s);
+570: try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+571: if (await serverBusinessAllowed()) {
+572: try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+574: await enqueue('updateSettings', s);
+579: const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+592: const q = await getQueue();
+597: sales = sales.filter((s: any) => s.invoice_number !== item.payload);
+600: purchases = purchases.filter((p: any) => p.invoice_number !== item.payload);
+607: const inv = item.payload.invoiceNumber;
+608: const oldRows = sales.filter((s: any) => s.invoice_number === inv);
+611: sales = sales.filter((s: any) => s.invoice_number !== inv);
+629: const inv = item.payload.invoiceNumber;
+630: const oldRows = purchases.filter((p: any) => p.invoice_number === inv);
+633: purchases = purchases.filter((p: any) => p.invoice_number !== inv);
+656: const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+657: const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+658: if (inv && sales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+670: invoice_number: inv,
+680: const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+681: const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+682: if (inv && purchases.some((p: any) => String(p.invoice_number || '') === String(inv))) continue;
+695: invoice_number: inv,
+696: manual_invoice: item.payload.manualInvoice || '',
+748: const salesReturns = await getSalesReturns();
+759: } catch (e) { console.log('[inventory] salesReturns effect fail:', e); }
+763: const purchaseReturns = await getPurchaseReturns();
+776: } catch (e) { console.log('[inventory] purchaseReturns effect fail:', e); }
+829: return await computeLocalInventory();
+838: return await computeLocalDashboardStats(r, f);
+841: var cached = await getLocal("stats_" + r + "_" + f);
+843: return { totalSales: 0, totalPurchases: 0, customerPaid: 0, customerDebt: 0, supplierPaid: 0, supplierDebt: 0, profit: 0, models: [], estimatedCount: 0, defaultMargin: 0.1, rangeLabel: r };
+851: export async function getUnpaidInvoices() {
+853: var grouped = await getSalesGrouped();
+854: var unpaid = grouped.filter(function(g) { return (g.paid || 0) === 0; });
+855: await setLocal("unpaid_invoices", unpaid);
+856: return unpaid;
+858: console.log("[getUnpaidInvoices] err:", e);
+859: return (await getLocal("unpaid_invoices")) || [];
+891: let list = await getLocal<any[]>('all_purchases_for_lookup');
+893: const grouped = await getLocal<any[]>('purchases_grouped') || [];
+904: const list = await getSupplierList();
+916: const sales = await getCustomerList();
+917: const purchases = await getSupplierList();
+927: const fresh = await lib.lookupSupplierByName(name);
+928: if (fresh) await setLocal('sup_' + name, fresh);
+930: } catch (e) { return await findSupplierByNameOffline(name); }
+932: const cached = await getLocal<any>('sup_' + name);
+934: return await findSupplierByNameOffline(name);
+940: const fresh = await lib.lookupCodeByName(name);
+941: if (fresh) await setLocal('code_' + name, fresh);
+943: } catch (e) { return await findCodeByNameOffline(name); }
+945: const cached = await getLocal<string>('code_' + name);
+947: return await findCodeByNameOffline(name);
+955: const results = await Promise.allSettled([
+959: lib.getUnpaidInvoices(),
+965: const [products, salesGrouped, purchasesGrouped, unpaid, settings, allSales, allPurchases] = results;
+967: if (products.status === 'fulfilled') await setLocal('products', products.value);
+968: if (salesGrouped.status === 'fulfilled') await setLocal('sales_grouped', salesGrouped.value);
+969: if (purchasesGrouped.status === 'fulfilled') await setLocal('purchases_grouped', purchasesGrouped.value);
+970: if (unpaid.status === 'fulfilled') await setLocal('unpaid_invoices', unpaid.value);
+971: if (settings.status === 'fulfilled') await setLocal('settings', settings.value);
+975: await setLocal('all_sales_for_lookup', full.map((r: any) => ({
+982: await setLocal('all_sales_full', full);
+984: if (allPurchases.status === 'fulfilled') await setLocal('all_purchases_for_lookup', allPurchases.value.data || []);
+987: const customerCount = (await getLocal<any[]>('all_sales_for_lookup'))?.length || 0;
+999: export async function generateInvoiceNumber(): Promise<string> {
+1003: const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+1004: const rows = (await getLocal<any[]>('sales')) || [];
+1005: const q = await getQueue();
+1007: grouped.forEach((g: any) => { if (g.invoice) allInvs.add(String(g.invoice)); });
+1008: rows.forEach((r: any) => { if (r.invoice_number) allInvs.add(String(r.invoice_number)); });
+1009: q.forEach((item: any) => { if (item.op === 'createSale' && item.payload?.invoiceNumber) allInvs.add(String(item.payload.invoiceNumber)); });
+1019: const { bridgeNextNumber } = await import('./lib.sheets');
+1020: const central = await bridgeNextNumber('sale', maxN);
+1033: const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+1034: const queue = await getQueue();
+1045: const { bridgeNextNumber } = await import('./lib.sheets');
+1046: const central = await bridgeNextNumber('customer', maxN);
+1061: const inv = String(r.invoice_number || '').trim();
+1065: invoice: inv,
+1069: total: 0, paid: 0, items: [],
+1079: g.paid += Number(r.payment) || 0;
+1093: const inv = String(r.invoice_number || '').trim();
+1097: invoice: inv,
+1099: manual: r.manual_invoice || '',
+1102: total: 0, paid: 0, items: [],
+1112: g.paid += Number(r.payment) || 0;
+1131: serverList = (await getLocal<any[]>('sales_grouped')) || [];
+1134: const localSalesRows = (await getLocal<any[]>('sales')) || [];
+1139: const inv = String(r.invoice_number || '').trim();
+1145: for (const g of serverList) map[String(g.invoice || '')] = g;
+1147: const k = String(g.invoice || '');
+1158: const queue = await getQueue();
+1167: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1184: const inv = p.invoiceNumber;
+1188: invoice: inv, name: p.customerName, phone: p.customerPhone,
+1189: total: 0, paid: 0, items: [],
+1196: pendingByInv[inv].paid += Number(it.payment) || 0;
+1199: if (!pendingByInv[inv].paid) {
+1200: pendingByInv[inv].paid = Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+1205: const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+1208: const k = String(g.invoice || '');
+1212: const k = String((g as any).invoice || '');
+1223: //  searchAllInvoices — با ادغام صف آفلاین
+1225: export async function searchAllInvoices(q: string) {
+1226: const [sales, purchases] = await Promise.all([
+1234: (String(r.invoice) + ' ' + String(r.name || '') + ' ' + String(r.phone || '')).toLowerCase().includes(query));
+1239: //  getInvoiceDetail — از صف یا سرور
+1248: //  updateInvoiceInQueue — ویرایش فاکتور آفلاین
+1254: async function genPurchaseInvoiceNumber() {
+1259: const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+1260: const queue = await getQueue();
+1263: const m = String(g.invoice || '').match(/^P-\d{6}-(\d+)$/);
+1268: const inv = q.payload?._pendingInvNumber || q.payload?.invoiceNumber || '';
+1274: const { bridgeNextNumber } = await import('./lib.sheets');
+1275: const central = await bridgeNextNumber('purchase', maxN);
+1287: if (await serverBusinessAllowed()) {
+1289: const r = await lib.createPurchase(payload);
+1290: const inv = String(r || payload.invoiceNumber || '');
+1291: if (inv) await _localUpsertPurchase({ ...payload, invoiceNumber: inv });
+1293: await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1299: const pInv = await genPurchaseInvoiceNumber();
+1300: const newPayload = { ...payload, _pendingInvNumber: pInv, invoiceNumber: pInv };
+1301: await _localUpsertPurchase(newPayload);
+1302: await enqueue('createPurchase', newPayload);
+1304: await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(pInv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1315: serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+1317: const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
+1322: const inv = String(r.invoice_number || '').trim();
+1328: for (const g of serverList) map[String(g.invoice || '')] = g;
+1330: const k = String(g.invoice || '');
+1341: const queue = await getQueue();
+1350: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1367: const inv = p._pendingInvNumber || p.invoiceNumber || 'P-PENDING';
+1371: invoice: inv,
+1372: manual: p.manualInvoice || '',
+1375: total: 0, paid: 0, items: [],
+1385: pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
+1389: const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+1392: const k = String(g.invoice || '');
+1396: const k = String((g as any).invoice || '');
+1403: //  getInvoiceDetail — از صف یا سرور
+1405: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+1407: const queue = await getQueue();
+1409: if (item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber) {
+1413: invoice_number: p.invoiceNumber,
+1432: return Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+1439: date_factor: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 10).replace(/-/g, '/'),
+1440: date_reg: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+1445: const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+1446: if (pInv === invoiceNumber) {
+1451: invoice_number: pInv,
+1468: return Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+1472: date_factor: String(p.invoiceDate || p.purchaseDate || p.factorDate || p.date || new Date(item.ts).toISOString()).slice(0, 10).replace(/-/g, '/'),
+1473: date_reg: String(p.invoiceDate || p.purchaseDate || p.factorDate || p.date || new Date(item.ts).toISOString()).slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+1482: const cached = (await getLocal<any[]>(cacheKey)) || [];
+1483: const filtered = cached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+1486: const paidSum = rows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+1487: if (paidSum === 0) {
+1490: const grouped = (await getLocal<any[]>(groupedKey)) || [];
+1491: const g = grouped.find((x: any) => String(x.invoice || '') === invoiceNumber);
+1492: if (g && Number(g.paid)) rows[0].payment = Number(g.paid);
+1501: const grouped = (await getLocal<any[]>(groupedKey)) || [];
+1502: const g = grouped.find((x: any) => String(x.invoice || '') === invoiceNumber);
+1507: invoice_number: invoiceNumber,
+1519: payment: idx === 0 ? (Number(g.paid) || 0) : 0,
+1535: const otherCached = (await getLocal<any[]>(otherKey)) || [];
+1536: const otherFiltered = otherCached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+1543: const fresh = await lib.getInvoiceDetail(invoiceNumber, type);
+1552: //  updateInvoiceInQueue — ویرایش آفلاین
+1554: export async function updateInvoiceInQueue_original(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+1555: const queue = await getQueue();
+1564: match = item.payload?.invoiceNumber === invoiceNumber;
+1566: match = (item.payload?._pendingInvNumber === invoiceNumber)
+1567: || (item.payload?.invoiceNumber === invoiceNumber);
+1605: const list = (await getLocal<any[]>(key)) || [];
+1606: const template = list.find((r: any) => String(r.invoice_number || '') === invoiceNumber) || {};
+1607: const filtered = list.filter((r: any) => String(r.invoice_number || '') !== invoiceNumber);
+1610: invoice_number: invoiceNumber,
+1622: await setLocal(key, [...filtered, ...newRows]);
+1628: await AsyncStorage.setItem('@mizan_queue', JSON.stringify(queue));
+1636: export async function deleteSaleFromQueue(invoiceNumber: string) {
+1637: const queue = await getQueue();
+1639: !(item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber)
+1641: await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
+1644: export async function deletePurchaseFromQueue(invoiceNumber: string) {
+1645: const queue = await getQueue();
+1648: const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+1649: return pInv !== invoiceNumber;
+1651: await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
+1662: const list = await getCustomerList();
+1676: const queue = await getQueue();
+1712: const fresh = await lib.lookupCustomerByPhone(phone);
+1714: await setLocal('cust_' + phone, fresh);
+1718: const fromQueue = await findCustomerByPhoneOffline(phone);
+1721: return await findCustomerByPhoneOffline(phone);
+1725: const cached = await getLocal<any>('cust_' + phone);
+1727: return await findCustomerByPhoneOffline(phone);
+1738: const all = (await getLocal<any[]>('all_sales_for_lookup')) || [];
+1748: const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+1771: const { data } = await lib.supabase.from('fx_trades').select('*').order('created_at', { ascending: false });
+1776: const devE = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+1779: const local = (await getLocal<any[]>('fx_trades')) || [];
+1780: await setLocal('fx_trades', [item, ...local]);
+1783: const { error } = await lib.supabase.from('fx_trades').insert({
+1789: } catch { await enqueue('createFxTrade', p); }
+1790: } else { await enqueue('createFxTrade', p); }
+1794: const local = (await getLocal<any[]>('fx_trades')) || [];
+1795: await setLocal('fx_trades', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1797: try { await lib.supabase.from('fx_trades').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1805: const local = (await getLocal<any[]>('expenses')) || [];
+1809: const { data } = await lib.supabase.from('expenses').select('*').order('created_at', { ascending: false });
+1816: const q = await getQueue();
+1832: const devEm = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+1835: const local = (await getLocal<any[]>('expenses')) || [];
+1836: await setLocal('expenses', [item, ...local]);
+1837: try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
+1838: if (await serverBusinessAllowed()) {
+1840: const { error } = await lib.supabase.from('expenses').insert({
+1841: invoice_number: p.invoice_number || '',
+1860: try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
+1861: } catch { await enqueue('createExpense', p); }
+1862: } else { await enqueue('createExpense', p); }
+1866: await recordTombstone('expenses', String(localId));
+1867: const local = (await getLocal<any[]>('expenses')) || [];
+1868: await setLocal('expenses', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1869: try { await _pushAudit({ type: 'expense_delete', table: 'expenses', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف هزینه' }); } catch {}
+1870: if (await serverBusinessAllowed()) {
+1871: try { await lib.supabase.from('expenses').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1872: catch { await enqueue('deleteExpense', String(localId)); }
+1874: await enqueue('deleteExpense', String(localId));
+1883: const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+1888: const devAt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+1891: const local = (await getLocal<any[]>('employees')) || [];
+1892: await setLocal('employees', [item, ...local]);
+1893: try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1894: if (await serverBusinessAllowed()) {
+1896: const { error } = await lib.supabase.from('employees').insert({
+1902: try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1903: } catch { await enqueue('createEmployee', p); }
+1904: } else { await enqueue('createEmployee', p); }
+1908: await recordTombstone('employees', String(localId));
+1909: const local = (await getLocal<any[]>('employees')) || [];
+1910: await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1911: try { await _pushAudit({ type: 'employee_delete', table: 'employees', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کارمند' }); } catch {}
+1912: if (await serverBusinessAllowed()) {
+1913: try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1914: catch { await enqueue('deleteEmployee', String(localId)); }
+1916: await enqueue('deleteEmployee', String(localId));
+1925: const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1931: const local = (await getLocal<any[]>('attendance')) || [];
+1932: await setLocal('attendance', [item, ...local]);
+1933: try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1934: if (await serverBusinessAllowed()) {
+1936: const { error } = await lib.supabase.from('attendance').insert({
+1942: try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1943: } catch { await enqueue('createAttendance', p); }
+1944: } else { await enqueue('createAttendance', p); }
+1948: await recordTombstone('salary_payments', String(localId));
+1949: const local = (await getLocal<any[]>('salary_payments')) || [];
+1950: await setLocal('salary_payments', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1951: try { await _pushAudit({ type: 'salary_delete', table: 'salary_payments', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف پرداخت حقوق' }); } catch {}
+1952: if (await serverBusinessAllowed()) {
+1953: try { await lib.deleteSalaryPayment(String(localId)); }
+1954: catch { await enqueue('deleteSalaryPayment', String(localId)); }
+1956: await enqueue('deleteSalaryPayment', String(localId));
+1961: await recordTombstone('employee_loans', String(localId));
+1962: const local = (await getLocal<any[]>('employee_loans')) || [];
+1963: await setLocal('employee_loans', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1964: try { await _pushAudit({ type: 'loan_delete', table: 'employee_loans', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف وام' }); } catch {}
+1965: if (await serverBusinessAllowed()) {
+1966: try { await lib.deleteLoan(String(localId)); }
+1967: catch { await enqueue('deleteLoan', String(localId)); }
+1969: await enqueue('deleteLoan', String(localId));
+1974: await recordTombstone('employee_leaves', String(localId));
+1975: const local = (await getLocal<any[]>('employee_leaves')) || [];
+1976: await setLocal('employee_leaves', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1977: try { await _pushAudit({ type: 'leave_delete', table: 'employee_leaves', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف مرخصی' }); } catch {}
+1978: if (await serverBusinessAllowed()) {
+1979: try { await lib.deleteLeave(String(localId)); }
+1980: catch { await enqueue('deleteLeave', String(localId)); }
+1982: await enqueue('deleteLeave', String(localId));
+1987: await recordTombstone('attendance', String(localId));
+1988: const local = (await getLocal<any[]>('attendance')) || [];
+1989: await setLocal('attendance', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1990: try { await _pushAudit({ type: 'attendance_delete', table: 'attendance', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حضور' }); } catch {}
+1991: if (await serverBusinessAllowed()) {
+1992: try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1993: catch { await enqueue('deleteAttendance', String(localId)); }
+1995: await enqueue('deleteAttendance', String(localId));
+2000: await recordTombstone('payroll_batches', String(localId));
+2001: const local = (await getLocal<any[]>('payroll_batches')) || [];
+2002: await setLocal('payroll_batches', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2003: try { await _pushAudit({ type: 'batch_delete', table: 'payroll_batches', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف لیست حقوق' }); } catch {}
+2004: if (await serverBusinessAllowed()) {
+2005: try { await lib.supabase.from('payroll_batches').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+2006: catch { await enqueue('deleteBatch', String(localId)); }
+2008: await enqueue('deleteBatch', String(localId));
+2018: const { data } = await lib.supabase.from('fx_customers').select('*').order('created_at', { ascending: false });
+2023: const local = (await getLocal<any[]>('fx_customers')) || [];
+2032: await setLocal('fx_customers', [item, ...local]);
+2035: await lib.supabase.from('fx_customers').insert({
+2040: } catch { await enqueue('createFxCustomer', { ...p, code }); }
+2041: } else { await enqueue('createFxCustomer', { ...p, code }); }
+2045: const local = (await getLocal<any[]>('fx_customers')) || [];
+2047: await setLocal('fx_customers', newList);
+2049: try { await lib.supabase.from('fx_customers').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+2053: const local = (await getLocal<any[]>('fx_customers')) || [];
+2054: await setLocal('fx_customers', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2056: try { await lib.supabase.from('fx_customers').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+2065: const { data } = await lib.supabase.from('fx_partners').select('*').order('created_at', { ascending: false });
+2070: const local = (await getLocal<any[]>('fx_partners')) || [];
+2078: await setLocal('fx_partners', [item, ...local]);
+2081: await lib.supabase.from('fx_partners').insert({
+2084: } catch { await enqueue('createFxPartner', { ...p, code }); }
+2085: } else { await enqueue('createFxPartner', { ...p, code }); }
+2089: const local = (await getLocal<any[]>('fx_partners')) || [];
+2091: await setLocal('fx_partners', newList);
+2093: try { await lib.supabase.from('fx_partners').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+2097: const local = (await getLocal<any[]>('fx_partners')) || [];
+2098: await setLocal('fx_partners', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2100: try { await lib.supabase.from('fx_partners').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+2108: const local = (await getLocal<any[]>('fx_trades')) || [];
+2110: await setLocal('fx_trades', newList);
+2112: try { await lib.supabase.from('fx_trades').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+2118: //  updateInvoiceInQueue — wrapper با fallback برای synced
+2120: export async function updateInvoiceInQueue(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+2122: await updateInvoiceInQueue_original(invoiceNumber, type, rows);
+2124: console.log('updateInvoiceInQueue_original error:', e);
+2126: const q = await getQueue();
+2129: const hasCreate = q.some((item: any) => item.op === createOp && item.payload?.invoiceNumber === invoiceNumber);
+2130: const hasUpdate = q.some((item: any) => item.op === updateOp && item.payload?.invoiceNumber === invoiceNumber);
+2132: const newQ = [...q, { op: updateOp, payload: { invoiceNumber, rows }, ts: Date.now() }];
+2133: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+2136: if (item.op === updateOp && item.payload?.invoiceNumber === invoiceNumber) {
+2137: return { ...item, payload: { invoiceNumber, rows } };
+2141: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+2146: // Queue details + retry + clear failed
+2147: export async function getQueueDetails() {
+2148: var q = await getQueue();
+2154: label = p.invoiceNumber || p.invoice_number || p.code || p.name || p.id || p.local_id || "";
+2156: return { index: i, op: item.op, ts: item.ts || 0, attempts: item.attempts || 0, lastError: item.lastError || "", failed: !!item.failed, label: String(label).slice(0, 40) };
+2159: export async function retryFailed() {
+2160: var q = await getQueue();
+2163: if (item.failed) { count++; return Object.assign({}, item, { failed: false, attempts: 0, lastError: "" }); }
+2166: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+2169: export async function clearFailedItems() {
+2170: var q = await getQueue();
+2172: var newQ = q.filter(function(item) { return !item.failed; });
+2173: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+2182: var settings = (await getLocal("settings")) || {};
+2185: var localPurchases = (await getLocal("purchases")) || [];
+2186: var localSales = (await getLocal("sales")) || [];
+2188: var q = await getQueue();
+2256: var totalPurchases = 0, supplierPaid = 0, supplierDebt = 0;
+2269: supplierPaid += Number(r.payment) || 0;
+2296: var totalSales = 0, customerPaid = 0, totalProfit = 0;
+2310: customerPaid += payment;
+2329: try { salesReturns = await getSalesReturns(); } catch {}
+2330: try { purchaseReturns = await getPurchaseReturns(); } catch {}
+2332: var customerDebtVar = totalSales - customerPaid;
+2346: customerPaid -= settlement;
+2380: supplierPaid -= settlement;
+2403: totalSales: totalSales, totalPurchases: totalPurchases, customerPaid: customerPaid,
+2405: supplierPaid: supplierPaid, supplierDebt: supplierDebtVar,
+2420: const localPurchases = (await getLocal<any[]>('purchases')) || [];
+2421: const localSales = (await getLocal<any[]>('sales')) || [];
+2426: const q = await getQueue();
+2434: invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+2453: if (!pAll.some((x: any) => String(x.invoice_number || '') === String(normalized.invoice_number || ''))) pAll = pAll.concat([normalized]);
+2455: if (!sAll.some((x: any) => String(x.invoice_number || '') === String(normalized.invoice_number || ''))) sAll = sAll.concat([normalized]);
+2471: const adjs = (await getLocal<any[]>('stock_adjustments')) || [];
+2479: let list = (await getLocal<any[]>('stock_adjustments')) || [];
+2482: const fresh = await lib.getStockAdjustments(code);
+2484: await setLocal('stock_adjustments', fresh);
+2487: } catch (e) { console.log('[getStockAdjustments] online failed:', e); }
+2489: const q = await getQueue();
+2502: const devA = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+2505: const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2506: await setLocal('stock_adjustments', [item, ...list]);
+2507: if (await serverBusinessAllowed()) {
+2509: await lib.createStockAdjustment(item);
+2510: try { await _pushAudit({ type: 'stock_create', table: 'stock_adjustments', key: String(item.local_id || item.id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت تعدیل انبار' }); } catch {}
+2512: catch { await enqueue('createStockAdjustment', item); }
+2514: await enqueue('createStockAdjustment', item);
+2519: await recordTombstone('stock_adjustments', String(id));
+2520: const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2521: await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
+2522: try { await _pushAudit({ type: 'stock_delete', table: 'stock_adjustments', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف تعدیل انبار' }); } catch {}
+2523: if (await serverBusinessAllowed()) {
+2524: try { await lib.deleteStockAdjustment(id); }
+2525: catch { await enqueue('deleteStockAdjustment', id); }
+2527: await enqueue('deleteStockAdjustment', id);
+2531: //  Report helpers (offline + queue merge)
+2533: export async function getSalesRowsForReport(code: string) {
+2538: const [r1, r2] = await Promise.all([
+2543: } catch (e) { console.log('[getSalesRowsForReport] online fail:', e); }
+2545: const cachedSales = (await getLocal<any[]>('sales')) || [];
+2548: const q = await getQueue();
+2553: const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', customer_name: item.payload.customerName || '', customer_code: item.payload.customerCode || '', customer_phone: item.payload.customerPhone || '', account_holde
+2560: export async function getPurchasesRowsForReport(code: string) {
+2565: const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+2567: } catch (e) { console.log('[getPurchasesRowsForReport] online fail:', e); }
+2569: const cached = (await getLocal<any[]>('purchases')) || [];
+2571: const q = await getQueue();
+2576: const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', supplier_name: item.payload.supplierName || '', supplier_code: item.payload.supplierCode || '', supplier_phone: item.payload.supplierPhone || '', date_reg: r.d
+2594: if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
+2595: if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
+2597: const q = await getQueue();
+2601: const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+2602: if (inv) allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+2607: const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+2608: if (inv) allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+2613: const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+2616: const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+2617: allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+2634: invoice_number: inv,
+2635: manual_invoice: '',
+2650: const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+2653: const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+2654: allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+2669: invoice_number: inv,
+2670: manual_invoice: meta.manualInv || '',
+2684: const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+2685: if (inv && allSales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+2687: const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+2701: invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+2702: manual_invoice: '',
+2715: const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+2716: if (inv && allPurchases.some((p: any) => String(p.invoice_number || '') === String(inv))) continue;
+2718: const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+2730: invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+2731: manual_invoice: item.payload.manualInvoice || '',
+2795: invoice: s.invoice_number || '',
+2796: manualInvoice: s.manual_invoice || '',
+2841: invoice: p.invoice_number || '',
+2842: manualInvoice: p.manual_invoice || '',
+2863: const salesReturns = await getSalesReturns();
+2873: invoice: r.original_invoice_number || '',
+2874: manualInvoice: '',
+2888: } catch (e) { console.log('[ledger] salesReturns effect fail:', e); }
+2892: const purchaseReturns = await getPurchaseReturns();
+2902: invoice: r.original_invoice_number || '',
+2903: manualInvoice: '',
+2917: } catch (e) { console.log('[ledger] purchaseReturns effect fail:', e); }
+2958: (allSales || []).forEach((s: any) => { const k = s.invoice_number || s.invoice; if (k) _srcMaps.sales[k] = s; });
+2959: (allPurchases || []).forEach((p: any) => { const k = p.invoice_number || p.invoice; if (k) _srcMaps.purchases[k] = p; });
+2963: try { _allExpenses = await getExpenses(); } catch {}
+2964: try { _allSalaries = await getSalaryPayments(); } catch {}
+2965: try { _allLoans = await getLoans(); } catch {}
+2966: _allExpenses.forEach((e: any) => { const k = e.local_id || e.id || e.invoice_number; if (k) _srcMaps.expenses[k] = e; });
+2967: _allSalaries.forEach((s: any) => { const k = s.local_id || s.id || s.invoice_number; if (k) _srcMaps.salaries[k] = s; });
+2972: const sid = String(t.source_id || t.sourceId || t.invoice || '');
+2976: return { kind: 'sale', invoice: s.invoice_number || sid, date: s.date_reg || s.date_factor || s.created_at || '', total: Number(s.total_amount || s.total || 0), paid: Number(s.payment || s.paid || 0), balance: Number(s.balance || 0) };
+2980: return { kind: 'purchase', invoice: p.invoice_number || sid, date: p.date_reg || p.date_factor || p.created_at || '', total: Number(p.total_amount || p.total || 0), paid: Number(p.payment || p.paid || 0), balance: Number(p.balance || 0) };
+2984: return { kind: 'expense', invoice: e.invoice_number || sid, date: e.payment_date || e.created_at || '', total: Number(e.amount || 0), paid: Number(e.amount || 0), balance: 0, category: e.category || '', title: e.title || '', receiver: e.receiver_name || '', ba
+2988: return { kind: 'salary', invoice: s.invoice_number || sid, date: s.payment_date || s.created_at || '', total: Number(s.net_salary || 0), paid: Number(s.payment || 0), balance: Number(s.balance || 0), employee: s.employee_name || '', month: s.month || '', bank:
+2992: return { kind: 'loan', invoice: sid, date: l.date || l.created_at || '', total: Number(l.amount || 0), paid: Number(l.paid || 0), balance: Number(l.balance || 0), employee: l.employee_name || '', installments: Number(l.installments || 0), monthly: Number(l.mon
+2999: const partnersList = await getPartners();
+3001: const txns = await getPartnerTransactions(p.code);
+3030: invoice: t.invoice_number || '',
+3031: manualInvoice: '',
+3082: } catch (e) { console.log('[getLedgerData] partners fail:', e); }
+3087: const expenses = await getExpenses();
+3102: const inv = e.invoice_number || e.local_id || '';
+3109: date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+3139: } catch (e) { console.log('[getLedgerData] expenses fail:', e); }
+3144: const salaries = await getSalaryPayments();
+3145: const loans = await getLoans();
+3158: const paid = Math.abs(Number(s.payment) || 0);
+3164: date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+3171: if (paid > 0) {
+3173: date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+3177: sourceType: 'salary', sourceId: inv, qty: 0, priceUnit: 0, lineTotal: paid, debit: paid, credit: 0,
+3187: const paid = Math.abs(Number(l.paid) || 0);
+3192: date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+3199: if (paid > 0) {
+3201: date, invoice: inv, manualInvoice: '', modelCode: '', modelName: '',
+3205: sourceType: 'loan', sourceId: inv, qty: 0, priceUnit: 0, lineTotal: paid, debit: 0, credit: paid,
+3239: } catch (e) { console.log('[getLedgerData] salary/loan fail:', e); }
+3249: const base = (await cachedRead('parties', () => lib.getParties())) || [];
+3251: const q = await getQueue();
+3273: device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+3275: const list = (await getLocal<any[]>('parties')) || [];
+3276: await setLocal('parties', [item, ...list]);
+3277: try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3278: if (await serverBusinessAllowed()) {
+3280: await lib.createParty(item);
+3281: try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3283: catch { await enqueue('createParty', item); }
+3285: await enqueue('createParty', item);
+3294: await recordTombstone('parties', String(id));
+3295: const list = (await getLocal<any[]>('parties')) || [];
+3298: list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
+3299: await setLocal('parties', list);
+3301: try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
+3302: const q = await getQueue();
+3306: await saveQueue(q);
+3310: if (await serverBusinessAllowed()) {
+3311: try { await lib.updateParty(id, item); }
+3312: catch { await enqueue('updateParty', item); }
+3314: await enqueue('updateParty', item);
+3322: await recordTombstone('parties', String(id));
+3323: const list = (await getLocal<any[]>('parties')) || [];
+3324: await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3325: try { await _pushAudit({ type: 'party_delete', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف طرف‌حساب' }); } catch {}
+3326: const q = await getQueue();
+3330: await saveQueue(newQ);
+3333: if (await serverBusinessAllowed()) {
+3334: try { await lib.deleteParty(id); }
+3335: catch { await enqueue('deleteParty', { local_id: id, id }); }
+3337: await enqueue('deleteParty', { local_id: id, id });
+3343: try { const r = await lib.lookupPartyByPhone(phone); if (r) return r; } catch {}
+3345: const list = await getParties();
+3352: try { const r = await lib.lookupPartyByName(name); if (r) return r; } catch {}
+3354: const list = await getParties();
+3368: const list = await getProducts();
+3408: const list = await getParties();
+3435: const list = (await getLocal<any[]>('partners')) || [];
+3436: const q = await getQueue();
+3451: const devPt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3454: const list = (await getLocal<any[]>('partners')) || [];
+3455: await setLocal('partners', [...list, item]);
+3456: try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3457: if (await serverBusinessAllowed()) {
+3459: await lib.createPartner(item);
+3460: try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3461: } catch { await enqueue('createPartner', item); }
+3463: else { await enqueue('createPartner', item); }
+3468: const list = (await getLocal<any[]>('partners')) || [];
+3470: if (idx >= 0) { list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('partners', list); }
+3471: try { await _pushAudit({ type: 'partner_update', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش شریک' }); } catch {}
+3472: if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+3473: else { await enqueue('updatePartner', item); }
+3477: await recordTombstone('partners', String(id));
+3478: const list = (await getLocal<any[]>('partners')) || [];
+3479: await setLocal('partners', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3480: try { await _pushAudit({ type: 'partner_delete', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف شریک' }); } catch {}
+3481: if (await serverBusinessAllowed()) { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+3482: else { await enqueue('deletePartner', id); }
+3486: const list = (await cachedRead('pba_' + partnerCode, () => lib.getPartnerBankAccounts(partnerCode))) || [];
+3487: const q = await getQueue();
+3500: const list = (await getLocal<any[]>('pba_' + item.partner_code)) || [];
+3501: await setLocal('pba_' + item.partner_code, [...list, item]);
+3502: try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
+3503: if (await serverBusinessAllowed()) {
+3505: await lib.createPartnerBankAccount(item);
+3506: try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
+3507: } catch { await enqueue('createPBA', item); }
+3509: else { await enqueue('createPBA', item); }
+3513: await recordTombstone('partner_bank_accounts', String(id));
+3514: const list = (await getLocal<any[]>('pba_' + partnerCode)) || [];
+3515: await setLocal('pba_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+3516: try { await _pushAudit({ type: 'pba_delete', table: 'partner_bank_accounts', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حساب بانکی شریک' }); } catch {}
+3517: if (await serverBusinessAllowed()) { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+3518: else { await enqueue('deletePBA', id); }
+3522: const list = (await cachedRead('ptx_' + partnerCode, () => lib.getPartnerTransactions(partnerCode))) || [];
+3523: const q = await getQueue();
+3536: const list = (await getLocal<any[]>('ptx_' + item.partner_code)) || [];
+3537: await setLocal('ptx_' + item.partner_code, [...list, item]);
+3538: try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
+3539: if (await serverBusinessAllowed()) {
+3541: await lib.createPartnerTransaction(item);
+3542: try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
+3543: } catch { await enqueue('createPTX', item); }
+3545: else { await enqueue('createPTX', item); }
+3549: await recordTombstone('partner_transactions', String(id));
+3550: const list = (await getLocal<any[]>('ptx_' + partnerCode)) || [];
+3551: await setLocal('ptx_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+3552: try { await _pushAudit({ type: 'ptx_delete', table: 'partner_transactions', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حرکت شریک' }); } catch {}
+3553: if (await serverBusinessAllowed()) { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+3554: else { await enqueue('deletePTX', id); }
+3561: const list = (await getLocal<any[]>('banks')) || [];
+3562: const q = await getQueue();
+3574: const devB = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3577: const list = (await getLocal<any[]>('banks')) || [];
+3578: await setLocal('banks', [...list, item]);
+3579: try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+3580: if (await serverBusinessAllowed()) {
+3582: await lib.createBank(item);
+3583: try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+3584: } catch { await enqueue('createBank', item); }
+3586: else { await enqueue('createBank', item); }
+3591: const list = (await getLocal<any[]>('banks')) || [];
+3594: list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
+3595: await setLocal('banks', list);
+3597: try { await _pushAudit({ type: 'bank_update', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش بانک' }); } catch {}
+3598: if (await serverBusinessAllowed()) {
+3599: try { await lib.updateBank(id, item); }
+3600: catch { await enqueue('updateBank', item); }
+3602: await enqueue('updateBank', item);
+3608: await recordTombstone('banks', String(id));
+3609: const list = (await getLocal<any[]>('banks')) || [];
+3610: await setLocal('banks', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3611: try { await _pushAudit({ type: 'bank_delete', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف بانک' }); } catch {}
+3612: if (await serverBusinessAllowed()) { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+3613: else { await enqueue('deleteBank', id); }
+3621: const list = (await getLocal<any[]>('shippings')) || [];
+3622: const q = await getQueue();
+3637: const devS = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3640: const list = (await getLocal<any[]>('shippings')) || [];
+3641: await setLocal('shippings', [...list, item]);
+3642: try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+3643: if (await serverBusinessAllowed()) {
+3645: await lib.createShipping(item);
+3646: try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+3647: } catch { await enqueue('createShipping', item); }
+3649: else { await enqueue('createShipping', item); }
+3654: const list = (await getLocal<any[]>('shippings')) || [];
+3657: list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
+3658: await setLocal('shippings', list);
+3660: try { await _pushAudit({ type: 'shipping_update', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش باربری' }); } catch {}
+3661: if (await serverBusinessAllowed()) {
+3662: try { await lib.updateShipping(id, item); }
+3663: catch { await enqueue('updateShipping', item); }
+3665: await enqueue('updateShipping', item);
+3671: await recordTombstone('shippings', String(id));
+3672: const list = (await getLocal<any[]>('shippings')) || [];
+3673: await setLocal('shippings', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3674: try { await _pushAudit({ type: 'shipping_delete', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف باربری' }); } catch {}
+3675: if (await serverBusinessAllowed()) { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+3676: else { await enqueue('deleteShipping', id); }
+3687: const parties = await getParties();
+3694: const partners = await getPartners();
+3700: const banks = await getPartnerBankAccounts(partner.code);
+3718: const raw = await AsyncStorage.getItem(AUDIT_KEY);
+3732: await AsyncStorage.setItem(AUDIT_KEY, JSON.stringify(arr));
+3748: function _diffInvoiceRows(oldRows: any[], newRows: any[]) {
+3769: async function recordInvoiceAudit(table: 'sales' | 'purchases', invoiceNumber: string, oldRows: any[], newRows: any[]) {
+3771: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3772: const diff = _diffInvoiceRows(oldRows, newRows);
+3780: await _pushAudit({
+3781: type: 'invoice_update',
+3783: key: String(invoiceNumber),
+3797: await _pushAudit(ev);
+3802: const raw = await AsyncStorage.getItem(AUDIT_KEY);
+3810: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || 'nodev';
+3817: const all = await getAuditEvents();
+3818: const key = await _auditAckKey();
+3819: const raw = await AsyncStorage.getItem(key);
+3827: const all = await getAuditEvents();
+3828: const key = await _auditAckKey();
+3829: await AsyncStorage.setItem(key, String(Array.isArray(all) ? all.length : 0));
+3834: try { await AsyncStorage.setItem(AUDIT_KEY, '[]'); } catch {}
+3837: export async function updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+3838: if (await hasActiveReturns(payload.invoiceNumber, 'sales')) {
+3841: if (await serverBusinessAllowed()) {
+3842: try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
+3844: await enqueue('updateSale', payload);
+3846: const list = (await getLocal<any[]>('sales')) || [];
+3848: const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+3849: const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+3850: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3854: invoice_number: payload.invoiceNumber,
+3873: const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
+3874: await recordInvoiceAudit('sales', payload.invoiceNumber, oldRows, newRows);
+3875: await setLocal('sales', [...filtered, ...newRows]);
+3878: export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+3879: if (await hasActiveReturns(payload.invoiceNumber, 'purchase')) {
+3882: if (await serverBusinessAllowed()) {
+3883: try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
+3885: await enqueue('updatePurchase', payload);
+3887: const list = (await getLocal<any[]>('purchases')) || [];
+3889: const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+3890: const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+3891: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3895: invoice_number: payload.invoiceNumber,
+3899: manual_invoice: meta.manualInv || template.manual_invoice || '',
+3916: const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
+3917: await recordInvoiceAudit('purchases', payload.invoiceNumber, oldRows, newRows);
+3918: await setLocal('purchases', [...filtered, ...newRows]);
+3947: const existingList = await getPartnerTransactions(p.partner_code);
+3977: const partners = await getPartners();
+3989: const local = (await getLocal<any[]>('salary_payments')) || [];
+3993: const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
+4000: const q = await getQueue();
+4022: const local = (await getLocal<any[]>('employee_loans')) || [];
+4026: const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
+4033: const q = await getQueue();
+4056: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4057: const local = (await getLocal<any[]>('sales_returns')) || [];
+4065: await setLocal('sales_returns', [item, ...local]);
+4067: await _pushAudit({
+4076: await enqueue('createSalesReturn', item);
+4081: const local = (await getLocal<any[]>('sales_returns')) || [];
+4082: const q = await getQueue();
+4092: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+4129: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4130: const local = (await getLocal<any[]>('sales_returns')) || [];
+4142: await setLocal('sales_returns', newList);
+4144: await _pushAudit({
+4153: await enqueue('updateSalesReturn', item);
+4158: await recordTombstone('sales_returns', String(localId));
+4159: const local = (await getLocal<any[]>('sales_returns')) || [];
+4160: await setLocal('sales_returns', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+4162: await _pushAudit({
+4167: device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+4171: await enqueue('deleteSalesReturn', String(localId));
+4179: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4180: const local = (await getLocal<any[]>('purchase_returns')) || [];
+4188: await setLocal('purchase_returns', [item, ...local]);
+4190: await _pushAudit({
+4199: await enqueue('createPurchaseReturn', item);
+4204: const local = (await getLocal<any[]>('purchase_returns')) || [];
+4205: const q = await getQueue();
+4215: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+4252: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4253: const local = (await getLocal<any[]>('purchase_returns')) || [];
+4265: await setLocal('purchase_returns', newList);
+4267: await _pushAudit({
+4276: await enqueue('updatePurchaseReturn', item);
+4281: await recordTombstone('purchase_returns', String(localId));
+4282: const local = (await getLocal<any[]>('purchase_returns')) || [];
+4283: await setLocal('purchase_returns', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+4285: await _pushAudit({
+4290: device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+4294: await enqueue('deletePurchaseReturn', String(localId));
+
+─── lib.ts — lib.ts — دستیار ───
+26: console.log('[lib.ts] createClient failed:', e);
+134: const v = await AsyncStorage.getItem('MIZAN_CAL');
+140: await AsyncStorage.setItem('MIZAN_CAL', t);
+249: emails?: string[];
+257: sched_daily?: any;
+267: const { data, error } = await supabase.from('products').select('*').order('name');
+273: const { error } = await supabase.from('products').insert(rest);
+291: const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+297: const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+308: const { error } = await supabase.from('products').update(clean).eq('id', targetId);
+323: const { error } = await supabase.from('products').delete().eq('code', code);
+331: const { error } = await supabase.from('products').delete().eq('id', id);
+341: const { data } = await supabase
+354: const { data } = await supabase
+370: export async function generateInvoiceNumber(): Promise<string> {
+374: const { data } = await supabase
+376: .select('invoice_number');
+379: const inv = String(r.invoice_number || '');
+389: export async function generatePurchaseInvoiceNumber(manualInvoice: string): Promise<string> {
+393: const { data } = await supabase
+395: .select('invoice_number');
+398: const inv = String(r.invoice_number || '');
+407: invoiceNumber: string; customerCode: string; customerName: string;
+413: invoice_number: payload.invoiceNumber,
+434: date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+435: date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+437: const { error } = await supabase.from('sales').insert(rows);
+439: return payload.invoiceNumber;
+442: const { data, error } = await supabase
+449: if (!groups[r.invoice_number]) {
+450: groups[r.invoice_number] = {
+451: invoice: r.invoice_number, name: r.customer_name,
+452: phone: r.customer_phone, total: 0, paid: 0, items: [],
+456: const g = groups[r.invoice_number];
+458: g.paid += Number(r.payment) || 0;
+464: export async function deleteSale(invoiceNumber: string) {
+465: const { error } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+468: export async function getUnpaidInvoices() {
+469: const grouped: any[] = await getSalesGrouped();
+470: return grouped.filter((g) => (g.paid || 0) === 0);
+472: export async function searchAllInvoices(q: string) {
+473: const [sales, purchases] = await Promise.all([
+481: `${r.invoice} ${r.name || ''} ${r.phone || ''}`.toLowerCase().includes(query));
+484: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+486: const { data, error } = await supabase
+488: .eq('invoice_number', invoiceNumber)
+495: const { data: d2 } = await supabase.from(otherTable).select('*').eq('invoice_number', invoiceNumber).order('created_at');
+505: const { data } = await supabase
+517: const remaining = totalAll - (payload.paymentAmount || 0);
+520: const finalInvoiceNumber = await generatePurchaseInvoiceNumber(payload.manualInvoice || '');
+523: const { error } = await supabase.from('purchases').insert({
+524: invoice_number: finalInvoiceNumber,
+525: manual_invoice: payload.manualInvoice,
+538: date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+539: date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+542: return finalInvoiceNumber;
+546: invoice_number: finalInvoiceNumber,
+547: manual_invoice: payload.manualInvoice,
+558: balance: idx === 0 ? remaining : 0,
+565: date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+566: date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+568: const { error } = await supabase.from('purchases').insert(rows);
+570: return finalInvoiceNumber;
+574: const { data, error } = await supabase
+580: if (!groups[r.invoice_number]) {
+581: groups[r.invoice_number] = {
+582: invoice: r.invoice_number,
+583: manual: r.manual_invoice,
+585: phone: r.supplier_phone, total: 0, paid: 0, items: [],
+589: const g = groups[r.invoice_number];
+591: g.paid += Number(r.payment) || 0;
+596: export async function deletePurchase(invoiceNumber: string) {
+597: const { error } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+605: const settings = await getSettings();
+642: const [{ data: pData }, { data: sData }] = await Promise.all([
+649: let totalPurchases = 0, supplierPaid = 0, supplierDebt = 0;
+661: supplierPaid += Number(r.payment) || 0;
+688: let totalSales = 0, customerPaid = 0, totalProfit = 0;
+702: customerPaid += payment;
+744: totalSales, totalPurchases, customerPaid,
+745: customerDebt: totalSales - customerPaid,
+746: supplierPaid, supplierDebt,
+754: const d = await getDashboardStats('month', 'both');
+762: const settings = await getSettings();
+764: const [{ data: pData }, { data: sData }, { data: aData }, products] = await Promise.all([
+867: const { data } = await supabase.from('settings').select('*').limit(1);
+875: const { data } = await supabase.from('settings').select('id').limit(1);
+877: ? await supabase.from('settings').update(clean).eq('id', data[0].id)
+878: : await supabase.from('settings').insert(clean);
+891: throw new Error('settings upload failed after retries');
+897: const { data: p1 } = await supabase.from('products').select('supplier_code').eq('supplier_name', name).limit(1);
+899: const { data: p2 } = await supabase.from('purchases').select('supplier_code').eq('supplier_name', name).limit(1);
+901: const { data: p3 } = await supabase.from('sales').select('customer_code').eq('customer_name', name).limit(1);
+911: const { error } = await supabase.from('fx_trades').insert({
+923: const { error } = await supabase.from('expenses').insert({
+924: invoice_number: p.invoice_number || '',
+949: const { error } = await supabase.from('employees').insert({
+958: const { error } = await supabase.from('attendance').insert({
+968: const { error } = await supabase.from('fx_customers').insert({
+976: const { error } = await supabase.from('fx_partners').insert({
+986: export async function updateSale(payload: { invoiceNumber: string; rows: any[] }) {
+987: const { invoiceNumber, rows } = payload || {};
+988: if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+991: const { data: oldRows, error: fetchErr } = await supabase.from('sales').select('*').eq('invoice_number', invoiceNumber).limit(1);
+1015: const { error: delErr } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+1018: const { error } = await supabase.from('sales').insert(cleanRows);
+1023: export async function updatePurchase(payload: { invoiceNumber: string; rows: any[] }) {
+1024: const { invoiceNumber, rows } = payload || {};
+1025: if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+1027: const { data: oldRows, error: fetchErr } = await supabase.from('purchases').select('*').eq('invoice_number', invoiceNumber).limit(1);
+1047: const { error: delErr } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+1050: const { error } = await supabase.from('purchases').insert(cleanRows);
+1064: const { error: delErr } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1066: const { error } = await supabase.from('expenses').insert(clean);
+1072: const { error } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1086: clean.device_id = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+1088: const { error: delErr } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1090: const { error } = await supabase.from(table).insert(clean);
+1102: throw new Error('upload failed after retries');
+1106: const { error } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1113: clean.device_id = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+1115: const { error } = await supabase.from(table).insert(clean);
+1127: throw new Error('upload failed after retries');
+1158: const [{ data: pData, error: pErr }, { data: sData, error: sErr }] = await Promise.all([
+1172: const { data, error } = await q;
+1179: const { error } = await supabase.from('stock_adjustments').insert(clean);
+1184: const { error } = await supabase.from('stock_adjustments').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1193: const { data, error } = await q;
+1204: const { data, error } = await supabase.from('parties').insert(clean).select().single();
+1216: const { error } = await supabase.from('parties').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1224: const { error } = await supabase.from('parties').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1231: const { data } = await supabase.from('parties').select('*').eq('phone', p).limit(1);
+1238: const { data } = await supabase.from('parties').select('*').eq('name', n).limit(1);
+1245: const { data, error } = await supabase.from('partners').select('*').order('code', { ascending: true });
+1252: const { error } = await supabase.from('partners').insert(clean);
+1258: const { error } = await supabase.from('partners').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1262: const { error } = await supabase.from('partners').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1267: const { data, error } = await supabase.from('partner_bank_accounts').select('*').eq('partner_code', partnerCode);
+1274: const { error } = await supabase.from('partner_bank_accounts').insert(clean);
+1280: const { error } = await supabase.from('partner_bank_accounts').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1284: const { error } = await supabase.from('partner_bank_accounts').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1289: const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+1296: const { error } = await supabase.from('partner_transactions').insert(clean);
+1301: const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1308: const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1315: const { error } = await supabase.from('banks').insert(clean);
+1321: const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1325: const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1333: const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+1340: const { error } = await supabase.from('shippings').insert(clean);
+1346: const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1350: const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1367: const { data, error } = await supabase
+1380: const { data, error } = await supabase
+
+══════════ ۴) کامپوننت‌ها و صفحات دیگر ══════════
+
+─── AdsSettingsPanel.tsx ───
+8: } from './lib.assistant';
+40: try { await saveAdsConfig(cfg); showToast?.('✅ تنظیمات دستیار تبلیغات ذخیره شد'); }
+110: <Text style={s.title}>📣 تنظیمات دستیار تبلیغات</Text>
+112: <View style={s.row}><Text style={s.lbl}>فعال بودن دستیار تبلیغات</Text><Switch value={!!cfg.enabled} onValueChange={(v) => setCfg({ ...cfg, enabled: v })} /></View>
+
+─── AssistantHome.tsx ───
+4: import { processRubikaUpdatesSimple } from './lib.assistant.bot.simple';
+5: import { rubikaSendMessage, buildChannelPostText, rubikaSendPhoto, resetBotOffset, rubikaRemoveWebhook, forceFixBot, getBotLastError } from './lib.assistant.rubika';
+11: getAssistantInvoices, approveAssistantInvoice, deleteAssistantInvoice, transferAssistantInvoice, issueAssistantInvoice,
+12: } from './lib.assistant';
+16: export default function AssistantHome({ showToast }: any) {
+25: const [assistantInvoices, setAssistantInvoices] = useState<any[]>([]);
+50: getAssistantInvoices(), getRateSnapshots(), getRateSummary(), getAdsQueue(), getAdsHistory(),
+56: setAssistantInvoices(Array.isArray(o) ? o : []);
+70: const inv = await issueAssistantInvoice({
+83: setAssistantInvoices(await getAssistantInvoices());
+268: <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#f4d47a', textAlign: 'right', marginBottom: 4 }}>🤝 دستیار میزان</Text>
+270: داشبورد سه دستیار. برای پیکربندی، از تنظیمات → دستیار میزان استفاده کنید.
+291: <Text style={titleStyle}>🤝 دستیار فروش</Text>
+295: <View style={rowStyle}><Text style={labelStyle}>فاکتورهای دستیار فروش</Text><Text style={valueStyle}>{assistantInvoices.length}</Text></View>
+336: <TouchableOpacity onPress={() => showToast?.('از تنظیمات → دستیار میزان → دستیار فروش پیکربندی کنید')} style={[btnStyle, { backgroundColor: '#7c3aed' }]}>
+337: <Text style={{ color: '#fff', fontWeight: 'bold' }}>⚙️ تنظیمات دستیار فروش</Text>
+342: <Text style={titleStyle}>👁️ دستیار دیده‌بان</Text>
+347: <TouchableOpacity onPress={() => showToast?.('از تنظیمات → دستیار میزان → دستیار دیده‌بان پیکربندی کنید')} style={[btnStyle, { backgroundColor: '#0ea5e9' }]}>
+348: <Text style={{ color: '#fff', fontWeight: 'bold' }}>⚙️ تنظیمات دستیار دیده‌بان</Text>
+353: <Text style={titleStyle}>📣 دستیار تبلیغات</Text>
+358: <TouchableOpacity onPress={() => showToast?.('از تنظیمات → دستیار میزان → دستیار تبلیغات پیکربندی کنید')} style={[btnStyle, { backgroundColor: '#f59e0b' }]}>
+359: <Text style={{ color: '#fff', fontWeight: 'bold' }}>⚙️ تنظیمات دستیار تبلیغات</Text>
+366: <View style={rowStyle}><Text style={labelStyle}>دستیارهای فعال</Text><Text style={valueStyle}>{(bot.telegram_enabled || bot.rubika_enabled || bot.whatsapp_enabled ? 1 : 0) + (watcher.enabled ? 1 : 0) 
+373: <Text style={titleStyle}>🛒 فاکتورهای دستیار فروش ({assistantInvoices.length})</Text>
+377: {assistantInvoices.length === 0 && <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 20 }}>هیچ فاکتوری ثبت نشده.</Text>}
+378: {assistantInvoices.filter((x: any) => x.status !== 'transferred').slice().reverse().map((inv: any) => (
+393: await transferAssistantInvoice(inv.id);
+394: setAssistantInvoices(await getAssistantInvoices());
+404: await approveAssistantInvoice(inv.id);
+405: setAssistantInvoices(await getAssistantInvoices());
+415: await deleteAssistantInvoice(inv.id);
+416: setAssistantInvoices(await getAssistantInvoices());
+
+─── BotBrain.ts ───
+2: //  🧠 BotBrain — مغز ربات دستیار
+
+─── BotUI.tsx ───
+28: { from: 'bot', text: 'سلام! من دستیار تو هستم. بگو چیکار کنم؟', time: Date.now() },
+
+─── ExchangeScreen.tsx ───
+16: import { consumeDeepLink, registerHandler } from './lib.assistant.bridge';
+166: // 🌉 ثبت setSub برای دستیار
+
+─── GlobalVoice.tsx ───
+136: manualEntry:  ['دستیار'],
+
+─── lib.ads.worker.ts ───
+1: import { getBotConfig } from './lib.assistant';
+6: } from './lib.assistant';
+7: import { rubikaSendMessage, rubikaSendPhoto } from './lib.assistant.rubika';
+8: import { telegramSendMessage, telegramSendPhoto } from './lib.assistant.telegram';
+
+─── lib.app.events.ts ───
+38: | 'assistant_command'    // دستور به ربات
+117: case 'assistant_command': return `🤖 دستور: ${d.text || ''}`;
+
+─── lib.app.executor.ts ───
+325: description: (cmd.action === 'deposit' ? 'واریز' : 'برداشت') + ' از دستیار',
+
+─── lib.app.manager.ts ───
+228: description: (action.type === 'deposit' ? 'واریز' : 'برداشت') + ' از دستیار',
+
+─── lib.app.schema.ts ───
+52: { key: 'aiAssistant', label: 'ربات', icon: '🤖',
+53: keywords: ['ربات', 'دستیار'] },
+56: { key: 'manualEntry', label: 'دستیار', icon: '🤖',
+57: keywords: ['دستیار'] },
+
+─── lib.assistant.bot.simple.ts ───
+2: import { getBotConfig, issueAssistantInvoice } from './lib.assistant';
+4: import { buildCatalogIndex, findProduct } from './lib.assistant.catalog';
+338: try { await issueAssistantInvoice({ id: 'inv_' + Date.now(), invoice_number: invNum, customer_name: state.name || '', customer_phone: state.phone || '', customer_address: state.address || '', customer
+
+─── lib.assistant.rubika.ts ───
+2: import { getBotConfig, saveBotConfig, issueAssistantInvoice } from './lib.assistant';
+6: // lib.assistant.rubika.ts — اتصال امن به Rubika Bot API
+93: //  ارسال پست محصول به کانال (دستیار فروش)
+410: import { buildCatalogIndex, findProduct } from './lib.assistant.catalog';
+719: try { await issueAssistantInvoice({ id: 'inv_' + Date.now(), invoice_number: invNum, customer_name: state.name, customer_phone: state.phone, customer_address: state.address, customer_shipping: state.s
+
+─── lib.assistant.telegram.ts ───
+1: // lib.assistant.telegram.ts — اتصال امن به Telegram Bot API
+
+─── lib.assistant.ts ───
+12: const BOT_KEY = '@mizan_assistant_bot_config';
+13: const WATCHER_KEY = '@mizan_assistant_watcher_config';
+14: const SOURCES_KEY = '@mizan_assistant_watcher_sources';
+15: const ADS_KEY = '@mizan_assistant_ads_config';
+119: //  ساختار داده سفارش‌ها (دستیار فروش)
+121: const ORDERS_KEY = '@mizan_assistant_orders';
+144: //  ساختار داده نرخ‌ها (دستیار دیده‌بان)
+146: const RATE_SNAPSHOTS_KEY = '@mizan_assistant_rate_snapshots';
+147: const RATE_SUMMARY_KEY = '@mizan_assistant_rate_summary';
+171: //  ساختار داده تبلیغات (دستیار تبلیغات)
+173: const ADS_QUEUE_KEY = '@mizan_assistant_ads_queue';
+174: const ADS_HISTORY_KEY = '@mizan_assistant_ads_history';
+208: //  ساختار پیش‌نویس سفارش (دستیار فروش)
+212: //  فاکتورهای دستیار فروش
+215: const ASSISTANT_INVOICES_KEY = '@mizan_assistant_invoices';
+216: const ASSISTANT_PAYMENTS_KEY = '@mizan_assistant_payments';
+218: export type AssistantInvoiceStatus = 'issued' | 'edited' | 'approved' | 'transferred' | 'rejected';
+220: export async function getAssistantInvoices() {
+221: const v = await _readJson(ASSISTANT_INVOICES_KEY, []);
+225: export async function getAssistantInvoiceById(id: string) {
+226: const list = await getAssistantInvoices();
+230: export async function issueAssistantInvoice(inv: any) {
+231: const list = await getAssistantInvoices();
+252: await _writeJson(ASSISTANT_INVOICES_KEY, [...list, item]);
+256: export async function updateAssistantInvoice(id: string, patch: any) {
+257: const list = await getAssistantInvoices();
+267: await _writeJson(ASSISTANT_INVOICES_KEY, updated);
+271: export async function deleteAssistantInvoice(id: string) {
+272: const list = await getAssistantInvoices();
+274: await _writeJson(ASSISTANT_INVOICES_KEY, filtered);
+277: export async function approveAssistantInvoice(id: string) {
+278: const list = await getAssistantInvoices();
+285: await _writeJson(ASSISTANT_INVOICES_KEY, updated);
+289: export async function rejectAssistantInvoice(id: string, reason: string) {
+290: const list = await getAssistantInvoices();
+297: await _writeJson(ASSISTANT_INVOICES_KEY, updated);
+301: export async function markAssistantInvoiceTransferred(id: string, invoice_number: string) {
+302: const list = await getAssistantInvoices();
+310: await _writeJson(ASSISTANT_INVOICES_KEY, updated);
+314: export async function getAssistantPayments() {
+315: const v = await _readJson(ASSISTANT_PAYMENTS_KEY, []);
+319: export async function saveAssistantPayment(p: any) {
+320: const list = await getAssistantPayments();
+333: await _writeJson(ASSISTANT_PAYMENTS_KEY, [...list, item]);
+337: export async function approveAssistantPayment(id: string) {
+338: const list = await getAssistantPayments();
+344: await _writeJson(ASSISTANT_PAYMENTS_KEY, updated);
+348: export async function rejectAssistantPayment(id: string) {
+349: const list = await getAssistantPayments();
+355: await _writeJson(ASSISTANT_PAYMENTS_KEY, updated);
+360: export async function transferAssistantInvoice(id: string) {
+361: const inv = await getAssistantInvoiceById(id);
+408: const updated = await markAssistantInvoiceTransferred(id, invoiceNumber);
+
+─── lib.bot.worker.ts ───
+1: import { getBotConfig } from './lib.assistant';
+2: import { processRubikaUpdatesSimple } from './lib.assistant.bot.simple';
+
+─── lib.local.exec.ts ───
+194: description: (cmd.intent === 'deposit' ? 'واریز' : 'برداشت') + ' از دستیار',
+
+─── lib.manual.ts ───
+2: // lib.manual.ts — دستیار هوشمند ورود دستی (آفلاین)
+
+─── ManualEntryScreen.tsx ───
+1: // ManualEntryScreen.tsx — دستیار صراف حرفه‌ای
+341: <Text style={s.title}>🤖 دستیار صراف</Text>
+605: <Text style={s.mTitle}>⚙️ تنظیمات دستیار</Text>
+
+─── nav.registry.ts ───
+17: { key: 'manualEntry', label: { fa: 'دستیار', ps: 'لاسنیوی' }, aliases: ['دستیار'], icon: '✍️', group: 'dashboard' },
+30: { key: 'manualEntry', label: { fa: 'دستیار', ps: 'لاسنیوی' }, aliases: ['دستیار'], icon: '✍️', group: 'plusTools' },
+
+─── SettingsAssistant.tsx ───
+1: import { requestAdminChatCapture } from './lib.assistant.rubika';
+5: import { telegramPing, telegramGetUpdates } from './lib.assistant.telegram';
+6: import { rubikaPing, rubikaGetUpdates, rubikaSendMessage, rubikaExtractChannelId, rubikaSendPhoto, buildOrderButton, rubikaSendMessageDebug, buildChannelPostText, rubikaExtractAdminChatId } from './li
+7: import { getBotConfig, saveBotConfig, getWatcherConfig, saveWatcherConfig, getWatcherSources, saveWatcherSources, getAdsConfig, saveAdsConfig, getSecureStorageMode } from './lib.assistant';
+11: export default function SettingsAssistant({ showToast }: any) {
+83: showToast?.('✅ تنظیمات دستیار فروش ذخیره شد (توکن‌ها در فاز نهایی به SecureStore منتقل می‌شوند)');
+102: showToast?.('✅ تنظیمات دستیار تبلیغات ذخیره شد');
+150: <Text style={{ fontSize: 15, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>🤝 دستیار فروش</Text>
+157: <Text style={{ color: activeTab === 'bot' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 11 }}>🤝 دستیار فروش</Text>
+170: <Text style={{ fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>🤝 دستیار فروش میزان</Text>
+172: این دستیار فروش با توکن رسمی هر پلتفرم کار می‌کند. توکن‌ها فعلاً به‌عنوان جای‌نگهدار ذخیره می‌شوند و در فاز نهایی به SecureStore منتقل خواهند شد.
+185: <Text style={labelStyle}>توکن دستیار فروش (BotFather)</Text>
+214: <Text style={labelStyle}>توکن دستیار فروش (پنل روبیکا)</Text>
+215: <TextInput value={botConfig.rubika_token} onChangeText={(v) => setBotConfig({ ...botConfig, rubika_token: v })} placeholder="توکن دستیار فروش روبیکا" style={inputStyle} />
+269: lines.push('در فیلد ذخیره شد. دکمه «💾 ذخیره تنظیمات دستیار فروش» را بزن.');
+301: const r = await rubikaSendMessage(botConfig.rubika_token, botConfig.rubika_channel_id, '✅ تست ارسال از دستیار میزان');
+386: <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>{saving ? '⏳...' : '💾 ذخیره تنظیمات دستیار فروش'}</Text>
+
+─── SuperAssistant.tsx ───
+1: // SuperAssistant.tsx — همه چیز داخل خودش
+18: export default function SuperAssistant({ showToast, onExit, onNavigate }: any) {
+401: <Text style={s.title}>🤖 دستیار</Text>
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

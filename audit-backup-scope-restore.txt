@@ -1,0 +1,800 @@
+══════════ ۱) توابع بکاپ در lib.offline.ts ══════════
+⚠️ lib.offline.ts: backupLocal پیدا نشد
+⚠️ lib.offline.ts: createBackup پیدا نشد
+⚠️ lib.offline.ts: exportBackup پیدا نشد
+⚠️ lib.offline.ts: exportLocalBackup پیدا نشد
+⚠️ lib.offline.ts: downloadBackup پیدا نشد
+⚠️ lib.offline.ts: restoreBackup پیدا نشد
+⚠️ lib.offline.ts: importBackup پیدا نشد
+⚠️ lib.offline.ts: importLocalBackup پیدا نشد
+⚠️ lib.offline.ts: uploadBackup پیدا نشد
+⚠️ lib.offline.ts: autoBackup پیدا نشد
+⚠️ lib.offline.ts: getLastAutoBackup پیدا نشد
+⚠️ lib.offline.ts: getBackupPayload پیدا نشد
+⚠️ lib.offline.ts: applyBackup پیدا نشد
+⚠️ lib.offline.ts: restoreFromBackup پیدا نشد
+
+══════════ ۲) جستجوی کلیدهای AsyncStorage در بکاپ ══════════
+
+─── lib.offline.ts — کلیدها و داده‌ها ───
+7: const MODE_KEY = '@mizan_mode';
+8: const LOCAL = '@mizan_local_';
+9: const QUEUE = '@mizan_queue';
+15: const m = await AsyncStorage.getItem(MODE_KEY);
+23: const BUSINESS_LOCK_KEY = '@mizan_business_lock';
+24: const SYNC_DEST_KEY = '@mizan_sync_destination';
+30: 'createSalesReturn','updateSalesReturn','deleteSalesReturn',
+34: 'createAttendance','updateAttendance','deleteAttendance',
+35: 'createSalaryPayment','updateSalaryPayment','deleteSalaryPayment',
+46: 'updateSettings'
+50: // BUSINESS_LOCAL_AND_SHEET_ONLY — هیچ عملیات تجاری به Supabase نمی‌رود.
+56: const v = await AsyncStorage.getItem(BUSINESS_LOCK_KEY);
+62: await AsyncStorage.setItem(BUSINESS_LOCK_KEY, open ? 'open' : 'locked');
+68: await AsyncStorage.setItem(MODE_KEY, m);
+77: const raw = await AsyncStorage.getItem(LOCAL + k);
+81: await AsyncStorage.setItem(LOCAL + k, JSON.stringify(v));
+85: const raw = await AsyncStorage.getItem(QUEUE);
+89: createProduct: { table: 'products', type: 'product_create', summary: 'ثبت کالا' },
+90: updateProduct: { table: 'products', type: 'product_update', summary: 'ویرایش کالا' },
+91: deleteProduct: { table: 'products', type: 'product_delete', summary: 'حذف کالا' },
+92: createSale: { table: 'sales', type: 'sale_create', summary: 'ثبت فاکتور فروش' },
+93: deleteSale: { table: 'sales', type: 'sale_delete', summary: 'حذف فاکتور فروش' },
+94: createPurchase: { table: 'purchases', type: 'purchase_create', summary: 'ثبت فاکتور خرید' },
+95: deletePurchase: { table: 'purchases', type: 'purchase_delete', summary: 'حذف فاکتور خرید' },
+96: createExpense: { table: 'expenses', type: 'expense_create', summary: 'ثبت هزینه' },
+97: deleteExpense: { table: 'expenses', type: 'expense_delete', summary: 'حذف هزینه' },
+98: createEmployee: { table: 'employees', type: 'employee_create', summary: 'ثبت کارمند' },
+99: updateEmployee: { table: 'employees', type: 'employee_update', summary: 'ویرایش کارمند' },
+100: deleteEmployee: { table: 'employees', type: 'employee_delete', summary: 'حذف کارمند' },
+101: createAttendance: { table: 'attendance', type: 'attendance_create', summary: 'ثبت حضور' },
+102: updateAttendance: { table: 'attendance', type: 'attendance_update', summary: 'ویرایش حضور' },
+103: deleteAttendance: { table: 'attendance', type: 'attendance_delete', summary: 'حذف حضور' },
+104: createSalaryPayment: { table: 'salary_payments', type: 'salary_create', summary: 'ثبت حقوق' },
+105: updateSalaryPayment: { table: 'salary_payments', type: 'salary_update', summary: 'ویرایش حقوق' },
+106: deleteSalaryPayment: { table: 'salary_payments', type: 'salary_delete', summary: 'حذف حقوق' },
+107: createLoan: { table: 'employee_loans', type: 'loan_create', summary: 'ثبت وام' },
+108: updateLoan: { table: 'employee_loans', type: 'loan_update', summary: 'ویرایش وام' },
+109: deleteLoan: { table: 'employee_loans', type: 'loan_delete', summary: 'حذف وام' },
+113: createBatch: { table: 'payroll_batches', type: 'batch_create', summary: 'ثبت لیست حقوق' },
+114: updateBatch: { table: 'payroll_batches', type: 'batch_update', summary: 'ویرایش لیست حقوق' },
+115: deleteBatch: { table: 'payroll_batches', type: 'batch_delete', summary: 'حذف لیست حقوق' },
+119: createPartner: { table: 'partners', type: 'partner_create', summary: 'ثبت شریک' },
+120: updatePartner: { table: 'partners', type: 'partner_update', summary: 'ویرایش شریک' },
+121: deletePartner: { table: 'partners', type: 'partner_delete', summary: 'حذف شریک' },
+126: createBank: { table: 'banks', type: 'bank_create', summary: 'ثبت بانک' },
+127: updateBank: { table: 'banks', type: 'bank_update', summary: 'ویرایش بانک' },
+128: deleteBank: { table: 'banks', type: 'bank_delete', summary: 'حذف بانک' },
+129: createShipping: { table: 'shippings', type: 'shipping_create', summary: 'ثبت باربری' },
+130: updateShipping: { table: 'shippings', type: 'shipping_update', summary: 'ویرایش باربری' },
+131: deleteShipping: { table: 'shippings', type: 'shipping_delete', summary: 'حذف باربری' },
+134: updateSettings: { table: 'settings', type: 'settings_update', summary: 'ویرایش تنظیمات' },
+141: const fields = ['local_id','id','code','_localId','invoiceNumber','invoice_number','invoice','employee_code','partner_code'];
+161: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+166: const DIRTY_TABLES_KEY = '@mizan_dirty_tables';
+170: const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+180: const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+186: await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(arr));
+193: await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(clean));
+199: const raw = await AsyncStorage.getItem(DIRTY_TABLES_KEY);
+205: await AsyncStorage.setItem(DIRTY_TABLES_KEY, JSON.stringify(next));
+212: await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+220: export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
+222: const TOMBSTONES_KEY = '@mizan_tombstones';
+227: const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+231: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+235: await AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(clean));
+241: const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+254: try { dest = (await AsyncStorage.getItem(SYNC_DEST_KEY)) || ''; } catch {}
+284: await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+288: await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+293: // BUSINESS_LOCAL_AND_SHEET_ONLY — بخش تجاری از Supabase خوانده نمی‌شود.
+314: export async function getProducts() {
+315: // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
+316: const local = await getLocal<any[]>('products');
+320: const list: any[] = (await getLocal('products')) || [];
+323: await setLocal('products', list);
+324: try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+328: await setLocal('products', await lib.getProducts());
+329: try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+337: const list: any[] = (await getLocal('products')) || [];
+338: const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+340: if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+341: try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+349: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+362: const list: any[] = (await getLocal('products')) || [];
+363: const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
+365: await recordTombstone('products', String(code || id));
+366: await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+367: try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
+374: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+392: const old = (await getLocal<any[]>('sales')) || [];
+422: await setLocal('sales', [...filtered, ...rows]);
+431: const old = (await getLocal<any[]>('purchases')) || [];
+461: await setLocal('purchases', [...filtered, ...rows]);
+470: try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+476: try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+479: async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+482: const key = type === 'sales' ? 'sales_returns' : 'purchase_returns';
+488: if (type === 'sales' && item.op === 'deleteSalesReturn') {
+498: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+504: if (type === 'sales' && String(t.table || '') !== 'sales_returns') continue;
+513: .filter(x => (type === 'sales' ? x.op === 'createSalesReturn' : x.op === 'createPurchaseReturn'))
+515: .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+522: if (await hasActiveReturns(inv, 'sales')) {
+525: await recordTombstone('sales', String(inv));
+526: const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+527: await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+528: try { await _pushAudit({ type: 'sale_delete', table: 'sales', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور فروش' }); } catch {}
+540: await recordTombstone('purchases', String(inv));
+541: const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+542: await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+543: try { await _pushAudit({ type: 'purchase_delete', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور خرید' }); } catch {}
+551: export async function getSettings() {
+552: // BUSINESS_LOCAL_AND_SHEET_ONLY — تنظیمات فقط محلی
+553: const local = await getLocal<any>('settings');
+556: export async function updateSettings(s: any) {
+557: await setLocal('settings', s);
+558: try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+560: try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+562: await enqueue('updateSettings', s);
+567: const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+568: getLocal<any[]>('products'),
+569: getLocal<any[]>('sales'),
+570: getLocal<any[]>('purchases'),
+571: getLocal<any>('settings'),
+574: const products = productsRaw || [];
+575: let sales = salesRaw || [];
+576: let purchases = purchasesRaw || [];
+577: const settings = (settingsRaw as any) || {};
+578: const threshold = settings.inventory_threshold ?? 5;
+585: sales = sales.filter((s: any) => s.invoice_number !== item.payload);
+588: purchases = purchases.filter((p: any) => p.invoice_number !== item.payload);
+596: const oldRows = sales.filter((s: any) => s.invoice_number === inv);
+599: sales = sales.filter((s: any) => s.invoice_number !== inv);
+601: sales.push({
+618: const oldRows = purchases.filter((p: any) => p.invoice_number === inv);
+621: purchases = purchases.filter((p: any) => p.invoice_number !== inv);
+623: purchases.push({
+646: if (inv && sales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+648: sales.push({
+670: if (inv && purchases.some((p: any) => String(p.invoice_number || '') === String(inv))) continue;
+672: purchases.push({
+705: products.forEach((p: any) => { productMap[p.code] = p; });
+709: (purchases || []).forEach((r: any) => {
+722: (sales || []).forEach((r: any) => {
+736: const salesReturns = await getSalesReturns();
+737: for (const r of salesReturns || []) {
+747: } catch (e) { console.log('[inventory] salesReturns effect fail:', e); }
+766: products.forEach((p: any) => {
+815: // BUSINESS_LOCAL_AND_SHEET_ONLY — انبار فقط محلی + صف
+824: // BUSINESS_LOCAL_AND_SHEET_ONLY — داشبورد فقط از داده محلی محاسبه می‌شود.
+831: return { totalSales: 0, totalPurchases: 0, customerPaid: 0, customerDebt: 0, supplierPaid: 0, supplierDebt: 0, profit: 0, models: [], estimatedCount: 0, defaultMargin: 0.1, rangeLabel: r };
+841: var grouped = await getSalesGrouped();
+879: let list = await getLocal<any[]>('all_purchases_for_lookup');
+881: const grouped = await getLocal<any[]>('purchases_grouped') || [];
+904: const sales = await getCustomerList();
+905: const purchases = await getSupplierList();
+906: for (const s of sales) if (s.customer_name === name && s.customer_code) return s.customer_code;
+907: for (const p of purchases) if (p.supplier_name === name && p.supplier_code) return p.supplier_code;
+944: lib.getProducts(),
+945: lib.getSalesGrouped(),
+946: lib.getPurchasesGrouped(),
+948: lib.getSettings(),
+949: lib.supabase.from('sales').select('*'),
+950: lib.supabase.from('purchases').select('supplier_code, supplier_name, supplier_phone'),
+953: const [products, salesGrouped, purchasesGrouped, unpaid, settings, allSales, allPurchases] = results;
+955: if (products.status === 'fulfilled') await setLocal('products', products.value);
+956: if (salesGrouped.status === 'fulfilled') await setLocal('sales_grouped', salesGrouped.value);
+957: if (purchasesGrouped.status === 'fulfilled') await setLocal('purchases_grouped', purchasesGrouped.value);
+959: if (settings.status === 'fulfilled') await setLocal('settings', settings.value);
+960: if (allSales.status === 'fulfilled') {
+961: const full = allSales.value.data || [];
+963: await setLocal('all_sales_for_lookup', full.map((r: any) => ({
+970: await setLocal('all_sales_full', full);
+972: if (allPurchases.status === 'fulfilled') await setLocal('all_purchases_for_lookup', allPurchases.value.data || []);
+975: const customerCount = (await getLocal<any[]>('all_sales_for_lookup'))?.length || 0;
+988: // BUSINESS_LOCAL_AND_SHEET_ONLY — شماره فاکتور فقط محلی
+992: const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+993: const rows = (await getLocal<any[]>('sales')) || [];
+1018: const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+1022: ...salesGrouped.map((g: any) => g.customerCode || ''),
+1034: //  getSalesGrouped — با ادغام صف
+1036: function _groupSalesRows(rows: any[]) {
+1089: export async function getSalesGrouped() {
+1091: // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
+1092: serverList = (await getLocal<any[]>('sales_grouped')) || [];
+1095: const localSalesRows = (await getLocal<any[]>('sales')) || [];
+1096: if (localSalesRows.length) {
+1097: const groupedFromSales = _groupSalesRows(localSalesRows);
+1100: for (const g of groupedFromSales) map[String(g.invoice || '')] = g;
+1113: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1119: if (String(t.table || '') !== 'sales') continue;
+1165: //  getPurchasesGrouped — با ادغام صف
+1172: const [sales, purchases] = await Promise.all([
+1173: getSalesGrouped(),
+1174: getPurchasesGrouped(),
+1181: return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
+1205: const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+1232: await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1243: await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(pInv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1249: //  getPurchasesGrouped — با شماره P-
+1251: export async function getPurchasesGrouped() {
+1253: // BUSINESS_LOCAL_AND_SHEET_ONLY — خرید فقط محلی + صف
+1254: serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+1256: const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
+1258: const groupedFromPurchases = _groupPurchaseRows(localPurchaseRows);
+1261: for (const g of groupedFromPurchases) map[String(g.invoice || '')] = g;
+1274: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1280: if (String(t.table || '') !== 'purchases') continue;
+1405: const cacheKey = type === 'purchase' ? 'purchases' : (type === 'sales' ? 'sales' : 'sales');
+1413: const groupedKey = type === 'purchase' ? 'purchases_grouped' : 'sales_grouped';
+1424: const otherKey = cacheKey === 'sales' ? 'purchases' : 'sales';
+1444: export async function updateInvoiceInQueue_original(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+1446: const op = type === 'sales' ? 'createSale' : 'createPurchase';
+1453: if (type === 'sales') {
+1463: if (type === 'sales') {
+1493: // BUSINESS_LOCAL_AND_SHEET_ONLY — به‌روزرسانی محلی تا دفتر معین فوراً تغییر را ببیند
+1494: const key = type === 'sales' ? 'sales' : 'purchases';
+1518: await AsyncStorage.setItem('@mizan_queue', JSON.stringify(queue));
+1531: await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
+1541: await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
+1551: // ۱. جستجو در cache (sales_grouped + all_sales_for_lookup)
+1627: // از all_sales_for_lookup
+1628: const all = (await getLocal<any[]>('all_sales_for_lookup')) || [];
+1637: // از sales_grouped
+1638: const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+1660: return cachedRead('fx_trades', async () => {
+1661: const { data } = await lib.supabase.from('fx_trades').select('*').order('created_at', { ascending: false });
+1666: const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1667: const local = (await getLocal<any[]>('fx_trades')) || [];
+1668: await setLocal('fx_trades', [item, ...local]);
+1671: const { error } = await lib.supabase.from('fx_trades').insert({
+1674: description: p.description || '', local_id: item.local_id,
+1682: const local = (await getLocal<any[]>('fx_trades')) || [];
+1683: await setLocal('fx_trades', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1685: try { await lib.supabase.from('fx_trades').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1690: //  هزینه‌ها (Expenses)
+1692: export async function getExpenses(): Promise<any[]> {
+1693: const local = (await getLocal<any[]>('expenses')) || [];
+1697: const { data } = await lib.supabase.from('expenses').select('*').order('created_at', { ascending: false });
+1701: local.forEach(x => { merged[x.local_id || x.id] = x; });
+1702: server.forEach(x => { merged[x.local_id || x.id] = x; });
+1708: const id = p.local_id || p.id;
+1712: const id = typeof it.payload === 'string' ? it.payload : (it.payload?.local_id || it.payload?.id);
+1720: const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1721: const local = (await getLocal<any[]>('expenses')) || [];
+1722: await setLocal('expenses', [item, ...local]);
+1723: try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
+1726: const { error } = await lib.supabase.from('expenses').insert({
+1741: local_id: item.local_id,
+1746: try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
+1752: await recordTombstone('expenses', String(localId));
+1753: const local = (await getLocal<any[]>('expenses')) || [];
+1754: await setLocal('expenses', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1755: try { await _pushAudit({ type: 'expense_delete', table: 'expenses', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف هزینه' }); } catch {}
+1757: try { await lib.supabase.from('expenses').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1765: //  کارمندان (Employees)
+1767: export async function getEmployees(): Promise<any[]> {
+1768: return cachedRead('employees', async () => {
+1769: const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+1774: const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1775: const local = (await getLocal<any[]>('employees')) || [];
+1776: await setLocal('employees', [item, ...local]);
+1777: try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1780: const { error } = await lib.supabase.from('employees').insert({
+1783: local_id: item.local_id,
+1786: try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1792: await recordTombstone('employees', String(localId));
+1793: const local = (await getLocal<any[]>('employees')) || [];
+1794: await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1795: try { await _pushAudit({ type: 'employee_delete', table: 'employees', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کارمند' }); } catch {}
+1797: try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1805: //  حضور (Attendance)
+1807: export async function getAttendance(): Promise<any[]> {
+1808: return cachedRead('attendance', async () => {
+1809: const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1813: export async function createAttendance(p: any): Promise<any> {
+1814: const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1815: const local = (await getLocal<any[]>('attendance')) || [];
+1816: await setLocal('attendance', [item, ...local]);
+1817: try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1820: const { error } = await lib.supabase.from('attendance').insert({
+1823: local_id: item.local_id,
+1826: try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1827: } catch { await enqueue('createAttendance', p); }
+1828: } else { await enqueue('createAttendance', p); }
+1831: export async function deleteSalaryPayment(localId: string) {
+1832: await recordTombstone('salary_payments', String(localId));
+1833: const local = (await getLocal<any[]>('salary_payments')) || [];
+1834: await setLocal('salary_payments', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1835: try { await _pushAudit({ type: 'salary_delete', table: 'salary_payments', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف پرداخت حقوق' }); } catch {}
+1837: try { await lib.deleteSalaryPayment(String(localId)); }
+1838: catch { await enqueue('deleteSalaryPayment', String(localId)); }
+1840: await enqueue('deleteSalaryPayment', String(localId));
+1845: await recordTombstone('employee_loans', String(localId));
+1846: const local = (await getLocal<any[]>('employee_loans')) || [];
+1847: await setLocal('employee_loans', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1848: try { await _pushAudit({ type: 'loan_delete', table: 'employee_loans', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف وام' }); } catch {}
+1860: await setLocal('employee_leaves', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1861: try { await _pushAudit({ type: 'leave_delete', table: 'employee_leaves', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف مرخصی' }); } catch {}
+1870: export async function deleteAttendance(localId: string) {
+1871: await recordTombstone('attendance', String(localId));
+1872: const local = (await getLocal<any[]>('attendance')) || [];
+1873: await setLocal('attendance', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1874: try { await _pushAudit({ type: 'attendance_delete', table: 'attendance', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حضور' }); } catch {}
+1876: try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1877: catch { await enqueue('deleteAttendance', String(localId)); }
+1879: await enqueue('deleteAttendance', String(localId));
+1884: await recordTombstone('payroll_batches', String(localId));
+1885: const local = (await getLocal<any[]>('payroll_batches')) || [];
+1886: await setLocal('payroll_batches', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1887: try { await _pushAudit({ type: 'batch_delete', table: 'payroll_batches', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف لیست حقوق' }); } catch {}
+1889: try { await lib.supabase.from('payroll_batches').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1901: return cachedRead('fx_customers', async () => {
+1902: const { data } = await lib.supabase.from('fx_customers').select('*').order('created_at', { ascending: false });
+1907: const local = (await getLocal<any[]>('fx_customers')) || [];
+1915: const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1916: await setLocal('fx_customers', [item, ...local]);
+1919: await lib.supabase.from('fx_customers').insert({
+1922: notes: p.notes || '', local_id: item.local_id,
+1929: const local = (await getLocal<any[]>('fx_customers')) || [];
+1930: const newList = local.map((x: any) => (x.local_id === localId || x.id === localId) ? { ...x, ...p } : x);
+1931: await setLocal('fx_customers', newList);
+1933: try { await lib.supabase.from('fx_customers').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1937: const local = (await getLocal<any[]>('fx_customers')) || [];
+1938: await setLocal('fx_customers', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1940: try { await lib.supabase.from('fx_customers').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1947: export async function getFxPartners(): Promise<any[]> {
+1948: return cachedRead('fx_partners', async () => {
+1949: const { data } = await lib.supabase.from('fx_partners').select('*').order('created_at', { ascending: false });
+1954: const local = (await getLocal<any[]>('fx_partners')) || [];
+1961: const item = { ...p, code, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1962: await setLocal('fx_partners', [item, ...local]);
+1965: await lib.supabase.from('fx_partners').insert({
+1966: code, name: p.name, phone: p.phone || '', notes: p.notes || '', local_id: item.local_id,
+1973: const local = (await getLocal<any[]>('fx_partners')) || [];
+1974: const newList = local.map((x: any) => (x.local_id === localId || x.id === localId) ? { ...x, ...p } : x);
+1975: await setLocal('fx_partners', newList);
+1977: try { await lib.supabase.from('fx_partners').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1981: const local = (await getLocal<any[]>('fx_partners')) || [];
+1982: await setLocal('fx_partners', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1984: try { await lib.supabase.from('fx_partners').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+1992: const local = (await getLocal<any[]>('fx_trades')) || [];
+1993: const newList = local.map((x: any) => (x.local_id === localId || x.id === localId) ? { ...x, ...p } : x);
+1994: await setLocal('fx_trades', newList);
+1996: try { await lib.supabase.from('fx_trades').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+2004: export async function updateInvoiceInQueue(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+2011: const createOp = type === 'sales' ? 'createSale' : 'createPurchase';
+2012: const updateOp = type === 'sales' ? 'updateSale' : 'updatePurchase';
+2017: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+2025: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+2038: label = p.invoiceNumber || p.invoice_number || p.code || p.name || p.id || p.local_id || "";
+2050: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+2057: await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+2066: var settings = (await getLocal("settings")) || {};
+2067: var margin = settings.profit_margin != null ? settings.profit_margin : 0.10;
+2069: var localPurchases = (await getLocal("purchases")) || [];
+2070: var localSales = (await getLocal("sales")) || [];
+2073: var queuePurchases = [];
+2074: var queueSales = [];
+2079: var target = item.op === "createPurchase" ? queuePurchases : queueSales;
+2098: var pData = queuePurchases.concat(localPurchases);
+2099: var sData = queueSales.concat(localSales);
+2140: var totalPurchases = 0, supplierPaid = 0, supplierDebt = 0;
+2151: if (filter !== "sales" && inRange(r.date_factor)) {
+2152: totalPurchases += Number(r.amount || (r.quantity * r.price_unit)) || 0;
+2180: var totalSales = 0, customerPaid = 0, totalProfit = 0;
+2193: totalSales += lineTotal;
+2200: modelProfits[code] = { code: code, name: name || purchaseNames[code] || "—", purchasePrice: info.price, priceSource: info.source, totalQty: 0, totalSales: 0, totalProfit: 0, estimated: false };
+2203: m.totalQty += qty; m.totalSales += lineTotal; m.totalProfit += rowProfit;
+2211: var salesReturns = [];
+2213: try { salesReturns = await getSalesReturns(); } catch {}
+2216: var customerDebtVar = totalSales - customerPaid;
+2219: salesReturns.forEach(function(r: any) {
+2229: totalSales -= subtotal;
+2244: modelProfits[code] = { code: code, name: it.modelName || it.model_name || purchaseNames[code] || '—', purchasePrice: info.price, priceSource: info.source, totalQty: 0, totalSales: 0, totalProfit: 0, estimated: false };
+2248: m.totalSales -= qty * price;
+2263: totalPurchases -= subtotal;
+2272: if ((!m.purchasePrice || m.purchasePrice <= 0) && m.totalQty > 0 && m.totalSales > 0) {
+2273: var avgSale = m.totalSales / m.totalQty;
+2287: totalSales: totalSales, totalPurchases: totalPurchases, customerPaid: customerPaid,
+2301: if (!c) return { purchases: [], sales: [] };
+2302: // BUSINESS_LOCAL_AND_SHEET_ONLY — کاردکس فقط محلی
+2304: const localPurchases = (await getLocal<any[]>('purchases')) || [];
+2305: const localSales = (await getLocal<any[]>('sales')) || [];
+2307: var pAll = localPurchases.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2308: var sAll = localSales.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2357: return { purchases: pAll, sales: sAll, adjustments: myAdjs };
+2386: const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || new Date().toISOString() };
+2392: try { await _pushAudit({ type: 'stock_create', table: 'stock_adjustments', key: String(item.local_id || item.id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت تعدیل انبار' }); } catch {}
+2403: await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
+2404: try { await _pushAudit({ type: 'stock_delete', table: 'stock_adjustments', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف تعدیل انبار' }); } catch {}
+2415: export async function getSalesRowsForReport(code: string) {
+2421: lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+2422: lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+2425: } catch (e) { console.log('[getSalesRowsForReport] online fail:', e); }
+2427: const cachedSales = (await getLocal<any[]>('sales')) || [];
+2428: const customer = cachedSales.filter(function(r: any) { return r.customer_code === c2; });
+2429: const triang = cachedSales.filter(function(r: any) { return r.account_holder_code === c2; });
+2442: export async function getPurchasesRowsForReport(code: string) {
+2447: const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+2449: } catch (e) { console.log('[getPurchasesRowsForReport] online fail:', e); }
+2451: const cached = (await getLocal<any[]>('purchases')) || [];
+2471: let allSales: any[] = [];
+2472: let allPurchases: any[] = [];
+2474: // BUSINESS_LOCAL_AND_SHEET_ONLY — دفتر معین فقط محلی + صف
+2476: if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
+2477: if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
+2484: if (inv) allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+2490: if (inv) allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+2499: allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+2504: allSales.push({
+2536: allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+2541: allPurchases.push({
+2567: if (inv && allSales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+2571: allSales.push({
+2598: if (inv && allPurchases.some((p: any) => String(p.invoice_number || '') === String(inv))) continue;
+2602: allPurchases.push({
+2663: allSales.forEach(function(s: any) {
+2709: allPurchases.forEach(function(p: any) {
+2745: const salesReturns = await getSalesReturns();
+2746: for (const r of salesReturns || []) {
+2770: } catch (e) { console.log('[ledger] salesReturns effect fail:', e); }
+2839: const _srcMaps: any = { sales: {}, purchases: {}, expenses: {}, salaries: {}, loans: {} };
+2840: (allSales || []).forEach((s: any) => { const k = s.invoice_number || s.invoice; if (k) _srcMaps.sales[k] = s; });
+2841: (allPurchases || []).forEach((p: any) => { const k = p.invoice_number || p.invoice; if (k) _srcMaps.purchases[k] = p; });
+2842: let _allExpenses: any[] = [];
+2844: let _allLoans: any[] = [];
+2845: try { _allExpenses = await getExpenses(); } catch {}
+2846: try { _allSalaries = await getSalaryPayments(); } catch {}
+2847: try { _allLoans = await getLoans(); } catch {}
+2848: _allExpenses.forEach((e: any) => { const k = e.local_id || e.id || e.invoice_number; if (k) _srcMaps.expenses[k] = e; });
+2849: _allSalaries.forEach((s: any) => { const k = s.local_id || s.id || s.invoice_number; if (k) _srcMaps.salaries[k] = s; });
+2850: _allLoans.forEach((l: any) => { const k = l.local_id || l.id; if (k) _srcMaps.loans[k] = l; });
+2857: const s = _srcMaps.sales[sid]; if (!s) return null;
+2861: const p = _srcMaps.purchases[sid]; if (!p) return null;
+2865: const e = _srcMaps.expenses[sid]; if (!e) return null;
+2868: if (st === 'salary') {
+2870: return { kind: 'salary', invoice: s.invoice_number || sid, date: s.payment_date || s.created_at || '', total: Number(s.net_salary || 0), paid: Number(s.payment || 0), balance: Number(s.balance || 0), employee: s.employee_name || '', month: s.month || '', bank: s.bank || '' };
+2873: const l = _srcMaps.loans[sid]; if (!l) return null;
+2881: const partnersList = await getPartners();
+2882: for (const p of partnersList) {
+2916: bank: t.bank_account_local_id ? ('کارت ' + t.bank_account_local_id) : '',
+2964: } catch (e) { console.log('[getLedgerData] partners fail:', e); }
+2969: const expenses = await getExpenses();
+2971: (expenses || []).forEach((e: any) => {
+2984: const inv = e.invoice_number || e.local_id || '';
+2995: sourceType: 'expense', sourceId: e.local_id || '',
+3021: } catch (e) { console.log('[getLedgerData] expenses fail:', e); }
+3026: const salaries = await getSalaryPayments();
+3027: const loans = await getLoans();
+3039: const net = Math.abs(Number(s.net_salary) || 0);
+3042: const inv = s.local_id || s.id || '';
+3049: type: 'salary', accountType: '', counterpartType: 'employee', counterpartCode: code,
+3050: sourceType: 'salary', sourceId: inv, qty: 0, priceUnit: 0, lineTotal: net, debit: 0, credit: net,
+3058: type: 'salary_payment', accountType: '', counterpartType: 'employee', counterpartCode: code,
+3059: sourceType: 'salary', sourceId: inv, qty: 0, priceUnit: 0, lineTotal: paid, debit: paid, credit: 0,
+3064: (loans || []).forEach((l: any) => {
+3071: const inv = l.local_id || l.id || '';
+3121: } catch (e) { console.log('[getLedgerData] salary/loan fail:', e); }
+3137: const id = item.payload.local_id || item.payload.id;
+3138: const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3141: const id = item.payload.local_id || item.payload.id || item.payload;
+3142: list = list.filter((x: any) => x.local_id !== id && x.id !== id);
+3152: local_id: p.local_id || ('party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+3158: try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3162: try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3173: const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
+3177: const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3182: try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
+3184: const pendingCreate = q.find((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3190: const item = { ...payload, local_id: payload.local_id || id };
+3201: const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+3205: await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3206: try { await _pushAudit({ type: 'party_delete', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف طرف‌حساب' }); } catch {}
+3208: const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3210: const newQ = q.filter((it: any) => !(it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id)));
+3216: catch { await enqueue('deleteParty', { local_id: id, id }); }
+3218: await enqueue('deleteParty', { local_id: id, id });
+3249: const list = await getProducts();
+3312: //  Partners Offline Wrappers
+3314: export async function getPartners() {
+3315: // BUSINESS_LOCAL_AND_SHEET_ONLY — شرکا فقط محلی
+3316: const list = (await getLocal<any[]>('partners')) || [];
+3320: if (item.op === 'createPartner') { const lid = String(item.payload?.local_id || ''); if (!lid || !result.some((x: any) => String(x.local_id || '') === lid)) result.push(item.payload); }
+3322: const idx = result.findIndex((x: any) => x.local_id === item.payload.local_id || x.id === item.payload.id);
+3325: const idx = result.findIndex((x: any) => x.local_id === item.payload || x.id === item.payload);
+3332: const item = { ...p, local_id: p.local_id || ('pt_' + Date.now()), created_at: new Date().toISOString() };
+3333: const list = (await getLocal<any[]>('partners')) || [];
+3334: await setLocal('partners', [...list, item]);
+3335: try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3339: try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3346: const item = { ...p, local_id: p.local_id || id };
+3347: const list = (await getLocal<any[]>('partners')) || [];
+3348: const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3349: if (idx >= 0) { list[idx] = { ...list[idx], ...item }; await setLocal('partners', list); }
+3350: try { await _pushAudit({ type: 'partner_update', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش شریک' }); } catch {}
+3356: await recordTombstone('partners', String(id));
+3357: const list = (await getLocal<any[]>('partners')) || [];
+3358: await setLocal('partners', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3359: try { await _pushAudit({ type: 'partner_delete', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف شریک' }); } catch {}
+3371: const idx = result.findIndex((x: any) => x.local_id === item.payload);
+3378: const item = { ...p, local_id: p.local_id || ('pba_' + Date.now()) };
+3381: try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
+3385: try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
+3394: await setLocal('pba_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+3395: try { await _pushAudit({ type: 'pba_delete', table: 'partner_bank_accounts', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حساب بانکی شریک' }); } catch {}
+3407: const idx = result.findIndex((x: any) => x.local_id === item.payload);
+3414: const item = { ...p, local_id: p.local_id || ('ptx_' + Date.now()) };
+3417: try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
+3421: try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
+3430: await setLocal('ptx_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+3431: try { await _pushAudit({ type: 'ptx_delete', table: 'partner_transactions', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حرکت شریک' }); } catch {}
+3436: //  Banks Offline
+3438: export async function getBanks() {
+3439: // BUSINESS_LOCAL_AND_SHEET_ONLY — بانک‌ها فقط محلی
+3440: const list = (await getLocal<any[]>('banks')) || [];
+3444: if (item.op === 'createBank') { const lid = String(item.payload?.local_id || ''); if (!lid || !result.some((x: any) => String(x.local_id || '') === lid)) result.push(item.payload); }
+3446: const idx = result.findIndex((x: any) => x.local_id === item.payload);
+3453: const item = { ...p, local_id: p.local_id || ('bank_' + Date.now()) };
+3454: const list = (await getLocal<any[]>('banks')) || [];
+3455: await setLocal('banks', [...list, item]);
+3456: try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+3460: try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+3467: const item = { ...p, local_id: p.local_id || id };
+3468: const list = (await getLocal<any[]>('banks')) || [];
+3469: const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3472: await setLocal('banks', list);
+3474: try { await _pushAudit({ type: 'bank_update', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش بانک' }); } catch {}
+3485: await recordTombstone('banks', String(id));
+3486: const list = (await getLocal<any[]>('banks')) || [];
+3487: await setLocal('banks', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3488: try { await _pushAudit({ type: 'bank_delete', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف بانک' }); } catch {}
+3494: //  Shippings Offline
+3496: export async function getShippings() {
+3497: // BUSINESS_LOCAL_AND_SHEET_ONLY — باربری‌ها فقط محلی
+3498: const list = (await getLocal<any[]>('shippings')) || [];
+3503: const lid = String(item.payload?.local_id || '');
+3504: if (lid && result.some((x: any) => String(x.local_id || '') === lid)) continue;
+3507: const idx = result.findIndex((x: any) => x.local_id === item.payload);
+3514: const item = { ...p, local_id: p.local_id || ('ship_' + Date.now()) };
+3515: const list = (await getLocal<any[]>('shippings')) || [];
+3516: await setLocal('shippings', [...list, item]);
+3517: try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+3521: try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+3528: const item = { ...p, local_id: p.local_id || id };
+3529: const list = (await getLocal<any[]>('shippings')) || [];
+3530: const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3533: await setLocal('shippings', list);
+3535: try { await _pushAudit({ type: 'shipping_update', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش باربری' }); } catch {}
+3546: await recordTombstone('shippings', String(id));
+3547: const list = (await getLocal<any[]>('shippings')) || [];
+3548: await setLocal('shippings', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3549: try { await _pushAudit({ type: 'shipping_delete', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف باربری' }); } catch {}
+3569: const partners = await getPartners();
+3570: const partner = partners.find((x: any) => String(x.name || '').trim() === n);
+3575: const banks = await getPartnerBankAccounts(partner.code);
+3576: const b = banks && banks.length > 0 ? banks[0] : null;
+3579: return { name: partner.name, code: partner.code, bank, account, source: 'partners' };
+3588: const AUDIT_KEY = '@mizan_audit_events';
+3593: const raw = await AsyncStorage.getItem(AUDIT_KEY);
+3607: await AsyncStorage.setItem(AUDIT_KEY, JSON.stringify(arr));
+3644: async function recordInvoiceAudit(table: 'sales' | 'purchases', invoiceNumber: string, oldRows: any[], newRows: any[]) {
+3646: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3677: const raw = await AsyncStorage.getItem(AUDIT_KEY);
+3685: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || 'nodev';
+3686: return '@mizan_audit_ack_' + dev;
+3687: } catch { return '@mizan_audit_ack_nodev'; }
+3694: const raw = await AsyncStorage.getItem(key);
+3704: await AsyncStorage.setItem(key, String(Array.isArray(all) ? all.length : 0));
+3709: try { await AsyncStorage.setItem(AUDIT_KEY, '[]'); } catch {}
+3713: if (await hasActiveReturns(payload.invoiceNumber, 'sales')) {
+3721: const list = (await getLocal<any[]>('sales')) || [];
+3725: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3749: await recordInvoiceAudit('sales', payload.invoiceNumber, oldRows, newRows);
+3750: await setLocal('sales', [...filtered, ...newRows]);
+3762: const list = (await getLocal<any[]>('purchases')) || [];
+3766: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3792: await recordInvoiceAudit('purchases', payload.invoiceNumber, oldRows, newRows);
+3793: await setLocal('purchases', [...filtered, ...newRows]);
+3813: bank_account_local_id?: string;
+3844: bank_account_local_id: p.bank_account_local_id || '',
+3852: const partners = await getPartners();
+3853: return partners.find((p: any) =>
+3861: //  getSalaryPayments — خواندن حقوق‌ها (کش + صف)
+3863: export async function getSalaryPayments(): Promise<any[]> {
+3864: const local = (await getLocal<any[]>('salary_payments')) || [];
+3868: const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
+3872: local.forEach(x => { merged[x.local_id || x.id] = x; });
+3873: server.forEach(x => { merged[x.local_id || x.id] = x; });
+3879: if (it.op === 'createSalaryPayment' || it.op === 'updateSalaryPayment') {
+3880: const id = p.local_id || p.id;
+3883: if (it.op === 'deleteSalaryPayment') {
+3884: const id = typeof p === 'string' ? p : (p.local_id || p.id);
+3894: //  getLoans — خواندن وام‌ها (کش + صف)
+3896: export async function getLoans(): Promise<any[]> {
+3897: const local = (await getLocal<any[]>('employee_loans')) || [];
+3901: const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
+3905: local.forEach(x => { merged[x.local_id || x.id] = x; });
+3906: server.forEach(x => { merged[x.local_id || x.id] = x; });
+3913: const id = p.local_id || p.id;
+3917: const id = typeof p === 'string' ? p : (p.local_id || p.id);
+3927: //  برگشت از فروش (Sales Returns)
+3929: export async function createSalesReturn(payload: any) {
+3931: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3932: const local = (await getLocal<any[]>('sales_returns')) || [];
+3935: local_id: payload.local_id || ('sr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+3940: await setLocal('sales_returns', [item, ...local]);
+3943: type: 'sales_return_create',
+3944: table: 'sales_returns',
+3945: key: String(item.local_id),
+3951: await enqueue('createSalesReturn', item);
+3955: export async function getSalesReturns() {
+3956: const local = (await getLocal<any[]>('sales_returns')) || [];
+3961: if (item.op === 'deleteSalesReturn') {
+3967: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+3973: if (String(t.table || '') !== 'sales_returns') continue;
+3981: .filter(x => x.op === 'createSalesReturn')
+3983: .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+3986: const id = String(x.local_id || x.id || '');
+3992: const key = String(r.local_id || r.id || r.return_number || '');
+3996: const key = String(p.local_id || p.id || p.return_number || '');
+4002: export async function updateSalesReturn(localId: string, payload: any) {
+4004: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4005: const local = (await getLocal<any[]>('sales_returns')) || [];
+4006: const idx = local.findIndex((x: any) => x.local_id === localId || x.id === localId);
+4011: local_id: local[idx].local_id || localId,
+4017: await setLocal('sales_returns', newList);
+4020: type: 'sales_return_update',
+4021: table: 'sales_returns',
+4022: key: String(item.local_id),
+4028: await enqueue('updateSalesReturn', item);
+4032: export async function deleteSalesReturn(localId: string) {
+4033: await recordTombstone('sales_returns', String(localId));
+4034: const local = (await getLocal<any[]>('sales_returns')) || [];
+4035: await setLocal('sales_returns', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+4038: type: 'sales_return_delete',
+4039: table: 'sales_returns',
+4042: device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+4046: await enqueue('deleteSalesReturn', String(localId));
+4054: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4058: local_id: payload.local_id || ('pr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+4068: key: String(item.local_id),
+4090: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+4106: .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+4109: const id = String(x.local_id || x.id || '');
+4115: const key = String(r.local_id || r.id || r.return_number || '');
+4119: const key = String(p.local_id || p.id || p.return_number || '');
+4127: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4129: const idx = local.findIndex((x: any) => x.local_id === localId || x.id === localId);
+4134: local_id: local[idx].local_id || localId,
+4145: key: String(item.local_id),
+4158: await setLocal('purchase_returns', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+4165: device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+
+══════════ ۳) تب بکاپ در SettingsSection ══════════
+
+─── App.tsx — UI بکاپ ───
+1: import { __clearSeen } from "./lib.storage";
+2: import { startGlobalBotWorker } from './lib.bot.worker';
+3: import DashboardScreen from './components/DashboardScreen';
+5: import PlusMenu from './components/PlusMenu';
+7: import React from 'react';
+13: import { SafeAreaProvider } from 'react-native-safe-area-context';
+15: import { StatusBar } from 'expo-status-bar';
+17: import SyncControl from './SyncControl';
+19: import ExchangeScreen from './ExchangeScreen';
+21: import PublicMarketScreen from './PublicMarketScreen';
+23: import { unlockAudio, playNotifSound, vibrateNotif, showBrowserNotif, showNotifWithDetails } from './lib.notifications';
+25: import ExpensesScreen from './ExpensesScreen';
+27: import EmployeesScreen from './EmployeesScreen';
+29: import LanguageModal from './LanguageModal';
+31: import { t, loadLang, getLang, isFirstTime } from './i18n';
+33: import { cl, loadCustomLabels, setCustomLabel, resetCustomLabel, subscribe as subscribeLabels } from './customLabels';
+35: import { loadPreset, getPreset, setPreset, term, PRESETS } from './presets';
+37: import LicenseGate from './LicenseGate';
+39: import LicenseNotification from './LicenseNotification';
+41: import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+43: import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Switch } from 'react-native';
+45: import { useFonts, Orbitron_900Black, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
+47: import { ShareTechMono_400Regular } from '@expo-google-fonts/share-tech-mono';
+49: import * as Print from 'expo-print';
+51: import * as Sharing from 'expo-sharing';
+53: import { captureRef } from 'react-native-view-shot';
+55: import * as XLSX from 'xlsx';
+57: import * as FileSystem from 'expo-file-system';
+59: import SmsMatchScreen from './SmsMatchScreen';
+61: import ManualEntryScreen from './ManualEntryScreen';
+63: import LocalBotScreen from './LocalBotScreen';
+65: import LearningScreen from './LearningScreen';
+67: import DateField from './lib.datefield';
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProdu
+73: import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
+75: import SuperAssistant from './SuperAssistant';
+77: import BotUI from './BotUI';
+79: import GlobalVoice from './GlobalVoice';
+81: import { registerCommands } from './CommandBus';
+83: import ResetPasswordScreen from './ResetPasswordScreen';
+85: import { ErrorBoundary } from './components/ErrorBoundary';
+87: import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+88: import SettingsSheets from './SettingsSheets';
+89: import SettingsAssistant from './SettingsAssistant';
+90: import AssistantHome from './AssistantHome';
+91: import { syncByDestination } from './lib.sheets';
+93: import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, currencyLabel, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
+95: import CurrencyField from './lib.currencyfield';
+96: import { setStorageUserId, canUseDevice, setDeviceLock } from './lib.storage';
+97: import Storage from './lib.storage';// Safely load expo-notifications (fix for Expo Go)
+99: import { hydrateFromSettings, getCurrencySync } from './lib.currency';let Notifications: any = null;
+100: import { startAdsWorker } from './lib.ads.worker';
+202: export type ThemeMode = 'dark' | 'light' | 'simple';
+208: export const setThemeMode = (m: ThemeMode) => { THEME_MODE = m; };
+210: export const getThemeMode = () => THEME_MODE;
+719: export default function App() {
+844: importance: Notifications?.AndroidImportance.MAX,
+864: importance: Notifications?.AndroidImportance.HIGH,
+1050: import('./license').then(m => m.checkLicense()).catch(() => {});
+1085: '۲) از تنظیمات، بکاپ محلی بگیر و فایل را نگه دار.\n\n' +
+1112: '۲) از تنظیمات، بکاپ محلی بگیر و فایل را نگه دار.\n\n' +
+1462: const m = await import('./lib.network');
+1496: const m = await import('./lib.network');
+1610: const m = await import('./lib.network');
+4659: const exportExcel = async () => {
+4789: const exportBrandedPdf = async () => {
+4868: .total-row { background-color: #e2e8f0 !important; font-weight: bold; font-size: 11px; }
+5293: <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#c0392b' }]} onPress={exportExcel}><Text style={s.btnTxt}>{t('📥 اکسل')}</Text></TouchableOpacity>
+5294: <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 100, backgroundColor: '#8e44ad' }]} onPress={exportBrandedPdf}><Text style={s.btnTxt}>📄 PDF برنددار</Text></TouchableOpacity>
+5341: const exportProfitPdf = async () => {
+5390: const exportProfitExcel = async () => {
+5403: var r = await exportExcel([{ name: 'سود', data: rows }], 'profit-report-' + Date.now() + '.xlsx');
+5442: showToast('اشتراک‌گذاری پشتیبانی نمی‌شود', true);
+5460: <TouchableOpacity onPress={exportProfitPdf} style={{ backgroundColor: '#8e44ad', padding: 10, borderRadius: 8, flex: 1, minWidth: 80, alignItems: 'center' }}>
+5675: const r = await exportExcel([{ name: 'انبار', data }], 'inventory-' + Date.now() + '.xlsx');
+5683: const invExportMenu = () => {
+5831: var r = await exportExcel([{ name: 'خرید', data: pData }, { name: 'فروش', data: sData }], 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.xlsx');
+6123: <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#8e44ad' }]} onPress={invExportMenu}><Text style={s.btnTxt}>📤</Text></TouchableOpacity>
+8096: const r = await exportExcel([{ name: title, data: rows }], 'returns-' + type + '-' + Date.now() + '.xlsx');
+8363: const exportExcel = async () => {
+8537: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#c0392b' }]} onPress={exportExcel}><Text style={s.btnTxt}>{t('📥 اکسل')}</Text></TouchableOpacity>
+8724: const [lastBackupLabel, setLastBackupLabel] = useState<string | null>(null);
+8728: const last = await getLastAutoBackup();
+8729: setLastBackupLabel(last);
+8730: } catch (e) { console.log('[backup] read last err:', e); }
+8732: await autoBackup();
+8733: const last2 = await getLastAutoBackup();
+8734: setLastBackupLabel(last2);
+8735: } catch (e) { console.log('[backup] auto err:', e); }
+8772: { k: 'backup', l: '💾 پشتیبان‌گیری و نگهداری' },
+8917: '۲) از تنظیمات، بکاپ محلی بگیر.\n\n' +
+8994: {settingsTab === 'backup' && (
+8996: <Text style={s.secT}>{t('💾 بکاپ و بازیابی')}</Text>
+8998: آخرین بکاپ خودکار: {lastBackupLabel || 'امروز گرفته نشده'}
+9004: showToast('⏳ در حال ساخت بکاپ...');
+9005: const r = await exportBackup();
+9009: <Text style={s.btnTxt}>{t('📤 ساخت بکاپ')}</Text>
+9014: const r = await importBackup();
+9018: <Text style={s.btnTxt}>{t('📥 بازیابی از بکاپ')}</Text>
+10382: else showToast('اشتراک پشتیبانی نمی‌شود', true);
+
+══════════ ۴) توابع بکاپ در App.tsx ══════════
+⚠️ App.tsx: backupNow پیدا نشد
+⚠️ App.tsx: restoreBackup پیدا نشد
+⚠️ App.tsx: importBackup پیدا نشد
+⚠️ App.tsx: exportBackup پیدا نشد
+⚠️ App.tsx: downloadBackup پیدا نشد
+⚠️ App.tsx: uploadBackup پیدا نشد
+⚠️ App.tsx: autoBackup پیدا نشد
+⚠️ App.tsx: getLastAutoBackup پیدا نشد
+
+══════════ ۵) lib.sheets.ts / SyncControl.tsx ══════════
+
+─── lib.sheets.ts — بکاپ در شیت ───
+324: const miniBackup: any = { app: 'mizan', keys: {} };
+330: if (v) miniBackup.keys[k] = v;
+335: if (v) miniBackup.keys[key] = v;
+341: body: JSON.stringify({ backup: miniBackup, tables: [t.tab] }),
+
+─── SyncControl.tsx — بکاپ در سینک ───
+ℹ️ موردی پیدا نشد
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

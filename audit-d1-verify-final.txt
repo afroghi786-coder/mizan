@@ -1,0 +1,22 @@
+fn | local_id | device_id | updated_at
+_localUpsertSale           | ❌ | ❌ | ❌
+_localUpsertPurchase       | ❌ | ❌ | ❌
+createProduct              | ❌ | ❌ | ❌
+updateProduct              | ❌ | ❌ | ❌
+createParty                | ✅ | ❌ | ✅
+updateParty                | ✅ | ❌ | ✅
+createPartner              | ✅ | ❌ | ❌
+updatePartner              | ✅ | ❌ | ❌
+createBank                 | ✅ | ❌ | ❌
+updateBank                 | ✅ | ❌ | ❌
+createShipping             | ✅ | ❌ | ❌
+updateShipping             | ✅ | ❌ | ❌
+createStockAdjustment      | ✅ | ❌ | ❌
+createExpense              | ✅ | ❌ | ❌
+createEmployee             | ✅ | ❌ | ❌
+createAttendance           | ✅ | ❌ | ❌
+updateSettings             | ❌ | ❌ | ❌
+_empCreate                 | ❌ | ❌ | ❌
+_empUpsert                 | ❌ | ❌ | ❌
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

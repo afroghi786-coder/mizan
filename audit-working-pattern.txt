@@ -1,0 +1,262 @@
+══════ الگوی فروش و خرید (سالم) ══════
+
+─── lib.ts — createSale (خط 406) ───
+406: export async function createSale(payload: {
+407:   invoiceNumber: string; customerCode: string; customerName: string;
+408:   customerPhone: string; customerAddress: string; shipping: string; items: SaleItem[];
+409:   receiverName?: string; receiverCode?: string; receiverBank?: string; receiverAccount?: string;
+410: }) {
+411:   const now = new Date();
+412:   const rows = payload.items.map((it, idx) => ({
+413:     invoice_number: payload.invoiceNumber,
+414:     customer_code: payload.customerCode,
+415:     customer_name: payload.customerName,
+416:     customer_phone: normPhone(payload.customerPhone),
+417:     customer_address: payload.customerAddress || '',
+418:     receiver_name: payload.receiverName || '',
+419:     receiver_code: payload.receiverCode || '',
+420:     receiver_bank: payload.receiverBank || '',
+421:     receiver_account: payload.receiverAccount || '',
+422:     shipping: payload.shipping,
+423:     model_code: it.modelCode || '',
+424:     model_name: it.modelName,
+425:     shelf: it.shelf || '',
+426:     quantity: it.quantity,
+427:     price_unit: it.priceUnit,
+428:     payment: idx === 0 ? (payload.paymentAmount !== undefined ? payload.paymentAmount : (it.payment || 0)) : 0,
+429:     deposit_date: idx === 0 ? (payload.payDate || it.depositDate || '') : '',
+430:     bank_name: idx === 0 ? (payload.receiverBank || it.bankName || '') : '',
+431:     account_holder: idx === 0 ? (payload.receiverName || it.accountHolder || '') : '',
+432:     account_holder_code: idx === 0 ? (payload.receiverCode || it.accountHolderCode || '') : '',
+433:     description: idx === 0 ? (payload.note || it.description || '') : (it.description || ''),
+434:     date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+435:     date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+436:   }));
+437:   const { error } = await supabase.from('sales').insert(rows);
+438:   if (error) throw new Error(error.message);
+439:   return payload.invoiceNumber;
+440: }
+441: export async function getSalesGrouped() {
+442:   const { data, error } = await supabase
+443:     .from('sales')
+444:     .select('*')
+445:     .order('created_at', { ascending: false });
+446:   if (error) throw new Error(error.message);
+447:   const groups: Record<string, any> = {};
+448:   (data || []).forEach((r: any) => {
+449:     if (!groups[r.invoice_number]) {
+450:       groups[r.invoice_number] = {
+451:         invoice: r.invoice_number, name: r.customer_name,
+452:         phone: r.customer_phone, total: 0, paid: 0, items: [],
+453:         date: r.date_reg || r.created_at,
+454:       };
+455:     }
+456:     const g = groups[r.invoice_number];
+457:     g.total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+458:     g.paid += Number(r.payment) || 0;
+459:     g.items.push(r);
+460:   });
+461:   return Object.values(groups).sort((a: any, b: any) =>
+462:     String(b.date).localeCompare(String(a.date)));
+463: }
+464: export async function deleteSale(invoiceNumber: string) {
+465:   const { error } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+
+─── lib.ts — createPurchase (خط 513) ───
+513: export async function createPurchase(payload: any) {
+514:   const now = new Date();
+515:   const items: PurchaseItem[] = payload.items || [];
+516:   const totalAll = items.reduce((a, it) => a + it.quantity * it.priceUnit, 0);
+517:   const remaining = totalAll - (payload.paymentAmount || 0);
+518: 
+519:   // ⭐ شماره داخلی با P- (مستقل از فروش)
+520:   const finalInvoiceNumber = await generatePurchaseInvoiceNumber(payload.manualInvoice || '');
+521: 
+522:   if (items.length === 0) {
+523:     const { error } = await supabase.from('purchases').insert({
+524:       invoice_number: finalInvoiceNumber,
+525:       manual_invoice: payload.manualInvoice,
+526:       supplier_code: payload.supplierCode || '',
+527:       supplier_name: payload.supplierName,
+528:       supplier_phone: payload.supplierPhone || '',
+529:       model_code: '', model_name: '', quantity: 0, price_unit: 0, amount: 0,
+530:       total_amount: 0, payment: payload.paymentAmount || 0,
+531:       balance: -(payload.paymentAmount || 0),
+532:       description: payload.note || '',
+533:       deposit_date: payload.paymentDate || toStorageDateFull(now),
+534:       bank_name: payload.bankAccount || '',
+535:       account_holder: payload.payerName || '',
+536:       payer_code: payload.payerCode || '',
+537:       receiver: payload.receiverAccount || '',
+538:       date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+539:       date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+540:     });
+541:     if (error) throw new Error(error.message);
+542:     return finalInvoiceNumber;
+543:   }
+544: 
+545:   const rows = items.map((it, idx) => ({
+546:     invoice_number: finalInvoiceNumber,
+547:     manual_invoice: payload.manualInvoice,
+548:     supplier_code: payload.supplierCode || '',
+549:     supplier_name: payload.supplierName,
+550:     supplier_phone: payload.supplierPhone || '',
+551:     model_code: it.modelCode || '',
+552:     model_name: it.modelName,
+553:     quantity: it.quantity,
+554:     price_unit: it.priceUnit,
+555:     amount: it.quantity * it.priceUnit,
+556:     total_amount: idx === 0 ? totalAll : 0,
+557:     payment: idx === 0 ? (payload.paymentAmount || 0) : 0,
+558:     balance: idx === 0 ? remaining : 0,
+559:     description: it.description || '',
+560:     deposit_date: idx === 0 ? (payload.paymentDate || toStorageDateFull(now)) : '',
+561:     bank_name: idx === 0 ? (payload.bankAccount || '') : '',
+562:     account_holder: idx === 0 ? (payload.payerName || '') : '',
+563:     payer_code: idx === 0 ? (payload.payerCode || '') : '',
+564:     receiver: idx === 0 ? (payload.receiverAccount || '') : '',
+565:     date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+566:     date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+567:   }));
+568:   const { error } = await supabase.from('purchases').insert(rows);
+569:   if (error) throw new Error(error.message);
+570:   return finalInvoiceNumber;
+571: }
+572: 
+573: export async function getPurchasesGrouped() {
+574:   const { data, error } = await supabase
+575:     .from('purchases').select('*')
+576:     .order('created_at', { ascending: false });
+577:   if (error) throw new Error(error.message);
+578:   const groups: Record<string, any> = {};
+579:   (data || []).forEach((r: any) => {
+580:     if (!groups[r.invoice_number]) {
+581:       groups[r.invoice_number] = {
+582:         invoice: r.invoice_number,
+
+══════ الگوی هزینه و محصول (سالم) ══════
+
+─── lib.ts — createExpense (خط 922) ───
+922: export async function createExpense(p: any) {
+923:   const { error } = await supabase.from('expenses').insert({
+924:     invoice_number: p.invoice_number || '',
+925:     category: p.category || p.type || 'متفرقه',
+926:     title: p.title || '',
+927:     amount: Number(p.amount) || 0,
+928:     payment_method: p.payment_method || '',
+929:     bank: p.bank || '',
+930:     account_number: p.account_number || '',
+931:     payer_name: p.payer_name || '',
+932:     payer_code: p.payer_code || '',
+933:     receiver_name: p.receiver_name || p.receiverName || '',
+934:     receiver_code: p.receiver_code || p.receiverCode || '',
+935:     payment_date: p.payment_date || p.date || '',
+936:     description: p.description || '',
+937:     status: p.status || '',
+938:     local_id: p.local_id || '',
+939:     counterpart_type: p.counterpart_type || '',
+940:     counterpart_code: p.counterpart_code || '',
+941:   });
+942:   if (error) throw new Error(error.message);
+943: }
+944: 
+945: // ═══════════════════════════════════════════
+946: //  کارمندان
+947: // ═══════════════════════════════════════════
+948: export async function createEmployee(p: any) {
+949:   const { error } = await supabase.from('employees').insert({
+950:     code: p.code, name: p.name, phone: p.phone || '', role: p.role || '',
+951:     contract_type: p.contract_type, amount: p.amount || 0,
+
+─── lib.ts — createProduct (خط 271) ───
+271: export async function createProduct(p: Product) {
+272:   const { id, ...rest } = p as any;
+273:   const { error } = await supabase.from('products').insert(rest);
+274:   if (error) throw new Error(error.message);
+275: }
+276: export async function updateProduct(idOrPayload: any, pArg?: any) {
+277:   // ۲ حالت: (id, p) از UI، یا ({id, code, p}) از صف سینک
+278:   let id: any, code: any, data: any;
+279:   if (pArg !== undefined) {
+280:     id = idOrPayload; data = pArg; code = pArg?.code;
+281:   } else {
+282:     id = idOrPayload?.id; code = idOrPayload?.code;
+283:     data = idOrPayload?.p || idOrPayload;
+284:   }
+285: 
+286:   const isLocal = !id || String(id).startsWith('l_') || String(id).startsWith('_');
+287: 
+288:   // اگر id سروری نداریم، با code پیدا کن
+289:   let targetId = id;
+290:   if (isLocal && code) {
+291:     const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+292:     targetId = found?.[0]?.id;
+293:   }
+294: 
+295:   if (!targetId) {
+296:     if (code) {
+297:       const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+298:       targetId = found?.[0]?.id;
+299:     }
+300:   }
+
+══════ آیا createSale user_id را حذف می‌کند یا می‌فرستد؟ ══════
+1063: delete clean.id; delete clean.user_id;
+1084: delete clean.id; delete clean.user_id;
+1109: delete clean.id; delete clean.user_id;
+1174: delete clean.id; delete clean.user_id;
+1196: delete clean.id; delete clean.user_id;
+1210: delete clean.id; delete clean.user_id;
+1246: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1253: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1268: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1275: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1290: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1309: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1316: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1334: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1341: const clean = { ...p }; delete clean.id; delete clean.user_id;
+
+══════ آیا getSalesGrouped فیلتر user_id دارد؟ ══════
+
+─── lib.offline.ts — getSalesGrouped (خط 617) ───
+617: export async function getSalesGrouped() {
+618:   let serverList: any[] = [];
+619:   if (MODE === 'online') {
+620:     try {
+621:       serverList = await lib.getSalesGrouped();
+622:       await setLocal('sales_grouped', serverList);
+623:     } catch {
+624:       serverList = (await getLocal<any[]>('sales_grouped')) || [];
+625:     }
+626:   } else {
+627:     serverList = (await getLocal<any[]>('sales_grouped')) || [];
+628:   }
+629: 
+630:   // ادغام با صف
+631:   const queue = await getQueue();
+632:   const pendingByInv: Record<string, any> = {};
+633:   for (const item of queue) {
+634:     if (item.op === 'createSale') {
+635:       const p = item.payload;
+636:       const inv = p.invoiceNumber;
+637:       if (!pendingByInv[inv]) {
+638:         pendingByInv[inv] = {
+639:           invoice: inv, name: p.customerName, phone: p.customerPhone,
+640:           total: 0, paid: 0, items: [],
+641:           date: new Date(item.ts).toISOString(),
+642:           _pending: true,
+643:         };
+644:       }
+645:       for (const it of p.items || []) {
+646:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+647:         pendingByInv[inv].paid += Number(it.payment) || 0;
+648:         pendingByInv[inv].items.push(it);
+649:       }
+650:     }
+651:   }
+652:   return [...Object.values(pendingByInv), ...serverList];
+653: }
+654: 
+655: // ═══════════════════════════════════════════
+656: //  getPurchasesGrouped — با ادغام صف

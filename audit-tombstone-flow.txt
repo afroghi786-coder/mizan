@@ -1,0 +1,228 @@
+══════ ۱) recordTombstone / getTombstones ══════
+
+══════ recordTombstone (خط 244 تا 257) ══════
+244: export async function recordTombstone(table: string, key: string) {
+245:   if (!table || !key) return;
+246:   try {
+247:     const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+248:     let arr: any[] = [];
+249:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+250:     if (!Array.isArray(arr)) arr = [];
+251:     const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+252:     const now = new Date().toISOString();
+253:     const clean = arr.filter((x: any) => !(x && x.table === table && String(x.key) === String(key)));
+254:     clean.push({ table: table, key: String(key), deleted_at: now, device_id: dev });
+255:     await AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(clean));
+256:   } catch (e) { console.log('[recordTombstone]', e); }
+257: }
+
+══════ getTombstones (خط 259 تا 265) ══════
+259: export async function getTombstones(): Promise<any[]> {
+260:   try {
+261:     const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+262:     const arr = raw ? JSON.parse(raw) : [];
+263:     return Array.isArray(arr) ? arr : [];
+264:   } catch { return []; }
+265: }
+
+══════ ۲) mergeTombstones در lib.sheets.ts ══════
+
+══════ mergeTombstones (خط 1183 تا 1215) ══════
+1183: async function mergeTombstones(rows: any[]) {
+1184:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1185:   let local: any[] = [];
+1186:   try { local = raw ? JSON.parse(raw) : []; } catch { local = []; }
+1187:   if (!Array.isArray(local)) local = [];
+1188: 
+1189:   const map: Record<string, any> = {};
+1190:   for (const t of local) {
+1191:     if (t && t.table && t.key) map[String(t.table) + '|' + String(t.key)] = t;
+1192:   }
+1193: 
+1194:   let added = 0, updated = 0;
+1195: 
+1196:   for (const r of rows || []) {
+1197:     if (!r || !r.table || !r.key) continue;
+1198:     const k = String(r.table) + '|' + String(r.key);
+1199:     const old = map[k];
+1200:     const oldTs = old ? Date.parse(String(old.deleted_at || '')) : 0;
+1201:     const newTs = Date.parse(String(r.deleted_at || ''));
+1202:     if (!old || (newTs && newTs > oldTs)) {
+1203:       map[k] = {
+1204:         table: String(r.table),
+1205:         key: String(r.key),
+1206:         deleted_at: r.deleted_at || new Date().toISOString(),
+1207:         device_id: r.device_id || '',
+1208:       };
+1209:       if (old) updated++; else added++;
+1210:     }
+1211:   }
+1212: 
+1213:   await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(Object.values(map)));
+1214:   return { added, updated, removed: 0 };
+1215: }
+
+══════ ۳) saveTombstonesForTable / getTombstonesForTable ══════
+
+══════ saveTombstonesForTable (خط 687 تا 695) ══════
+687: async function saveTombstonesForTable(table: string, map: Record<string, string>) {
+688:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+689:   let arr: any[] = [];
+690:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+691:   if (!Array.isArray(arr)) arr = [];
+692:   const others = arr.filter((t: any) => !(t && t.table === table));
+693:   const mine = Object.keys(map).map(k => ({ table: table, key: k, deleted_at: map[k] }));
+694:   await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify([...others, ...mine]));
+695: }
+
+══════ getTombstonesForTable (خط 672 تا 685) ══════
+672: async function getTombstonesForTable(table: string): Promise<Record<string, string>> {
+673:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+674:   let arr: any[] = [];
+675:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+676:   const map: Record<string, string> = {};
+677:   if (Array.isArray(arr)) {
+678:     for (const t of arr) {
+679:       if (t && t.table === table && t.key) {
+680:         map[String(t.key)] = String(t.deleted_at || t.deletedAt || '');
+681:       }
+682:     }
+683:   }
+684:   return map;
+685: }
+
+══════ ۴) TAB_TASKS — آیا _deleted هست؟ ══════
+9: const TAB_TASKS: { tab: string; keys: string[] }[] = [
+10:   { tab: 'sales', keys: ['@mizan_local_sales_grouped'] },
+11:   { tab: 'purchases', keys: ['@mizan_local_purchases_grouped'] },
+12:   { tab: 'sales_returns', keys: ['@mizan_local_sales_returns'] },
+13:   { tab: 'purchase_returns', keys: ['@mizan_local_purchase_returns'] },
+14:   { tab: 'expenses', keys: ['@mizan_local_expenses'] },
+15:   { tab: 'employees', keys: ['@mizan_local_employees'] },
+16:   { tab: 'salary_payments', keys: ['@mizan_local_salary_payments'] },
+17:   { tab: 'employee_loans', keys: ['@mizan_local_employee_loans'] },
+18:   { tab: 'attendance', keys: ['@mizan_local_attendance'] },
+19:   { tab: 'employee_leaves', keys: ['@mizan_local_employee_leaves'] },
+20:   { tab: 'payroll_batches', keys: ['@mizan_local_payroll_batches'] },
+21:   { tab: 'parties', keys: ['@mizan_local_parties'] },
+22:   { tab: 'partners', keys: ['@mizan_local_partners'] },
+23:   { tab: 'partner_transactions', keys: ['@mizan_local_ptx_'] },
+24:   { tab: 'partner_bank_accounts', keys: ['@mizan_local_pba_'] },
+25:   { tab: 'products', keys: ['@mizan_local_products'] },
+26:   { tab: 'settings', keys: ['@mizan_local_settings'] },
+27:   { tab: 'banks', keys: ['@mizan_local_banks'] },
+28:   { tab: 'shippings', keys: ['@mizan_local_shippings'] },
+29:   { tab: 'stock_adjustments', keys: ['@mizan_local_stock_adjustments'] },
+30:   { tab: 'fx_hawalas', keys: ['@mizan_local_fx_hawalas'] },
+31:   { tab: 'fx_boxes', keys: ['@mizan_local_fx_boxes'] },
+32:   { tab: 'fx_transfers', keys: ['@mizan_local_fx_transfers'] },
+33:   { tab: 'fx_checks', keys: ['@mizan_local_fx_checks'] },
+34:   { tab: 'fx_customers', keys: ['@mizan_local_fx_customers'] },
+35:   { tab: 'fx_partners', keys: ['@mizan_local_fx_partners'] },
+36:   { tab: '_deleted', keys: ['@mizan_tombstones'] },
+37:   { tab: '_audit', keys: ['@mizan_audit_events'] },
+38: ];
+
+══════ ۵) pullBridgeTables — ترتیب پردازش ══════
+
+══════ pullBridgeTables (خط 378 تا 404) ══════
+378: export async function pullBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+379:   const cfg = await getBridgeConfig();
+380:   if (!cfg.url || !cfg.key) throw new Error('واسط امن تنظیم نشده است');
+381:   const data = await bridgePull();
+382:   const tables = data?.tables || {};
+383:   const total = PULL_TABLES.length;
+384:   let done = 0;
+385:   let added = 0, updated = 0, removed = 0;
+386: 
+387:   for (const tab of PULL_TABLES) {
+388:     const rows = tables[tab] || [];
+389:     let r = { added: 0, updated: 0, removed: 0 };
+390:     if (tab === '_deleted') r = await mergeTombstones(rows);
+391:     else if (tab === '_audit') r = await mergeAuditEvents(rows);
+392:     else if (tab === 'sales') r = await mergeGroupedInvoices('@mizan_local_sales_grouped', rows);
+393:     else if (tab === 'purchases') r = await mergeGroupedInvoices('@mizan_local_purchases_grouped', rows);
+394:     else if (tab === 'partner_transactions') r = await mergePartnerPrefixed('@mizan_local_ptx_', rows);
+395:     else if (tab === 'partner_bank_accounts') r = await mergePartnerPrefixed('@mizan_local_pba_', rows);
+396:     else if (PULL_LOCAL_KEYS[tab]) r = await mergeList(PULL_LOCAL_KEYS[tab], rows);
+397: 
+398:     added += r.added; updated += r.updated; removed += r.removed;
+399:     done++;
+400:     if (onProgress) onProgress(done, total, tab);
+401:   }
+402: 
+403:   return { ok: true, added, updated, removed, totalTables: total };
+404: }
+
+══════ ۶) syncBridgeTables — آیا tombstone به شیت می‌رود؟ ══════
+416: const always = ['_deleted', '_audit', 'partner_transactions', 'partner_bank_accounts'];
+421: const set = new Set([...dirty.map(String), ...always]);
+459: const useSave = (t.tab === '_deleted' || t.tab === '_audit');
+461: await bridgeSaveTable(t.tab, rows);
+482: await bridgeUpsertTable(t.tab, finalRows);
+509: await bridgeUpsertTable(f.tab, rows);
+
+══════ ۷) deleteSale / deletePurchase / deleteStockAdjustment ══════
+
+══════ deleteSale (خط 595 تا 608) ══════
+595: export async function deleteSale(inv: string) {
+596:   if (await hasActiveReturns(inv, 'sales')) {
+597:     throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+598:   }
+599:   await recordTombstone('sales', String(inv));
+600:   const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+601:   await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+602:   try { await _pushAudit({ type: 'sale_delete', table: 'sales', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور فروش' }); } catch {}
+603:   if (await serverBusinessAllowed()) {
+604:     try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+605:   } else {
+606:     await enqueue('deleteSale', inv);
+607:   }
+608: }
+
+══════ deletePurchase (خط 610 تا 623) ══════
+610: export async function deletePurchase(inv: string) {
+611:   if (await hasActiveReturns(inv, 'purchase')) {
+612:     throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+613:   }
+614:   await recordTombstone('purchases', String(inv));
+615:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+616:   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+617:   try { await _pushAudit({ type: 'purchase_delete', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور خرید' }); } catch {}
+618:   if (await serverBusinessAllowed()) {
+619:     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+620:   } else {
+621:     await enqueue('deletePurchase', inv);
+622:   }
+623: }
+
+══════ deleteStockAdjustment (خط 2905 تا 2916) ══════
+2905: export async function deleteStockAdjustment(id: string) {
+2906:   await recordTombstone('stock_adjustments', String(id));
+2907:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2908:   await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
+2909:   try { await _pushAudit({ type: 'stock_delete', table: 'stock_adjustments', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف تعدیل انبار' }); } catch {}
+2910:   if (await serverBusinessAllowed()) {
+2911:     try { await lib.deleteStockAdjustment(id); }
+2912:     catch { await enqueue('deleteStockAdjustment', id); }
+2913:   } else {
+2914:     await enqueue('deleteStockAdjustment', id);
+2915:   }
+2916: }
+
+══════ ۸) در mergeGroupedInvoices آیا deleted_at چک می‌شود؟ ══════
+1122: const tombAt = tombstones[k] || '';
+1123: if (tombAt) {
+1125: if (!localUp || tsOf(tombAt) >= tsOf(localUp)) {
+1134: if (!k) continue;
+1137: const sheetDel = g.deleted_at || '';
+1139: const old = tombstones[k] || '';
+1140: if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+1142: continue;
+1145: const tombAt = tombstones[k] || '';
+1146: if (tombAt) {
+1148: if (!sheetUp || tsOf(tombAt) >= tsOf(sheetUp)) continue;
+1155: continue;
+1167: continue;
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

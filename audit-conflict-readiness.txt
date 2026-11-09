@@ -1,0 +1,586 @@
+══════ توابع ویرایش و صف ══════
+
+=== lib.offline.ts — export async function updateSale (خط 2839) ===
+2839: export async function updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+2840:   if (await serverBusinessAllowed()) {
+2841:     try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
+2842:   } else {
+2843:     await enqueue('updateSale', payload);
+2844:   }
+2845:   // آپدیت کش محلی 'sales'
+2846:   const list = (await getLocal<any[]>('sales')) || [];
+2847:   const meta = payload.meta || {};
+2848:   const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+2849:   const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+2850:   const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+2851:     ...template,
+2852:     invoice_number: payload.invoiceNumber,
+2853:     customer_name: meta.name || template.customer_name || '',
+2854:     customer_code: meta.code || template.customer_code || '',
+2855:     customer_phone: meta.phone || template.customer_phone || '',
+2856:     shipping: meta.shipping || template.shipping || '',
+2857:     model_code: r.modelCode || '',
+2858:     model_name: r.modelName || '',
+2859:     quantity: Number(r.quantity) || 0,
+2860:     price_unit: Number(r.priceUnit) || 0,
+2861:     payment: Number(r.payment) || 0,
+2862:     description: r.description || '',
+2863:     deposit_date: r.depositDate || '',
+2864:     bank_name: r.bankName || '',
+2865:     account_holder: r.accountHolder || '',
+2866:     account_holder_code: r.accountHolderCode || '',
+2867:     shelf: r.shelf || '',
+2868:   }));
+2869:   await setLocal('sales', [...filtered, ...newRows]);
+2870: }
+2871: 
+2872: export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+2873:   if (await serverBusinessAllowed()) {
+2874:     try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
+2875:   } else {
+2876:     await enqueue('updatePurchase', payload);
+2877:   }
+2878:   const list = (await getLocal<any[]>('purchases')) || [];
+2879:   const meta = payload.meta || {};
+2880:   const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+2881:   const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+2882:   const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+2883:     ...template,
+2884:     invoice_number: payload.invoiceNumber,
+2885:     supplier_name: meta.name || template.supplier_name || '',
+2886:     supplier_code: meta.code || template.supplier_code || '',
+2887:     supplier_phone: meta.phone || template.supplier_phone || '',
+2888:     manual_invoice: meta.manualInv || template.manual_invoice || '',
+
+=== lib.offline.ts — export async function updatePurchase (خط 2872) ===
+2872: export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+2873:   if (await serverBusinessAllowed()) {
+2874:     try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
+2875:   } else {
+2876:     await enqueue('updatePurchase', payload);
+2877:   }
+2878:   const list = (await getLocal<any[]>('purchases')) || [];
+2879:   const meta = payload.meta || {};
+2880:   const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+2881:   const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+2882:   const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+2883:     ...template,
+2884:     invoice_number: payload.invoiceNumber,
+2885:     supplier_name: meta.name || template.supplier_name || '',
+2886:     supplier_code: meta.code || template.supplier_code || '',
+2887:     supplier_phone: meta.phone || template.supplier_phone || '',
+2888:     manual_invoice: meta.manualInv || template.manual_invoice || '',
+2889:     payer_name: meta.payerName || template.payer_name || '',
+2890:     payer_code: meta.payerCode || template.payer_code || '',
+2891:     model_code: r.modelCode || '',
+2892:     model_name: r.modelName || '',
+2893:     quantity: Number(r.quantity) || 0,
+2894:     price_unit: Number(r.priceUnit) || 0,
+2895:     payment: Number(r.payment) || 0,
+2896:     description: r.description || '',
+2897:     deposit_date: r.depositDate || '',
+2898:     bank_name: r.bankName || '',
+2899:     account_holder: r.accountHolder || '',
+2900:     account_holder_code: r.accountHolderCode || '',
+2901:     shelf: r.shelf || '',
+2902:   }));
+2903:   await setLocal('purchases', [...filtered, ...newRows]);
+2904: }
+2905: 
+2906: // ═══════════════════════════════════════════
+2907: //  createPartnerAutoTx — ثبت خودکار حرکت شریک
+2908: //  (فقط اگر طرف مقابل یکی از شرکا باشد)
+2909: // ═══════════════════════════════════════════
+2910: export async function createPartnerAutoTx(p: {
+2911:   partner_code: string;
+2912:   partner_name?: string;
+2913:   type: 'deposit' | 'withdraw' | 'transfer_in' | 'transfer_out';
+2914:   amount: number;
+2915:   currency: string;
+2916:   account_type?: 'capital' | 'current' | 'drawings';
+2917:   counterpart_type?: string;
+2918:   counterpart_code?: string;
+2919:   source_type?: string;
+2920:   source_id?: string;
+2921:   transaction_date?: string;
+
+=== lib.offline.ts — export async function updateParty (خط 2502) ===
+2502: export async function updateParty(idOrPayload: any, pArg?: any) {
+2503:   const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
+2504:   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
+2505:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+2506:   await recordTombstone('parties', String(id));
+2507:   const list = (await getLocal<any[]>('parties')) || [];
+2508:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+2509:   if (idx >= 0) {
+2510:     list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString() };
+2511:     await setLocal('parties', list);
+2512:   }
+2513:   const q = await getQueue();
+2514:   const pendingCreate = q.find((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+2515:   if (pendingCreate) {
+2516:     pendingCreate.payload = { ...pendingCreate.payload, ...payload };
+2517:     await saveQueue(q);
+2518:     return pendingCreate.payload;
+2519:   }
+2520:   const item = { ...payload, local_id: payload.local_id || id };
+2521:   if (await serverBusinessAllowed()) {
+2522:     try { await lib.updateParty(id, item); }
+2523:     catch { await enqueue('updateParty', item); }
+2524:   } else {
+2525:     await enqueue('updateParty', item);
+2526:   }
+2527:   return item;
+2528: }
+2529: 
+2530: export async function deleteParty(idOrPayload: any) {
+2531:   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+2532:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+2533:   await recordTombstone('parties', String(id));
+2534:   const list = (await getLocal<any[]>('parties')) || [];
+2535:   await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+2536:   const q = await getQueue();
+2537:   const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+2538:   if (pendingCreate) {
+2539:     const newQ = q.filter((it: any) => !(it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id)));
+2540:     await saveQueue(newQ);
+2541:     return;
+
+=== lib.offline.ts — export async function updatePartner (خط 2667) ===
+2667: export async function updatePartner(id: string, p: any) {
+2668:   const item = { ...p, local_id: p.local_id || id };
+2669:   const list = (await getLocal<any[]>('partners')) || [];
+2670:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+2671:   if (idx >= 0) { list[idx] = { ...list[idx], ...item }; await setLocal('partners', list); }
+2672:   if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+2673:   else { await enqueue('updatePartner', item); }
+2674:   return item;
+2675: }
+2676: export async function deletePartner(id: string) {
+2677:   await recordTombstone('partners', String(id));
+2678:   const list = (await getLocal<any[]>('partners')) || [];
+2679:   await setLocal('partners', list.filter((x: any) => x.local_id !== id && x.id !== id));
+2680:   if (await serverBusinessAllowed()) { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+2681:   else { await enqueue('deletePartner', id); }
+2682: }
+2683: 
+2684: export async function getPartnerBankAccounts(partnerCode: string) {
+2685:   const list = (await cachedRead('pba_' + partnerCode, () => lib.getPartnerBankAccounts(partnerCode))) || [];
+2686:   const q = await getQueue();
+2687:   const result = [...list];
+2688:   for (const item of q) {
+2689:     if (item.op === 'createPBA' && item.payload.partner_code === partnerCode) result.push(item.payload);
+2690:     else if (item.op === 'deletePBA') {
+2691:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+2692:       if (idx >= 0) result.splice(idx, 1);
+2693:     }
+2694:   }
+2695:   return result;
+2696: }
+2697: export async function createPartnerBankAccount(p: any) {
+2698:   const item = { ...p, local_id: p.local_id || ('pba_' + Date.now()) };
+2699:   const list = (await getLocal<any[]>('pba_' + item.partner_code)) || [];
+2700:   await setLocal('pba_' + item.partner_code, [...list, item]);
+2701:   if (await serverBusinessAllowed()) { try { await lib.createPartnerBankAccount(item); } catch { await enqueue('createPBA', item); } }
+2702:   else { await enqueue('createPBA', item); }
+2703:   return item;
+2704: }
+2705: export async function deletePartnerBankAccount(id: string, partnerCode: string) {
+2706:   await recordTombstone('partner_bank_accounts', String(id));
+
+=== lib.offline.ts — export async function updateProduct (خط 209) ===
+209: export async function updateProduct(id: string, p: any) {
+210:   const list: any[] = (await getLocal('products')) || [];
+211:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+212:   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
+213:   if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+214: 
+215:   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
+216:   const q = await getQueue();
+217:   const createIdx = q.findIndex((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+218:   if (createIdx >= 0) {
+219:     const newQ = q.slice();
+220:     newQ[createIdx] = { ...newQ[createIdx], payload: { ...newQ[createIdx].payload, ...p } };
+221:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+222:     console.log('[updateProduct] updated pending createProduct in queue');
+223:     return;
+224:   }
+225: 
+226:   const payload = { id, code, p };
+227:   if (await serverBusinessAllowed()) {
+228:     try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+229:   } else {
+230:     await enqueue('updateProduct', payload);
+231:   }
+232: }
+233: export async function deleteProduct(id: string) {
+234:   const list: any[] = (await getLocal('products')) || [];
+235:   const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
+236:   const code = found?.code;
+237:   await recordTombstone('products', String(code || id));
+238:   await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+239: 
+240:   // اگر این محصول هنوز در صف createProduct است → از صف حذف کن (چیزی برای حذف از سرور نیست)
+241:   const q = await getQueue();
+242:   const hasCreate = q.some((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+243:   if (hasCreate) {
+244:     const newQ = q.filter((it: any) => !(it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code))));
+245:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+246:     console.log('[deleteProduct] removed pending createProduct from queue');
+247:     return;
+248:   }
+
+=== lib.offline.ts — export async function updateSettings (خط 291) ===
+291: export async function updateSettings(s: any) {
+292:   await setLocal('settings', s);
+293:   if (await serverBusinessAllowed()) {
+294:     try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+295:   } else {
+296:     await enqueue('updateSettings', s);
+297:   }
+298: }
+299: 
+300: async function computeLocalInventory() {
+301:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+302:     getLocal<any[]>('products'),
+303:     getLocal<any[]>('sales'),
+304:     getLocal<any[]>('purchases'),
+305:     getLocal<any>('settings'),
+306:     getLocal<any[]>('stock_adjustments'),
+307:   ]);
+308:   const products = productsRaw || [];
+309:   let sales = salesRaw || [];
+310:   let purchases = purchasesRaw || [];
+311:   const settings = (settingsRaw as any) || {};
+312:   const threshold = settings.inventory_threshold ?? 5;
+313:   const adjAll = (adjRaw || []).slice();
+314:   const q = await getQueue();
+315:   
+316:   // --- Merge Deletions (حذف‌های آفلاین) ---
+317:   for (const item of q) {
+318:     if (item.op === 'deleteSale') {
+319:       allSales = allSales.filter((s: any) => s.invoice_number !== item.payload);
+320:     }
+
+══════ ادغام‌ها ══════
+
+=== lib.sheets.ts — async function mergeList (خط 495) ===
+495: async function mergeList(localKey: string, sheetRows: any[]) {
+496:   const table = localKey.replace('@mizan_local_', '');
+497: 
+498:   if (localKey === '@mizan_local_settings') {
+499:     const rawS = await AsyncStorage.getItem(localKey);
+500:     let existing: any = null;
+501:     try { existing = rawS ? JSON.parse(rawS) : null; } catch { existing = null; }
+502:     if (existing && typeof existing === 'object' && !Array.isArray(existing) && Object.keys(existing).length > 0) {
+503:       return { added: 0, updated: 0, removed: 0 };
+504:     }
+505:     const first = (sheetRows || [])[0];
+506:     if (!first) return { added: 0, updated: 0, removed: 0 };
+507:     await AsyncStorage.setItem(localKey, JSON.stringify(first));
+508:     return { added: 1, updated: 0, removed: 0 };
+509:   }
+510: 
+511:   const raw = await AsyncStorage.getItem(localKey);
+512:   let localArr: any[] = [];
+513:   try { localArr = raw ? JSON.parse(raw) : []; } catch { localArr = []; }
+514:   if (!Array.isArray(localArr)) localArr = [];
+515: 
+516:   const localMap = new Map<string, any>();
+517:   for (const r of localArr) {
+518:     const k = keyOfRow(r);
+519:     if (k) localMap.set(k, r);
+520:   }
+521: 
+522:   const tombstones = await getTombstonesForTable(table);
+523:   let added = 0, updated = 0, removed = 0;
+524: 
+525:   for (const [k, r] of Array.from(localMap.entries())) {
+526:     const tombAt = tombstones[k] || '';
+527:     if (tombAt) {
+528:       const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+529:       if (!localUp || tsOf(tombAt) >= tsOf(localUp)) {
+530:         localMap.delete(k);
+531:         removed++;
+532:       }
+533:     }
+534:   }
+535: 
+536:   for (const row of sheetRows || []) {
+537:     const k = keyOfRow(row);
+538:     if (!k) continue;
+539: 
+540:     const sheetDel = row.deleted_at || row.deletedAt || '';
+541:     if (sheetDel) {
+542:       const old = tombstones[k] || '';
+543:       if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+544:       if (localMap.has(k)) { localMap.delete(k); removed++; }
+545:       continue;
+546:     }
+547: 
+548:     const tombAt = tombstones[k] || '';
+549:     if (tombAt) {
+550:       const sheetUp = row.updated_at || row.updatedAt || '';
+551:       if (!sheetUp || tsOf(tombAt) >= tsOf(sheetUp)) continue;
+552:     }
+553: 
+554:     const existing = localMap.get(k);
+555:     if (!existing) {
+556:       localMap.set(k, row);
+557:       added++;
+558:       continue;
+559:     }
+560: 
+561:     const localUp = existing.updated_at || existing.updatedAt || '';
+562:     const sheetUp = row.updated_at || row.updatedAt || '';
+563:     if (sheetUp && (!localUp || tsOf(sheetUp) > tsOf(localUp))) {
+564:       localMap.set(k, { ...existing, ...row });
+565:       updated++;
+566:     }
+567:   }
+568: 
+569:   await saveTombstonesForTable(table, tombstones);
+570:   if (added || updated || removed) {
+571:     await AsyncStorage.setItem(localKey, JSON.stringify(Array.from(localMap.values())));
+572:   }
+573:   return { added, updated, removed };
+574: }
+575: 
+576: async function mergePartnerPrefixed(prefix: string, rows: any[]) {
+577:   const byPartner: Record<string, any[]> = {};
+578:   for (const r of rows || []) {
+579:     const pc = String(r.partner_code || '').trim();
+580:     if (!pc) continue;
+581:     if (!byPartner[pc]) byPartner[pc] = [];
+582:     byPartner[pc].push(r);
+583:   }
+584:   let added = 0, updated = 0, removed = 0;
+
+=== lib.sheets.ts — async function mergeGroupedInvoices (خط 649) ===
+649: async function mergeGroupedInvoices(localKey: string, rows: any[]) {
+650:   const table = localKey.includes('purchases') ? 'purchases' : 'sales';
+651:   const sheetGroups = buildGroupedFromSheet(rows);
+652:   const raw = await AsyncStorage.getItem(localKey);
+653:   let localArr: any[] = [];
+654:   try { localArr = raw ? JSON.parse(raw) : []; } catch { localArr = []; }
+655:   if (!Array.isArray(localArr)) localArr = [];
+656: 
+657:   const pending = await getPendingInvoiceKeys();
+658:   const localMap = new Map<string, any>();
+659:   for (const r of localArr) {
+660:     const k = invoiceKeyOf(r);
+661:     if (k) localMap.set(k, r);
+662:   }
+663: 
+664:   const tombstones = await getTombstonesForTable(table);
+665:   let added = 0, updated = 0, removed = 0;
+666: 
+667:   for (const [k, r] of Array.from(localMap.entries())) {
+668:     const tombAt = tombstones[k] || '';
+669:     if (tombAt) {
+670:       const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+671:       if (!localUp || tsOf(tombAt) >= tsOf(localUp)) {
+672:         localMap.delete(k);
+673:         removed++;
+674:       }
+675:     }
+676:   }
+677: 
+678:   for (const g of sheetGroups) {
+679:     const k = invoiceKeyOf(g);
+680:     if (!k) continue;
+681:     const isPending = pending.has(String(g.invoice || '')) || pending.has(k);
+682: 
+683:     const sheetDel = g.deleted_at || '';
+684:     if (sheetDel) {
+685:       const old = tombstones[k] || '';
+686:       if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+687:       if (!isPending && localMap.has(k)) { localMap.delete(k); removed++; }
+688:       continue;
+689:     }
+690: 
+691:     const tombAt = tombstones[k] || '';
+692:     if (tombAt) {
+693:       const sheetUp = g.updated_at || g.updatedAt || '';
+694:       if (!sheetUp || tsOf(tombAt) >= tsOf(sheetUp)) continue;
+695:     }
+696: 
+697:     const existing = localMap.get(k);
+698:     if (!existing) {
+699:       localMap.set(k, g);
+700:       added++;
+701:       continue;
+702:     }
+703: 
+704:     if (isPending) continue;
+705: 
+706:     const localUp = tsOf(existing.updated_at || existing.updatedAt);
+707:     const sheetUp = tsOf(g.updated_at || g.updatedAt);
+708:     if (sheetUp > localUp) {
+709:       localMap.set(k, { ...existing, ...g });
+710:       updated++;
+711:     }
+712:   }
+713: 
+714:   await saveTombstonesForTable(table, tombstones);
+715:   if (added || updated || removed) {
+716:     await AsyncStorage.setItem(localKey, JSON.stringify(Array.from(localMap.values())));
+717:   }
+718:   return { added, updated, removed };
+719: }
+720: 
+721: async function mergeTombstones(rows: any[]) {
+722:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+723:   let local: any[] = [];
+724:   try { local = raw ? JSON.parse(raw) : []; } catch { local = []; }
+725:   if (!Array.isArray(local)) local = [];
+726: 
+727:   const map: Record<string, any> = {};
+728:   for (const t of local) {
+729:     if (t && t.table && t.key) map[String(t.table) + '|' + String(t.key)] = t;
+730:   }
+731: 
+732:   let added = 0, updated = 0;
+733: 
+734:   for (const r of rows || []) {
+735:     if (!r || !r.table || !r.key) continue;
+736:     const k = String(r.table) + '|' + String(r.key);
+737:     const old = map[k];
+738:     const oldTs = old ? Date.parse(String(old.deleted_at || '')) : 0;
+
+=== lib.sheets.ts — async function mergeTombstones (خط 721) ===
+721: async function mergeTombstones(rows: any[]) {
+722:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+723:   let local: any[] = [];
+724:   try { local = raw ? JSON.parse(raw) : []; } catch { local = []; }
+725:   if (!Array.isArray(local)) local = [];
+726: 
+727:   const map: Record<string, any> = {};
+728:   for (const t of local) {
+729:     if (t && t.table && t.key) map[String(t.table) + '|' + String(t.key)] = t;
+730:   }
+731: 
+732:   let added = 0, updated = 0;
+733: 
+734:   for (const r of rows || []) {
+735:     if (!r || !r.table || !r.key) continue;
+736:     const k = String(r.table) + '|' + String(r.key);
+737:     const old = map[k];
+738:     const oldTs = old ? Date.parse(String(old.deleted_at || '')) : 0;
+739:     const newTs = Date.parse(String(r.deleted_at || ''));
+740:     if (!old || (newTs && newTs > oldTs)) {
+741:       map[k] = {
+742:         table: String(r.table),
+743:         key: String(r.key),
+744:         deleted_at: r.deleted_at || new Date().toISOString(),
+745:         device_id: r.device_id || '',
+746:       };
+747:       if (old) updated++; else added++;
+748:     }
+749:   }
+750: 
+751:   await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(Object.values(map)));
+752:   return { added, updated, removed: 0 };
+753: }
+754: 
+755: export async function pullPrivateTables(onProgress?: (done: number, total: number, tab: string) => void) {
+756:   const token = await getToken();
+757:   if (!token) throw new Error('لطفاً وارد شوید');
+758:   const res = await fetch(FN_BASE + '/google-sheets-pull', {
+759:     method: 'POST',
+760:     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+
+══════ صف و syncToServer ══════
+
+=== lib.offline.ts — export async function syncToServer (خط 119) ===
+119: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+120:   const q = await getQueue();
+121:   const remaining: any[] = [];
+122:   let ok = 0, fail = 0;
+123:   const total = q.length;
+124:   for (let i = 0; i < q.length; i++) {
+125:     const item = q[i];
+126:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+127:     try {
+128:       if ((await isBusinessLocked()) && BUSINESS_OPS.has(String(item.op))) {
+129:         remaining.push(item);
+130:         if (onProgress) onProgress(i + 1, total);
+131:         continue;
+132:       }
+133:       await (lib as any)[item.op](item.payload);
+134:       ok++;
+135:     } catch (e: any) {
+136:       const msg = String(e?.message || e || '');
+137:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+138:       if (isDup) { ok++; } else {
+139:         const attempts = (item.attempts || 0) + 1;
+140:         if (attempts >= 5) {
+141:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+142:         } else {
+143:           remaining.push({ ...item, attempts, lastError: msg });
+144:         }
+145:         fail++;
+146:       }
+147:     }
+148:     if (onProgress) onProgress(i + 1, total);
+149:     if ((i + 1) % 20 === 0) {
+150:       await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+151:       await new Promise(r => setTimeout(r, 10));
+152:     }
+153:   }
+154:   await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+155:   return { ok, fail };
+156: }
+157: 
+158: export async function pullFromServer() {
+159:   try {
+160:     const [products, salesGrouped, purchasesGrouped, sales, purchases, settings] = await Promise.all([
+161:       lib.getProducts(),
+162:       lib.getSalesGrouped(),
+163:       lib.getPurchasesGrouped(),
+164:       lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+165:       lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+166:       lib.getSettings(),
+167:     ]);
+168:     await setLocal('products', products);
+169:     await setLocal('sales_grouped', salesGrouped);
+170:     await setLocal('purchases_grouped', purchasesGrouped);
+171:     await setLocal('sales', sales.data || []);
+172:     await setLocal('purchases', purchases.data || []);
+173:     await setLocal('settings', settings);
+174:   } catch (e) { console.log('Pull failed:', e); }
+175: }
+176: 
+177: async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+178:   if (MODE === 'online') {
+
+══════ فیلدهای زمان و دستگاه در ادغام ══════
+lib.sheets.ts:99: updated_at: new Date().toISOString(),
+lib.sheets.ts:110: updated_at: new Date().toISOString(),
+lib.sheets.ts:155: const row = { test: 'ok', at: new Date().toISOString(), device: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
+lib.sheets.ts:248: .select('email, spreadsheet_id, updated_at')
+lib.sheets.ts:459: if (t && t.key) map[String(t.key)] = String(t.deleted_at || t.deletedAt || '');
+lib.sheets.ts:466: const arr = Object.keys(map).map(k => ({ key: k, deleted_at: map[k] }));
+lib.sheets.ts:478: map[String(t.key)] = String(t.deleted_at || t.deletedAt || '');
+lib.sheets.ts:491: const mine = Object.keys(map).map(k => ({ table: table, key: k, deleted_at: map[k] }));
+lib.sheets.ts:528: const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+lib.sheets.ts:540: const sheetDel = row.deleted_at || row.deletedAt || '';
+lib.sheets.ts:550: const sheetUp = row.updated_at || row.updatedAt || '';
+lib.sheets.ts:561: const localUp = existing.updated_at || existing.updatedAt || '';
+lib.sheets.ts:562: const sheetUp = row.updated_at || row.updatedAt || '';
+lib.sheets.ts:627: updated_at: r.updated_at || '',
+lib.sheets.ts:628: deleted_at: r.deleted_at || '',
+lib.sheets.ts:629: device_id: r.device_id || '',
+lib.sheets.ts:670: const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+lib.sheets.ts:683: const sheetDel = g.deleted_at || '';
+lib.sheets.ts:693: const sheetUp = g.updated_at || g.updatedAt || '';
+lib.sheets.ts:706: const localUp = tsOf(existing.updated_at || existing.updatedAt);
+lib.sheets.ts:707: const sheetUp = tsOf(g.updated_at || g.updatedAt);
+lib.sheets.ts:738: const oldTs = old ? Date.parse(String(old.deleted_at || '')) : 0;
+lib.sheets.ts:739: const newTs = Date.parse(String(r.deleted_at || ''));
+lib.sheets.ts:744: deleted_at: r.deleted_at || new Date().toISOString(),
+lib.sheets.ts:745: device_id: r.device_id || '',
+lib.offline.ts:102: const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+lib.offline.ts:105: clean.push({ table: table, key: String(key), deleted_at: now, device_id: dev });
+lib.offline.ts:2489: updated_at: new Date().toISOString(),
+lib.offline.ts:2510: list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString() };

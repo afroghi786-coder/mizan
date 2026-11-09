@@ -1,0 +1,186 @@
+══════ createSale در lib.offline.ts ══════
+
+=== lib.offline.ts — export async function createSale (خط 392) ===
+392: export async function createSale(payload: any) {
+393:   if (await serverBusinessAllowed()) {
+394:     try {
+395:       const r = await lib.createSale(payload);
+396:         try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+397:       return r;
+398:     }
+399:     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+400:   }
+401:   await enqueue('createSale', payload);
+402:   try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+403:   return payload.invoiceNumber;
+404: }
+405: export async function deleteSale(inv: string) {
+406:   await recordTombstone('sales', String(inv));
+407:   const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+408:   await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+409:   try { await _pushAudit({ type: 'sale_delete', table: 'sales', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور فروش' }); } catch {}
+410:   if (await serverBusinessAllowed()) {
+411:     try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+412:   } else {
+413:     await enqueue('deleteSale', inv);
+414:   }
+415: }
+416: 
+417: export async function deletePurchase(inv: string) {
+418:   await recordTombstone('purchases', String(inv));
+419:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+420:   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+421:   try { await _pushAudit({ type: 'purchase_delete', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور خرید' }); } catch {}
+422:   if (await serverBusinessAllowed()) {
+423:     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+424:   } else {
+425:     await enqueue('deletePurchase', inv);
+426:   }
+427: }
+428: 
+429: export async function getSettings() {
+430:   return cachedRead('settings', () => lib.getSettings());
+431: }
+432: export async function updateSettings(s: any) {
+433:   await setLocal('settings', s);
+434:   try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+435:   if (await serverBusinessAllowed()) {
+436:     try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+437:   } else {
+438:     await enqueue('updateSettings', s);
+439:   }
+440: }
+441: 
+442: async function computeLocalInventory() {
+443:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+444:     getLocal<any[]>('products'),
+445:     getLocal<any[]>('sales'),
+446:     getLocal<any[]>('purchases'),
+447:     getLocal<any>('settings'),
+448:     getLocal<any[]>('stock_adjustments'),
+449:   ]);
+450:   const products = productsRaw || [];
+451:   let sales = salesRaw || [];
+452:   let purchases = purchasesRaw || [];
+453:   const settings = (settingsRaw as any) || {};
+454:   const threshold = settings.inventory_threshold ?? 5;
+455:   const adjAll = (adjRaw || []).slice();
+456:   const q = await getQueue();
+457:   
+458:   // --- Merge Deletions (حذف‌های آفلاین) ---
+459:   for (const item of q) {
+460:     if (item.op === 'deleteSale') {
+461:       allSales = allSales.filter((s: any) => s.invoice_number !== item.payload);
+
+══════ generateInvoiceNumber ══════
+
+=== lib.offline.ts — generateInvoiceNumber (خط 792) ===
+792: export async function generateInvoiceNumber(): Promise<string> {
+793:   if (MODE === 'online') {
+794:     try { return await lib.generateInvoiceNumber(); } catch {}
+795:   }
+796:   const today = new Date();
+797:   const ds = String(today.getFullYear()).slice(-2)
+798:     + String(today.getMonth() + 1).padStart(2, '0')
+799:     + String(today.getDate()).padStart(2, '0');
+800:   const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+801:   const queue = await getQueue();
+802:   let maxN = 1000;
+803:   const all: string[] = [
+804:     ...salesGrouped.map((g: any) => g.invoice || ''),
+805:     ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.invoiceNumber || ''),
+806:   ];
+807:   for (const inv of all) {
+808:     const m = String(inv).match(/^\d{6}-(\d+)$/);
+809:     if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+810:   }
+811:   return ds + '-' + (maxN + 1);
+
+=== lib.ts — generateInvoiceNumber (خط 370) ===
+370: export async function generateInvoiceNumber(): Promise<string> {
+371:   const now = new Date();
+372:   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
+373:   // ⭐ همه فاکتورهای کاربر (بدون فیلتر تاریخ)
+374:   const { data } = await supabase
+375:     .from('sales')
+376:     .select('invoice_number');
+377:   let maxN = 1000;
+378:   (data || []).forEach((r: any) => {
+379:     const inv = String(r.invoice_number || '');
+380:     // فقط فاکتورهای فروش (بدون P-)
+381:     const m = inv.match(/^\d{6}-(\d+)$/);
+382:     if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+383:   });
+384:   return `${ds}-${maxN + 1}`;
+385: }
+386: 
+387: // ⭐ شماره فاکتور خرید: P-YYMMDD-NNNN (ترتیبی برای هر کاربر)
+388: // ⭐ شماره فاکتور خرید: P-YYMMDD-NNNN (افزایشی، هرگز تکرار نمی‌شه)
+389: export async function generatePurchaseInvoiceNumber(manualInvoice: string): Promise<string> {
+390:   const now = new Date();
+391:   const ds = String(now.getFullYear()).slice(-2) + pad2(now.getMonth() + 1) + pad2(now.getDate());
+392:   // ⭐ همه فاکتورهای خرید کاربر (بدون فیلتر تاریخ)
+393:   const { data } = await supabase
+394:     .from('purchases')
+395:     .select('invoice_number');
+396:   let maxN = 1000;
+397:   (data || []).forEach((r: any) => {
+398:     const inv = String(r.invoice_number || '');
+399:     // فقط فاکتورهای خرید (با P-)
+
+══════ getSalesGrouped در lib.offline.ts ══════
+
+=== lib.offline.ts — export async function getSalesGrouped (خط 836) ===
+836: export async function getSalesGrouped() {
+837:   let serverList: any[] = [];
+838:   if (MODE === 'online') {
+839:     try {
+840:       serverList = await lib.getSalesGrouped();
+841:       await setLocal('sales_grouped', serverList);
+842:     } catch {
+843:       serverList = (await getLocal<any[]>('sales_grouped')) || [];
+844:     }
+845:   } else {
+846:     serverList = (await getLocal<any[]>('sales_grouped')) || [];
+847:   }
+848: 
+849:   // ادغام با صف
+850:   const queue = await getQueue();
+851:   const pendingByInv: Record<string, any> = {};
+852:   for (const item of queue) {
+853:     if (item.op === 'createSale') {
+854:       const p = item.payload;
+855:       const inv = p.invoiceNumber;
+856:       if (!pendingByInv[inv]) {
+857:         pendingByInv[inv] = {
+858:           invoice: inv, name: p.customerName, phone: p.customerPhone,
+859:           total: 0, paid: 0, items: [],
+860:           date: new Date(item.ts).toISOString(),
+861:           _pending: true,
+862:         };
+863:       }
+864:       for (const it of p.items || []) {
+865:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+
+══════ چک تکراری بودن شماره فاکتور ══════
+lib.offline.ts:461: allSales = allSales.filter((s: any) => s.invoice_number !== item.payload);
+lib.offline.ts:464: allPurchases = allPurchases.filter((p: any) => p.invoice_number !== item.payload);
+lib.offline.ts:472: const oldRows = allSales.filter((s: any) => s.invoice_number === inv);
+lib.offline.ts:475: allSales = allSales.filter((s: any) => s.invoice_number !== inv);
+lib.offline.ts:494: const oldRows = allPurchases.filter((p: any) => p.invoice_number === inv);
+lib.offline.ts:497: allPurchases = allPurchases.filter((p: any) => p.invoice_number !== inv);
+lib.offline.ts:805: ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.invoiceNumber || ''),
+lib.offline.ts:1071: const filtered = cached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+lib.offline.ts:1078: const otherFiltered = otherCached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+lib.offline.ts:1633: const hasCreate = q.some((item: any) => item.op === createOp && item.payload?.invoiceNumber === invoiceNumber);
+lib.offline.ts:1634: const hasUpdate = q.some((item: any) => item.op === updateOp && item.payload?.invoiceNumber === invoiceNumber);
+lib.offline.ts:2060: if (inv) allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+lib.offline.ts:2066: if (inv) allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+lib.offline.ts:2075: allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+lib.offline.ts:2112: allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+lib.offline.ts:3212: const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+lib.offline.ts:3213: const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+lib.offline.ts:3237: const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
+lib.offline.ts:3250: const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+lib.offline.ts:3251: const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+lib.offline.ts:3277: const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);

@@ -30,6 +30,21 @@ async function fetchLicenseFromServer(): Promise<any> {
 
 export async function checkLicense(): Promise<LicenseInfo> {
   const now = Date.now();
+
+  // PHASE3_CLOCK_TAMPER — جلوگیری از عقب بردن تاریخ گوشی
+  try {
+    const _lastRaw = await AsyncStorage.getItem(LICENSE_TS);
+    const _last = Number(_lastRaw || 0);
+    if (_last > 0 && now + 2 * 60 * 1000 < _last) {
+      return {
+        status: 'unknown',
+        lastCheck: now,
+        daysSinceCheck: 0,
+        isLocked: true,
+        reason: 'تاریخ دستگاه عقب برده شده است. لطفاً تاریخ و ساعت گوشی را درست کنید و دوباره تلاش کنید.',
+      };
+    }
+  } catch {}
   
   // ۱. مشخص کردن کاربر فعلی
   let currentUserId = '';
@@ -90,6 +105,7 @@ export async function checkLicense(): Promise<LicenseInfo> {
     else if (diffSec > 0 && diffSec < 3600) reason = `⏳ ${diffMin} دقیقه تا پایان trial`;
     else if (diffSec > 0 && diffSec < 86400) reason = `⏳ ${diffHours} ساعت تا پایان trial`;
 
+    await AsyncStorage.setItem(LICENSE_TS, String(now));
     return {
       status: isSuspended ? 'suspended' : isExpired ? 'expired' : 'active',
       plan: localData.plan,
@@ -101,12 +117,13 @@ export async function checkLicense(): Promise<LicenseInfo> {
     };
   }
 
-  // ۵. نه آنلاین، نه محلی
+  // ۵. نه آنلاین، نه محلی — قفل امن (فاز ۲)
   return {
     status: 'unknown',
     lastCheck: now,
     daysSinceCheck: 0,
-    isLocked: false,
+    isLocked: true,
+    reason: 'لایسنس معتبر یافت نشد. لطفاً با اینترنت وصل شوید یا از دکمه «درخواست لایسنس» استفاده کنید.',
   };
 }
 

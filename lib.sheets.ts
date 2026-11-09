@@ -395,6 +395,8 @@ export async function syncPrivateTables(onProgress?: (done: number, total: numbe
         const _k = String(_t.key || '').trim();
         if (!_tab || !_k) continue;
         if (_tab === '_deleted' || _tab === '_audit') continue;
+        // فقط فروش و خرید مثل قبل خودکار از شیت حذف شوند
+        if (_tab !== 'sales' && _tab !== 'purchases') continue;
         if (!_byTable[_tab]) _byTable[_tab] = [];
         _byTable[_tab].push(_k);
       }
@@ -446,7 +448,40 @@ export async function pullBridgeTables(onProgress?: (done: number, total: number
     if (onProgress) onProgress(done, total, tab);
   }
 
-  return { ok: true, added, updated, removed, totalTables: total };
+    // PHASE_D_IN_PULL — حذف واقعی ردیف‌های tombstone از شیت بعد از هر pull
+  try {
+    const _rawT = await AsyncStorage.getItem('@mizan_tombstones');
+    let _arrT: any[] = [];
+    try { _arrT = _rawT ? JSON.parse(_rawT) : []; } catch { _arrT = []; }
+    if (Array.isArray(_arrT) && _arrT.length) {
+      const _byTable: Record<string, string[]> = {};
+      for (const _t of _arrT) {
+        if (!_t) continue;
+        const _tab = String(_t.table || '').trim();
+        const _k = String(_t.key || '').trim();
+        if (!_tab || !_k) continue;
+        if (_tab === '_deleted' || _tab === '_audit') continue;
+        // فقط فروش و خرید مثل قبل خودکار از شیت حذف شوند
+        if (_tab !== 'sales' && _tab !== 'purchases') continue;
+        if (!_byTable[_tab]) _byTable[_tab] = [];
+        _byTable[_tab].push(_k);
+      }
+      for (const _tab of Object.keys(_byTable)) {
+        const _keys = _byTable[_tab];
+        if (!_keys.length) continue;
+        try {
+          await bridgeDeleteTable(_tab, _keys);
+          console.log('[PULL_DELETE] حذف از شیت:', _tab, 'کلیدها:', _keys.length);
+        } catch (e: any) {
+          console.log('[PULL_DELETE] خطا در حذف:', _tab, e?.message || e);
+        }
+      }
+    }
+  } catch (e: any) {
+    console.log('[PULL_DELETE] خطای کلی:', e?.message || e);
+  }
+
+return { ok: true, added, updated, removed, totalTables: total };
 }
 
 export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
@@ -525,6 +560,26 @@ export async function syncBridgeTables(onProgress?: (done: number, total: number
               finalRows = Object.values(map);
             } catch {}
           }
+
+          // SYNC_NO_REUPLOAD — filter out any tombstoned rows before upload
+          try {
+            const tombstones = await getTombstones();
+            const tombSet = new Set<string>();
+            for (const tomb of tombstones || []) {
+              const k = String(tomb?.key || '').trim();
+              if (k) tombSet.add(k);
+            }
+            if (tombSet.size > 0) {
+              finalRows = (finalRows || []).filter((r: any) => {
+                const raw = String(r?.invoice || r?.invoice_number || r?.local_id || r?.id || r?.code || '').trim();
+                if (!raw) return true;
+                if (tombSet.has(raw)) return false;
+                if (raw.startsWith('grp_sale_') && tombSet.has(raw.slice(9))) return false;
+                if (raw.startsWith('grp_purchase_') && tombSet.has(raw.slice(13))) return false;
+                return true;
+              });
+            }
+          } catch {}
           await bridgeUpsertTable(t.tab, finalRows);
         }
         results.push({ tab: t.tab, ok: true, rows: rows.length });
@@ -1267,18 +1322,49 @@ async function mergeTombstones(rows: any[]) {
     const old = map[k];
     const oldTs = old ? Date.parse(String(old.deleted_at || '')) : 0;
     const newTs = Date.parse(String(r.deleted_at || ''));
-    if (!old || (newTs && newTs > oldTs)) {
+
+    // خواندن device_label و snapshot از ردیف شیت _deleted
+    const _devLabel = String(r.device_label || (old && old.device_label) || '');
+    let _parsedSnap: any = null;
+    try {
+      const _rawSnap = r.snapshot || (old && old.snapshot);
+      if (_rawSnap) {
+        if (typeof _rawSnap === 'string') {
+          try { _parsedSnap = JSON.parse(_rawSnap); } catch { _parsedSnap = null; }
+        } else if (typeof _rawSnap === 'object') {
+          _parsedSnap = _rawSnap;
+        }
+      }
+    } catch {}
+
+    const _oldHasSnap = !!(old && old.snapshot);
+    const _newHasSnap = !!_parsedSnap;
+    const _oldHasLabel = !!(old && old.device_label);
+    const _newHasLabel = !!_devLabel;
+
+    const _shouldUpdate =
+      !old ||
+      (newTs && newTs > oldTs) ||
+      (!_oldHasSnap && _newHasSnap) ||
+      (!_oldHasLabel && _newHasLabel);
+
+    if (_shouldUpdate) {
       let _m = r.meta || (old && old.meta);
       if (typeof _m === 'string') {
         try { _m = JSON.parse(_m); } catch { _m = undefined; }
       }
+
       const _entry: any = {
         table: String(r.table),
         key: String(r.key),
-        deleted_at: r.deleted_at || new Date().toISOString(),
-        device_id: r.device_id || '',
+        deleted_at: r.deleted_at || (old && old.deleted_at) || new Date().toISOString(),
+        device_id: r.device_id || (old && old.device_id) || '',
+        device_label: _devLabel || '',
       };
+
       if (_m) _entry.meta = _m;
+      if (_parsedSnap) _entry.snapshot = _parsedSnap;
+
       map[k] = _entry;
       if (old) updated++; else added++;
     }

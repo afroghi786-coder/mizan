@@ -1,0 +1,373 @@
+══════════ ۱) بلوک شرکا در getLedgerData ══════════
+
+─── lib.offline.ts — partners در getLedgerData (2865 تا 2945) ───
+2865:       const name = String(r.party_name || '').trim();
+2866:       const code = String(r.party_code || '').trim();
+2867:       const acc = findExistingAccount(name, code) || getOrCreate(name, code, '');
+2868:       if (!acc) continue;
+2869:       const total = Number(r.total) || 0;
+2870:       if (total <= 0) continue;
+2871:       acc.transactions.push({
+2872:         date: r.date || r.created_at || '',
+2873:         invoice: r.original_invoice_number || '',
+2874:         manualInvoice: '',
+2875:         modelCode: '',
+2876:         modelName: '',
+2877:         bank: r.bank || '',
+2878:         holder: r.account_holder || '',
+2879:         holderCode: '',
+2880:         depositDate: r.deposit_date || '',
+2881:         shipping: '',
+2882:         description: 'برگشت از فروش' + (r.reason ? ' — ' + r.reason : ''),
+2883:         type: 'sale_return',
+2884:         qty: 0, priceUnit: 0, lineTotal: total,
+2885:         debit: 0, credit: total,
+2886:       });
+2887:     }
+2888:   } catch (e) { console.log('[ledger] salesReturns effect fail:', e); }
+2889: 
+2890:   // ─── اثر برگشت از خرید روی دفتر معین: بدهکار تأمین‌کننده ───
+2891:   try {
+2892:     const purchaseReturns = await getPurchaseReturns();
+2893:     for (const r of purchaseReturns || []) {
+2894:       const name = String(r.party_name || '').trim();
+2895:       const code = String(r.party_code || '').trim();
+2896:       const acc = findExistingAccount(name, code) || getOrCreate(name, code, '');
+2897:       if (!acc) continue;
+2898:       const total = Number(r.total) || 0;
+2899:       if (total <= 0) continue;
+2900:       acc.transactions.push({
+2901:         date: r.date || r.created_at || '',
+2902:         invoice: r.original_invoice_number || '',
+2903:         manualInvoice: '',
+2904:         modelCode: '',
+2905:         modelName: '',
+2906:         bank: r.bank || '',
+2907:         holder: r.account_holder || '',
+2908:         holderCode: '',
+2909:         depositDate: r.deposit_date || '',
+2910:         shipping: '',
+2911:         description: 'برگشت از خرید' + (r.reason ? ' — ' + r.reason : ''),
+2912:         type: 'purchase_return',
+2913:         qty: 0, priceUnit: 0, lineTotal: total,
+2914:         debit: total, credit: 0,
+2915:       });
+2916:     }
+2917:   } catch (e) { console.log('[ledger] purchaseReturns effect fail:', e); }
+2918: 
+2919:   const result: any[] = [];
+2920:   Object.keys(accounts).forEach(function(k) {
+2921:     const acc = accounts[k];
+2922:     let debit = 0, credit = 0;
+2923:     acc.transactions.forEach(function(t: any) { debit += (t.debit || 0); credit += (t.credit || 0); });
+2924:     const balance = debit - credit;
+2925:     const trans = acc.transactions.slice().sort(function(a: any, b: any) {
+2926:       const da = _pda(a.date), db = _pda(b.date);
+2927:       return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+2928:     });
+2929:     let run = 0;
+2930:     trans.forEach(function(t: any) { run += (t.debit || 0) - (t.credit || 0); t.runningBalance = run; });
+2931:     let hasSale = false;
+2932:     let hasPurchase = false;
+2933:     trans.forEach(function(t: any) {
+2934:       if (t.type === 'sale') hasSale = true;
+2935:       if (t.type === 'purchase') hasPurchase = true;
+2936:     });
+2937:     const typeStr = (hasSale && hasPurchase) ? 'مشتری/تأمین‌کننده' : hasSale ? 'مشتری' : hasPurchase ? 'تأمین‌کننده' : '—';
+2938:     result.push({
+2939:       key: acc.key,
+2940:       name: Object.keys(acc.names)[0] || '—',
+2941:       code: Object.keys(acc.codes)[0] || '—',
+2942:       phone: Object.keys(acc.phones)[0] || '—',
+2943:       allNames: Object.keys(acc.names),
+2944:       allCodes: Object.keys(acc.codes),
+2945:       allPhones: Object.keys(acc.phones),
+
+══════════ ۲) getOrCreate و makeKey ══════════
+
+─── lib.offline.ts — ساخت حساب ───
+40: 'createPartner','updatePartner','deletePartner',
+119: createPartner: { table: 'partners', type: 'partner_create', summary: 'ثبت شریک' },
+120: updatePartner: { table: 'partners', type: 'partner_update', summary: 'ویرایش شریک' },
+121: deletePartner: { table: 'partners', type: 'partner_delete', summary: 'حذف شریک' },
+122: createPBA: { table: 'partner_bank_accounts', type: 'pba_create', summary: 'ثبت حساب بانکی شریک' },
+123: deletePBA: { table: 'partner_bank_accounts', type: 'pba_delete', summary: 'حذف حساب بانکی شریک' },
+124: createPTX: { table: 'partner_transactions', type: 'ptx_create', summary: 'ثبت حرکت شریک' },
+125: deletePTX: { table: 'partner_transactions', type: 'ptx_delete', summary: 'حذف حرکت شریک' },
+141: const fields = ['local_id','id','code','_localId','invoiceNumber','invoice_number','invoice','employee_code','partner_code'];
+2063: export async function getFxPartners(): Promise<any[]> {
+2064: return cachedRead('fx_partners', async () => {
+2065: const { data } = await lib.supabase.from('fx_partners').select('*').order('created_at', { ascending: false });
+2069: export async function createFxPartner(p: any): Promise<any> {
+2070: const local = (await getLocal<any[]>('fx_partners')) || [];
+2078: await setLocal('fx_partners', [item, ...local]);
+2081: await lib.supabase.from('fx_partners').insert({
+2084: } catch { await enqueue('createFxPartner', { ...p, code }); }
+2085: } else { await enqueue('createFxPartner', { ...p, code }); }
+2088: export async function updateFxPartner(localId: string, p: any) {
+2089: const local = (await getLocal<any[]>('fx_partners')) || [];
+2091: await setLocal('fx_partners', newList);
+2093: try { await lib.supabase.from('fx_partners').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+2096: export async function deleteFxPartner(localId: string) {
+2097: const local = (await getLocal<any[]>('fx_partners')) || [];
+2098: await setLocal('fx_partners', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2100: try { await lib.supabase.from('fx_partners').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+2746: const makeKey = function(name: string, code: string, phone: string): string | null {
+2755: const getOrCreate = function(name: string, code: string, phone: string) {
+2758: if (!accounts[key]) accounts[key] = { key: key, names: {}, codes: {}, phones: {}, transactions: [] };
+2759: if (name) accounts[key].names[name] = true;
+2760: if (code) accounts[key].codes[code] = true;
+2761: if (phone) accounts[key].phones[phone] = true;
+2762: return accounts[key];
+2937: const typeStr = (hasSale && hasPurchase) ? 'مشتری/تأمین‌کننده' : hasSale ? 'مشتری' : hasPurchase ? 'تأمین‌کننده' : '—';
+2950: type: typeStr,
+2997: const partnerResult: any[] = [];
+2999: const partnersList = await getPartners();
+3000: for (const p of partnersList) {
+3001: const txns = await getPartnerTransactions(p.code);
+3035: holder: t.partner_name || p.name || '',
+3036: holderCode: t.partner_code || p.code || '',
+3040: type: 'partner_' + type,
+3064: partnerResult.push({
+3065: key: 'PARTNER:' + (p.code || p.name),
+3082: } catch (e) { console.log('[getLedgerData] partners fail:', e); }
+3241: const combined = result.concat(partnerResult, expenseResult, employeeResult);
+3431: //  Partners Offline Wrappers
+3433: export async function getPartners() {
+3435: const list = (await getLocal<any[]>('partners')) || [];
+3439: if (item.op === 'createPartner') { const lid = String(item.payload?.local_id || ''); if (!lid || !result.some((x: any) => String(x.local_id || '') === lid)) result.push(item.payload); }
+3440: else if (item.op === 'updatePartner') {
+3443: } else if (item.op === 'deletePartner') {
+3450: export async function createPartner(p: any) {
+3454: const list = (await getLocal<any[]>('partners')) || [];
+3455: await setLocal('partners', [...list, item]);
+3456: try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3459: await lib.createPartner(item);
+3460: try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3461: } catch { await enqueue('createPartner', item); }
+3463: else { await enqueue('createPartner', item); }
+3466: export async function updatePartner(id: string, p: any) {
+3468: const list = (await getLocal<any[]>('partners')) || [];
+3470: if (idx >= 0) { list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('partners', list); }
+3471: try { await _pushAudit({ type: 'partner_update', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش شریک' }); } catch {}
+3472: if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+3473: else { await enqueue('updatePartner', item); }
+3476: export async function deletePartner(id: string) {
+3477: await recordTombstone('partners', String(id));
+3478: const list = (await getLocal<any[]>('partners')) || [];
+3479: await setLocal('partners', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3480: try { await _pushAudit({ type: 'partner_delete', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف شریک' }); } catch {}
+3481: if (await serverBusinessAllowed()) { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+3482: else { await enqueue('deletePartner', id); }
+3485: export async function getPartnerBankAccounts(partnerCode: string) {
+3486: const list = (await cachedRead('pba_' + partnerCode, () => lib.getPartnerBankAccounts(partnerCode))) || [];
+3490: if (item.op === 'createPBA' && item.payload.partner_code === partnerCode) result.push(item.payload);
+3498: export async function createPartnerBankAccount(p: any) {
+3500: const list = (await getLocal<any[]>('pba_' + item.partner_code)) || [];
+3501: await setLocal('pba_' + item.partner_code, [...list, item]);
+3502: try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } c
+3505: await lib.createPartnerBankAccount(item);
+3506: try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } c
+3512: export async function deletePartnerBankAccount(id: string, partnerCode: string) {
+3513: await recordTombstone('partner_bank_accounts', String(id));
+3514: const list = (await getLocal<any[]>('pba_' + partnerCode)) || [];
+3515: await setLocal('pba_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+3516: try { await _pushAudit({ type: 'pba_delete', table: 'partner_bank_accounts', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حساب بانکی شریک' }); } catch {}
+3517: if (await serverBusinessAllowed()) { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+3521: export async function getPartnerTransactions(partnerCode: string) {
+3522: const list = (await cachedRead('ptx_' + partnerCode, () => lib.getPartnerTransactions(partnerCode))) || [];
+3526: if (item.op === 'createPTX' && item.payload.partner_code === partnerCode) result.push(item.payload);
+3534: export async function createPartnerTransaction(p: any) {
+3536: const list = (await getLocal<any[]>('ptx_' + item.partner_code)) || [];
+3537: await setLocal('ptx_' + item.partner_code, [...list, item]);
+3538: try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
+3541: await lib.createPartnerTransaction(item);
+3542: try { await _pushAudit({ type: 'ptx_create', table: 'partner_transactions', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حرکت شریک' }); } catch {}
+3548: export async function deletePartnerTransaction(id: string, partnerCode: string) {
+3549: await recordTombstone('partner_transactions', String(id));
+3550: const list = (await getLocal<any[]>('ptx_' + partnerCode)) || [];
+3551: await setLocal('ptx_' + partnerCode, list.filter((x: any) => x.local_id !== id && x.id !== id));
+3552: try { await _pushAudit({ type: 'ptx_delete', table: 'partner_transactions', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حرکت شریک' }); } catch {}
+3553: if (await serverBusinessAllowed()) { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+3694: const partners = await getPartners();
+3695: const partner = partners.find((x: any) => String(x.name || '').trim() === n);
+3696: if (partner) {
+3700: const banks = await getPartnerBankAccounts(partner.code);
+3704: return { name: partner.name, code: partner.code, bank, account, source: 'partners' };
+3922: //  createPartnerAutoTx — ثبت خودکار حرکت شریک
+3925: export async function createPartnerAutoTx(p: {
+3926: partner_code: string;
+3927: partner_name?: string;
+3940: if (!p.partner_code) return null;
+3947: const existingList = await getPartnerTransactions(p.partner_code);
+3956: return createPartnerTransaction({
+3957: partner_code: p.partner_code,
+3958: partner_name: p.partner_name || '',
+3974: export async function findPartnerByNameOrCode(nameOrCode: string) {
+3977: const partners = await getPartners();
+3978: return partners.find((p: any) =>
+
+══════════ ۳) lookupPayerUniversal ══════════
+
+─── lib.offline.ts — lookupPayerUniversal (3681 تا 3731) ───
+3681: export async function lookupPayerUniversal(name: string) {
+3682:   const n = String(name || '').trim();
+3683:   if (!n) return null;
+3684: 
+3685:   // ۱. طرف‌حساب‌ها
+3686:   try {
+3687:     const parties = await getParties();
+3688:     const party = parties.find((x: any) => String(x.name || '').trim() === n);
+3689:     if (party) return { name: party.name, code: party.code, bank: '', account: '', source: 'parties' };
+3690:   } catch {}
+3691: 
+3692:   // ۲. شرکا
+3693:   try {
+3694:     const partners = await getPartners();
+3695:     const partner = partners.find((x: any) => String(x.name || '').trim() === n);
+3696:     if (partner) {
+3697:       let bank = '';
+3698:       let account = '';
+3699:       try {
+3700:         const banks = await getPartnerBankAccounts(partner.code);
+3701:         const b = banks && banks.length > 0 ? banks[0] : null;
+3702:         if (b) { bank = b.bank_name || ''; account = b.account_number || ''; }
+3703:       } catch {}
+3704:       return { name: partner.name, code: partner.code, bank, account, source: 'partners' };
+3705:     }
+3706:   } catch {}
+3707: 
+3708:   return null;
+3709: }
+3710: // ═══════════════════════════════════════════
+3711: //  Offline updateSale / updatePurchase
+3712: // ═══════════════════════════════════════════
+3713: const AUDIT_KEY = '@mizan_audit_events';
+3714: const AUDIT_MAX = 500;
+3715: 
+3716: async function _pushAudit(ev: any) {
+3717:   try {
+3718:     const raw = await AsyncStorage.getItem(AUDIT_KEY);
+3719:     let arr: any[] = [];
+3720:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+3721:     if (!Array.isArray(arr)) arr = [];
+3722:     const id = ev.id || ('aud_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
+3723:     const item = { ...ev, id };
+3724:     const nowMs = Date.now();
+3725:     const dedup = arr.some((x: any) => {
+3726:       if (!x || x.type !== item.type || String(x.key) !== String(item.key)) return false;
+3727:       const t = Date.parse(String(x.at || ''));
+3728:       return !isNaN(t) && (nowMs - t) < 5000;
+3729:     });
+3730:     if (!dedup) arr.push(item);
+3731:     if (arr.length > AUDIT_MAX) arr = arr.slice(arr.length - AUDIT_MAX);
+
+══════════ ۴) LedgerScreen — تفکیک طرف‌حساب و شریک ══════════
+
+─── LedgerScreen.tsx — LedgerScreen تب‌ها ───
+28: const TYPE_LABEL = {
+32: partner_deposit: 'واریز شریک', partner_withdraw: 'برداشت شریک',
+33: partner_transfer_in: 'انتقال به شریک', partner_transfer_out: 'انتقال از شریک',
+40: const TYPE_COLOR = {
+44: partner_deposit: '#059669', partner_withdraw: '#dc2626',
+45: partner_transfer_in: '#7c3aed', partner_transfer_out: '#7c3aed',
+56: partner: 'شریک', box: 'صندوق', bank: 'بانک',
+60: const k = String(t?.counterpartType || '').trim();
+62: const st = String(t?.sourceType || t?.source_type || '').trim().toLowerCase();
+63: const ty = String(t?.type || '').trim().toLowerCase();
+79: .replace(/طرف:\s*(customer|supplier|partner|employee|expense|box|bank)[^|]*/gi, '')
+80: .replace(/\|\s*(customer|supplier|partner|employee|expense|box|bank)\s*\([^)]*\)/gi, '')
+81: .replace(/\b(customer|supplier|partner|employee|expense|box|bank)\s*\([^)]*\)/gi, '')
+85: if (!s) s = TYPE_LABEL[t?.type] || t?.type || '—';
+93: const [activeTab, setActiveTab] = useState<'parties' | 'partners' | 'employees' | 'expenses'>('parties');
+121: const curLabel = (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : 'افغانی');
+128: const ty = String(t.type || '');
+133: if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0 };
+136: if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0 };
+146: const rows = await getInvoiceDetail(inv.invoice, inv.type === 'purchase' ? 'purchase' : 'sales');
+158: const ty = String(t.type || '');
+163: if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+167: if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+185: .filter((t: any) => t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received')
+190: if (activeTab === 'parties') {
+195: setPartyViewMode(String(p?.type || '').includes('مشتری') ? 'out' : 'in');
+211: if (partyFilter === 'transfer') return String(t.type || '').includes('transfer');
+212: if (partyFilter === 'salary') return String(t.type || '') === 'salary';
+213: if (partyFilter === 'salary_payment') return String(t.type || '') === 'salary_payment';
+214: if (partyFilter === 'expense') return String(t.type || '') === 'expense';
+215: if (partyFilter === 'expense_payment') return String(t.type || '') === 'expense_payment';
+216: return String(t.accountType || 'current') === partyFilter;
+229: if (activeTab === 'parties') {
+230: return filteredData.filter((r: any) => r.type !== 'شریک' && r.type !== 'کارمند' && r.type !== 'هزینه‌گیرنده');
+232: if (activeTab === 'partners') {
+233: return filteredData.filter((r: any) => r.type === 'شریک');
+235: if (activeTab === 'employees') {
+236: return filteredData.filter((r: any) => r.type === 'کارمند');
+238: return filteredData.filter((r: any) => r.type === 'هزینه‌گیرنده');
+242: const cp = String(t?.counterpartType || '').toLowerCase();
+243: const st = String(t?.sourceType || '').toLowerCase();
+244: const ty = String(t?.type || '').toLowerCase();
+249: if (cp === 'partner' || ty.includes('partner')) return '🤝 شرکا';
+281: function getTreeCounterparties(group: string) {
+322: var typeColor = r.type === 'مشتری' ? '#059669' : r.type === 'تأمین‌کننده' ? '#ea580c' : '#7c3aed';
+325: '<td style="text-align:center; font-weight:bold; color:' + typeColor + '">' + (r.type || '—') + '</td>' +
+345: _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (selectedParty?.type || '—') + '</div>');
+348: if (_stBal > 0) { _stTxt = 'ما بستانکاریم — طرف‌حساب بدهکار است'; _stCol = '#dc2626'; _stBg = '#fef2f2'; }
+349: else if (_stBal < 0) { _stTxt = 'ما بدهکاریم — طرف‌حساب بستانکار است'; _stCol = '#059669'; _stBg = '#ecfdf5'; }
+358: if (partyViewMode === 'in') return t.type === 'sale' || t.type === 'purchase';
+359: if (partyViewMode === 'out') return t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received';
+369: _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||'—') + '</td><td>' + (t.manualInvoice||'—') + '</td><td>' + (t.modelCode||'—') + '</td><td style="te
+397: sheets = [{ name: (activeGroup || 'گروه').slice(0, 28), data: getTreeCounterparties(activeGroup).map((c: any, i: number) => ({ '#': i+1, 'طرف / دسته': c.name, 'تعداد': c.count, 'بدهکار': c.debit, 'بستانکار': c.credit, 'مانده': Math.abs(c.ba
+399: sheets = [{ name: (activeCounterparty || 'طرف').slice(0, 28), data: treeTxns.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.sourceInfo?.invoice || t.invoice || t.sourc
+401: sheets = [{ name: 'ریز', data: filteredPartyDetails.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'حساب': t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings'
+413: _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + '</div>');
+443: _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="col
+445: } else if ((selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in')) {
+450: _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>
+475: _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(invoiceDetailMeta?.date 
+504: rows = (buildPartyTransactions(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit
+507: rows = (invoiceList || []).map((inv: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(inv.date), 'نوع': inv.type === 'purchase' ? 'خرید' : 'فروش', 'شماره فاکتور': inv.invoice, 'تعداد': inv.count || 0, 'مبلغ کل': inv.total, 'پرداخت':
+517: var isP = meta && meta.type === 'purchase';
+560: <TouchableOpacity onPress={() => setActiveTab('parties')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'parties' ? '#7c3aed' : '#e2e8f0' }}>
+561: <Text style={{ color: activeTab === 'parties' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 13 }}>👥 طرف‌حساب‌ها</Text>
+563: <TouchableOpacity onPress={() => setActiveTab('partners')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'partners' ? '#7c3aed' : '#e2e8f0' }}>
+564: <Text style={{ color: activeTab === 'partners' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 13 }}>🤝 تراز شرکا</Text>
+566: <TouchableOpacity onPress={() => setActiveTab('employees')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'employees' ? '#7c3aed' : '#e2e8f0' }}>
+567: <Text style={{ color: activeTab === 'employees' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>👷 کارمندان</Text>
+569: <TouchableOpacity onPress={() => setActiveTab('expenses')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'expenses' ? '#7c3aed' : '#e2e8f0' }}>
+570: <Text style={{ color: activeTab === 'expenses' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>🧾 هزینه‌ها</Text>
+590: {activeTab === 'parties' ? (
+606: <Text style={[s.td, { flex: 1.5, fontSize: 10, fontWeight: 'bold', color: r.type === 'مشتری' ? '#059669' : r.type === 'تأمین‌کننده' ? '#ea580c' : '#7c3aed' }]}>{r.type || '—'}</Text>
+617: ) : activeTab === 'partners' ? (
+621: <Text style={[s.th, { flex: 2.5, textAlign: 'right', paddingRight: 8 }]}>نام شریک</Text>
+640: <Text style={[s.td, { flex: 1.8, fontWeight: 'bold', color: r.balance > 0 ? '#dc2626' : r.balance < 0 ? '#059669' : '#64748b' }]}>{r.balance > 0 ? 'شرکت بدهکار به شریک' : r.balance < 0 ? 'شریک بدهکار به شرکت' : 'تسویه'}</Text>
+644: ) : activeTab === 'employees' ? (
+696: <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+715: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>نوع: </Text>{selectedParty?.type || '—'}</Text>
+717: {selectedParty?.type === 'شریک' && (
+725: {selectedParty?.type === 'کارمند' && (
+732: {selectedParty?.type === 'هزینه‌گیرنده' && (
+743: {selectedParty?.type === 'شریک'
+744: ? (selectedParty?.balance > 0 ? 'شرکت بدهکار به شریک' : selectedParty?.balance < 0 ? 'شریک بدهکار به شرکت' : 'تسویه')
+745: : selectedParty?.type === 'کارمند'
+747: : selectedParty?.type === 'هزینه‌گیرنده'
+755: {(selectedParty?.type === 'شریک'
+761: : selectedParty?.type === 'کارمند'
+766: : selectedParty?.type === 'هزینه‌گیرنده'
+789: <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ?
+845: <Text style={[s.td, { width: 90, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
+846: <Text style={[s.td, { width: 70, fontSize: 9, color: '#7c3aed' }]}>{t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings' ? 'برداشت' : t.accountType === 'current' ? 'جاری' : '—'}</Text>
+901: <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal) || 
+926: {getTreeCounterparties(activeGroup).map((c: any, i: number) => (
+958: <Text style={[s.td, { width: 80, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
+989: <Modal visible={invoiceModalVisible} transparent animationType="slide" onRequestClose={() => setInvoiceModalVisible(false)}>
+1096: <Text style={[s.td, { width: 75, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
+1103: <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) && t.lineTotal ? fmt(t.lineTotal) : '—'}</Text>
+1114: {t.invoice && (t.type === 'sale' || t.type === 'purchase' || t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received') ? (
+1115: <TouchableOpacity onPress={() => openInvoiceDetail({ invoice: t.invoice, type: (t.type === 'purchase' || t.type === 'payment_sent') ? 'purchase' : 'sales' })}>
+1135: <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTo
+1148: ) : (selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in') ? (
+1166: <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
+1215: <TouchableOpacity onPress={() => openInvoiceDetail({ invoice: t.invoice, type: (t.type === 'payment_sent' || t.type === 'purchase') ? 'purchase' : 'sales' })}>
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

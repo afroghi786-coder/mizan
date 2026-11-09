@@ -1,0 +1,756 @@
+══════════ ۱) توابع کارمندان و حقوق ══════════
+
+─── lib.offline.ts — getEmployees (خط 1939) ───
+1939: export async function getEmployees(): Promise<any[]> {
+1940:   return cachedRead('employees', async () => {
+1941:     const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+1942:     return data || [];
+1943:   });
+1944: }
+1945: export async function createEmployee(p: any): Promise<any> {
+1946:   const devAt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+1947:   const nowAt = new Date().toISOString();
+1948:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: nowAt, updated_at: nowAt, device_id: devAt };
+1949:   const local = (await getLocal<any[]>('employees')) || [];
+1950:   await setLocal('employees', [item, ...local]);
+1951:   try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1952:   if (await serverBusinessAllowed()) {
+1953:     try {
+1954:       const { error } = await lib.supabase.from('employees').insert({
+1955:         code: p.code, name: p.name, phone: p.phone || '', role: p.role || '',
+1956:         contract_type: p.contract_type, amount: p.amount || 0, overtime_rate: p.overtime_rate || 0,
+1957:         local_id: item.local_id,
+1958:       });
+1959:       if (error) throw error;
+1960:         try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1961:     } catch { await enqueue('createEmployee', p); }
+1962:   } else { await enqueue('createEmployee', p); }
+1963:   return item;
+1964: }
+1965: export async function deleteEmployee(localId: string) {
+1966:   await recordTombstone('employees', String(localId));
+1967:   const local = (await getLocal<any[]>('employees')) || [];
+1968:   await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1969:   try { await _pushAudit({ type: 'employee_delete', table: 'employees', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کارمند' }); } catch {}
+1970:   if (await serverBusinessAllowed()) {
+1971:     try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1972:     catch { await enqueue('deleteEmployee', String(localId)); }
+1973:   } else {
+1974:     await enqueue('deleteEmployee', String(localId));
+1975:   }
+1976: }
+1977: 
+1978: // ═══════════════════════════════════════════
+1979: //  حضور (Attendance)
+1980: // ═══════════════════════════════════════════
+1981: export async function getAttendance(): Promise<any[]> {
+1982:   return cachedRead('attendance', async () => {
+1983:     const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1984:     return data || [];
+1985:   });
+1986: }
+1987: export async function createAttendance(p: any): Promise<any> {
+1988:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1989:   const local = (await getLocal<any[]>('attendance')) || [];
+1990:   await setLocal('attendance', [item, ...local]);
+1991:   try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1992:   if (await serverBusinessAllowed()) {
+1993:     try {
+1994:       const { error } = await lib.supabase.from('attendance').insert({
+1995:         employee_code: p.employee_code, employee_name: p.employee_name || '',
+1996:         date: p.date, status: p.status, hours: p.hours || 0, overtime: p.overtime || 0,
+1997:         local_id: item.local_id,
+1998:       });
+1999:       if (error) throw error;
+2000:         try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+2001:     } catch { await enqueue('createAttendance', p); }
+2002:   } else { await enqueue('createAttendance', p); }
+2003:   return item;
+2004: }
+2005: export async function deleteSalaryPayment(localId: string) {
+2006:   await recordTombstone('salary_payments', String(localId));
+2007:   const local = (await getLocal<any[]>('salary_payments')) || [];
+2008:   await setLocal('salary_payments', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2009:   try { await _pushAudit({ type: 'salary_delete', table: 'salary_payments', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف پرداخت حقوق' }); } catch {}
+2010:   if (await serverBusinessAllowed()) {
+2011:     try { await lib.deleteSalaryPayment(String(localId)); }
+2012:     catch { await enqueue('deleteSalaryPayment', String(localId)); }
+2013:   } else {
+2014:     await enqueue('deleteSalaryPayment', String(localId));
+2015:   }
+2016: }
+2017: 
+2018: export async function deleteLoan(localId: string) {
+
+─── lib.offline.ts — getSalaryPayments (خط 4214) ───
+4214: export async function getSalaryPayments(): Promise<any[]> {
+4215:   const local = (await getLocal<any[]>('salary_payments')) || [];
+4216:   if (MODE === 'offline') return local;
+4217:   let server: any[] = [];
+4218:   try {
+4219:     const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
+4220:     server = data || [];
+4221:   } catch {}
+4222:   const merged: Record<string, any> = {};
+4223:   local.forEach(x => { merged[x.local_id || x.id] = x; });
+4224:   server.forEach(x => { merged[x.local_id || x.id] = x; });
+4225:   try {
+4226:     const q = await getQueue();
+4227:     q.forEach((it: any) => {
+4228:       const p = it.payload;
+4229:       if (!p) return;
+4230:       if (it.op === 'createSalaryPayment' || it.op === 'updateSalaryPayment') {
+4231:         const id = p.local_id || p.id;
+4232:         if (id) merged[id] = { ...(merged[id] || {}), ...p };
+4233:       }
+4234:       if (it.op === 'deleteSalaryPayment') {
+4235:         const id = typeof p === 'string' ? p : (p.local_id || p.id);
+4236:         if (id) delete merged[id];
+4237:       }
+4238:     });
+4239:   } catch {}
+4240:   return Object.values(merged);
+4241: }
+4242: 
+4243: 
+4244: // ═══════════════════════════════════════════
+4245: //  getLoans — خواندن وام‌ها (کش + صف)
+4246: // ═══════════════════════════════════════════
+4247: export async function getLoans(): Promise<any[]> {
+4248:   const local = (await getLocal<any[]>('employee_loans')) || [];
+4249:   if (MODE === 'offline') return local;
+4250:   let server: any[] = [];
+4251:   try {
+4252:     const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
+4253:     server = data || [];
+4254:   } catch {}
+4255:   const merged: Record<string, any> = {};
+4256:   local.forEach(x => { merged[x.local_id || x.id] = x; });
+4257:   server.forEach(x => { merged[x.local_id || x.id] = x; });
+4258:   try {
+4259:     const q = await getQueue();
+4260:     q.forEach((it: any) => {
+4261:       const p = it.payload;
+4262:       if (!p) return;
+4263:       if (it.op === 'createLoan' || it.op === 'updateLoan') {
+4264:         const id = p.local_id || p.id;
+4265:         if (id) merged[id] = { ...(merged[id] || {}), ...p };
+4266:       }
+4267:       if (it.op === 'deleteLoan') {
+4268:         const id = typeof p === 'string' ? p : (p.local_id || p.id);
+4269:         if (id) delete merged[id];
+4270:       }
+4271:     });
+4272:   } catch {}
+4273:   return Object.values(merged);
+4274: }
+4275: 
+4276: 
+4277: // ═══════════════════════════════════════════
+4278: //  برگشت از فروش (Sales Returns)
+4279: // ═══════════════════════════════════════════
+4280: export async function createSalesReturn(payload: any) {
+4281:   const now = new Date().toISOString();
+4282:   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4283:   const local = (await getLocal<any[]>('sales_returns')) || [];
+4284:   const item = {
+4285:     ...payload,
+4286:     local_id: payload.local_id || ('sr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+4287:     created_at: payload.created_at || now,
+4288:     updated_at: now,
+4289:     device_id: dev,
+4290:   };
+4291:   await setLocal('sales_returns', [item, ...local]);
+4292:   try {
+4293:     await _pushAudit({
+⚠️ lib.offline.ts: getEmployeeLoans پیدا نشد
+
+─── lib.offline.ts — getAttendance (خط 1981) ───
+1981: export async function getAttendance(): Promise<any[]> {
+1982:   return cachedRead('attendance', async () => {
+1983:     const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1984:     return data || [];
+1985:   });
+1986: }
+1987: export async function createAttendance(p: any): Promise<any> {
+1988:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1989:   const local = (await getLocal<any[]>('attendance')) || [];
+1990:   await setLocal('attendance', [item, ...local]);
+1991:   try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1992:   if (await serverBusinessAllowed()) {
+1993:     try {
+1994:       const { error } = await lib.supabase.from('attendance').insert({
+1995:         employee_code: p.employee_code, employee_name: p.employee_name || '',
+1996:         date: p.date, status: p.status, hours: p.hours || 0, overtime: p.overtime || 0,
+1997:         local_id: item.local_id,
+1998:       });
+1999:       if (error) throw error;
+2000:         try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+2001:     } catch { await enqueue('createAttendance', p); }
+2002:   } else { await enqueue('createAttendance', p); }
+2003:   return item;
+2004: }
+2005: export async function deleteSalaryPayment(localId: string) {
+2006:   await recordTombstone('salary_payments', String(localId));
+2007:   const local = (await getLocal<any[]>('salary_payments')) || [];
+2008:   await setLocal('salary_payments', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2009:   try { await _pushAudit({ type: 'salary_delete', table: 'salary_payments', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف پرداخت حقوق' }); } catch {}
+2010:   if (await serverBusinessAllowed()) {
+2011:     try { await lib.deleteSalaryPayment(String(localId)); }
+2012:     catch { await enqueue('deleteSalaryPayment', String(localId)); }
+2013:   } else {
+2014:     await enqueue('deleteSalaryPayment', String(localId));
+2015:   }
+2016: }
+2017: 
+2018: export async function deleteLoan(localId: string) {
+2019:   await recordTombstone('employee_loans', String(localId));
+2020:   const local = (await getLocal<any[]>('employee_loans')) || [];
+2021:   await setLocal('employee_loans', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2022:   try { await _pushAudit({ type: 'loan_delete', table: 'employee_loans', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف وام' }); } catch {}
+2023:   if (await serverBusinessAllowed()) {
+2024:     try { await lib.deleteLoan(String(localId)); }
+2025:     catch { await enqueue('deleteLoan', String(localId)); }
+2026:   } else {
+2027:     await enqueue('deleteLoan', String(localId));
+2028:   }
+2029: }
+2030: 
+2031: export async function deleteLeave(localId: string) {
+2032:   await recordTombstone('employee_leaves', String(localId));
+2033:   const local = (await getLocal<any[]>('employee_leaves')) || [];
+2034:   await setLocal('employee_leaves', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2035:   try { await _pushAudit({ type: 'leave_delete', table: 'employee_leaves', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف مرخصی' }); } catch {}
+2036:   if (await serverBusinessAllowed()) {
+2037:     try { await lib.deleteLeave(String(localId)); }
+2038:     catch { await enqueue('deleteLeave', String(localId)); }
+2039:   } else {
+2040:     await enqueue('deleteLeave', String(localId));
+2041:   }
+2042: }
+2043: 
+2044: export async function deleteAttendance(localId: string) {
+2045:   await recordTombstone('attendance', String(localId));
+2046:   const local = (await getLocal<any[]>('attendance')) || [];
+2047:   await setLocal('attendance', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2048:   try { await _pushAudit({ type: 'attendance_delete', table: 'attendance', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حضور' }); } catch {}
+2049:   if (await serverBusinessAllowed()) {
+2050:     try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+2051:     catch { await enqueue('deleteAttendance', String(localId)); }
+2052:   } else {
+2053:     await enqueue('deleteAttendance', String(localId));
+2054:   }
+2055: }
+2056: 
+2057: export async function deleteBatch(localId: string) {
+2058:   await recordTombstone('payroll_batches', String(localId));
+2059:   const local = (await getLocal<any[]>('payroll_batches')) || [];
+2060:   await setLocal('payroll_batches', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+⚠️ lib.offline.ts: getEmployeeLeaves پیدا نشد
+⚠️ lib.offline.ts: getPayrollBatches پیدا نشد
+
+══════════ ۲) مسیرهای آنلاین کارمندان ══════════
+
+─── lib.offline.ts — کارمندان آنلاین ───
+34: 'createAttendance','updateAttendance','deleteAttendance',
+106: createEmployee: { table: 'employees', type: 'employee_create', summary: 'ثبت کارمند' },
+107: updateEmployee: { table: 'employees', type: 'employee_update', summary: 'ویرایش کارمند' },
+108: deleteEmployee: { table: 'employees', type: 'employee_delete', summary: 'حذف کارمند' },
+109: createAttendance: { table: 'attendance', type: 'attendance_create', summary: 'ثبت حضور' },
+110: updateAttendance: { table: 'attendance', type: 'attendance_update', summary: 'ویرایش حضور' },
+111: deleteAttendance: { table: 'attendance', type: 'attendance_delete', summary: 'حذف حضور' },
+112: createSalaryPayment: { table: 'salary_payments', type: 'salary_create', summary: 'ثبت حقوق' },
+113: updateSalaryPayment: { table: 'salary_payments', type: 'salary_update', summary: 'ویرایش حقوق' },
+114: deleteSalaryPayment: { table: 'salary_payments', type: 'salary_delete', summary: 'حذف حقوق' },
+115: createLoan: { table: 'employee_loans', type: 'loan_create', summary: 'ثبت وام' },
+116: updateLoan: { table: 'employee_loans', type: 'loan_update', summary: 'ویرایش وام' },
+117: deleteLoan: { table: 'employee_loans', type: 'loan_delete', summary: 'حذف وام' },
+118: createLeave: { table: 'employee_leaves', type: 'leave_create', summary: 'ثبت مرخصی' },
+119: updateLeave: { table: 'employee_leaves', type: 'leave_update', summary: 'ویرایش مرخصی' },
+120: deleteLeave: { table: 'employee_leaves', type: 'leave_delete', summary: 'حذف مرخصی' },
+121: createBatch: { table: 'payroll_batches', type: 'batch_create', summary: 'ثبت لیست حقوق' },
+122: updateBatch: { table: 'payroll_batches', type: 'batch_update', summary: 'ویرایش لیست حقوق' },
+123: deleteBatch: { table: 'payroll_batches', type: 'batch_delete', summary: 'حذف لیست حقوق' },
+1937: //  کارمندان (Employees)
+1939: export async function getEmployees(): Promise<any[]> {
+1940: return cachedRead('employees', async () => {
+1941: const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+1949: const local = (await getLocal<any[]>('employees')) || [];
+1950: await setLocal('employees', [item, ...local]);
+1951: try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1954: const { error } = await lib.supabase.from('employees').insert({
+1960: try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1966: await recordTombstone('employees', String(localId));
+1967: const local = (await getLocal<any[]>('employees')) || [];
+1968: await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1969: try { await _pushAudit({ type: 'employee_delete', table: 'employees', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کارمند' }); } catch {}
+1971: try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1979: //  حضور (Attendance)
+1981: export async function getAttendance(): Promise<any[]> {
+1982: return cachedRead('attendance', async () => {
+1983: const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1987: export async function createAttendance(p: any): Promise<any> {
+1989: const local = (await getLocal<any[]>('attendance')) || [];
+1990: await setLocal('attendance', [item, ...local]);
+1991: try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1994: const { error } = await lib.supabase.from('attendance').insert({
+2000: try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+2001: } catch { await enqueue('createAttendance', p); }
+2002: } else { await enqueue('createAttendance', p); }
+2006: await recordTombstone('salary_payments', String(localId));
+2007: const local = (await getLocal<any[]>('salary_payments')) || [];
+2008: await setLocal('salary_payments', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2009: try { await _pushAudit({ type: 'salary_delete', table: 'salary_payments', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف پرداخت حقوق' }); } catch {}
+2019: await recordTombstone('employee_loans', String(localId));
+2020: const local = (await getLocal<any[]>('employee_loans')) || [];
+2021: await setLocal('employee_loans', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2022: try { await _pushAudit({ type: 'loan_delete', table: 'employee_loans', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف وام' }); } catch {}
+2032: await recordTombstone('employee_leaves', String(localId));
+2033: const local = (await getLocal<any[]>('employee_leaves')) || [];
+2034: await setLocal('employee_leaves', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2035: try { await _pushAudit({ type: 'leave_delete', table: 'employee_leaves', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف مرخصی' }); } catch {}
+2044: export async function deleteAttendance(localId: string) {
+2045: await recordTombstone('attendance', String(localId));
+2046: const local = (await getLocal<any[]>('attendance')) || [];
+2047: await setLocal('attendance', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2048: try { await _pushAudit({ type: 'attendance_delete', table: 'attendance', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف حضور' }); } catch {}
+2050: try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+2051: catch { await enqueue('deleteAttendance', String(localId)); }
+2053: await enqueue('deleteAttendance', String(localId));
+2058: await recordTombstone('payroll_batches', String(localId));
+2059: const local = (await getLocal<any[]>('payroll_batches')) || [];
+2060: await setLocal('payroll_batches', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+2061: try { await _pushAudit({ type: 'batch_delete', table: 'payroll_batches', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف لیست حقوق' }); } catch {}
+2063: try { await lib.supabase.from('payroll_batches').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+4215: const local = (await getLocal<any[]>('salary_payments')) || [];
+4219: const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
+4248: const local = (await getLocal<any[]>('employee_loans')) || [];
+4252: const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
+
+══════════ ۳) startup و pull اولیه ══════════
+
+─── App.tsx — startup ───
+ℹ️ موردی پیدا نشد
+
+─── lib.sheets.ts — sync اولیه ───
+378: export async function pullBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+406: export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+547: await pullBridgeTables((d, t) => onProgress?.(d, t));
+548: const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+567: await pullBridgeTables((d, t) => onProgress?.(d, t));
+568: const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+575: await pullBridgeTables((d, t) => onProgress?.(d, t));
+576: const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+
+══════════ ۴) PULL_TABLES و TAB_TASKS ══════════
+
+─── lib.sheets.ts — PULL_TABLES (خط 611) ───
+611: const PULL_TABLES = [
+612:   '_deleted','_audit','sales','purchases',
+613:   'sales_returns','purchase_returns',
+614:   'expenses','employees','salary_payments','employee_loans','attendance',
+615:   'employee_leaves','payroll_batches','parties','partners','partner_transactions',
+616:   'partner_bank_accounts','products','settings','banks','shippings','stock_adjustments',
+617:   'fx_hawalas','fx_boxes','fx_transfers','fx_checks','fx_customers','fx_partners',
+618: ];
+619: 
+620: const PULL_LOCAL_KEYS: Record<string, string> = {
+621:   expenses: '@mizan_local_expenses',
+622:   employees: '@mizan_local_employees',
+623:   salary_payments: '@mizan_local_salary_payments',
+624:   employee_loans: '@mizan_local_employee_loans',
+625:   attendance: '@mizan_local_attendance',
+626:   employee_leaves: '@mizan_local_employee_leaves',
+627:   payroll_batches: '@mizan_local_payroll_batches',
+628:   parties: '@mizan_local_parties',
+629:   partners: '@mizan_local_partners',
+630:   products: '@mizan_local_products',
+631:   sales_returns: '@mizan_local_sales_returns',
+632:   purchase_returns: '@mizan_local_purchase_returns',
+633:   settings: '@mizan_local_settings',
+634:   banks: '@mizan_local_banks',
+635:   shippings: '@mizan_local_shippings',
+636:   stock_adjustments: '@mizan_local_stock_adjustments',
+637:   fx_hawalas: '@mizan_local_fx_hawalas',
+638:   fx_boxes: '@mizan_local_fx_boxes',
+639:   fx_transfers: '@mizan_local_fx_transfers',
+640:   fx_checks: '@mizan_local_fx_checks',
+641:   fx_customers: '@mizan_local_fx_customers',
+642:   fx_partners: '@mizan_local_fx_partners',
+643: };
+644: 
+645: function keyOfRow(r: any): string {
+646:   return String(r?.local_id || r?.id || r?.code || r?.name || '');
+647: }
+648: 
+649: function tsOf(v: any): number {
+650:   const t = Date.parse(String(v || ''));
+⚠️ lib.sheets.ts: TAB_TASKS پیدا نشد
+
+══════════ ۵) مسیرهای آنلاین باقی‌مانده ══════════
+318: if (MODE === 'online') {
+987: if (MODE === 'online') {
+1000: if (MODE === 'online') {
+1043: if (MODE === 'online') {
+1071: if (MODE === 'online') {
+1329: if (MODE === 'online') {
+1599: if (MODE === 'online') {
+1768: if (MODE === 'online') {
+1839: if (MODE === 'online') {
+1854: if (MODE === 'online') {
+2091: if (MODE === 'online') {
+2106: if (MODE === 'online') {
+2113: if (MODE === 'online') {
+2137: if (MODE === 'online') {
+2150: if (MODE === 'online') {
+2157: if (MODE === 'online') {
+2169: if (MODE === 'online') {
+2538: if (MODE === 'online') {
+2594: if (MODE === 'online') {
+2621: if (MODE === 'online') {
+3495: if (MODE === 'online') {
+3504: if (MODE === 'online') {
+
+══════════ ۶) getLedgerData و کارمندان در ledger ══════════
+
+─── lib.offline.ts — getLedgerData (خط 2645) ───
+2645: export async function getLedgerData(): Promise<any[]> {
+2646:   const _pda = (lib && (lib as any).parseDateAny) ? (lib as any).parseDateAny : function(d: any) { return d ? new Date(d) : null; };
+2647:   let allSales: any[] = [];
+2648:   let allPurchases: any[] = [];
+2649: 
+2650:   // BUSINESS_LOCAL_AND_SHEET_ONLY — دفتر معین فقط محلی + صف
+2651: 
+2652:   if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
+2653:   if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
+2654: 
+2655:   // BUSINESS_LOCAL_AND_SHEET_ONLY — اگر داده خام از pull نیامده، از grouped بساز
+2656:   try {
+2657:     const _salesHave = new Set(allSales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+2658:     const _sg = (await getLocal<any[]>('sales_grouped')) || [];
+2659:     for (const _g of _sg) {
+2660:       const _inv = String(_g.invoice || '').trim();
+2661:       if (!_inv) continue;
+2662:       if (_salesHave.has(_inv)) continue;
+2663:       for (const _it of (_g.items || [])) {
+2664:         allSales.push({
+2665:           invoice_number: _inv,
+2666:           customer_code: _g.customerCode || _g.code || '',
+2667:           customer_name: _g.name || '',
+2668:           customer_phone: _g.phone || '',
+2669:           account_holder: _g.holder || _g.account_holder || '',
+2670:           account_holder_code: _g.holderCode || _g.account_holder_code || '',
+2671:           quantity: Number(_it.quantity) || 0,
+2672:           price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
+2673:           payment: Number(_it.payment) || 0,
+2674:           total: (Number(_it.quantity) || 0) * (Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0),
+2675:           model_code: _it.modelCode || _it.model_code || '',
+2676:           model_name: _it.modelName || _it.model_name || '',
+2677:           date_factor: _g.date || '',
+2678:           date_reg: _g.date || '',
+2679:           manual_invoice: _g.manual || _g.manual_invoice || '',
+2680:           bank_name: _g.bank || _g.bank_name || '',
+2681:           deposit_date: _g.depositDate || _g.deposit_date || '',
+2682:           shipping: _g.shipping || '',
+2683:           description: _it.description || '',
+2684:         });
+2685:       }
+2686:     }
+2687:   } catch {}
+2688: 
+2689:   try {
+2690:     const _purchHave = new Set(allPurchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+2691:     const _pg = (await getLocal<any[]>('purchases_grouped')) || [];
+2692:     for (const _g of _pg) {
+2693:       const _inv = String(_g.invoice || '').trim();
+2694:       if (!_inv) continue;
+2695:       if (_purchHave.has(_inv)) continue;
+2696:       for (const _it of (_g.items || [])) {
+2697:         allPurchases.push({
+2698:           invoice_number: _inv,
+2699:           supplier_code: _g.supplierCode || _g.code || '',
+2700:           supplier_name: _g.name || '',
+2701:           supplier_phone: _g.phone || '',
+2702:           account_holder: _g.holder || _g.account_holder || _g.payerName || '',
+2703:           payer_code: _g.holderCode || _g.account_holder_code || _g.payerCode || '',
+2704:           quantity: Number(_it.quantity) || 0,
+2705:           price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
+2706:           payment: Number(_it.payment) || 0,
+2707:           total: (Number(_it.quantity) || 0) * (Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0),
+2708:           model_code: _it.modelCode || _it.model_code || '',
+2709:           model_name: _it.modelName || _it.model_name || '',
+2710:           date_factor: _g.date || '',
+2711:           date_reg: _g.date || '',
+2712:           manual_invoice: _g.manual || _g.manual_invoice || '',
+2713:           bank_name: _g.bank || _g.bank_name || '',
+2714:           deposit_date: _g.depositDate || _g.deposit_date || '',
+2715:           shipping: _g.shipping || '',
+2716:           description: _it.description || '',
+2717:         });
+2718:       }
+2719:     }
+2720:   } catch {}
+2721: 
+2722:   const q = await getQueue();
+2723:   for (const item of q) {
+2724:     // حذف آفلاین فروش
+2725:     if (item.op === 'deleteSale' && item.payload) {
+2726:       const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+2727:       if (inv) allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+2728:       continue;
+2729:     }
+2730:     // حذف آفلاین خرید
+2731:     if (item.op === 'deletePurchase' && item.payload) {
+2732:       const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+2733:       if (inv) allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+2734:       continue;
+2735:     }
+2736:     // ویرایش آفلاین فروش سینک‌شده
+2737:     if (item.op === 'updateSale' && item.payload) {
+2738:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+2739:       if (!inv) continue;
+2740:       const meta = item.payload.meta || {};
+2741:       const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+2742:       allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+2743:       for (const r of (item.payload.rows || [])) {
+2744:         if (r._deleted) continue;
+2745:         const qty = Number(r.quantity) || 0;
+2746:         const price = Number(r.priceUnit != null ? r.priceUnit : r.price_unit) || 0;
+2747:         allSales.push({
+2748:           customer_code: meta.code || '',
+2749:           customer_name: meta.name || '',
+2750:           customer_phone: meta.phone || '',
+2751:           account_holder_code: r.accountHolderCode || '',
+2752:           account_holder: r.accountHolder || '',
+2753:           quantity: qty,
+2754:           price_unit: price,
+2755:           payment: Number(r.payment) || 0,
+2756:           total: qty * price,
+2757:           model_code: r.modelCode || '',
+2758:           model_name: r.modelName || '',
+2759:           invoice_number: inv,
+2760:           manual_invoice: '',
+2761:           date_factor: r.dateFactor || r.depositDate || baseDate,
+2762:           date_reg: r.dateReg || baseDate,
+2763:           bank_name: r.bankName || '',
+2764:           deposit_date: r.depositDate || '',
+2765:           shipping: meta.shipping || '',
+2766:           description: r.description || '',
+2767:           payer_code: r.accountHolderCode || '',
+2768:           _pending: true,
+2769:         });
+2770:       }
+2771:       continue;
+2772:     }
+2773:     // ویرایش آفلاین خرید سینک‌شده
+2774:     if (item.op === 'updatePurchase' && item.payload) {
+2775:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+2776:       if (!inv) continue;
+2777:       const meta = item.payload.meta || {};
+2778:       const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+2779:       allPurchases = allPurchases.filter((p: any) => String(p.invoice_number || '') !== inv);
+2780:       for (const r of (item.payload.rows || [])) {
+2781:         if (r._deleted) continue;
+2782:         const qty = Number(r.quantity) || 0;
+2783:         const price = Number(r.priceUnit != null ? r.priceUnit : r.price_unit) || 0;
+2784:         allPurchases.push({
+2785:           supplier_code: meta.code || '',
+2786:           supplier_name: meta.name || '',
+2787:           supplier_phone: meta.phone || '',
+2788:           quantity: qty,
+2789:           price_unit: price,
+2790:           payment: Number(r.payment) || 0,
+2791:           total: qty * price,
+2792:           model_code: r.modelCode || '',
+2793:           model_name: r.modelName || '',
+2794:           invoice_number: inv,
+2795:           manual_invoice: meta.manualInv || '',
+2796:           date_factor: r.dateFactor || r.depositDate || baseDate,
+2797:           date_reg: r.dateReg || baseDate,
+2798:           bank_name: r.bankName || '',
+2799:           deposit_date: r.depositDate || '',
+2800:           shipping: meta.shipping || '',
+2801:           description: r.description || '',
+2802:           payer_code: r.payerCode || r.accountHolderCode || '',
+2803:           _pending: true,
+2804:         });
+2805:       }
+2806:       continue;
+2807:     }
+2808:     if (item.op === 'createSale' && item.payload) {
+2809:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+2810:       if (inv && allSales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+2811:       const rows = item.payload.rows || item.payload.items || [];
+2812:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+2813:       for (const r of rows) {
+2814:         allSales.push({
+2815:           customer_code: item.payload.customerCode || item.payload.customer_code || '',
+2816:           customer_name: item.payload.customerName || item.payload.customer_name || '',
+2817:           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
+2818:           account_holder_code: item.payload.holderCode || item.payload.account_holder_code || item.payload.receiverCode || r.accountHolderCode || r.account_holder_code || '',
+2819:           account_holder: item.payload.holderName || item.payload.account_holder || item.payload.receiverName || r.accountHolder || r.account_holder || '',
+2820:           quantity: Number(r.quantity) || 0,
+2821:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+2822:           payment: Number(r.payment) || 0,
+2823:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+2824:           model_code: r.model_code || r.modelCode || '',
+2825:           model_name: r.model_name || r.modelName || '',
+2826:           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+2827:           manual_invoice: '',
+2828:           date_factor: r.date_factor || r.dateFactor || baseDate,
+2829:           date_reg: r.date_reg || r.dateReg || baseDate,
+2830:           bank_name: item.payload.bank || item.payload.bankName || item.payload.bankAccount || r.bankName || r.bank_name || '',
+2831:           deposit_date: item.payload.depositDate || item.payload.paymentDate || r.depositDate || r.deposit_date || '',
+2832:           shipping: item.payload.shipping || r.shipping || '',
+2833:           description: r.description || '',
+2834:           payer_code: item.payload.holderCode || '',
+2835:           _pending: true,
+2836:         });
+2837:       }
+2838:     }
+2839:     if (item.op === 'createPurchase' && item.payload) {
+2840:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+2841:       if (inv && allPurchases.some((p: any) => String(p.invoice_number || '') === String(inv))) continue;
+2842:       const rows = item.payload.rows || item.payload.items || [];
+2843:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+2844:       for (const r of rows) {
+2845:         allPurchases.push({
+2846:           supplier_code: item.payload.supplierCode || item.payload.supplier_code || '',
+2847:           supplier_name: item.payload.supplierName || item.payload.supplier_name || '',
+2848:           supplier_phone: item.payload.supplierPhone || item.payload.supplier_phone || '',
+2849:           quantity: Number(r.quantity) || 0,
+2850:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+2851:           payment: Number(r.payment) || 0,
+2852:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+2853:           model_code: r.model_code || r.modelCode || '',
+2854:           model_name: r.model_name || r.modelName || '',
+2855:           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+2856:           manual_invoice: item.payload.manualInvoice || '',
+2857:           date_factor: r.date_factor || r.dateFactor || baseDate,
+2858:           date_reg: r.date_reg || r.dateReg || baseDate,
+2859:           bank_name: item.payload.bank || item.payload.bankName || item.payload.bankAccount || r.bankName || r.bank_name || '',
+2860:           deposit_date: item.payload.depositDate || item.payload.paymentDate || r.depositDate || r.deposit_date || '',
+2861:           shipping: item.payload.shipping || r.shipping || '',
+2862:           description: r.description || '',
+2863:           payer_code: item.payload.payerCode || '',
+2864:           _pending: true,
+2865:         });
+2866:       }
+2867:     }
+2868:   }
+2869: 
+2870:   const normPhone = function(p: any) { return String(p || '').replace(/[^\d]/g, ''); };
+2871:   const makeKey = function(name: string, code: string, phone: string): string | null {
+2872:     const np = normPhone(phone);
+2873:     if (np && np.length >= 7) return 'P:' + np;
+2874:     if (code) return 'C:' + String(code).trim();
+2875:     if (name) return 'N:' + String(name).trim();
+2876:     return null;
+2877:   };
+2878: 
+2879:   const accounts: Record<string, any> = {};
+2880:   const getOrCreate = function(name: string, code: string, phone: string) {
+2881:     const key = makeKey(name, code, phone);
+2882:     if (!key) return null;
+2883:     if (!accounts[key]) accounts[key] = { key: key, names: {}, codes: {}, phones: {}, transactions: [] };
+2884:     if (name) accounts[key].names[name] = true;
+2885:     if (code) accounts[key].codes[code] = true;
+2886:     if (phone) accounts[key].phones[phone] = true;
+2887:     return accounts[key];
+2888:   }
+2889: 
+2890:   const findExistingAccount = function(name: string, code: string) {
+2891:     const cn = String(code || '').trim();
+2892:     const nm = String(name || '').trim();
+2893:     if (cn) {
+2894:       for (const k of Object.keys(accounts)) {
+2895:         if (accounts[k].codes[cn]) return accounts[k];
+2896:       }
+2897:     }
+2898:     if (nm) {
+2899:       for (const k of Object.keys(accounts)) {
+2900:         if (accounts[k].names[nm]) return accounts[k];
+2901:       }
+2902:     }
+2903:     return null;
+2904:   };;
+2905: 
+2906:   allSales.forEach(function(s: any) {
+2907:     const code = String(s.customer_code || '').trim();
+2908:     const name = String(s.customer_name || '').trim();
+2909:     const phone = String(s.customer_phone || '').trim();
+2910:     const acc = getOrCreate(name, code, phone);
+2911:     if (!acc) return;
+2912: 
+2913:     const qty = Number(s.quantity) || 0;
+2914:     const price = Number(s.price_unit) || 0;
+2915:     const total = Number(s.total) || (qty * price);
+2916:     const payment = Number(s.payment) || 0;
+2917: 
+2918:     const common = {
+2919:       date: s.date_factor || s.date_reg || s.created_at || '',
+2920:       invoice: s.invoice_number || '',
+2921:       manualInvoice: s.manual_invoice || '',
+2922:       modelCode: s.model_code || '',
+2923:       modelName: s.model_name || '',
+2924:       bank: s.bank_name || '',
+2925:       holder: s.account_holder || '',
+2926:       holderCode: s.account_holder_code || '',
+2927:       depositDate: s.deposit_date || '',
+2928:       shipping: s.shipping || '',
+2929:       description: s.description || '',
+2930:     };
+2931: 
+2932:     if (total > 0) {
+2933:       acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0 });
+2934:     }
+2935:     if (payment > 0) {
+2936:       acc.transactions.push({ ...common, type: 'payment_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: 0, credit: payment, description: 'دریافت وجه' });
+2937: 
+2938:       const hCode = String(s.account_holder_code || '').trim();
+2939:       const hName = String(s.account_holder || '').trim();
+2940:       if (hCode && hCode !== code) {
+2941:         const hAcc = getOrCreate(hName, hCode, '');
+2942:         if (hAcc) {
+2943:           hAcc.transactions.push({
+2944:             ...common, type: 'triangular_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0,
+2945:             description: 'دریافت مثلثی از طرف ' + name,
+2946:           });
+2947:         }
+2948:       }
+2949:     }
+2950:   });
+2951: 
+2952:   allPurchases.forEach(function(p: any) {
+2953:     const code = String(p.supplier_code || '').trim();
+2954:     const name = String(p.supplier_name || '').trim();
+2955:     const phone = String(p.supplier_phone || '').trim();
+2956:     const acc = getOrCreate(name, code, phone);
+2957:     if (!acc) return;
+2958: 
+2959:     const qty = Number(p.quantity) || 0;
+2960:     const price = Number(p.price_unit) || 0;
+2961:     const total = Number(p.total) || (qty * price);
+2962:     const payment = Number(p.payment) || 0;
+2963: 
+2964:     const common = {
+2965:       date: p.date_factor || p.date_reg || p.created_at || '',
+2966:       invoice: p.invoice_number || '',
+2967:       manualInvoice: p.manual_invoice || '',
+2968:       modelCode: p.model_code || '',
+2969:       modelName: p.model_name || '',
+2970:       bank: p.bank_name || '',
+2971:       holder: p.account_holder || '',
+2972:       holderCode: p.payer_code || '',
+2973:       depositDate: p.deposit_date || '',
+2974:       shipping: p.shipping || '',
+2975:       description: p.description || '',
+2976:     };
+2977: 
+2978:     if (total > 0) {
+2979:       acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit: total });
+2980:     }
+2981:     if (payment > 0) {
+2982:       acc.transactions.push({ ...common, type: 'payment_sent', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0, description: 'پرداخت به تأمین‌کننده' });
+2983:     }
+2984:   });

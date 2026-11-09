@@ -1,0 +1,383 @@
+══════════ syncToServer در lib.offline.ts ══════════
+
+─── lib.offline.ts — syncToServer (خط 250) ───
+250: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+251:   const q = await getQueue();
+252:   const remaining: any[] = [];
+253:   let ok = 0, fail = 0;
+254:   const total = q.length;
+255:   for (let i = 0; i < q.length; i++) {
+256:     const item = q[i];
+257:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+258:     try {
+259:       if ((await isBusinessLocked()) && BUSINESS_OPS.has(String(item.op))) {
+260:         remaining.push(item);
+261:         if (onProgress) onProgress(i + 1, total);
+262:         continue;
+263:       }
+264:       await (lib as any)[item.op](item.payload);
+265:       ok++;
+266:     } catch (e: any) {
+267:       const msg = String(e?.message || e || '');
+268:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+269:       if (isDup) { ok++; } else {
+270:         const attempts = (item.attempts || 0) + 1;
+271:         if (attempts >= 5) {
+272:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+273:         } else {
+274:           remaining.push({ ...item, attempts, lastError: msg });
+275:         }
+276:         fail++;
+277:       }
+278:     }
+279:     if (onProgress) onProgress(i + 1, total);
+280:     if ((i + 1) % 20 === 0) {
+281:       await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+282:       await new Promise(r => setTimeout(r, 10));
+283:     }
+284:   }
+285:   await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+286:   return { ok, fail };
+287: }
+288: 
+289: export async function pullFromServer() {
+290:   try {
+291:     const [products, salesGrouped, purchasesGrouped, sales, purchases, settings] = await Promise.all([
+292:       lib.getProducts(),
+293:       lib.getSalesGrouped(),
+294:       lib.getPurchasesGrouped(),
+295:       lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+296:       lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+297:       lib.getSettings(),
+298:     ]);
+299:     await setLocal('products', products);
+300:     await setLocal('sales_grouped', salesGrouped);
+301:     await setLocal('purchases_grouped', purchasesGrouped);
+302:     await setLocal('sales', sales.data || []);
+303:     await setLocal('purchases', purchases.data || []);
+304:     await setLocal('settings', settings);
+305:   } catch (e) { console.log('Pull failed:', e); }
+306: }
+307: 
+308: async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+309:   if (MODE === 'online') {
+310:     try {
+311:       const fresh = await fetcher();
+312:       await setLocal(key, fresh);
+313:       return fresh;
+314:     } catch {
+315:       const cached = await getLocal<T>(key);
+316:       if (cached) return cached;
+317:       throw new Error('آفلاین — داده‌ای موجود نیست');
+318:     }
+319:   }
+320:   const cached = await getLocal<T>(key);
+321:   if (cached) return cached;
+322:   try { return await fetcher(); } catch { throw new Error('داده‌ای موجود نیست'); }
+323: }
+324: 
+325: export async function getProducts() {
+326:   try { return await cachedRead('products', () => lib.getProducts()); }
+327:   catch { return []; }
+328: }
+329: export async function createProduct(p: any) {
+330:   const list: any[] = (await getLocal('products')) || [];
+331:   const item = { ...p, _localId: Date.now() };
+332:   list.push(item);
+333:   await setLocal('products', list);
+334:   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+335:   if (await serverBusinessAllowed()) {
+336:     try {
+337:       await lib.createProduct(p);
+338:       await setLocal('products', await lib.getProducts());
+339:         try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+340:     }
+341:     catch { await enqueue('createProduct', p); }
+342:   } else {
+343:     await enqueue('createProduct', p);
+344:   }
+345: }
+346: export async function updateProduct(id: string, p: any) {
+347:   const list: any[] = (await getLocal('products')) || [];
+348:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+349:   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
+350:   if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+351:   try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+352: 
+353:   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
+354:   const q = await getQueue();
+355:   const createIdx = q.findIndex((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+356:   if (createIdx >= 0) {
+357:     const newQ = q.slice();
+358:     newQ[createIdx] = { ...newQ[createIdx], payload: { ...newQ[createIdx].payload, ...p } };
+359:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+360:     console.log('[updateProduct] updated pending createProduct in queue');
+361:     return;
+362:   }
+363: 
+364:   const payload = { id, code, p };
+365:   if (await serverBusinessAllowed()) {
+366:     try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+367:   } else {
+368:     await enqueue('updateProduct', payload);
+369:   }
+
+══════════ syncByDestination در lib.sheets.ts ══════════
+
+─── lib.sheets.ts — syncByDestination (خط 464) ───
+464: export async function syncByDestination(onProgress?: (done: number, total: number) => void) {
+465:   const dest = await getSyncDestination();
+466:   const cfg = await getBridgeConfig();
+467:   const useBridge = !!(cfg.url && cfg.key);
+468: 
+469:   if (dest === 'private') {
+470:     if (!useBridge) {
+471:       if (Platform.OS !== 'web') {
+472:         throw new Error('برای سینک در گوشی، ابتدا واسط امن را تنظیم کنید');
+473:       }
+474:       await pullPrivateTables((d, t) => onProgress?.(d, t));
+475:       const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+476:       const ok = rows.filter(r => r.ok).length;
+477:       return { ok, fail: rows.length - ok };
+478:     }
+479:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+480:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+481:     const ok = rows.filter(r => r.ok).length;
+482:     return { ok, fail: rows.length - ok };
+483:   }
+484: 
+485:   if (dest === 'server') {
+486:     return await syncToServer(onProgress);
+487:   }
+488: 
+489:   const serverRes = await syncToServer(onProgress);
+490:   if (useBridge) {
+491:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+492:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+493:     const pOk = rows.filter(r => r.ok).length;
+494:     return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+495:   }
+496:   if (Platform.OS !== 'web') {
+497:     return serverRes;
+498:   }
+499:   await pullPrivateTables((d, t) => onProgress?.(d, t));
+500:   const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+501:   const pOk = rows.filter(r => r.ok).length;
+502:   return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+503: }
+504: 
+505: export async function clearAuditInSheet() {
+506:   const token = await getToken();
+507:   if (!token) throw new Error('لطفاً وارد شوید');
+508:   const res = await fetch(FN_BASE + '/google-sheets-clear-audit', {
+509:     method: 'POST',
+510:     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+511:     body: JSON.stringify({}),
+512:   });
+513:   const data: any = await res.json();
+514:   if (!res.ok || data?.ok !== true) {
+515:     throw new Error(data?.error || data?.detail || 'خطا در پاک کردن تاریخچه شیت');
+516:   }
+517:   return true;
+518: }
+519: 
+520: export async function disconnectPrivate() {
+521:   const { data: { user } } = await supabase.auth.getUser();
+522:   if (!user) return;
+523:   await supabase.from('google_sheet_connections').delete().eq('user_id', user.id);
+524: }
+525: 
+526: 
+527: const PULL_TABLES = [
+528:   '_deleted','_audit','sales','purchases',
+529:   'expenses','employees','salary_payments','employee_loans','attendance',
+530:   'employee_leaves','payroll_batches','parties','partners','partner_transactions',
+531:   'partner_bank_accounts','products','settings','banks','shippings','stock_adjustments',
+532:   'fx_hawalas','fx_boxes','fx_transfers','fx_checks','fx_customers','fx_partners',
+533: ];
+534: 
+535: const PULL_LOCAL_KEYS: Record<string, string> = {
+536:   expenses: '@mizan_local_expenses',
+537:   employees: '@mizan_local_employees',
+538:   salary_payments: '@mizan_local_salary_payments',
+539:   employee_loans: '@mizan_local_employee_loans',
+540:   attendance: '@mizan_local_attendance',
+541:   employee_leaves: '@mizan_local_employee_leaves',
+542:   payroll_batches: '@mizan_local_payroll_batches',
+543:   parties: '@mizan_local_parties',
+544:   partners: '@mizan_local_partners',
+545:   products: '@mizan_local_products',
+546:   settings: '@mizan_local_settings',
+547:   banks: '@mizan_local_banks',
+548:   shippings: '@mizan_local_shippings',
+549:   stock_adjustments: '@mizan_local_stock_adjustments',
+550:   fx_hawalas: '@mizan_local_fx_hawalas',
+551:   fx_boxes: '@mizan_local_fx_boxes',
+552:   fx_transfers: '@mizan_local_fx_transfers',
+553:   fx_checks: '@mizan_local_fx_checks',
+554:   fx_customers: '@mizan_local_fx_customers',
+555:   fx_partners: '@mizan_local_fx_partners',
+556: };
+557: 
+558: function keyOfRow(r: any): string {
+559:   return String(r?.local_id || r?.id || r?.code || r?.name || '');
+560: }
+561: 
+562: function tsOf(v: any): number {
+563:   const t = Date.parse(String(v || ''));
+564:   return isNaN(t) ? 0 : t;
+565: }
+566: 
+567: async function getTombstones(): Promise<Record<string, string>> {
+568:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+569:   let arr: any[] = [];
+570:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+571:   const map: Record<string, string> = {};
+572:   if (Array.isArray(arr)) {
+573:     for (const t of arr) {
+574:       if (t && t.key) map[String(t.key)] = String(t.deleted_at || t.deletedAt || '');
+575:     }
+576:   }
+577:   return map;
+578: }
+579: 
+580: async function saveTombstones(map: Record<string, string>) {
+581:   const arr = Object.keys(map).map(k => ({ key: k, deleted_at: map[k] }));
+582:   await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(arr));
+583: }
+
+══════════ عملیات صف در lib.offline.ts ══════════
+341: catch { await enqueue('createProduct', p); }
+343: await enqueue('createProduct', p);
+366: try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+368: await enqueue('updateProduct', payload);
+391: try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+393: await enqueue('deleteProduct', payload);
+404: catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+406: await enqueue('createSale', payload);
+416: try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+418: await enqueue('deleteSale', inv);
+428: try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+430: await enqueue('deletePurchase', inv);
+441: try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+443: await enqueue('updateSettings', s);
+950: await enqueue('createPurchase', newPayload);
+957: await enqueue('createPurchase', newPayload);
+1315: } catch { await enqueue('createFxTrade', p); }
+1316: } else { await enqueue('createFxTrade', p); }
+1385: } catch { await enqueue('createExpense', p); }
+1386: } else { await enqueue('createExpense', p); }
+1396: catch { await enqueue('deleteExpense', String(localId)); }
+1398: await enqueue('deleteExpense', String(localId));
+1425: } catch { await enqueue('createEmployee', p); }
+1426: } else { await enqueue('createEmployee', p); }
+1436: catch { await enqueue('deleteEmployee', String(localId)); }
+1438: await enqueue('deleteEmployee', String(localId));
+1465: } catch { await enqueue('createAttendance', p); }
+1466: } else { await enqueue('createAttendance', p); }
+1476: catch { await enqueue('deleteSalaryPayment', String(localId)); }
+1478: await enqueue('deleteSalaryPayment', String(localId));
+1489: catch { await enqueue('deleteLoan', String(localId)); }
+1491: await enqueue('deleteLoan', String(localId));
+1502: catch { await enqueue('deleteLeave', String(localId)); }
+1504: await enqueue('deleteLeave', String(localId));
+1515: catch { await enqueue('deleteAttendance', String(localId)); }
+1517: await enqueue('deleteAttendance', String(localId));
+1528: catch { await enqueue('deleteBatch', String(localId)); }
+1530: await enqueue('deleteBatch', String(localId));
+1562: } catch { await enqueue('createFxCustomer', { ...p, code }); }
+1563: } else { await enqueue('createFxCustomer', { ...p, code }); }
+1606: } catch { await enqueue('createFxPartner', { ...p, code }); }
+1607: } else { await enqueue('createFxPartner', { ...p, code }); }
+1979: catch { await enqueue('createStockAdjustment', item); }
+1981: await enqueue('createStockAdjustment', item);
+1992: catch { await enqueue('deleteStockAdjustment', id); }
+1994: await enqueue('deleteStockAdjustment', id);
+2680: catch { await enqueue('createParty', item); }
+2682: await enqueue('createParty', item);
+2709: catch { await enqueue('updateParty', item); }
+2711: await enqueue('updateParty', item);
+2732: catch { await enqueue('deleteParty', { local_id: id, id }); }
+2734: await enqueue('deleteParty', { local_id: id, id });
+2855: } catch { await enqueue('createPartner', item); }
+2857: else { await enqueue('createPartner', item); }
+2866: if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+2867: else { await enqueue('updatePartner', item); }
+2875: if (await serverBusinessAllowed()) { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+2876: else { await enqueue('deletePartner', id); }
+2901: } catch { await enqueue('createPBA', item); }
+2903: else { await enqueue('createPBA', item); }
+2911: if (await serverBusinessAllowed()) { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+2912: else { await enqueue('deletePBA', id); }
+2937: } catch { await enqueue('createPTX', item); }
+2939: else { await enqueue('createPTX', item); }
+2947: if (await serverBusinessAllowed()) { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+2948: else { await enqueue('deletePTX', id); }
+2975: } catch { await enqueue('createBank', item); }
+2977: else { await enqueue('createBank', item); }
+2991: catch { await enqueue('updateBank', item); }
+2993: await enqueue('updateBank', item);
+3003: if (await serverBusinessAllowed()) { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+3004: else { await enqueue('deleteBank', id); }
+3032: } catch { await enqueue('createShipping', item); }
+3034: else { await enqueue('createShipping', item); }
+3048: catch { await enqueue('updateShipping', item); }
+3050: await enqueue('updateShipping', item);
+3060: if (await serverBusinessAllowed()) { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+3061: else { await enqueue('deleteShipping', id); }
+3224: try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
+3226: await enqueue('updateSale', payload);
+3262: try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
+3264: await enqueue('updatePurchase', payload);
+
+══════════ استفاده از syncToServer در همه فایل‌ها ══════════
+lib.offline.ts:250: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+lib.sheets.ts:4: import { syncToServer, getQueue, getDirtyTables, removeDirtyTables, setDirtyTables } from './lib.offline';
+lib.sheets.ts:486: return await syncToServer(onProgress);
+lib.sheets.ts:489: const serverRes = await syncToServer(onProgress);
+lib.ts:1351: //  (syncToServer uses item.op as function name)
+SyncControl.tsx:7: getQueueCount, syncToServer, pullFromServer, clearQueue, prepareOffline,
+
+══════════ بازار زنده، بازار عمومی، ادمین و لایسنس ══════════
+AdminPanel.tsx:5: import { supabaseAdmin as supabase } from './lib.supabase.admin';
+AdminPanel.tsx:48: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:83: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:98: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:116: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:141: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:171: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:190: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:246: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:265: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:283: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+AdminPanel.tsx:312: const { data } = await supabase
+AdminPanel.tsx:326: const { data, error } = await supabase.rpc('admin_get_licenses_full');
+AdminPanel.tsx:330: const { data: fallback } = await supabase
+AdminPanel.tsx:358: const { data: existing } = await supabase
+AdminPanel.tsx:368: const { error } = await supabase.rpc('extend_license_hours', {
+AdminPanel.tsx:380: const { error: insErr } = await supabase.from('licenses').insert({
+AdminPanel.tsx:400: const { data: uid, error } = await supabase.rpc('get_user_id_by_email', {
+AdminPanel.tsx:418: await supabase.from('licenses').update({
+AdminPanel.tsx:424: await supabase.from('license_requests')
+AdminPanel.tsx:438: await supabase.from('license_requests')
+lib.supabase.admin.ts:1: // lib.supabase.admin.ts — کلاینت جدا برای پنل ادمین
+lib.supabase.admin.ts:2: import { createClient } from '@supabase/supabase-js';
+lib.supabase.admin.ts:5: const SUPABASE_URL = 'https://paslxvwlbojdzflbmyoh.supabase.co';
+lib.supabase.admin.ts:6: const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhc2x4dndsYm9qZHpmbGJteW9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MjA5MTAsImV4cCI6MjEwNTQ5NjkxMH0.gOkwEyVlRi0C11277KxswLFiMFGf
+lib.supabase.admin.ts:11: _adminClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+lib.supabase.admin.ts:22: export const supabaseAdmin: any = new Proxy({} as any, {
+license.ts:3: import { supabase } from './lib';
+license.ts:20: const { data: { session } } = await supabase.auth.getSession();
+license.ts:22: const { data } = await supabase
+license.ts:37: const { data: { session } } = await supabase.auth.getSession();
+LicenseNotification.tsx:4: import { supabase } from './lib';
+LicenseNotification.tsx:14: const { data: { session } } = await supabase.auth.getSession();
+LicenseNotification.tsx:17: const { data } = await supabase
+LicenseNotification.tsx:37: const { data: { session } } = await supabase.auth.getSession();
+LicenseNotification.tsx:39: await supabase
+LicenseRequest.tsx:4: import { supabase } from './lib';
+LicenseRequest.tsx:19: const { data: { session } } = await supabase.auth.getSession();
+LicenseRequest.tsx:22: const { error } = await supabase.from('license_requests').insert({
+LiveMarketScreen.tsx:1621: // 🗑 پاک کردن از Supabase
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

@@ -1,0 +1,107 @@
+تابع شامل خط 1009 در خط 995:
+export async function prepareOffline(): Promise<boolean> {
+
+─── محدوده 930 تا 1030 ───
+930: // ═══════════════════════════════════════════
+931: 
+932: async function getSupplierList() {
+933:   let list = await getLocal<any[]>('all_purchases_for_lookup');
+934:   if (!list || !list.length) {
+935:     const grouped = await getLocal<any[]>('purchases_grouped') || [];
+936:     list = [];
+937:     for (const g of grouped) {
+938:       if (g.phone) list.push({ supplier_phone: g.phone, supplier_name: g.name, supplier_code: g.supplierCode || '' });
+939:     }
+940:   }
+941:   return list || [];
+942: }
+943: 
+944: 
+945: export async function findSupplierByNameOffline(name: string) {
+946:   const list = await getSupplierList();
+947:   for (const p of list) {
+948:     if (p.supplier_name === name) return {
+949:       supplier_name: p.supplier_name, supplier_code: p.supplier_code,
+950:       supplier_phone: p.supplier_phone,
+951:     };
+952:   }
+953:   return null;
+954: }
+955: 
+956: export async function findCodeByNameOffline(name: string) {
+957:   if (!name || name.length < 2) return '';
+958:   const sales = await getCustomerList();
+959:   const purchases = await getSupplierList();
+960:   for (const s of sales) if (s.customer_name === name && s.customer_code) return s.customer_code;
+961:   for (const p of purchases) if (p.supplier_name === name && p.supplier_code) return p.supplier_code;
+962:   return '';
+963: }
+964: 
+965: 
+966: export async function lookupSupplierByName(name: string) {
+967:   if (MODE === 'online') {
+968:     try {
+969:       const fresh = await lib.lookupSupplierByName(name);
+970:       if (fresh) await setLocal('sup_' + name, fresh);
+971:       return fresh;
+972:     } catch (e) { return await findSupplierByNameOffline(name); }
+973:   }
+974:   const cached = await getLocal<any>('sup_' + name);
+975:   if (cached) return cached;
+976:   return await findSupplierByNameOffline(name);
+977: }
+978: 
+979: export async function lookupCodeByName(name: string) {
+980:   if (MODE === 'online') {
+981:     try {
+982:       const fresh = await lib.lookupCodeByName(name);
+983:       if (fresh) await setLocal('code_' + name, fresh);
+984:       return fresh;
+985:     } catch (e) { return await findCodeByNameOffline(name); }
+986:   }
+987:   const cached = await getLocal<string>('code_' + name);
+988:   if (cached) return cached;
+989:   return await findCodeByNameOffline(name);
+990: }
+991: 
+992: // ═══════════════════════════════════════════
+993: //  prepareOffline — کامل و مطمئن
+994: // ═══════════════════════════════════════════
+995: export async function prepareOffline(): Promise<boolean> {
+996:   try {
+997:     const results = await Promise.allSettled([
+998:       lib.getProducts(),
+999:       lib.getSalesGrouped(),
+1000:       lib.getPurchasesGrouped(),
+1001:       lib.getUnpaidInvoices(),
+1002:       lib.getSettings(),
+1003:       lib.supabase.from('sales').select('*'),
+1004:       lib.supabase.from('purchases').select('supplier_code, supplier_name, supplier_phone'),
+1005:     ]);
+1006: 
+1007:     const [products, salesGrouped, purchasesGrouped, unpaid, settings, allSales, allPurchases] = results;
+1008: 
+1009:     if (products.status === 'fulfilled') await setLocal('products', products.value);
+1010:     if (salesGrouped.status === 'fulfilled') await setLocal('sales_grouped', salesGrouped.value);
+1011:     if (purchasesGrouped.status === 'fulfilled') await setLocal('purchases_grouped', purchasesGrouped.value);
+1012:     if (unpaid.status === 'fulfilled') await setLocal('unpaid_invoices', unpaid.value);
+1013:     if (settings.status === 'fulfilled') await setLocal('settings', settings.value);
+1014:     if (allSales.status === 'fulfilled') {
+1015:       const full = allSales.value.data || [];
+1016:       // برای lookup
+1017:       await setLocal('all_sales_for_lookup', full.map((r: any) => ({
+1018:         customer_code: r.customer_code,
+1019:         customer_name: r.customer_name,
+1020:         customer_phone: r.customer_phone,
+1021:         customer_address: r.customer_address,
+1022:       })));
+1023:       // ⭐ برای محاسبه مانده — همه فیلدها
+1024:       await setLocal('all_sales_full', full);
+1025:     }
+1026:     if (allPurchases.status === 'fulfilled') await setLocal('all_purchases_for_lookup', allPurchases.value.data || []);
+1027: 
+1028:     // چک نهایی
+1029:     const customerCount = (await getLocal<any[]>('all_sales_for_lookup'))?.length || 0;
+1030:     console.log('prepareOffline done. Customers cached:', customerCount);
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

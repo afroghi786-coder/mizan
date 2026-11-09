@@ -1,0 +1,221 @@
+📌 SettingsSection خط 8070
+8070: function SettingsSection({ showToast, settings, setSettings, reload }: any) {
+8071: 
+8072:   const [saving, setSaving] = useState(false);
+8073: 
+8074:   const pins = settings.tab_pins || {};
+8075: 
+8076:   const [emailInput, setEmailInput] = useState('');
+8077: 
+8078:   const [autoDelEnabled, setAutoDelEnabled] = useState(false);
+8079: 
+8080:   const [autoDelHours, setAutoDelHours] = useState('1');
+8081: 
+8082:   const [schedDailyEnabled, setSchedDailyEnabled] = useState(false);
+8083: 
+8084:   const [schedDailyHour, setSchedDailyHour] = useState('21');
+8085: 
+8086:   const [schedDailyDays, setSchedDailyDays] = useState<string[]>([]);
+8087: 
+8088:   const [schedDailyType, setSchedDailyType] = useState('daily-combined');
+8089: 
+8090:   const [schedWeeklyEnabled, setSchedWeeklyEnabled] = useState(false);
+8091: 
+8092:   const [schedWeeklyDay, setSchedWeeklyDay] = useState('6');
+8093: 
+8094:   const [schedWeeklyHour, setSchedWeeklyHour] = useState('21');
+8095: 
+8096:   const [schedWeeklyType, setSchedWeeklyType] = useState('weekly-combined');
+8097: 
+8098: 
+8099: 
+8100:   useEffect(() => {
+8101: 
+8102:     if (!settings) return;
+8103: 
+8104:     setAutoDelEnabled(!!settings.auto_delete_enabled);
+8105: 
+8106:     setAutoDelHours(String(settings.auto_delete_hours || 1));
+8107: 
+8108:     const sd = settings.sched_daily || {};
+8109: 
+8110:     setSchedDailyEnabled(!!sd.enabled);
+8111: 
+8112:     setSchedDailyHour(String(sd.hour ?? 21));
+8113: 
+8114:     setSchedDailyDays(sd.days || []);
+8115: 
+8116:     setSchedDailyType(sd.type || 'daily-combined');
+8117: 
+8118:     const sw = settings.sched_weekly || {};
+8119: 
+8120:     setSchedWeeklyEnabled(!!sw.enabled);
+8121: 
+8122:     setSchedWeeklyDay(String(sw.day ?? 6));
+8123: 
+8124:     setSchedWeeklyHour(String(sw.hour ?? 21));
+8125: 
+8126:     setSchedWeeklyType(sw.type || 'weekly-combined');
+8127: 
+8128:   }, [settings]);
+8129: 
+8130: 
+8131: 
+8132:   const [lastBackupLabel, setLastBackupLabel] = useState<string | null>(null);
+8133: 
+8134:   useEffect(() => {
+8135: 
+8136:     (async () => {
+8137: 
+8138:       try {
+8139: 
+8140:         const last = await getLastAutoBackup();
+8141: 
+8142:         setLastBackupLabel(last);
+8143: 
+8144:       } catch (e) { console.log('[backup] read last err:', e); }
+8145: 
+8146:       try {
+8147: 
+8148:         await autoBackup();
+8149: 
+8150:         const last2 = await getLastAutoBackup();
+8151: 
+8152:         setLastBackupLabel(last2);
+8153: 
+8154:       } catch (e) { console.log('[backup] auto err:', e); }
+8155: 
+8156:     })();
+8157: 
+8158:   }, []);
+8159: 
+8160: 
+8161: 
+8162:   const save = async () => {
+8163: 
+8164:     setSaving(true);
+8165: 
+8166:     try {
+8167: 
+8168:       await updateSettings({
+8169: 
+8170:         ...settings,
+8171: 
+8172:         auto_delete_enabled: autoDelEnabled,
+8173: 
+8174:         auto_delete_hours: parseInt(autoDelHours, 10) || 1,
+8175: 
+8176:         sched_daily: { enabled: schedDailyEnabled, hour: parseInt(schedDailyHour, 10), days: schedDailyDays, type: schedDailyType },
+8177: 
+8178:         sched_weekly: { enabled: schedWeeklyEnabled, day: parseInt(schedWeeklyDay, 10), hour: parseInt(schedWeeklyHour, 10), type: schedWeeklyType },
+8179: 
+8180:       });
+8181: 
+8182:       const _sMode = getMode();
+8183: 
+8184:       alertMsg('✅ موفق', _sMode === 'offline' ? 'تنظیمات ذخیره شد و در صف آپلود قرار گرفت' : 'تنظیمات ذخیره شد');
+8185: 
+8186:       reload && reload();
+8187: 
+8188:     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+8189: 
+8190:     finally { setSaving(false); }
+8191: 
+8192:   };
+8193: 
+8194: 
+8195: 
+8196:   const emails: string[] = settings.emails || [];
+8197: 
+8198:   const addEmail = () => {
+8199: 
+8200:     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) return showToast('ایمیل معتبر وارد کن', true);
+8201: 
+8202:     setSettings({ ...settings, emails: [...emails, emailInput] });
+8203: 
+8204:     setEmailInput('');
+8205: 
+8206:   };
+8207: 
+8208:   const removeEmail = (i: number) => setSettings({ ...settings, emails: emails.filter((_, idx) => idx !== i) });
+8209: 
+8210:   const toggleDay = (d: string) => setSchedDailyDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
+8211: 
+8212:   return (
+8213: 
+8214:     <View>
+8215: 
+8216:       <EL text="{t('🌍 زبان برنامه')}" style={s.secT} />
+8217: 
+8218:       <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginBottom: 12 }]} onPress={() => { (globalThis as any).__openLang?.(); }}>
+8219: 
+8220:         <Text style={s.btnTxt}>{t('🌍 تغییر زبان / Change Language')}</Text>
+8221: 
+8222:       </TouchableOpacity>
+8223: 
+8224: 
+8225: 
+8226:       <EL text="{t('📅 نوع تقویم')}" style={s.secT} />
+8227: 
+8228:       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+8229: 
+8230:         {[{ k: 'jalali', l: '🌙 شمسی' }, { k: 'gregorian', l: '🌍 میلادی' }, { k: 'hijri', l: '🕋 قمری' }].map((f) => (
+8231: 
+8232:           <TouchableOpacity key={f.k} onPress={() => { setSettings({ ...settings, cal_type: f.k as CalType }); saveCalType(f.k as CalType); }} style={[s.chip, settings.cal_type === f.k && s.chipActive]}>
+8233: 
+8234:             <Text style={[s.chipTxt, settings.cal_type === f.k && s.chipTxtActive]}>{f.l}</Text>
+8235: 
+8236:           </TouchableOpacity>
+8237: 
+8238:         ))}
+8239: 
+8240:       </View>
+8241: 
+8242: 
+8243: 
+8244:       <EL text="💱 واحد پول" style={s.secT} />
+8245:       <Text style={{ color: C.textMut, fontSize: 11, textAlign: 'right', marginBottom: 6 }}>
+8246:         واحد پول پیش‌فرض کل برنامه — همه مبالغ با این واحد نمایش داده می‌شوند
+8247:       </Text>
+8248:       <CurrencyField
+8249:         value={settings.currency_code || 'AFN'}
+8250:         onChange={(code: string, cur: any) => {
+8251:           setSettings({
+8252:             ...settings,
+8253:             currency_code: cur.code,
+8254:             currency_label: cur.label,
+8255:             currency_symbol: cur.symbol,
+8256:             currency_decimals: cur.decimals,
+8257:             currency_custom: cur.custom,
+8258:           });
+8259:         }}
+8260:       />
+8261: 
+8262:       <EL text="💼 تنظیمات حقوق و دستمزد" style={s.secT} />
+8263:       <Text style={{ color: C.textMut, fontSize: 11, textAlign: 'right', marginBottom: 8 }}>
+8264:         کنترل کامل کسورات و ضرایب — همه در گوشی و سرور ذخیره می‌شوند
+8265:       </Text>
+8266: 
+8267:       {/* کسر غیبت */}
+8268:       <View style={s.rowBetween}>
+8269:         <Text style={[s.lbl, { color: C.textMut }]}>📉 کسر غیبت</Text>
+8270:         <Switch value={!!settings.payroll_deduct_absence} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_absence: v })} />
+8271:       </View>
+8272:       <Text style={[s.lblS, { color: C.textMut }]}>ضریب کسر غیبت (۰ تا ۱.۵)</Text>
+8273:       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_absence_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_absence_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
+8274: 
+8275:       {/* کسر مرخصی بدون حقوق */}
+8276:       <View style={s.rowBetween}>
+8277:         <Text style={[s.lbl, { color: C.textMut }]}>📉 کسر مرخصی بدون حقوق</Text>
+8278:         <Switch value={!!settings.payroll_deduct_unpaid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_unpaid_leave: v })} />
+8279:       </View>
+8280:       <Text style={[s.lblS, { color: C.textMut }]}>ضریب مرخصی بدون حقوق</Text>
+8281:       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_unpaid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_unpaid_leave_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />
+8282: 
+8283:       {/* کسر مرخصی استحقاقی */}
+8284:       <View style={s.rowBetween}>
+8285:         <Text style={[s.lbl, { color: C.textMut }]}>📉 کسر مرخصی استحقاقی (استاندارد: غیرفعال)</Text>
+8286:         <Switch value={!!settings.payroll_deduct_paid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_paid_leave: v })} />
+8287:       </View>
+8288:       <Text style={[s.lblS, { color: C.textMut }]}>ضریب مرخصی استحقاقی</Text>
+8289:       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_paid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_paid_leave_rate: parseFloat(v) || 0 })} keyboardType="decimal-pad" />

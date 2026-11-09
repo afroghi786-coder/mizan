@@ -1,0 +1,1396 @@
+══════════ ذخیره‌سازی محلی — آیا device_id و updated_at نوشته می‌شود؟ ══════════
+
+─── lib.offline.ts — _localUpsertSale (خط 387) ───
+387: async function _localUpsertSale(payload: any) {
+388:   try {
+389:     const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+390:     if (!inv) return;
+391:     const items = payload.items || payload.rows || [];
+392:     const old = (await getLocal<any[]>('sales')) || [];
+393:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+394:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+395:     const rows = items.map((it: any, idx: number) => ({
+396:       invoice_number: inv,
+397:       manual_invoice: payload.manualInvoice || '',
+398:       customer_code: payload.customerCode || payload.customer_code || '',
+399:       customer_name: payload.customerName || payload.customer_name || '',
+400:       customer_phone: payload.customerPhone || payload.customer_phone || '',
+401:       account_holder: payload.holderName || payload.accountHolder || payload.receiverName || it.accountHolder || it.holderName || '',
+402:       account_holder_code: payload.holderCode || payload.accountHolderCode || payload.receiverCode || it.accountHolderCode || it.holderCode || '',
+403:       model_code: it.modelCode || it.model_code || '',
+404:       model_name: it.modelName || it.model_name || '',
+405:       quantity: Number(it.quantity) || 0,
+406:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+407:       payment: (() => {
+408:         const rowPay = Number(it.payment) || 0;
+409:         if (rowPay > 0) return rowPay;
+410:         if (idx !== 0) return 0;
+411:         return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+412:       })(),
+413:       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+414:       bank_name: payload.bank || payload.bankName || payload.receiverBank || it.bankName || '',
+415:       deposit_date: payload.depositDate || payload.payDate || payload.paymentDate || it.depositDate || '',
+416:       shipping: payload.shipping || '',
+417:       date_factor: it.dateFactor || it.date_factor || baseDate,
+418:       date_reg: it.dateReg || it.date_reg || baseDate,
+419:       description: it.description || '',
+420:       _pending: true,
+421:     }));
+422:     await setLocal('sales', [...filtered, ...rows]);
+423:   } catch {}
+424: }
+425: 
+426: async function _localUpsertPurchase(payload: any) {
+427:   try {
+428:     const inv = String(payload.invoiceNumber || payload.invoice_number || payload._pendingInvNumber || '').trim();
+429:     if (!inv) return;
+430:     const items = payload.items || payload.rows || [];
+431:     const old = (await getLocal<any[]>('purchases')) || [];
+432:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+433:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+434:     const rows = items.map((it: any, idx: number) => ({
+435:       invoice_number: inv,
+436:       manual_invoice: payload.manualInvoice || '',
+437:       supplier_code: payload.supplierCode || payload.supplier_code || '',
+438:       supplier_name: payload.supplierName || payload.supplier_name || '',
+439:       supplier_phone: payload.supplierPhone || payload.supplier_phone || '',
+440:       account_holder: payload.payerName || payload.accountHolder || it.accountHolder || it.payerName || '',
+441:       payer_code: payload.payerCode || payload.accountHolderCode || it.accountHolderCode || it.payerCode || '',
+442:       model_code: it.modelCode || it.model_code || '',
+443:       model_name: it.modelName || it.model_name || '',
+444:       quantity: Number(it.quantity) || 0,
+445:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+446:       payment: (() => {
+
+─── lib.offline.ts — _localUpsertPurchase (خط 426) ───
+426: async function _localUpsertPurchase(payload: any) {
+427:   try {
+428:     const inv = String(payload.invoiceNumber || payload.invoice_number || payload._pendingInvNumber || '').trim();
+429:     if (!inv) return;
+430:     const items = payload.items || payload.rows || [];
+431:     const old = (await getLocal<any[]>('purchases')) || [];
+432:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+433:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+434:     const rows = items.map((it: any, idx: number) => ({
+435:       invoice_number: inv,
+436:       manual_invoice: payload.manualInvoice || '',
+437:       supplier_code: payload.supplierCode || payload.supplier_code || '',
+438:       supplier_name: payload.supplierName || payload.supplier_name || '',
+439:       supplier_phone: payload.supplierPhone || payload.supplier_phone || '',
+440:       account_holder: payload.payerName || payload.accountHolder || it.accountHolder || it.payerName || '',
+441:       payer_code: payload.payerCode || payload.accountHolderCode || it.accountHolderCode || it.payerCode || '',
+442:       model_code: it.modelCode || it.model_code || '',
+443:       model_name: it.modelName || it.model_name || '',
+444:       quantity: Number(it.quantity) || 0,
+445:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+446:       payment: (() => {
+447:         const rowPay = Number(it.payment) || 0;
+448:         if (rowPay > 0) return rowPay;
+449:         if (idx !== 0) return 0;
+450:         return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+451:       })(),
+452:       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+453:       bank_name: payload.bankAccount || payload.bank || it.bankName || '',
+454:       deposit_date: payload.paymentDate || payload.depositDate || it.depositDate || '',
+455:       shipping: payload.shipping || '',
+456:       date_factor: it.dateFactor || it.date_factor || baseDate,
+457:       date_reg: it.dateReg || it.date_reg || baseDate,
+458:       description: it.description || '',
+459:       _pending: true,
+460:     }));
+461:     await setLocal('purchases', [...filtered, ...rows]);
+462:   } catch {}
+463: }
+464: 
+465: export async function createSale(payload: any) {
+466:   await _localUpsertSale(payload);
+467:   if (await serverBusinessAllowed()) {
+468:     try {
+469:       const r = await lib.createSale(payload);
+470:         try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+471:       return r;
+472:     }
+473:     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+474:   }
+475:   await enqueue('createSale', payload);
+476:   try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+477:   return payload.invoiceNumber;
+478: }
+479: async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+480:   const inv = String(invoiceNumber || '').trim();
+481:   if (!inv) return false;
+482:   const key = type === 'sales' ? 'sales_returns' : 'purchase_returns';
+483:   const local = (await getLocal<any[]>(key)) || [];
+484:   const q = await getQueue();
+485: 
+
+─── lib.offline.ts — createSale (خط 465) ───
+465: export async function createSale(payload: any) {
+466:   await _localUpsertSale(payload);
+467:   if (await serverBusinessAllowed()) {
+468:     try {
+469:       const r = await lib.createSale(payload);
+470:         try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+471:       return r;
+472:     }
+473:     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+474:   }
+475:   await enqueue('createSale', payload);
+476:   try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+477:   return payload.invoiceNumber;
+478: }
+479: async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+480:   const inv = String(invoiceNumber || '').trim();
+481:   if (!inv) return false;
+482:   const key = type === 'sales' ? 'sales_returns' : 'purchase_returns';
+483:   const local = (await getLocal<any[]>(key)) || [];
+484:   const q = await getQueue();
+485: 
+486:   const deletedIds = new Set<string>();
+487:   for (const item of q) {
+488:     if (type === 'sales' && item.op === 'deleteSalesReturn') {
+489:       const id = String(item.payload || '').trim();
+490:       if (id) deletedIds.add(id);
+491:     }
+492:     if (type === 'purchase' && item.op === 'deletePurchaseReturn') {
+493:       const id = String(item.payload || '').trim();
+494:       if (id) deletedIds.add(id);
+495:     }
+496:   }
+497:   try {
+498:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+499:     let arr: any[] = [];
+500:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+501:     if (Array.isArray(arr)) {
+502:       for (const t of arr) {
+503:         if (!t) continue;
+504:         if (type === 'sales' && String(t.table || '') !== 'sales_returns') continue;
+505:         if (type === 'purchase' && String(t.table || '') !== 'purchase_returns') continue;
+506:         const k = String(t.key || '').trim();
+507:         if (k) deletedIds.add(k);
+508:       }
+509:     }
+510:   } catch {}
+511: 
+512:   const pending = q
+513:     .filter(x => (type === 'sales' ? x.op === 'createSalesReturn' : x.op === 'createPurchaseReturn'))
+514:     .map(x => x.payload)
+515:     .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+516: 
+517:   const all = [...pending, ...local];
+518:   return all.some((r: any) => String(r.original_invoice_number || '').trim() === inv);
+519: }
+520: 
+521: export async function deleteSale(inv: string) {
+522:   if (await hasActiveReturns(inv, 'sales')) {
+523:     throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+524:   }
+
+─── lib.offline.ts — createPurchase (خط 1245) ───
+1245: export async function createPurchase(payload: any) {
+1246:   if (await serverBusinessAllowed()) {
+1247:     try {
+1248:       const r = await lib.createPurchase(payload);
+1249:       const inv = String(r || payload.invoiceNumber || '');
+1250:       if (inv) await _localUpsertPurchase({ ...payload, invoiceNumber: inv });
+1251:       try {
+1252:         await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1253:       } catch {}
+1254:       return r;
+1255:     } catch {}
+1256:   }
+1257: 
+1258:   const pInv = await genPurchaseInvoiceNumber();
+1259:   const newPayload = { ...payload, _pendingInvNumber: pInv, invoiceNumber: pInv };
+1260:   await _localUpsertPurchase(newPayload);
+1261:   await enqueue('createPurchase', newPayload);
+1262:   try {
+1263:     await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(pInv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1264:   } catch {}
+1265:   return pInv;
+1266: }
+1267: 
+1268: // ═══════════════════════════════════════════
+1269: //  getPurchasesGrouped — با شماره P-
+1270: // ═══════════════════════════════════════════
+1271: export async function getPurchasesGrouped() {
+1272:   let serverList: any[] = [];
+1273:   // BUSINESS_LOCAL_AND_SHEET_ONLY — خرید فقط محلی + صف
+1274:   serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+1275: 
+1276:   const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
+1277:   if (localPurchaseRows.length) {
+1278:     const groupedFromPurchases = _groupPurchaseRows(localPurchaseRows);
+1279:     const localUpMapP: Record<string, number> = {};
+1280:     for (const r of localPurchaseRows) {
+1281:       const inv = String(r.invoice_number || '').trim();
+1282:       if (!inv) continue;
+1283:       const up = _tsLocal(r.updated_at || r.updatedAt);
+1284:       if (!localUpMapP[inv] || up > localUpMapP[inv]) localUpMapP[inv] = up;
+1285:     }
+1286:     const map: Record<string, any> = {};
+1287:     for (const g of serverList) map[String(g.invoice || '')] = g;
+1288:     for (const g of groupedFromPurchases) {
+1289:       const k = String(g.invoice || '');
+1290:       if (!k) continue;
+1291:       const existing = map[k];
+1292:       if (!existing) { map[k] = g; continue; }
+1293:       const exUp = _tsLocal(existing.updated_at || existing.updatedAt);
+1294:       const newUp = localUpMapP[k] || 0;
+1295:       if (newUp > exUp) map[k] = g;
+1296:     }
+1297:     serverList = Object.values(map);
+1298:   }
+1299: 
+1300:   const queue = await getQueue();
+1301:   const deletedInvs = new Set<string>();
+1302:   for (const item of queue) {
+1303:     if (item.op === 'deletePurchase') {
+1304:       const inv = String(item.payload || '').trim();
+
+─── lib.offline.ts — createParty (خط 3218) ───
+3218: export async function createParty(p: any) {
+3219:   const item = {
+3220:     ...p,
+3221:     local_id: p.local_id || ('party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+3222:     created_at: p.created_at || new Date().toISOString(),
+3223:     updated_at: new Date().toISOString(),
+3224:   };
+3225:   const list = (await getLocal<any[]>('parties')) || [];
+3226:   await setLocal('parties', [item, ...list]);
+3227:   try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3228:   if (await serverBusinessAllowed()) {
+3229:     try {
+3230:       await lib.createParty(item);
+3231:         try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3232:     }
+3233:     catch { await enqueue('createParty', item); }
+3234:   } else {
+3235:     await enqueue('createParty', item);
+3236:   }
+3237:   return item;
+3238: }
+3239: 
+3240: export async function updateParty(idOrPayload: any, pArg?: any) {
+3241:   const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
+3242:   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
+3243:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+3244:   await recordTombstone('parties', String(id));
+3245:   const list = (await getLocal<any[]>('parties')) || [];
+3246:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3247:   if (idx >= 0) {
+3248:     list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString() };
+3249:     await setLocal('parties', list);
+3250:   }
+3251:   try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
+3252:   const q = await getQueue();
+3253:   const pendingCreate = q.find((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3254:   if (pendingCreate) {
+3255:     pendingCreate.payload = { ...pendingCreate.payload, ...payload };
+3256:     await saveQueue(q);
+3257:     return pendingCreate.payload;
+3258:   }
+3259:   const item = { ...payload, local_id: payload.local_id || id };
+3260:   if (await serverBusinessAllowed()) {
+3261:     try { await lib.updateParty(id, item); }
+3262:     catch { await enqueue('updateParty', item); }
+3263:   } else {
+3264:     await enqueue('updateParty', item);
+3265:   }
+3266:   return item;
+3267: }
+3268: 
+3269: export async function deleteParty(idOrPayload: any) {
+3270:   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+3271:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+3272:   await recordTombstone('parties', String(id));
+3273:   const list = (await getLocal<any[]>('parties')) || [];
+3274:   await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3275:   try { await _pushAudit({ type: 'party_delete', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف طرف‌حساب' }); } catch {}
+3276:   const q = await getQueue();
+3277:   const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+
+─── lib.offline.ts — updateParty (خط 3240) ───
+3240: export async function updateParty(idOrPayload: any, pArg?: any) {
+3241:   const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
+3242:   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
+3243:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+3244:   await recordTombstone('parties', String(id));
+3245:   const list = (await getLocal<any[]>('parties')) || [];
+3246:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3247:   if (idx >= 0) {
+3248:     list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString() };
+3249:     await setLocal('parties', list);
+3250:   }
+3251:   try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
+3252:   const q = await getQueue();
+3253:   const pendingCreate = q.find((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3254:   if (pendingCreate) {
+3255:     pendingCreate.payload = { ...pendingCreate.payload, ...payload };
+3256:     await saveQueue(q);
+3257:     return pendingCreate.payload;
+3258:   }
+3259:   const item = { ...payload, local_id: payload.local_id || id };
+3260:   if (await serverBusinessAllowed()) {
+3261:     try { await lib.updateParty(id, item); }
+3262:     catch { await enqueue('updateParty', item); }
+3263:   } else {
+3264:     await enqueue('updateParty', item);
+3265:   }
+3266:   return item;
+3267: }
+3268: 
+3269: export async function deleteParty(idOrPayload: any) {
+3270:   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+3271:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+3272:   await recordTombstone('parties', String(id));
+3273:   const list = (await getLocal<any[]>('parties')) || [];
+3274:   await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3275:   try { await _pushAudit({ type: 'party_delete', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف طرف‌حساب' }); } catch {}
+3276:   const q = await getQueue();
+3277:   const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3278:   if (pendingCreate) {
+3279:     const newQ = q.filter((it: any) => !(it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id)));
+3280:     await saveQueue(newQ);
+3281:     return;
+3282:   }
+3283:   if (await serverBusinessAllowed()) {
+3284:     try { await lib.deleteParty(id); }
+3285:     catch { await enqueue('deleteParty', { local_id: id, id }); }
+3286:   } else {
+3287:     await enqueue('deleteParty', { local_id: id, id });
+3288:   }
+3289: }
+3290: 
+3291: export async function lookupPartyByPhone(phone: string) {
+3292:   if (MODE === 'online') {
+3293:     try { const r = await lib.lookupPartyByPhone(phone); if (r) return r; } catch {}
+3294:   }
+3295:   const list = await getParties();
+3296:   const p = String(phone || '').replace(/[^0-9]/g, '');
+3297:   return list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p) || null;
+3298: }
+3299: 
+
+─── lib.offline.ts — createProduct (خط 319) ───
+319: export async function createProduct(p: any) {
+320:   const list: any[] = (await getLocal('products')) || [];
+321:   const item = { ...p, _localId: Date.now() };
+322:   list.push(item);
+323:   await setLocal('products', list);
+324:   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+325:   if (await serverBusinessAllowed()) {
+326:     try {
+327:       await lib.createProduct(p);
+328:       await setLocal('products', await lib.getProducts());
+329:         try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+330:     }
+331:     catch { await enqueue('createProduct', p); }
+332:   } else {
+333:     await enqueue('createProduct', p);
+334:   }
+335: }
+336: export async function updateProduct(id: string, p: any) {
+337:   const list: any[] = (await getLocal('products')) || [];
+338:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+339:   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
+340:   if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+341:   try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+342: 
+343:   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
+344:   const q = await getQueue();
+345:   const createIdx = q.findIndex((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+346:   if (createIdx >= 0) {
+347:     const newQ = q.slice();
+348:     newQ[createIdx] = { ...newQ[createIdx], payload: { ...newQ[createIdx].payload, ...p } };
+349:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+350:     console.log('[updateProduct] updated pending createProduct in queue');
+351:     return;
+352:   }
+353: 
+354:   const payload = { id, code, p };
+355:   if (await serverBusinessAllowed()) {
+356:     try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+357:   } else {
+358:     await enqueue('updateProduct', payload);
+359:   }
+360: }
+361: export async function deleteProduct(id: string) {
+362:   const list: any[] = (await getLocal('products')) || [];
+363:   const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
+364:   const code = found?.code;
+365:   await recordTombstone('products', String(code || id));
+366:   await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+367:   try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
+368: 
+369:   // اگر این محصول هنوز در صف createProduct است → از صف حذف کن (چیزی برای حذف از سرور نیست)
+370:   const q = await getQueue();
+371:   const hasCreate = q.some((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+372:   if (hasCreate) {
+373:     const newQ = q.filter((it: any) => !(it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code))));
+374:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+375:     console.log('[deleteProduct] removed pending createProduct from queue');
+376:     return;
+377:   }
+378: 
+
+─── lib.offline.ts — updateProduct (خط 336) ───
+336: export async function updateProduct(id: string, p: any) {
+337:   const list: any[] = (await getLocal('products')) || [];
+338:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+339:   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
+340:   if (idx >= 0) { list[idx] = { ...list[idx], ...p }; await setLocal('products', list); }
+341:   try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+342: 
+343:   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
+344:   const q = await getQueue();
+345:   const createIdx = q.findIndex((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+346:   if (createIdx >= 0) {
+347:     const newQ = q.slice();
+348:     newQ[createIdx] = { ...newQ[createIdx], payload: { ...newQ[createIdx].payload, ...p } };
+349:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+350:     console.log('[updateProduct] updated pending createProduct in queue');
+351:     return;
+352:   }
+353: 
+354:   const payload = { id, code, p };
+355:   if (await serverBusinessAllowed()) {
+356:     try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+357:   } else {
+358:     await enqueue('updateProduct', payload);
+359:   }
+360: }
+361: export async function deleteProduct(id: string) {
+362:   const list: any[] = (await getLocal('products')) || [];
+363:   const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
+364:   const code = found?.code;
+365:   await recordTombstone('products', String(code || id));
+366:   await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+367:   try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
+368: 
+369:   // اگر این محصول هنوز در صف createProduct است → از صف حذف کن (چیزی برای حذف از سرور نیست)
+370:   const q = await getQueue();
+371:   const hasCreate = q.some((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+372:   if (hasCreate) {
+373:     const newQ = q.filter((it: any) => !(it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code))));
+374:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+375:     console.log('[deleteProduct] removed pending createProduct from queue');
+376:     return;
+377:   }
+378: 
+379:   const payload = { id, code };
+380:   if (await serverBusinessAllowed()) {
+381:     try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+382:   } else {
+383:     await enqueue('deleteProduct', payload);
+384:   }
+385: }
+386: 
+387: async function _localUpsertSale(payload: any) {
+388:   try {
+389:     const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+390:     if (!inv) return;
+391:     const items = payload.items || payload.rows || [];
+392:     const old = (await getLocal<any[]>('sales')) || [];
+393:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+394:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+395:     const rows = items.map((it: any, idx: number) => ({
+
+─── lib.offline.ts — createPartner (خط 3400) ───
+3400: export async function createPartner(p: any) {
+3401:   const item = { ...p, local_id: p.local_id || ('pt_' + Date.now()), created_at: new Date().toISOString() };
+3402:   const list = (await getLocal<any[]>('partners')) || [];
+3403:   await setLocal('partners', [...list, item]);
+3404:   try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3405:   if (await serverBusinessAllowed()) {
+3406:     try {
+3407:       await lib.createPartner(item);
+3408:         try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3409:     } catch { await enqueue('createPartner', item); }
+3410:   }
+3411:   else { await enqueue('createPartner', item); }
+3412:   return item;
+3413: }
+3414: export async function updatePartner(id: string, p: any) {
+3415:   const item = { ...p, local_id: p.local_id || id };
+3416:   const list = (await getLocal<any[]>('partners')) || [];
+3417:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3418:   if (idx >= 0) { list[idx] = { ...list[idx], ...item }; await setLocal('partners', list); }
+3419:   try { await _pushAudit({ type: 'partner_update', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش شریک' }); } catch {}
+3420:   if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+3421:   else { await enqueue('updatePartner', item); }
+3422:   return item;
+3423: }
+3424: export async function deletePartner(id: string) {
+3425:   await recordTombstone('partners', String(id));
+3426:   const list = (await getLocal<any[]>('partners')) || [];
+3427:   await setLocal('partners', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3428:   try { await _pushAudit({ type: 'partner_delete', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف شریک' }); } catch {}
+3429:   if (await serverBusinessAllowed()) { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+3430:   else { await enqueue('deletePartner', id); }
+3431: }
+3432: 
+3433: export async function getPartnerBankAccounts(partnerCode: string) {
+3434:   const list = (await cachedRead('pba_' + partnerCode, () => lib.getPartnerBankAccounts(partnerCode))) || [];
+3435:   const q = await getQueue();
+3436:   const result = [...list];
+3437:   for (const item of q) {
+3438:     if (item.op === 'createPBA' && item.payload.partner_code === partnerCode) result.push(item.payload);
+3439:     else if (item.op === 'deletePBA') {
+3440:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+3441:       if (idx >= 0) result.splice(idx, 1);
+3442:     }
+3443:   }
+3444:   return result;
+3445: }
+3446: export async function createPartnerBankAccount(p: any) {
+3447:   const item = { ...p, local_id: p.local_id || ('pba_' + Date.now()) };
+3448:   const list = (await getLocal<any[]>('pba_' + item.partner_code)) || [];
+3449:   await setLocal('pba_' + item.partner_code, [...list, item]);
+3450:   try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
+3451:   if (await serverBusinessAllowed()) {
+3452:     try {
+3453:       await lib.createPartnerBankAccount(item);
+3454:         try { await _pushAudit({ type: 'pba_create', table: 'partner_bank_accounts', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حساب بانکی شریک' }); } catch {}
+3455:     } catch { await enqueue('createPBA', item); }
+3456:   }
+3457:   else { await enqueue('createPBA', item); }
+3458:   return item;
+3459: }
+
+─── lib.offline.ts — createBank (خط 3521) ───
+3521: export async function createBank(p: any) {
+3522:   const item = { ...p, local_id: p.local_id || ('bank_' + Date.now()) };
+3523:   const list = (await getLocal<any[]>('banks')) || [];
+3524:   await setLocal('banks', [...list, item]);
+3525:   try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+3526:   if (await serverBusinessAllowed()) {
+3527:     try {
+3528:       await lib.createBank(item);
+3529:         try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+3530:     } catch { await enqueue('createBank', item); }
+3531:   }
+3532:   else { await enqueue('createBank', item); }
+3533:   return item;
+3534: }
+3535: export async function updateBank(id: string, p: any) {
+3536:   const item = { ...p, local_id: p.local_id || id };
+3537:   const list = (await getLocal<any[]>('banks')) || [];
+3538:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3539:   if (idx >= 0) {
+3540:     list[idx] = { ...list[idx], ...item };
+3541:     await setLocal('banks', list);
+3542:   }
+3543:   try { await _pushAudit({ type: 'bank_update', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش بانک' }); } catch {}
+3544:   if (await serverBusinessAllowed()) {
+3545:     try { await lib.updateBank(id, item); }
+3546:     catch { await enqueue('updateBank', item); }
+3547:   } else {
+3548:     await enqueue('updateBank', item);
+3549:   }
+3550:   return item;
+3551: }
+3552: 
+3553: export async function deleteBank(id: string) {
+3554:   await recordTombstone('banks', String(id));
+3555:   const list = (await getLocal<any[]>('banks')) || [];
+3556:   await setLocal('banks', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3557:   try { await _pushAudit({ type: 'bank_delete', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف بانک' }); } catch {}
+3558:   if (await serverBusinessAllowed()) { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+3559:   else { await enqueue('deleteBank', id); }
+3560: }
+3561: 
+3562: // ═══════════════════════════════════════════
+3563: //  Shippings Offline
+3564: // ═══════════════════════════════════════════
+3565: export async function getShippings() {
+3566:   // BUSINESS_LOCAL_AND_SHEET_ONLY — باربری‌ها فقط محلی
+3567:   const list = (await getLocal<any[]>('shippings')) || [];
+3568:   const q = await getQueue();
+3569:   const result = [...list];
+3570:   for (const item of q) {
+3571:     if (item.op === 'createShipping') {
+3572:       const lid = String(item.payload?.local_id || '');
+3573:       if (lid && result.some((x: any) => String(x.local_id || '') === lid)) continue;
+3574:       result.push(item.payload);
+3575:     } else if (item.op === 'deleteShipping') {
+3576:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+3577:       if (idx >= 0) result.splice(idx, 1);
+3578:     }
+3579:   }
+3580:   return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+
+─── lib.offline.ts — createShipping (خط 3582) ───
+3582: export async function createShipping(p: any) {
+3583:   const item = { ...p, local_id: p.local_id || ('ship_' + Date.now()) };
+3584:   const list = (await getLocal<any[]>('shippings')) || [];
+3585:   await setLocal('shippings', [...list, item]);
+3586:   try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+3587:   if (await serverBusinessAllowed()) {
+3588:     try {
+3589:       await lib.createShipping(item);
+3590:         try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+3591:     } catch { await enqueue('createShipping', item); }
+3592:   }
+3593:   else { await enqueue('createShipping', item); }
+3594:   return item;
+3595: }
+3596: export async function updateShipping(id: string, p: any) {
+3597:   const item = { ...p, local_id: p.local_id || id };
+3598:   const list = (await getLocal<any[]>('shippings')) || [];
+3599:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3600:   if (idx >= 0) {
+3601:     list[idx] = { ...list[idx], ...item };
+3602:     await setLocal('shippings', list);
+3603:   }
+3604:   try { await _pushAudit({ type: 'shipping_update', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش باربری' }); } catch {}
+3605:   if (await serverBusinessAllowed()) {
+3606:     try { await lib.updateShipping(id, item); }
+3607:     catch { await enqueue('updateShipping', item); }
+3608:   } else {
+3609:     await enqueue('updateShipping', item);
+3610:   }
+3611:   return item;
+3612: }
+3613: 
+3614: export async function deleteShipping(id: string) {
+3615:   await recordTombstone('shippings', String(id));
+3616:   const list = (await getLocal<any[]>('shippings')) || [];
+3617:   await setLocal('shippings', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3618:   try { await _pushAudit({ type: 'shipping_delete', table: 'shippings', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف باربری' }); } catch {}
+3619:   if (await serverBusinessAllowed()) { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+3620:   else { await enqueue('deleteShipping', id); }
+3621: }
+3622: // ═══════════════════════════════════════════
+3623: //  Universal Payer Lookup — طرف‌حساب‌ها + شرکا
+3624: // ═══════════════════════════════════════════
+3625: export async function lookupPayerUniversal(name: string) {
+3626:   const n = String(name || '').trim();
+3627:   if (!n) return null;
+3628: 
+3629:   // ۱. طرف‌حساب‌ها
+3630:   try {
+3631:     const parties = await getParties();
+3632:     const party = parties.find((x: any) => String(x.name || '').trim() === n);
+3633:     if (party) return { name: party.name, code: party.code, bank: '', account: '', source: 'parties' };
+3634:   } catch {}
+3635: 
+3636:   // ۲. شرکا
+3637:   try {
+3638:     const partners = await getPartners();
+3639:     const partner = partners.find((x: any) => String(x.name || '').trim() === n);
+3640:     if (partner) {
+3641:       let bank = '';
+
+─── lib.offline.ts — createSalesReturn (خط 3998) ───
+3998: export async function createSalesReturn(payload: any) {
+3999:   const now = new Date().toISOString();
+4000:   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4001:   const local = (await getLocal<any[]>('sales_returns')) || [];
+4002:   const item = {
+4003:     ...payload,
+4004:     local_id: payload.local_id || ('sr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+4005:     created_at: payload.created_at || now,
+4006:     updated_at: now,
+4007:     device_id: dev,
+4008:   };
+4009:   await setLocal('sales_returns', [item, ...local]);
+4010:   try {
+4011:     await _pushAudit({
+4012:       type: 'sales_return_create',
+4013:       table: 'sales_returns',
+4014:       key: String(item.local_id),
+4015:       at: now,
+4016:       device_id: dev,
+4017:       summary: 'ثبت برگشت از فروش',
+4018:     });
+4019:   } catch {}
+4020:   await enqueue('createSalesReturn', item);
+4021:   return item;
+4022: }
+4023: 
+4024: export async function getSalesReturns() {
+4025:   const local = (await getLocal<any[]>('sales_returns')) || [];
+4026:   const q = await getQueue();
+4027: 
+4028:   const deletedIds = new Set<string>();
+4029:   for (const item of q) {
+4030:     if (item.op === 'deleteSalesReturn') {
+4031:       const id = String(item.payload || '').trim();
+4032:       if (id) deletedIds.add(id);
+4033:     }
+4034:   }
+4035:   try {
+4036:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+4037:     let arr: any[] = [];
+4038:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+4039:     if (Array.isArray(arr)) {
+4040:       for (const t of arr) {
+4041:         if (!t) continue;
+4042:         if (String(t.table || '') !== 'sales_returns') continue;
+4043:         const k = String(t.key || '').trim();
+4044:         if (k) deletedIds.add(k);
+4045:       }
+4046:     }
+4047:   } catch {}
+4048: 
+4049:   const pending = q
+4050:     .filter(x => x.op === 'createSalesReturn')
+4051:     .map(x => x.payload)
+4052:     .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+4053: 
+4054:   const cleaned = local.filter((x: any) => {
+4055:     const id = String(x.local_id || x.id || '');
+4056:     return id ? !deletedIds.has(id) : true;
+4057:   });
+
+─── lib.offline.ts — createPurchaseReturn (خط 4121) ───
+4121: export async function createPurchaseReturn(payload: any) {
+4122:   const now = new Date().toISOString();
+4123:   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4124:   const local = (await getLocal<any[]>('purchase_returns')) || [];
+4125:   const item = {
+4126:     ...payload,
+4127:     local_id: payload.local_id || ('pr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+4128:     created_at: payload.created_at || now,
+4129:     updated_at: now,
+4130:     device_id: dev,
+4131:   };
+4132:   await setLocal('purchase_returns', [item, ...local]);
+4133:   try {
+4134:     await _pushAudit({
+4135:       type: 'purchase_return_create',
+4136:       table: 'purchase_returns',
+4137:       key: String(item.local_id),
+4138:       at: now,
+4139:       device_id: dev,
+4140:       summary: 'ثبت برگشت از خرید',
+4141:     });
+4142:   } catch {}
+4143:   await enqueue('createPurchaseReturn', item);
+4144:   return item;
+4145: }
+4146: 
+4147: export async function getPurchaseReturns() {
+4148:   const local = (await getLocal<any[]>('purchase_returns')) || [];
+4149:   const q = await getQueue();
+4150: 
+4151:   const deletedIds = new Set<string>();
+4152:   for (const item of q) {
+4153:     if (item.op === 'deletePurchaseReturn') {
+4154:       const id = String(item.payload || '').trim();
+4155:       if (id) deletedIds.add(id);
+4156:     }
+4157:   }
+4158:   try {
+4159:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+4160:     let arr: any[] = [];
+4161:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+4162:     if (Array.isArray(arr)) {
+4163:       for (const t of arr) {
+4164:         if (!t) continue;
+4165:         if (String(t.table || '') !== 'purchase_returns') continue;
+4166:         const k = String(t.key || '').trim();
+4167:         if (k) deletedIds.add(k);
+4168:       }
+4169:     }
+4170:   } catch {}
+4171: 
+4172:   const pending = q
+4173:     .filter(x => x.op === 'createPurchaseReturn')
+4174:     .map(x => x.payload)
+4175:     .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+4176: 
+4177:   const cleaned = local.filter((x: any) => {
+4178:     const id = String(x.local_id || x.id || '');
+4179:     return id ? !deletedIds.has(id) : true;
+4180:   });
+
+─── lib.offline.ts — createStockAdjustment (خط 2454) ───
+2454: export async function createStockAdjustment(p: any) {
+2455:   const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || new Date().toISOString() };
+2456:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2457:   await setLocal('stock_adjustments', [item, ...list]);
+2458:   if (await serverBusinessAllowed()) {
+2459:     try {
+2460:       await lib.createStockAdjustment(item);
+2461:         try { await _pushAudit({ type: 'stock_create', table: 'stock_adjustments', key: String(item.local_id || item.id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت تعدیل انبار' }); } catch {}
+2462:     }
+2463:     catch { await enqueue('createStockAdjustment', item); }
+2464:   } else {
+2465:     await enqueue('createStockAdjustment', item);
+2466:   }
+2467:   return item;
+2468: }
+2469: export async function deleteStockAdjustment(id: string) {
+2470:   await recordTombstone('stock_adjustments', String(id));
+2471:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2472:   await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));
+2473:   try { await _pushAudit({ type: 'stock_delete', table: 'stock_adjustments', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف تعدیل انبار' }); } catch {}
+2474:   if (await serverBusinessAllowed()) {
+2475:     try { await lib.deleteStockAdjustment(id); }
+2476:     catch { await enqueue('deleteStockAdjustment', id); }
+2477:   } else {
+2478:     await enqueue('deleteStockAdjustment', id);
+2479:   }
+2480: }
+2481: // ═══════════════════════════════════════════
+2482: //  Report helpers (offline + queue merge)
+2483: // ═══════════════════════════════════════════
+2484: export async function getSalesRowsForReport(code: string) {
+2485:   const c2 = String(code || '').trim();
+2486:   if (!c2) return { customer: [], triang: [] };
+2487:   if (MODE === 'online') {
+2488:     try {
+2489:       const [r1, r2] = await Promise.all([
+2490:         lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+2491:         lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+2492:       ]);
+2493:       return { customer: r1.data || [], triang: r2.data || [] };
+2494:     } catch (e) { console.log('[getSalesRowsForReport] online fail:', e); }
+2495:   }
+2496:   const cachedSales = (await getLocal<any[]>('sales')) || [];
+2497:   const customer = cachedSales.filter(function(r: any) { return r.customer_code === c2; });
+2498:   const triang = cachedSales.filter(function(r: any) { return r.account_holder_code === c2; });
+2499:   const q = await getQueue();
+2500:   for (const item of q) {
+2501:     if (item.op !== 'createSale') continue;
+2502:     const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+2503:     for (const r of rows) {
+2504:       const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', customer_name: item.payload.customerName || '', customer_code: item.payload.customerCode || '', customer_phone: item.payload.customerPhone || '', account_holder: item.payload.holderName || '', account_holder_code: item.payload.holderCode || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+2505:       if (row.customer_code === c2) customer.push(row);
+2506:       if (row.account_holder_code === c2) triang.push(row);
+2507:     }
+2508:   }
+2509:   return { customer: customer, triang: triang };
+2510: }
+2511: export async function getPurchasesRowsForReport(code: string) {
+2512:   const c2 = String(code || '').trim();
+2513:   if (!c2) return { supplier: [] };
+
+─── lib.offline.ts — updateSettings (خط 556) ───
+556: export async function updateSettings(s: any) {
+557:   await setLocal('settings', s);
+558:   try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+559:   if (await serverBusinessAllowed()) {
+560:     try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+561:   } else {
+562:     await enqueue('updateSettings', s);
+563:   }
+564: }
+565: 
+566: async function computeLocalInventory() {
+567:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+568:     getLocal<any[]>('products'),
+569:     getLocal<any[]>('sales'),
+570:     getLocal<any[]>('purchases'),
+571:     getLocal<any>('settings'),
+572:     getLocal<any[]>('stock_adjustments'),
+573:   ]);
+574:   const products = productsRaw || [];
+575:   let sales = salesRaw || [];
+576:   let purchases = purchasesRaw || [];
+577:   const settings = (settingsRaw as any) || {};
+578:   const threshold = settings.inventory_threshold ?? 5;
+579:   let adjAll = (adjRaw || []).slice();
+580:   const q = await getQueue();
+581:   
+582:   // --- Merge Deletions (حذف‌های آفلاین) ---
+583:   for (const item of q) {
+584:     if (item.op === 'deleteSale') {
+585:       sales = sales.filter((s: any) => s.invoice_number !== item.payload);
+586:     }
+587:     if (item.op === 'deletePurchase') {
+588:       purchases = purchases.filter((p: any) => p.invoice_number !== item.payload);
+589:     }
+590:   }
+591: 
+592:   // --- Merge Updates (ویرایش‌های آفلاین فاکتورهای سینک‌شده) ---
+593:   for (const item of q) {
+594:     if (item.op === 'updateSale' && item.payload) {
+595:       const inv = item.payload.invoiceNumber;
+596:       const oldRows = sales.filter((s: any) => s.invoice_number === inv);
+597:       if (oldRows.length > 0) {
+598:         const template = oldRows[0];
+599:         sales = sales.filter((s: any) => s.invoice_number !== inv);
+600:         for (const r of item.payload.rows) {
+601:           sales.push({
+602:             ...template,
+603:             model_code: r.modelCode || '',
+604:             model_name: r.modelName || '',
+605:             quantity: Number(r.quantity) || 0,
+606:             price_unit: Number(r.priceUnit) || 0,
+607:             payment: Number(r.payment) || 0,
+608:             total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+609:             description: r.description || '',
+610:             date_factor: r.dateFactor || template.date_factor,
+611:             date_reg: r.dateReg || template.date_reg
+612:           });
+613:         }
+614:       }
+615:     }
+
+─── lib.offline.ts — createExpense (خط 1788) ───
+1788: export async function createExpense(p: any): Promise<any> {
+1789:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1790:   const local = (await getLocal<any[]>('expenses')) || [];
+1791:   await setLocal('expenses', [item, ...local]);
+1792:   try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
+1793:   if (await serverBusinessAllowed()) {
+1794:     try {
+1795:       const { error } = await lib.supabase.from('expenses').insert({
+1796:         invoice_number: p.invoice_number || '',
+1797:         category: p.category || p.type || 'متفرقه',
+1798:         title: p.title || '',
+1799:         amount: Number(p.amount) || 0,
+1800:         payment_method: p.payment_method || '',
+1801:         bank: p.bank || '',
+1802:         account_number: p.account_number || '',
+1803:         payer_name: p.payer_name || '',
+1804:         payer_code: p.payer_code || '',
+1805:         receiver_name: p.receiver_name || p.receiverName || '',
+1806:         receiver_code: p.receiver_code || p.receiverCode || '',
+1807:         payment_date: p.payment_date || p.date || '',
+1808:         description: p.description || '',
+1809:         status: p.status || '',
+1810:         local_id: item.local_id,
+1811:         counterpart_type: p.counterpart_type || '',
+1812:         counterpart_code: p.counterpart_code || '',
+1813:       });
+1814:       if (error) throw error;
+1815:         try { await _pushAudit({ type: 'expense_create', table: 'expenses', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت هزینه' }); } catch {}
+1816:     } catch { await enqueue('createExpense', p); }
+1817:   } else { await enqueue('createExpense', p); }
+1818:   return item;
+1819: }
+1820: export async function deleteExpense(localId: string) {
+1821:   await recordTombstone('expenses', String(localId));
+1822:   const local = (await getLocal<any[]>('expenses')) || [];
+1823:   await setLocal('expenses', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1824:   try { await _pushAudit({ type: 'expense_delete', table: 'expenses', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف هزینه' }); } catch {}
+1825:   if (await serverBusinessAllowed()) {
+1826:     try { await lib.supabase.from('expenses').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1827:     catch { await enqueue('deleteExpense', String(localId)); }
+1828:   } else {
+1829:     await enqueue('deleteExpense', String(localId));
+1830:   }
+1831: }
+1832: 
+1833: // ═══════════════════════════════════════════
+1834: //  کارمندان (Employees)
+1835: // ═══════════════════════════════════════════
+1836: export async function getEmployees(): Promise<any[]> {
+1837:   return cachedRead('employees', async () => {
+1838:     const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+1839:     return data || [];
+1840:   });
+1841: }
+1842: export async function createEmployee(p: any): Promise<any> {
+1843:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1844:   const local = (await getLocal<any[]>('employees')) || [];
+1845:   await setLocal('employees', [item, ...local]);
+1846:   try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1847:   if (await serverBusinessAllowed()) {
+
+─── lib.offline.ts — createEmployee (خط 1842) ───
+1842: export async function createEmployee(p: any): Promise<any> {
+1843:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1844:   const local = (await getLocal<any[]>('employees')) || [];
+1845:   await setLocal('employees', [item, ...local]);
+1846:   try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1847:   if (await serverBusinessAllowed()) {
+1848:     try {
+1849:       const { error } = await lib.supabase.from('employees').insert({
+1850:         code: p.code, name: p.name, phone: p.phone || '', role: p.role || '',
+1851:         contract_type: p.contract_type, amount: p.amount || 0, overtime_rate: p.overtime_rate || 0,
+1852:         local_id: item.local_id,
+1853:       });
+1854:       if (error) throw error;
+1855:         try { await _pushAudit({ type: 'employee_create', table: 'employees', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کارمند' }); } catch {}
+1856:     } catch { await enqueue('createEmployee', p); }
+1857:   } else { await enqueue('createEmployee', p); }
+1858:   return item;
+1859: }
+1860: export async function deleteEmployee(localId: string) {
+1861:   await recordTombstone('employees', String(localId));
+1862:   const local = (await getLocal<any[]>('employees')) || [];
+1863:   await setLocal('employees', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1864:   try { await _pushAudit({ type: 'employee_delete', table: 'employees', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کارمند' }); } catch {}
+1865:   if (await serverBusinessAllowed()) {
+1866:     try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+1867:     catch { await enqueue('deleteEmployee', String(localId)); }
+1868:   } else {
+1869:     await enqueue('deleteEmployee', String(localId));
+1870:   }
+1871: }
+1872: 
+1873: // ═══════════════════════════════════════════
+1874: //  حضور (Attendance)
+1875: // ═══════════════════════════════════════════
+1876: export async function getAttendance(): Promise<any[]> {
+1877:   return cachedRead('attendance', async () => {
+1878:     const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1879:     return data || [];
+1880:   });
+1881: }
+1882: export async function createAttendance(p: any): Promise<any> {
+1883:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1884:   const local = (await getLocal<any[]>('attendance')) || [];
+1885:   await setLocal('attendance', [item, ...local]);
+1886:   try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1887:   if (await serverBusinessAllowed()) {
+1888:     try {
+1889:       const { error } = await lib.supabase.from('attendance').insert({
+1890:         employee_code: p.employee_code, employee_name: p.employee_name || '',
+1891:         date: p.date, status: p.status, hours: p.hours || 0, overtime: p.overtime || 0,
+1892:         local_id: item.local_id,
+1893:       });
+1894:       if (error) throw error;
+1895:         try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1896:     } catch { await enqueue('createAttendance', p); }
+1897:   } else { await enqueue('createAttendance', p); }
+1898:   return item;
+1899: }
+1900: export async function deleteSalaryPayment(localId: string) {
+1901:   await recordTombstone('salary_payments', String(localId));
+⚠️ lib.offline.ts: createSalaryPayment پیدا نشد
+
+─── lib.offline.ts — createAttendance (خط 1882) ───
+1882: export async function createAttendance(p: any): Promise<any> {
+1883:   const item = { ...p, local_id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), created_at: new Date().toISOString() };
+1884:   const local = (await getLocal<any[]>('attendance')) || [];
+1885:   await setLocal('attendance', [item, ...local]);
+1886:   try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1887:   if (await serverBusinessAllowed()) {
+1888:     try {
+1889:       const { error } = await lib.supabase.from('attendance').insert({
+1890:         employee_code: p.employee_code, employee_name: p.employee_name || '',
+1891:         date: p.date, status: p.status, hours: p.hours || 0, overtime: p.overtime || 0,
+1892:         local_id: item.local_id,
+1893:       });
+1894:       if (error) throw error;
+1895:         try { await _pushAudit({ type: 'attendance_create', table: 'attendance', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت حضور' }); } catch {}
+1896:     } catch { await enqueue('createAttendance', p); }
+1897:   } else { await enqueue('createAttendance', p); }
+1898:   return item;
+1899: }
+1900: export async function deleteSalaryPayment(localId: string) {
+1901:   await recordTombstone('salary_payments', String(localId));
+1902:   const local = (await getLocal<any[]>('salary_payments')) || [];
+1903:   await setLocal('salary_payments', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1904:   try { await _pushAudit({ type: 'salary_delete', table: 'salary_payments', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف پرداخت حقوق' }); } catch {}
+1905:   if (await serverBusinessAllowed()) {
+1906:     try { await lib.deleteSalaryPayment(String(localId)); }
+1907:     catch { await enqueue('deleteSalaryPayment', String(localId)); }
+1908:   } else {
+1909:     await enqueue('deleteSalaryPayment', String(localId));
+1910:   }
+1911: }
+1912: 
+1913: export async function deleteLoan(localId: string) {
+1914:   await recordTombstone('employee_loans', String(localId));
+1915:   const local = (await getLocal<any[]>('employee_loans')) || [];
+1916:   await setLocal('employee_loans', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1917:   try { await _pushAudit({ type: 'loan_delete', table: 'employee_loans', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف وام' }); } catch {}
+1918:   if (await serverBusinessAllowed()) {
+1919:     try { await lib.deleteLoan(String(localId)); }
+1920:     catch { await enqueue('deleteLoan', String(localId)); }
+1921:   } else {
+1922:     await enqueue('deleteLoan', String(localId));
+1923:   }
+1924: }
+1925: 
+1926: export async function deleteLeave(localId: string) {
+1927:   await recordTombstone('employee_leaves', String(localId));
+1928:   const local = (await getLocal<any[]>('employee_leaves')) || [];
+1929:   await setLocal('employee_leaves', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
+1930:   try { await _pushAudit({ type: 'leave_delete', table: 'employee_leaves', key: String(localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف مرخصی' }); } catch {}
+1931:   if (await serverBusinessAllowed()) {
+1932:     try { await lib.deleteLeave(String(localId)); }
+1933:     catch { await enqueue('deleteLeave', String(localId)); }
+1934:   } else {
+1935:     await enqueue('deleteLeave', String(localId));
+1936:   }
+1937: }
+1938: 
+1939: export async function deleteAttendance(localId: string) {
+1940:   await recordTombstone('attendance', String(localId));
+1941:   const local = (await getLocal<any[]>('attendance')) || [];
+⚠️ lib.offline.ts: createBatch پیدا نشد
+
+══════════ آیا در بلوک‌ها device_id / updated_at هست؟ ══════════
+_localUpsertSale             device_id=❌  updated_at=❌
+_localUpsertPurchase         device_id=❌  updated_at=❌
+createParty                  device_id=❌  updated_at=❌
+createStockAdjustment        device_id=❌  updated_at=❌
+createSalesReturn            device_id=❌  updated_at=❌
+createPurchaseReturn         device_id=❌  updated_at=❌
+createProduct                device_id=❌  updated_at=❌
+createPartner                device_id=❌  updated_at=❌
+createBank                   device_id=❌  updated_at=❌
+createShipping               device_id=❌  updated_at=❌
+
+══════════ سیستم تضاد — نحوه حل ══════════
+
+─── lib.sheets.ts — mergeList (خط 869) ───
+869: async function mergeList(localKey: string, sheetRows: any[]) {
+870:   const table = localKey.replace('@mizan_local_', '');
+871: 
+872:   if (localKey === '@mizan_local_settings') {
+873:     const rawS = await AsyncStorage.getItem(localKey);
+874:     let existing: any = null;
+875:     try { existing = rawS ? JSON.parse(rawS) : null; } catch { existing = null; }
+876:     if (existing && typeof existing === 'object' && !Array.isArray(existing) && Object.keys(existing).length > 0) {
+877:       return { added: 0, updated: 0, removed: 0 };
+878:     }
+879:     const first = (sheetRows || [])[0];
+880:     if (!first) return { added: 0, updated: 0, removed: 0 };
+881:     await AsyncStorage.setItem(localKey, JSON.stringify(first));
+882:     return { added: 1, updated: 0, removed: 0 };
+883:   }
+884: 
+885:   const raw = await AsyncStorage.getItem(localKey);
+886:   let localArr: any[] = [];
+887:   try { localArr = raw ? JSON.parse(raw) : []; } catch { localArr = []; }
+888:   if (!Array.isArray(localArr)) localArr = [];
+889: 
+890:   const localMap = new Map<string, any>();
+891:   for (const r of localArr) {
+892:     const k = keyOfRow(r);
+893:     if (k) localMap.set(k, r);
+894:   }
+895: 
+896:   const tombstones = await getTombstonesForTable(table);
+897:   const pendingByTable = await getPendingKeysByTable();
+898:   const pending = pendingByTable[table] || new Set<string>();
+899:   let added = 0, updated = 0, removed = 0;
+900: 
+901:   for (const [k, r] of Array.from(localMap.entries())) {
+902:     const tombAt = tombstones[k] || '';
+903:     if (tombAt) {
+904:       const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+905:       if (!localUp || tsOf(tombAt) >= tsOf(localUp)) {
+906:         localMap.delete(k);
+907:         removed++;
+908:       }
+909:     }
+910:   }
+911: 
+912:   for (const row of sheetRows || []) {
+913:     const k = keyOfRow(row);
+914:     if (!k) continue;
+915: 
+916:     const sheetDel = row.deleted_at || row.deletedAt || '';
+917:     if (sheetDel) {
+918:       const old = tombstones[k] || '';
+919:       if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+920:       if (localMap.has(k)) { localMap.delete(k); removed++; }
+921:       continue;
+922:     }
+923: 
+924:     const tombAt = tombstones[k] || '';
+925:     if (tombAt) {
+926:       const sheetUp = row.updated_at || row.updatedAt || '';
+927:       if (!sheetUp || tsOf(tombAt) >= tsOf(sheetUp)) continue;
+928:     }
+929: 
+930:     const existing = localMap.get(k);
+931:     if (!existing) {
+932:       localMap.set(k, row);
+933:       added++;
+934:       continue;
+935:     }
+936: 
+937:     const localUp = existing.updated_at || existing.updatedAt || '';
+938:     const sheetUp = row.updated_at || row.updatedAt || '';
+939:     const sheetIsNewer = sheetUp && (!localUp || tsOf(sheetUp) > tsOf(localUp));
+940: 
+941:     if (pending.has(k)) {
+942:       if (sheetIsNewer) {
+943:         await recordConflict(table, k, existing, row);
+944:         console.log('[mergeList] conflict kept local for', table, k);
+945:       }
+946:       continue;
+947:     }
+948: 
+
+─── lib.sheets.ts — mergeGroupedInvoices (خط 1035) ───
+1035: async function mergeGroupedInvoices(localKey: string, rows: any[]) {
+1036:   const table = localKey.includes('purchases') ? 'purchases' : 'sales';
+1037:   const sheetGroups = buildGroupedFromSheet(rows);
+1038:   const raw = await AsyncStorage.getItem(localKey);
+1039:   let localArr: any[] = [];
+1040:   try { localArr = raw ? JSON.parse(raw) : []; } catch { localArr = []; }
+1041:   if (!Array.isArray(localArr)) localArr = [];
+1042: 
+1043:   const pendingInvoices = await getPendingInvoiceKeys();
+1044:   const localMap = new Map<string, any>();
+1045:   for (const r of localArr) {
+1046:     const k = invoiceKeyOf(r);
+1047:     if (k) localMap.set(k, r);
+1048:   }
+1049: 
+1050:   const tombstones = await getTombstonesForTable(table);
+1051:   let added = 0, updated = 0, removed = 0;
+1052: 
+1053:   for (const [k, r] of Array.from(localMap.entries())) {
+1054:     const tombAt = tombstones[k] || '';
+1055:     if (tombAt) {
+1056:       const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+1057:       if (!localUp || tsOf(tombAt) >= tsOf(localUp)) {
+1058:         localMap.delete(k);
+1059:         removed++;
+1060:       }
+1061:     }
+1062:   }
+1063: 
+1064:   for (const g of sheetGroups) {
+1065:     const k = invoiceKeyOf(g);
+1066:     if (!k) continue;
+1067:     const isPending = pendingInvoices.has(String(g.invoice || '')) || pendingInvoices.has(k);
+1068: 
+1069:     const sheetDel = g.deleted_at || '';
+1070:     if (sheetDel) {
+1071:       const old = tombstones[k] || '';
+1072:       if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+1073:       if (!isPending && localMap.has(k)) { localMap.delete(k); removed++; }
+1074:       continue;
+1075:     }
+1076: 
+1077:     const tombAt = tombstones[k] || '';
+1078:     if (tombAt) {
+1079:       const sheetUp = g.updated_at || g.updatedAt || '';
+1080:       if (!sheetUp || tsOf(tombAt) >= tsOf(sheetUp)) continue;
+1081:     }
+1082: 
+1083:     const existing = localMap.get(k);
+1084:     if (!existing) {
+1085:       localMap.set(k, g);
+1086:       added++;
+1087:       continue;
+1088:     }
+1089: 
+1090:     const localUp = tsOf(existing.updated_at || existing.updatedAt);
+1091:     const sheetUp = tsOf(g.updated_at || g.updatedAt);
+1092:     const sheetIsNewer = sheetUp > localUp;
+1093: 
+1094:     if (isPending) {
+1095:       if (sheetIsNewer) {
+1096:         await recordConflict(table, k, existing, g);
+1097:         console.log('[mergeGroupedInvoices] conflict kept local for', table, k);
+1098:       }
+1099:       continue;
+1100:     }
+1101: 
+1102:     if (sheetIsNewer) {
+1103:       localMap.set(k, { ...existing, ...g });
+1104:       updated++;
+1105:     }
+1106:   }
+1107: 
+1108:   await saveTombstonesForTable(table, tombstones);
+1109:   if (added || updated || removed) {
+1110:     await AsyncStorage.setItem(localKey, JSON.stringify(Array.from(localMap.values())));
+1111:   }
+1112:   return { added, updated, removed };
+1113: }
+1114: 
+1115: async function mergeTombstones(rows: any[]) {
+1116:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1117:   let local: any[] = [];
+1118:   try { local = raw ? JSON.parse(raw) : []; } catch { local = []; }
+1119:   if (!Array.isArray(local)) local = [];
+1120: 
+1121:   const map: Record<string, any> = {};
+1122:   for (const t of local) {
+1123:     if (t && t.table && t.key) map[String(t.table) + '|' + String(t.key)] = t;
+1124:   }
+
+─── lib.sheets.ts — recordConflict (خط 714) ───
+714: async function recordConflict(table: string, key: string, local: any, sheet: any) {
+715:   try {
+716:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+717:     let arr: any[] = [];
+718:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+719:     if (!Array.isArray(arr)) arr = [];
+720:     const dedup = String(table) + '|' + String(key) + '|' + String((sheet as any)?.updated_at || (sheet as any)?.updatedAt || '');
+721:     if (arr.some((x: any) => x && x.dedup === dedup)) return;
+722:     const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+723:     arr.push({
+724:       table: String(table),
+725:       key: String(key),
+726:       local: local || null,
+727:       sheet: sheet || null,
+728:       at: new Date().toISOString(),
+729:       device_id: dev,
+730:       resolved: false,
+731:       dedup: dedup,
+732:     });
+733:     if (arr.length > CONFLICTS_MAX) arr = arr.slice(arr.length - CONFLICTS_MAX);
+734:     await AsyncStorage.setItem(CONFLICTS_KEY, JSON.stringify(arr));
+735:   } catch {}
+736: }
+737: 
+738: function _conflictLocalKey(table: string): string {
+739:   if (table === 'partner_transactions') return '@mizan_local_ptx_';
+740:   if (table === 'partner_bank_accounts') return '@mizan_local_pba_';
+741:   if (table === 'sales') return '@mizan_local_sales_grouped';
+742:   if (table === 'purchases') return '@mizan_local_purchases_grouped';
+743:   return '@mizan_local_' + table;
+744: }
+745: 
+746: async function _removeQueueFor(table: string, key: string) {
+747:   try {
+748:     const raw = await AsyncStorage.getItem('@mizan_queue');
+749:     let q: any[] = [];
+750:     try { q = raw ? JSON.parse(raw) : []; } catch { q = []; }
+751:     if (!Array.isArray(q)) q = [];
+752:     const k = String(key);
+753:     const filtered = q.filter((it: any) => {
+
+─── lib.sheets.ts — applyConflictSheet (خط 828) ───
+828: export async function applyConflictSheet(index: number): Promise<boolean> {
+829:   try {
+830:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+831:     let arr: any[] = [];
+832:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+833:     if (!Array.isArray(arr)) arr = [];
+834:     const c = arr[index];
+835:     if (!c || !c.table || !c.key || !c.sheet) return false;
+836: 
+837:     await _writeLocalRow(c.table, c.key, c.sheet, 'replace');
+838:     await _removeQueueFor(c.table, c.key);
+839:     await _markConflictResolved(index);
+840:     return true;
+841:   } catch { return false; }
+842: }
+843: 
+844: export async function keepLocalConflict(index: number): Promise<boolean> {
+845:   try {
+846:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+847:     let arr: any[] = [];
+848:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+849:     if (!Array.isArray(arr)) arr = [];
+850:     const c = arr[index];
+851:     if (!c) return false;
+852:     await _markConflictResolved(index);
+853:     return true;
+854:   } catch { return false; }
+855: }
+856: 
+857: export async function getConflicts(): Promise<any[]> {
+858:   try {
+859:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+860:     const arr = raw ? JSON.parse(raw) : [];
+861:     return Array.isArray(arr) ? arr : [];
+862:   } catch { return []; }
+863: }
+864: 
+865: export async function clearConflicts(): Promise<void> {
+866:   try { await AsyncStorage.setItem(CONFLICTS_KEY, '[]'); } catch {}
+867: }
+
+══════════ نمایش تضادها در UI ══════════
+⚠️ App.tsx: getConflicts پیدا نشد
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

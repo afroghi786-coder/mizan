@@ -1,0 +1,82 @@
+══════ ۱) submitAdjustment — محدوده کامل ══════
+
+══════ submitAdjustment (خط 5910 تا 5954) ══════
+5910:   const submitAdjustment = async () => {
+5911: 
+5912:     if (!adjModel) return;
+5913: 
+5914:     const amt = parseFloat(String(adjForm.amount).replace(/[^\d.]/g, '')) || 0;
+5915: 
+5916:     if (!amt || amt <= 0) { showToast('مقدار معتبر وارد کن', true); return; }
+5917: 
+5918:     const signed = adjForm.type === 'out' ? -amt : amt;
+5919: 
+5920:     try {
+5921: 
+5922:       await createStockAdjustment({
+5923: 
+5924:         model_code: adjModel.code,
+5925: 
+5926:         model_name: adjModel.name || adjModel.code,
+5927: 
+5928:         adjustment: signed,
+5929: 
+5930:         reason: adjForm.reason || 'سایر',
+5931: 
+5932:         adjustment_date: adjForm.adjustment_date || toStorageDateFull(new Date()),
+5933: 
+5934:         note: adjForm.note || '',
+5935: 
+5936:       });
+5937: 
+5938:       showToast('✅ تعدیل ثبت شد');
+5939: 
+5940:       setAdjForm({ type: 'in', amount: '', reason: adjForm.reason, adjustment_date: toStorageDateFull(new Date()), note: '' });
+5941: 
+5942:       const list = await getStockAdjustments(adjModel.code);
+5943: 
+5944:       setAdjList(list || []);
+5945: 
+5946:       load();
+5947: 
+5948:     } catch (e: any) {
+5949: 
+5950:       showToast('خطا: ' + (e?.message || ''), true);
+5951: 
+5952:     }
+5953: 
+5954:   };
+
+══════ ۲) جدول تعدیلات در مودال کاردکس ══════
+
+══════ جدول تعدیلات مودال کاردکس (خط 6645 تا 6672) ══════
+6645: {(modelKardexData.adjustments || []).length > 0 && (
+6646:   <View style={{ marginBottom: 12 }}>
+6647:     <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>⚖️ تعدیلات انبار ({modelKardexData.adjustments.length})</Text>
+6648:     <ScrollView horizontal>
+6649:       <View>
+6650:         <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+6651:           <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+6652:           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+6653:           <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>دلیل</Text>
+6654:           <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+6655:           <Text style={{ width: 160, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>یادداشت</Text>
+6656:         </View>
+6657:         {modelKardexData.adjustments.map((r: any, i: number) => {
+6658:           var adjVal = Number(r.adjustment) || 0;
+6659:           return (
+6660:             <View key={'adj' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6661:               <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6662:               <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.created_at || '').slice(0, 10)}</Text>
+6663:               <Text style={{ width: 140, fontSize: 10, textAlign: 'right' }}>{r.reason || '—'}</Text>
+6664:               <Text style={{ width: 70, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: adjVal >= 0 ? '#059669' : '#dc2626' }}>{(adjVal >= 0 ? '+' : '') + fmt(adjVal)}</Text>
+6665:               <Text style={{ width: 160, fontSize: 10, textAlign: 'right' }}>{r.note || '—'}</Text>
+6666:             </View>
+6667:           );
+6668:         })}
+6669:       </View>
+6670:     </ScrollView>
+6671:   </View>
+6672: )}
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

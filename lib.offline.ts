@@ -242,18 +242,38 @@ export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
 const TOMBSTONES_KEY = '@mizan_tombstones';
 
 export async function recordTombstone(table: string, key: string, meta?: any) {
-  if (!table || !key) return;
   try {
+    let snapshot: any = null;
+    try {
+      const snapMod = await import('./lib.snapshot');
+      const s = await snapMod.getRowSnapshot(table, key);
+      if (s) {
+        try {
+          const json = JSON.stringify(s);
+          if (json.length > 3500) {
+            if (s.raw && Array.isArray(s.raw.items)) s.raw.items = s.raw.items.slice(0, 3);
+            if (s.raw && Array.isArray(s.raw.rows)) s.raw.rows = s.raw.rows.slice(0, 3);
+          }
+        } catch {}
+        snapshot = s;
+      }
+    } catch {}
     const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
     let arr: any[] = [];
     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
     if (!Array.isArray(arr)) arr = [];
+    const clean = arr.filter((x: any) => !x || !(x.table === table && x.key === key));
     const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
-    const now = new Date().toISOString();
-    const clean = arr.filter((x: any) => !(x && x.table === table && String(x.key) === String(key)));
-    const entry: any = { table: table, key: String(key), deleted_at: now, device_id: dev };
-    if (meta) entry.meta = meta;
-    clean.push(entry);
+    const devLabel = (await AsyncStorage.getItem('@mizan_device_label')) || '';
+    clean.push({
+      table: table,
+      key: key,
+      deleted_at: new Date().toISOString(),
+      device_id: dev,
+      device_label: devLabel,
+      snapshot: snapshot,
+      ...(meta || {}),
+    });
     await AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(clean));
   } catch (e) { console.log('[recordTombstone]', e); }
 }

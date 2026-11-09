@@ -1,0 +1,80 @@
+══════ چه کسی این فایل‌ها را import می‌کند؟ ══════
+BotUI.tsx:17: import { execute } from './lib.local.exec';
+lib-db.ts:1: // lib-db.ts
+lib.app.executor.ts:1: // lib.app.executor.ts — اجراکننده واقعی دستورات
+lib.app.manager.ts:10: } from './lib.app.panels';
+lib.app.panels.ts:1: // lib.app.panels.ts — پنل‌های داخل اتاق ربات
+lib.local.exec.ts:2: // lib.local.exec.ts — اجرای دستورات روی داده‌های اپ
+LocalBotScreen.tsx:9: import { execute, ExecResult, getLastEntity, clearLastEntity } from './lib.local.exec';
+PanelRenderer.tsx:8: import { Panel, PanelAction } from './lib.app.panels';
+SuperAssistant.tsx:10: import { Panel, buildWelcomePanel, buildBoxPanel, buildCustomerPanel, buildInvoiceCardPanel } from './lib.app.panels';
+
+══════ فراخوانی مستقیم lib.getSalesGrouped / getPurchasesGrouped ══════
+lib.app.executor.ts:102: const sales = await lib.getSalesGrouped() || [];
+lib.app.executor.ts:196: const sales = await lib.getSalesGrouped() || [];
+lib.app.panels.ts:256: const fn = type === 'sale' ? lib.getSalesGrouped : lib.getPurchasesGrouped;
+lib.app.panels.ts:300: const list = await lib.getSalesGrouped().catch(() => []) || [];
+lib.app.panels.ts:437: const sales = await lib.getSalesGrouped().catch(() => []) || [];
+lib.app.panels.ts:438: const purchases = await lib.getPurchasesGrouped().catch(() => []) || [];
+lib.local.exec.ts:216: const sales = await lib.getSalesGrouped() || [];
+lib.local.exec.ts:217: const purchases = await lib.getPurchasesGrouped() || [];
+lib.local.exec.ts:252: const sales = await lib.getSalesGrouped() || [];
+
+══════ supabase.from در App.tsx با ۸ خط قبل و بعد ══════
+
+App.tsx:275
+267: 
+268: 
+269:     // ═══ ۱. تلاش آنلاین ═══
+270: 
+271:     let allSales: any[] = [];
+272: 
+273:     try {
+274: 
+275:       const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
+276: 
+277:       if (data && data.length) allSales = data;
+278: 
+279:     } catch {}
+280: 
+281: 
+282: 
+283:     // ═══ ۲. اگه آفلاین یا سرور خالی بود، از cache ═══
+
+App.tsx:7650
+7642:   const load = async () => {
+7643: 
+7644:     setLoading(true);
+7645: 
+7646:     try {
+7647: 
+7648:       const [{ data: sales }, { data: purchases }] = await Promise.all([
+7649: 
+7650:         supabase.from('sales').select('*'),
+7651: 
+7652:         supabase.from('purchases').select('*'),
+7653: 
+7654:       ]);
+7655: 
+7656: 
+7657: 
+7658:       if (type === 'debtors') {
+
+App.tsx:7652
+7644:     setLoading(true);
+7645: 
+7646:     try {
+7647: 
+7648:       const [{ data: sales }, { data: purchases }] = await Promise.all([
+7649: 
+7650:         supabase.from('sales').select('*'),
+7651: 
+7652:         supabase.from('purchases').select('*'),
+7653: 
+7654:       ]);
+7655: 
+7656: 
+7657: 
+7658:       if (type === 'debtors') {
+7659: 
+7660:         const map: any = {};

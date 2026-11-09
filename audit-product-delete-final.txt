@@ -1,0 +1,629 @@
+══════════ ۱) توابع فعلی products ══════════
+
+─── lib.offline.ts — getProducts (خط 314) ───
+314: export async function getProducts() {
+315:   // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
+316:   const local = await getLocal<any[]>('products');
+317:   return local || [];
+318: }
+319: export async function createProduct(p: any) {
+320:   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+321:   const nowPr = new Date().toISOString();
+322:   const item = {
+323:     ...p,
+324:     _localId: Date.now(),
+325:     local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+326:     created_at: p.created_at || nowPr,
+327:     updated_at: nowPr,
+328:     device_id: devPr,
+329:   };
+330: 
+331:   // پاک کردن tombstone قدیمی برای همان code/local_id تا کالای جدید پاک نشود
+332:   try {
+333:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+334:     let arr: any[] = [];
+335:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+336:     if (Array.isArray(arr)) {
+337:       const keys = new Set<string>();
+338:       if (item.local_id) keys.add(String(item.local_id));
+339:       if (item.code) keys.add(String(item.code));
+340:       const filtered = arr.filter((t: any) => {
+341:         if (!t) return false;
+342:         if (String(t.table || '') !== 'products') return true;
+343:         return !keys.has(String(t.key || ''));
+344:       });
+345:       if (filtered.length !== arr.length) {
+346:         await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(filtered));
+347:       }
+348:     }
+349:   } catch {}
+350: 
+351:   const list: any[] = (await getLocal('products')) || [];
+352:   await setLocal('products', [...list, item]);
+353:   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: nowPr, device_id: devPr, summary: 'ثبت کالا' }); } catch {}
+
+─── lib.offline.ts — createProduct (خط 319) ───
+319: export async function createProduct(p: any) {
+320:   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+321:   const nowPr = new Date().toISOString();
+322:   const item = {
+323:     ...p,
+324:     _localId: Date.now(),
+325:     local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+326:     created_at: p.created_at || nowPr,
+327:     updated_at: nowPr,
+328:     device_id: devPr,
+329:   };
+330: 
+331:   // پاک کردن tombstone قدیمی برای همان code/local_id تا کالای جدید پاک نشود
+332:   try {
+333:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+334:     let arr: any[] = [];
+335:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+336:     if (Array.isArray(arr)) {
+337:       const keys = new Set<string>();
+338:       if (item.local_id) keys.add(String(item.local_id));
+339:       if (item.code) keys.add(String(item.code));
+340:       const filtered = arr.filter((t: any) => {
+341:         if (!t) return false;
+342:         if (String(t.table || '') !== 'products') return true;
+343:         return !keys.has(String(t.key || ''));
+344:       });
+345:       if (filtered.length !== arr.length) {
+346:         await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(filtered));
+347:       }
+348:     }
+349:   } catch {}
+350: 
+351:   const list: any[] = (await getLocal('products')) || [];
+352:   await setLocal('products', [...list, item]);
+353:   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: nowPr, device_id: devPr, summary: 'ثبت کالا' }); } catch {}
+354:   await enqueue('createProduct', item);
+355: }
+356: export async function updateProduct(id: string, p: any) {
+357:   const list: any[] = (await getLocal('products')) || [];
+358:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+359:   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
+360:   if (idx >= 0) { list[idx] = { ...list[idx], ...p, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('products', list); }
+361:   try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+362: 
+363:   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
+364:   const q = await getQueue();
+365:   const createIdx = q.findIndex((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+366:   if (createIdx >= 0) {
+367:     const newQ = q.slice();
+368:     newQ[createIdx] = { ...newQ[createIdx], payload: { ...newQ[createIdx].payload, ...p } };
+369:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+370:     console.log('[updateProduct] updated pending createProduct in queue');
+371:     return;
+372:   }
+373: 
+374:   const payload = { id, code, p };
+375:   if (await serverBusinessAllowed()) {
+376:     try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+377:   } else {
+378:     await enqueue('updateProduct', payload);
+
+─── lib.offline.ts — deleteProduct (خط 381) ───
+381: export async function deleteProduct(id: string) {
+382:   if (!id) { console.log('[deleteProduct] id empty, skip'); return; }
+383:   const list: any[] = (await getLocal('products')) || [];
+384:   const found = list.find((x: any) =>
+385:     x.id === id || x._localId === id || x.local_id === id || x.code === id
+386:   );
+387:   const code = found?.code;
+388:   const localId = found?.local_id;
+389:   const anyId = found?.id;
+390:   const anyLocalId = found?._localId;
+391: 
+392:   const keys = new Set<string>();
+393:   if (localId) keys.add(String(localId));
+394:   if (anyId) keys.add(String(anyId));
+395:   if (anyLocalId) keys.add(String(anyLocalId));
+396:   // فقط وقتی هیچ شناسه یکتایی نداریم، از code استفاده کن
+397:   if (!localId && !anyId && !anyLocalId) {
+398:     if (code) keys.add(String(code));
+399:     keys.add(String(id));
+400:   }
+401:   for (const k of keys) await recordTombstone('products', k);
+402: 
+403:   await setLocal('products', list.filter((x: any) => {
+404:     if (x.id && x.id === id) return false;
+405:     if (x._localId && x._localId === id) return false;
+406:     if (x.local_id && x.local_id === id) return false;
+407:     if (x.code && x.code === id) return false;
+408:     if (localId && x.local_id === localId) return false;
+409:     if (anyId && x.id === anyId) return false;
+410:     if (anyLocalId && x._localId === anyLocalId) return false;
+411:     return true;
+412:   }));
+413: 
+414:   try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(localId || code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
+415: 
+416:   const q = await getQueue();
+417:   const newQ = q.filter((it: any) => {
+418:     if (it.op === 'createProduct') {
+419:       const p = it.payload || {};
+420:       if (anyLocalId && String(p._localId || '') === String(anyLocalId)) return false;
+421:       if (localId && String(p.local_id || '') === String(localId)) return false;
+422:       if (anyId && String(p.id || '') === String(anyId)) return false;
+423:     }
+424:     return true;
+425:   });
+426:   if (newQ.length !== q.length) await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+427: 
+428:   await enqueue('deleteProduct', { id, local_id: localId, code });
+429: }
+430: 
+431: async function _localUpsertSale(payload: any) {
+432:   try {
+433:     const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+434:     if (!inv) return;
+435:     const items = payload.items || payload.rows || [];
+436:     const old = (await getLocal<any[]>('sales')) || [];
+437:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+438:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+439:     const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+440:     const now = new Date().toISOString();
+441:     const rows = items.map((it: any, idx: number) => ({
+442:       invoice_number: inv,
+443:       local_id: 'sale_' + inv + '_' + idx,
+444:       device_id: dev,
+445:       updated_at: now,
+446:       manual_invoice: payload.manualInvoice || '',
+447:       customer_code: payload.customerCode || payload.customer_code || '',
+448:       customer_name: payload.customerName || payload.customer_name || '',
+449:       customer_phone: payload.customerPhone || payload.customer_phone || '',
+450:       account_holder: payload.holderName || payload.accountHolder || payload.receiverName || it.accountHolder || it.holderName || '',
+451:       account_holder_code: payload.holderCode || payload.accountHolderCode || payload.receiverCode || it.accountHolderCode || it.holderCode || '',
+452:       model_code: it.modelCode || it.model_code || '',
+453:       model_name: it.modelName || it.model_name || '',
+454:       quantity: Number(it.quantity) || 0,
+455:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+456:       payment: (() => {
+457:         const rowPay = Number(it.payment) || 0;
+458:         if (rowPay > 0) return rowPay;
+459:         if (idx !== 0) return 0;
+460:         return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+
+─── lib.offline.ts — pullFromServer (خط 292) ───
+292: export async function pullFromServer() {
+293:   // BUSINESS_LOCAL_AND_SHEET_ONLY — بخش تجاری از Supabase خوانده نمی‌شود.
+294:   return;
+295: }
+296: 
+297: async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+298:   if (MODE === 'online') {
+299:     try {
+300:       const fresh = await fetcher();
+301:       await setLocal(key, fresh);
+302:       return fresh;
+303:     } catch {
+304:       const cached = await getLocal<T>(key);
+305:       if (cached) return cached;
+306:       throw new Error('آفلاین — داده‌ای موجود نیست');
+307:     }
+308:   }
+309:   const cached = await getLocal<T>(key);
+310:   if (cached) return cached;
+311:   try { return await fetcher(); } catch { throw new Error('داده‌ای موجود نیست'); }
+312: }
+313: 
+314: export async function getProducts() {
+315:   // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
+316:   const local = await getLocal<any[]>('products');
+317:   return local || [];
+318: }
+319: export async function createProduct(p: any) {
+320:   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+321:   const nowPr = new Date().toISOString();
+322:   const item = {
+323:     ...p,
+324:     _localId: Date.now(),
+325:     local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+326:     created_at: p.created_at || nowPr,
+327:     updated_at: nowPr,
+328:     device_id: devPr,
+329:   };
+330: 
+331:   // پاک کردن tombstone قدیمی برای همان code/local_id تا کالای جدید پاک نشود
+
+══════════ ۲) همه جاهایی که products را بازنویسی می‌کنند ══════════
+
+─── lib.offline.ts — setLocal products ───
+351: const list: any[] = (await getLocal('products')) || [];
+352: await setLocal('products', [...list, item]);
+357: const list: any[] = (await getLocal('products')) || [];
+360: if (idx >= 0) { list[idx] = { ...list[idx], ...p, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('products', list); }
+383: const list: any[] = (await getLocal('products')) || [];
+403: await setLocal('products', list.filter((x: any) => {
+1009: if (products.status === 'fulfilled') await setLocal('products', products.value);
+
+─── lib.sheets.ts — merge products ───
+396: else if (PULL_LOCAL_KEYS[tab]) r = await mergeList(PULL_LOCAL_KEYS[tab], rows);
+887: async function mergeList(localKey: string, sheetRows: any[]) {
+962: console.log('[mergeList] conflict kept local for', table, k);
+990: const res = await mergeList(prefix + pc, byPartner[pc]);
+1243: else if (PULL_LOCAL_KEYS[tab]) r = await mergeList(PULL_LOCAL_KEYS[tab], rows);
+
+══════════ ۳) مسیر سینک کالا ══════════
+
+─── lib.sheets.ts — syncBridgeTables (خط 406) ───
+406: export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+407:   const cfg = await getBridgeConfig();
+408:   if (!cfg.url || !cfg.key) throw new Error('واسط امن تنظیم نشده است');
+409: 
+410:   const rawDirty = await AsyncStorage.getItem('@mizan_dirty_tables');
+411:   const hasDirtyKey = rawDirty !== null;
+412:   let dirty: string[] = [];
+413:   if (hasDirtyKey) { try { dirty = JSON.parse(rawDirty as string); } catch { dirty = []; } }
+414:   if (!Array.isArray(dirty)) dirty = [];
+415: 
+416:   const always = ['_deleted', '_audit'];
+417:   let tablesToSync: { tab: string; keys: string[] }[] = [];
+418:   if (!hasDirtyKey) {
+419:     tablesToSync = TAB_TASKS;
+420:   } else {
+421:     const set = new Set([...dirty.map(String), ...always]);
+422:     tablesToSync = TAB_TASKS.filter(t => set.has(t.tab));
+423:   }
+424: 
+425:   if (!tablesToSync.length) return [];
+426: 
+427:   const allKeys = await getAllMizanKeys();
+428:   const total = tablesToSync.length;
+429:   let done = 0;
+430:   const results: any[] = [];
+431: 
+432:   for (const t of tablesToSync) {
+433:     const rows: any[] = [];
+434:     for (const key of t.keys) {
+435:       if (key.endsWith('_')) {
+436:         for (const k of allKeys) {
+437:           if (k.startsWith(key)) {
+438:             const v = await AsyncStorage.getItem(k);
+439:             if (v) {
+440:               try {
+441:                 const arr = JSON.parse(v);
+442:                 if (Array.isArray(arr)) rows.push(...arr);
+443:               } catch {}
+444:             }
+445:           }
+446:         }
+447:       } else {
+448:         const v = await AsyncStorage.getItem(key);
+449:         if (v) {
+450:           try {
+451:             const arr = JSON.parse(v);
+452:             if (Array.isArray(arr)) rows.push(...arr);
+453:             else if (arr && typeof arr === 'object') rows.push(arr);
+454:           } catch {}
+455:         }
+456:       }
+457:     }
+458:     try {
+459:       const useSave = (t.tab === '_deleted' || t.tab === '_audit');
+460:       if (useSave) {
+461:         await bridgeSaveTable(t.tab, rows);
+462:       } else {
+463:         let finalRows = rows;
+464:         if (t.tab === 'sales') {
+465:           try {
+466:             const grouped = await getSalesGrouped();
+467:             const map: Record<string, any> = {};
+468:             for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
+469:             for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
+470:             finalRows = Object.values(map);
+471:           } catch {}
+472:         }
+473:         if (t.tab === 'purchases') {
+474:           try {
+475:             const grouped = await getPurchasesGrouped();
+476:             const map: Record<string, any> = {};
+477:             for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
+478:             for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
+479:             finalRows = Object.values(map);
+480:           } catch {}
+481:         }
+482:         await bridgeUpsertTable(t.tab, finalRows);
+483:       }
+484:       results.push({ tab: t.tab, ok: true, rows: rows.length });
+485:     } catch (e: any) {
+486:       results.push({ tab: t.tab, ok: false, error: e?.message || String(e) });
+487:     }
+488:     done++;
+489:     if (onProgress) onProgress(done, total, t.tab);
+490:   }
+491: 
+492:   const successful = results.filter(r => r.ok).map(r => r.tab);
+493:   if (!hasDirtyKey) {
+494:     const failed = tablesToSync.filter(t => !successful.includes(t.tab)).map(t => t.tab);
+495:     await setDirtyTables(failed);
+496:   } else if (successful.length) {
+497:     await removeDirtyTables(successful);
+498:   }
+499: 
+500:   return results;
+501: }
+502: 
+503: export async function syncByDestination(onProgress?: (done: number, total: number) => void) {
+504:   const dest = await getSyncDestination();
+505:   const cfg = await getBridgeConfig();
+
+─── lib.sheets.ts — pullBridgeTables (خط 378) ───
+378: export async function pullBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+379:   const cfg = await getBridgeConfig();
+380:   if (!cfg.url || !cfg.key) throw new Error('واسط امن تنظیم نشده است');
+381:   const data = await bridgePull();
+382:   const tables = data?.tables || {};
+383:   const total = PULL_TABLES.length;
+384:   let done = 0;
+385:   let added = 0, updated = 0, removed = 0;
+386: 
+387:   for (const tab of PULL_TABLES) {
+388:     const rows = tables[tab] || [];
+389:     let r = { added: 0, updated: 0, removed: 0 };
+390:     if (tab === '_deleted') r = await mergeTombstones(rows);
+391:     else if (tab === '_audit') r = await mergeAuditEvents(rows);
+392:     else if (tab === 'sales') r = await mergeGroupedInvoices('@mizan_local_sales_grouped', rows);
+393:     else if (tab === 'purchases') r = await mergeGroupedInvoices('@mizan_local_purchases_grouped', rows);
+394:     else if (tab === 'partner_transactions') r = await mergePartnerPrefixed('@mizan_local_ptx_', rows);
+395:     else if (tab === 'partner_bank_accounts') r = await mergePartnerPrefixed('@mizan_local_pba_', rows);
+396:     else if (PULL_LOCAL_KEYS[tab]) r = await mergeList(PULL_LOCAL_KEYS[tab], rows);
+397: 
+398:     added += r.added; updated += r.updated; removed += r.removed;
+399:     done++;
+400:     if (onProgress) onProgress(done, total, tab);
+401:   }
+402: 
+403:   return { ok: true, added, updated, removed, totalTables: total };
+404: }
+405: 
+406: export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+407:   const cfg = await getBridgeConfig();
+408:   if (!cfg.url || !cfg.key) throw new Error('واسط امن تنظیم نشده است');
+409: 
+410:   const rawDirty = await AsyncStorage.getItem('@mizan_dirty_tables');
+411:   const hasDirtyKey = rawDirty !== null;
+412:   let dirty: string[] = [];
+413:   if (hasDirtyKey) { try { dirty = JSON.parse(rawDirty as string); } catch { dirty = []; } }
+414:   if (!Array.isArray(dirty)) dirty = [];
+415: 
+416:   const always = ['_deleted', '_audit'];
+417:   let tablesToSync: { tab: string; keys: string[] }[] = [];
+418:   if (!hasDirtyKey) {
+419:     tablesToSync = TAB_TASKS;
+420:   } else {
+421:     const set = new Set([...dirty.map(String), ...always]);
+422:     tablesToSync = TAB_TASKS.filter(t => set.has(t.tab));
+423:   }
+424: 
+425:   if (!tablesToSync.length) return [];
+426: 
+427:   const allKeys = await getAllMizanKeys();
+428:   const total = tablesToSync.length;
+429:   let done = 0;
+430:   const results: any[] = [];
+431: 
+432:   for (const t of tablesToSync) {
+433:     const rows: any[] = [];
+434:     for (const key of t.keys) {
+435:       if (key.endsWith('_')) {
+436:         for (const k of allKeys) {
+437:           if (k.startsWith(key)) {
+438:             const v = await AsyncStorage.getItem(k);
+439:             if (v) {
+440:               try {
+441:                 const arr = JSON.parse(v);
+442:                 if (Array.isArray(arr)) rows.push(...arr);
+443:               } catch {}
+444:             }
+445:           }
+446:         }
+447:       } else {
+448:         const v = await AsyncStorage.getItem(key);
+449:         if (v) {
+450:           try {
+451:             const arr = JSON.parse(v);
+452:             if (Array.isArray(arr)) rows.push(...arr);
+453:             else if (arr && typeof arr === 'object') rows.push(arr);
+454:           } catch {}
+455:         }
+456:       }
+457:     }
+458:     try {
+459:       const useSave = (t.tab === '_deleted' || t.tab === '_audit');
+460:       if (useSave) {
+461:         await bridgeSaveTable(t.tab, rows);
+462:       } else {
+463:         let finalRows = rows;
+464:         if (t.tab === 'sales') {
+465:           try {
+466:             const grouped = await getSalesGrouped();
+467:             const map: Record<string, any> = {};
+468:             for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
+469:             for (const g of grouped || []) { const k = String(g.invoice || g.local_id || ''); if (k) map[k] = g; }
+470:             finalRows = Object.values(map);
+471:           } catch {}
+472:         }
+473:         if (t.tab === 'purchases') {
+474:           try {
+475:             const grouped = await getPurchasesGrouped();
+476:             const map: Record<string, any> = {};
+477:             for (const r of finalRows || []) { const k = String(r.invoice || r.invoice_number || r.local_id || ''); if (k) map[k] = r; }
+
+─── lib.sheets.ts — mergeList (خط 887) ───
+887: async function mergeList(localKey: string, sheetRows: any[]) {
+888:   const table = localKey.replace('@mizan_local_', '');
+889: 
+890:   if (localKey === '@mizan_local_settings') {
+891:     const rawS = await AsyncStorage.getItem(localKey);
+892:     let existing: any = null;
+893:     try { existing = rawS ? JSON.parse(rawS) : null; } catch { existing = null; }
+894:     if (existing && typeof existing === 'object' && !Array.isArray(existing) && Object.keys(existing).length > 0) {
+895:       return { added: 0, updated: 0, removed: 0 };
+896:     }
+897:     const first = (sheetRows || [])[0];
+898:     if (!first) return { added: 0, updated: 0, removed: 0 };
+899:     await AsyncStorage.setItem(localKey, JSON.stringify(first));
+900:     return { added: 1, updated: 0, removed: 0 };
+901:   }
+902: 
+903:   const raw = await AsyncStorage.getItem(localKey);
+904:   let localArr: any[] = [];
+905:   try { localArr = raw ? JSON.parse(raw) : []; } catch { localArr = []; }
+906:   if (!Array.isArray(localArr)) localArr = [];
+907: 
+908:   const localMap = new Map<string, any>();
+909:   for (const r of localArr) {
+910:     const k = keyOfRow(r);
+911:     if (k) localMap.set(k, r);
+912:   }
+913: 
+914:   const tombstones = await getTombstonesForTable(table);
+915:   const pendingByTable = await getPendingKeysByTable();
+916:   const pending = pendingByTable[table] || new Set<string>();
+917:   let added = 0, updated = 0, removed = 0;
+918: 
+919:   for (const [k, r] of Array.from(localMap.entries())) {
+920:     const tombAt = tombstones[k] || '';
+921:     if (tombAt) {
+922:       const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+923:       if (!localUp || tsOf(tombAt) >= tsOf(localUp)) {
+924:         localMap.delete(k);
+925:         removed++;
+926:       }
+927:     }
+928:   }
+929: 
+930:   for (const row of sheetRows || []) {
+931:     const k = keyOfRow(row);
+932:     if (!k) continue;
+933: 
+934:     const sheetDel = row.deleted_at || row.deletedAt || '';
+935:     if (sheetDel) {
+936:       const old = tombstones[k] || '';
+937:       if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+938:       if (localMap.has(k)) { localMap.delete(k); removed++; }
+939:       continue;
+940:     }
+941: 
+942:     const tombAt = tombstones[k] || '';
+943:     if (tombAt) {
+944:       const sheetUp = row.updated_at || row.updatedAt || '';
+945:       if (!sheetUp || tsOf(tombAt) >= tsOf(sheetUp)) continue;
+946:     }
+947: 
+948:     const existing = localMap.get(k);
+949:     if (!existing) {
+950:       localMap.set(k, row);
+951:       added++;
+952:       continue;
+953:     }
+954: 
+955:     const localUp = existing.updated_at || existing.updatedAt || '';
+956:     const sheetUp = row.updated_at || row.updatedAt || '';
+957:     const sheetIsNewer = sheetUp && (!localUp || tsOf(sheetUp) > tsOf(localUp));
+958: 
+959:     if (pending.has(k)) {
+960:       if (sheetIsNewer) {
+961:         await recordConflict(table, k, existing, row);
+962:         console.log('[mergeList] conflict kept local for', table, k);
+963:       }
+964:       continue;
+965:     }
+966: 
+967:     if (sheetIsNewer) {
+968:       localMap.set(k, { ...existing, ...row });
+969:       updated++;
+970:     }
+971:   }
+972: 
+973:   await saveTombstonesForTable(table, tombstones);
+974:   if (added || updated || removed) {
+975:     await AsyncStorage.setItem(localKey, JSON.stringify(Array.from(localMap.values())));
+976:   }
+977:   return { added, updated, removed };
+978: }
+979: 
+980: async function mergePartnerPrefixed(prefix: string, rows: any[]) {
+981:   const byPartner: Record<string, any[]> = {};
+982:   for (const r of rows || []) {
+983:     const pc = String(r.partner_code || '').trim();
+984:     if (!pc) continue;
+985:     if (!byPartner[pc]) byPartner[pc] = [];
+986:     byPartner[pc].push(r);
+987:   }
+988:   let added = 0, updated = 0, removed = 0;
+989:   for (const pc of Object.keys(byPartner)) {
+990:     const res = await mergeList(prefix + pc, byPartner[pc]);
+991:     added += res.added; updated += res.updated; removed += res.removed;
+992:   }
+993:   return { added, updated, removed };
+994: }
+995: 
+996: function invoiceKeyOf(r: any): string {
+997:   return String(r?.local_id || r?.invoice || r?.invoice_number || '');
+998: }
+999: 
+1000: async function getPendingInvoiceKeys(): Promise<Set<string>> {
+1001:   const keys = new Set<string>();
+1002:   try {
+1003:     const q = await getQueue();
+1004:     for (const it of q || []) {
+1005:       const p = it?.payload;
+1006:       if (!p) continue;
+
+─── lib.sheets.ts — bridgeUpsertTable (خط 214) ───
+214: export async function bridgeUpsertTable(table: string, rows: any[]) {
+215:   const cfg = await getBridgeConfig();
+216:   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
+217:   if (!cfg.key) throw new Error('کلید امن واسط وارد نشده است');
+218:   const res = await fetch(cfg.url, {
+219:     method: 'POST',
+220:     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+221:     body: JSON.stringify({ action: 'upsert', key: cfg.key, table: table, rows: rows || [] }),
+222:   });
+223:   const txt = await res.text();
+224:   let data: any = null;
+225:   try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
+226:   if (!res.ok) throw new Error('خطای واسط: ' + (data?.error || res.status));
+227:   if (!data || data.ok !== true) throw new Error('پاسخ نامعتبر: ' + (data?.error || txt.slice(0, 120)));
+228:   return data;
+229: }
+230: 
+231: export async function bridgeSaveAll() {
+232:   const cfg = await getBridgeConfig();
+233:   if (!cfg.url) throw new Error('آدرس واسط امن وارد نشده است');
+234:   if (!cfg.key) throw new Error('کلید امن واسط وارد نشده است');
+235:   const allKeys = await getAllMizanKeys();
+236:   const summary: any[] = [];
+237:   for (const t of TAB_TASKS) {
+238:     const rows: any[] = [];
+239:     for (const key of t.keys) {
+240:       if (key.endsWith('_')) {
+241:         for (const k of allKeys) {
+242:           if (k.startsWith(key)) {
+243:             const v = await AsyncStorage.getItem(k);
+244:             if (v) {
+245:               try {
+246:                 const arr = JSON.parse(v);
+247:                 if (Array.isArray(arr)) rows.push(...arr);
+248:               } catch {}
+249:             }
+250:           }
+251:         }
+252:       } else {
+253:         const v = await AsyncStorage.getItem(key);
+
+══════════ ۴) SyncControl بعد از سینک ══════════
+
+─── SyncControl.tsx — SyncControl ───
+7: getQueueCount, syncToServer, pullFromServer, clearQueue, prepareOffline,
+10: import { syncByDestination, getSyncDestination, getConflicts } from './lib.sheets';
+63: const confirmSync = async () => {
+69: const r = await syncByDestination((done: number, total: number) => setSyncProgress({ done, total }));
+70: if (dest !== 'private') { await pullFromServer(); }
+175: <TouchableOpacity accessibilityLabel="بله، آپلود کن" style={[s.btn, { backgroundColor: '#059669', flex: 2 }]} onPress={confirmSync}>
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

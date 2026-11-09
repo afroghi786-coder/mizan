@@ -1,0 +1,416 @@
+══════ ۱) جدول خریدها در مودال کاردکس ══════
+
+───── App.tsx — purchases map ─────
+6487: {modelKardexData.purchases.map((r: any, i: number) => (
+══════ ۲) جدول فروش‌ها در مودال کاردکس ══════
+
+───── App.tsx — sales map ─────
+6545: {modelKardexData.sales.map((r: any, i: number) => (
+
+══════ ۳) محدوده کامل مودال کاردکس (بین modelKardexModal و بسته شدن Modal) ══════
+
+══════ App.tsx — خط 6419 تا 6668 ══════
+6419:       <Modal visible={modelKardexModal} transparent animationType="slide" onRequestClose={() => setModelKardexModal(false)}>
+6420: 
+6421:         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 10 }}>
+6422: 
+6423:           <View style={{ backgroundColor: '#ffffff', borderRadius: 12, maxHeight: '92%', overflow: 'hidden' }}>
+6424: 
+6425:             <View style={{ backgroundColor: '#0f2438', padding: 12, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
+6426: 
+6427:               <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' }}>📋 کاردکس مدل: {modelKardexData?.name || modelKardexCode}</Text>
+6428: 
+6429:               <TouchableOpacity onPress={() => setModelKardexModal(false)}><Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>×</Text></TouchableOpacity>
+6430: 
+6431:             </View>
+6432: 
+6433:             {modelKardexLoading ? (
+6434: 
+6435:               <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" size="large" /></View>
+6436: 
+6437:             ) : modelKardexData ? (
+6438: 
+6439:               <ScrollView style={{ padding: 10 }}>
+6440: 
+6441:                 <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginBottom: 8 }}>
+6442: 
+6443:                   <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) + (modelKardexData.salesReturns || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexData.purchaseReturns || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) + (modelKardexData.adjustments || []).reduce((a: number, r: any) => a + (Number(r.adjustment) || 0), 0))}</Text>
+6444: 
+6445:                   <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>🛒 خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+6446: 
+6447:                   <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 11 }}>🛍️ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+6448: 
+6449:                   <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)), 0))}</Text>
+6450: 
+6451:                 </View>
+6452: 
+6453:                 <TouchableOpacity onPress={modelKardexMenu} style={{ backgroundColor: '#8e44ad', padding: 10, borderRadius: 8, alignItems: 'center', marginBottom: 10 }}>
+6454: 
+6455:                   <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>📤 خروجی (PDF / چاپ / اکسل)</Text>
+6456: 
+6457:                 </TouchableOpacity>
+6458: 
+6459:                 {(modelKardexData.purchases || []).length > 0 && (
+6460: 
+6461:                   <View style={{ marginBottom: 12 }}>
+6462: 
+6463:                     <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>🛒 خریدها ({modelKardexData.purchases.length})</Text>
+6464: 
+6465:                     <ScrollView horizontal>
+6466: 
+6467:                       <View>
+6468: 
+6469:                         <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+6470: 
+6471:                           <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+6472: 
+6473:                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+6474: 
+6475:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+6476: 
+6477:                           <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+6478: 
+6479:                           <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+6480: 
+6481:                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+6482: 
+6483:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+6484: 
+6485:                         </View>
+6486: 
+6487:                         {modelKardexData.purchases.map((r: any, i: number) => (
+6488: 
+6489:                           <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6490: 
+6491:                             <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6492: 
+6493:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+6494: 
+6495:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+6496: 
+6497:                             <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.payer_name || '—'}</Text>
+6498: 
+6499:                             <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+6500: 
+6501:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6502: 
+6503:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+6504: 
+6505:                           </View>
+6506: 
+6507:                         ))}
+6508: 
+6509:                       </View>
+6510: 
+6511:                     </ScrollView>
+6512: 
+6513:                   </View>
+6514: 
+6515:                 )}
+6516: 
+6517:                 {(modelKardexData.sales || []).length > 0 && (
+6518: 
+6519:                   <View>
+6520: 
+6521:                     <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>🛍️ فروش‌ها ({modelKardexData.sales.length})</Text>
+6522: 
+6523:                     <ScrollView horizontal>
+6524: 
+6525:                       <View>
+6526: 
+6527:                         <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+6528: 
+6529:                           <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+6530: 
+6531:                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+6532: 
+6533:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+6534: 
+6535:                           <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مشتری</Text>
+6536: 
+6537:                           <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+6538: 
+6539:                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+6540: 
+6541:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+6542: 
+6543:                         </View>
+6544: 
+6545:                         {modelKardexData.sales.map((r: any, i: number) => (
+6546: 
+6547:                           <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6548: 
+6549:                             <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6550: 
+6551:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{displayDateOnly ? displayDateOnly(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+6552: 
+6553:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+6554: 
+6555:                             <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+6556: 
+6557:                             <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+6558: 
+6559:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6560: 
+6561:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+6562: 
+6563:                           </View>
+6564: 
+6565:                         ))}
+6566: 
+6567:                       </View>
+6568: 
+6569:                     </ScrollView>
+6570: 
+6571:                   </View>
+6572: 
+6573:                 )}
+6574: 
+6575:                 
+6576: {(modelKardexData.salesReturns || []).length > 0 && (
+6577:   <View style={{ marginTop: 8 }}>
+6578:     <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>↩️ برگشت از فروش ({modelKardexData.salesReturns.length})</Text>
+6579:     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#fde68a', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#b45309' }}>
+6580:       <Text style={{ width: 30, textAlign: 'center', fontSize: 10, fontWeight: 'bold' }}>#</Text>
+6581:       <Text style={{ width: 80, fontSize: 10, fontWeight: 'bold' }}>تاریخ</Text>
+6582:       <Text style={{ width: 90, fontSize: 10, fontWeight: 'bold' }}>برگشت</Text>
+6583:       <Text style={{ width: 90, fontSize: 10, fontWeight: 'bold' }}>فاکتور اصلی</Text>
+6584:       <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold' }}>مشتری</Text>
+6585:       <Text style={{ width: 40, fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+6586:       <Text style={{ width: 60, fontSize: 10, fontWeight: 'bold', textAlign: 'left' }}>قیمت</Text>
+6587:     </View>
+6588:     {modelKardexData.salesReturns.map((r: any, i: number) => (
+6589:       <View key={'sr' + i} style={{ flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 4 }}>
+6590:         <Text style={{ width: 30, textAlign: 'center', fontSize: 10 }}>{i + 1}</Text>
+6591:         <Text style={{ width: 80, fontSize: 10 }}>{displayDateOnly ? displayDateOnly(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+6592:         <Text style={{ width: 90, fontSize: 10, color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+6593:         <Text style={{ width: 90, fontSize: 10 }}>{r.original_invoice_number || '—'}</Text>
+6594:         <Text style={{ flex: 1, fontSize: 10 }}>{r.customer_name || '—'}</Text>
+6595:         <Text style={{ width: 40, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+6596:         <Text style={{ width: 60, fontSize: 10, textAlign: 'left' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6597:       </View>
+6598:     ))}
+6599:   </View>
+6600: )}
+6601: {(modelKardexData.purchaseReturns || []).length > 0 && (
+6602:   <View style={{ marginTop: 8 }}>
+6603:     <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>↪️ برگشت از خرید ({modelKardexData.purchaseReturns.length})</Text>
+6604:     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#fde68a', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#b45309' }}>
+6605:       <Text style={{ width: 30, textAlign: 'center', fontSize: 10, fontWeight: 'bold' }}>#</Text>
+6606:       <Text style={{ width: 80, fontSize: 10, fontWeight: 'bold' }}>تاریخ</Text>
+6607:       <Text style={{ width: 90, fontSize: 10, fontWeight: 'bold' }}>برگشت</Text>
+6608:       <Text style={{ width: 90, fontSize: 10, fontWeight: 'bold' }}>فاکتور اصلی</Text>
+6609:       <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold' }}>تأمین‌کننده</Text>
+6610:       <Text style={{ width: 40, fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+6611:       <Text style={{ width: 60, fontSize: 10, fontWeight: 'bold', textAlign: 'left' }}>قیمت</Text>
+6612:     </View>
+6613:     {modelKardexData.purchaseReturns.map((r: any, i: number) => (
+6614:       <View key={'pr' + i} style={{ flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 4 }}>
+6615:         <Text style={{ width: 30, textAlign: 'center', fontSize: 10 }}>{i + 1}</Text>
+6616:         <Text style={{ width: 80, fontSize: 10 }}>{displayDateOnly ? displayDateOnly(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+6617:         <Text style={{ width: 90, fontSize: 10, color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+6618:         <Text style={{ width: 90, fontSize: 10 }}>{r.original_invoice_number || '—'}</Text>
+6619:         <Text style={{ flex: 1, fontSize: 10 }}>{r.supplier_name || '—'}</Text>
+6620:         <Text style={{ width: 40, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+6621:         <Text style={{ width: 60, fontSize: 10, textAlign: 'left' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6622:       </View>
+6623:     ))}
+6624:   </View>
+6625: )}
+6626: {(modelKardexData.adjustments || []).length > 0 && (
+6627:   <View style={{ marginTop: 8 }}>
+6628:     <Text style={{ color: '#0f766e', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#ccfbf1', padding: 6, borderRadius: 4, marginBottom: 4 }}>⚖️ تعدیلات انبار ({modelKardexData.adjustments.length})</Text>
+6629:     <View style={{ flexDirection: 'row-reverse', backgroundColor: '#99f6e4', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#0f766e' }}>
+6630:       <Text style={{ width: 30, textAlign: 'center', fontSize: 10, fontWeight: 'bold' }}>#</Text>
+6631:       <Text style={{ width: 80, fontSize: 10, fontWeight: 'bold' }}>تاریخ</Text>
+6632:       <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold' }}>دلیل</Text>
+6633:       <Text style={{ width: 50, fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+6634:       <Text style={{ width: 120, fontSize: 10, fontWeight: 'bold' }}>یادداشت</Text>
+6635:     </View>
+6636:     {modelKardexData.adjustments.map((r: any, i: number) => {
+6637:       var adjVal = Number(r.adjustment) || 0;
+6638:       return (
+6639:         <View key={'adj' + i} style={{ flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 4 }}>
+6640:           <Text style={{ width: 30, textAlign: 'center', fontSize: 10 }}>{i + 1}</Text>
+6641:           <Text style={{ width: 80, fontSize: 10 }}>{displayDateOnly ? displayDateOnly(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.created_at || '').slice(0, 10)}</Text>
+6642:           <Text style={{ flex: 1, fontSize: 10 }}>{r.reason || '—'}</Text>
+6643:           <Text style={{ width: 50, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: adjVal >= 0 ? '#059669' : '#dc2626' }}>{(adjVal >= 0 ? '+' : '') + fmt(adjVal)}</Text>
+6644:           <Text style={{ width: 120, fontSize: 10 }}>{r.note || '—'}</Text>
+6645:         </View>
+6646:       );
+6647:     })}
+6648:   </View>
+6649: )}
+6650: {(modelKardexData.purchases || []).length === 0 && (modelKardexData.sales || []).length === 0 && (
+6651: 
+6652:                   <Text style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>هیچ تراکنشی برای این مدل ثبت نشده</Text>
+6653: 
+6654:                 )}
+6655: 
+6656:               </ScrollView>
+6657: 
+6658:             ) : null}
+6659: 
+6660:           </View>
+6661: 
+6662:         </View>
+6663: 
+6664:       </Modal>
+6665: 
+6666:     </>);
+6667: 
+6668:           })}
+
+══════ ۴) createStockAdjustment و getStockAdjustments ══════
+
+── createStockAdjustment (خط 2782 تا 2798) ──
+2782: export async function createStockAdjustment(p: any) {
+2783:   const devA = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+2784:   const nowA = new Date().toISOString();
+2785:   const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || nowA, updated_at: nowA, device_id: devA };
+2786:   const list = (await getLocal<any[]>('stock_adjustments')) || [];
+2787:   await setLocal('stock_adjustments', [item, ...list]);
+2788:   if (await serverBusinessAllowed()) {
+2789:     try {
+2790:       await lib.createStockAdjustment(item);
+2791:         try { await _pushAudit({ type: 'stock_create', table: 'stock_adjustments', key: String(item.local_id || item.id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت تعدیل انبار' }); } catch {}
+2792:     }
+2793:     catch { await enqueue('createStockAdjustment', item); }
+2794:   } else {
+2795:     await enqueue('createStockAdjustment', item);
+2796:   }
+2797:   return item;
+2798: }
+
+── getStockAdjustments (خط 2759 تا 2781) ──
+2759: export async function getStockAdjustments(code?: string) {
+2760:   let list = (await getLocal<any[]>('stock_adjustments')) || [];
+2761:   if (MODE === 'online') {
+2762:     try {
+2763:       const fresh = await lib.getStockAdjustments(code);
+2764:       if (fresh && fresh.length) {
+2765:         await setLocal('stock_adjustments', fresh);
+2766:         list = fresh;
+2767:       }
+2768:     } catch (e) { console.log('[getStockAdjustments] online failed:', e); }
+2769:   }
+2770:   const q = await getQueue();
+2771:   const pending: any[] = [];
+2772:   for (const item of q) {
+2773:     if (item.op === 'createStockAdjustment' && item.payload) pending.push(item.payload);
+2774:   }
+2775:   let all = pending.concat(list);
+2776:   if (code) {
+2777:     const c = String(code).trim();
+2778:     all = all.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2779:   }
+2780:   return all;
+2781: }
+
+══════ ۵) هر جا createStockAdjustment صدا زده می‌شود ══════
+
+───── App.tsx — submitAdjustment ─────
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIP
+5889: const openAdjustment = async (m: any) => {
+5913: const submitAdjustment = async () => {
+5925: await createStockAdjustment({
+6229: <TouchableOpacity onPress={() => openAdjustment(m)} style={[s.tdCell, { width: 110, alignItems: 'center' }]}>
+6263: <TouchableOpacity onPress={() => openAdjustment(m)} style={[s.tdCell, { width: 40, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>⚖️</Text></TouchableOpacity>
+6353: <TouchableOpacity onPress={submitAdjustment} style={{ backgroundColor: '#059669', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12 }}>
+
+───── lib.offline.ts — enqueue adjustments ─────
+45: 'createStockAdjustment','deleteStockAdjustment',
+140: createStockAdjustment: { table: 'stock_adjustments', type: 'stock_create', summary: 'ثبت تعدیل انبار' },
+824: if (item.op === 'createStockAdjustment' && item.payload) adjAll = adjAll.concat([item.payload]);
+2773: if (item.op === 'createStockAdjustment' && item.payload) pending.push(item.payload);
+2782: export async function createStockAdjustment(p: any) {
+2790: await lib.createStockAdjustment(item);
+2793: catch { await enqueue('createStockAdjustment', item); }
+2795: await enqueue('createStockAdjustment', item);
+
+══════ ۶) getInventoryByModel — آیا stock_adjustments از صف هم می‌خواند؟ ══════
+
+── getInventoryByModel (خط 2585 تا 2755) ──
+2585: export async function getInventoryByModel(code: string) {
+2586:   const c = String(code || '').trim();
+2587:   if (!c) return { purchases: [], sales: [] };
+2588:   // BUSINESS_LOCAL_AND_SHEET_ONLY — کاردکس فقط محلی
+2589: 
+2590:   const localPurchases = (await getLocal<any[]>('purchases')) || [];
+2591:   const localSales = (await getLocal<any[]>('sales')) || [];
+2592:   const grpPurchases = (await getLocal<any[]>('purchases_grouped')) || [];
+2593:   const grpSales = (await getLocal<any[]>('sales_grouped')) || [];
+2594: 
+2595:   // BUSINESS_LOCAL_AND_SHEET_ONLY — merge grouped for device 2
+2596:   const _allP: any[] = [...localPurchases];
+2597:   const _allS: any[] = [...localSales];
+2598:   try {
+2599:     const _haveP = new Set(localPurchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+2600:     const _haveS = new Set(localSales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+2601:     for (const g of grpPurchases) {
+2602:       const inv = String(g.invoice || '').trim();
+2603:       if (!inv || _haveP.has(inv)) continue;
+2604:       for (const it of (g.items || [])) {
+2605:         _allP.push({
+2606:           invoice_number: inv,
+2607:           supplier_code: g.supplierCode || '',
+2608:           supplier_name: g.name || '',
+2609:           model_code: it.modelCode || it.model_code || '',
+2610:           model_name: it.modelName || it.model_name || '',
+2611:           quantity: Number(it.quantity) || 0,
+2612:           price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+2613:           payment: Number(it.payment) || 0,
+2614:           date_factor: g.date || '',
+2615:           date_reg: g.date || '',
+2616:         });
+2617:       }
+2618:     }
+2619:     for (const g of grpSales) {
+2620:       const inv = String(g.invoice || '').trim();
+2621:       if (!inv || _haveS.has(inv)) continue;
+2622:       for (const it of (g.items || [])) {
+2623:         _allS.push({
+2624:           invoice_number: inv,
+2625:           customer_code: g.customerCode || '',
+2626:           customer_name: g.name || '',
+2627:           model_code: it.modelCode || it.model_code || '',
+2628:           model_name: it.modelName || it.model_name || '',
+2629:           quantity: Number(it.quantity) || 0,
+2630:           price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+2631:           payment: Number(it.payment) || 0,
+2632:           date_factor: g.date || '',
+2633:           date_reg: g.date || '',
+2634:         });
+2635:       }
+2636:     }
+2637:   } catch {}
+2638:   try {
+2639:     const _tomb = await getTombstones();
+2640:     const _deadS = new Set<string>();
+2641:     const _deadP = new Set<string>();
+2642:     for (const _t of _tomb) {
+2643:       if (String(_t.table || '') === 'sales') _deadS.add(String(_t.key || '').trim());
+2644:       if (String(_t.table || '') === 'purchases') _deadP.add(String(_t.key || '').trim());
+2645:     }
+2646:     if (_deadP.size) { for (let _i = _allP.length - 1; _i >= 0; _i--) { if (_deadP.has(String(_allP[_i].invoice_number || '').trim())) _allP.splice(_i, 1); } }
+2647:     if (_deadS.size) { for (let _i = _allS.length - 1; _i >= 0; _i--) { if (_deadS.has(String(_allS[_i].invoice_number || '').trim())) _allS.splice(_i, 1); } }
+2648:   } catch {}
+2649: 
+2650:   var pAll = _allP.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2651:   var sAll = _allS.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
+2652: 
+2653:   const q = await getQueue();
+2654:   for (const item of q) {
+2655:     if (item.op !== 'createPurchase' && item.op !== 'createSale') continue;
+2656:     const rows = (item.payload && (item.payload.items || item.payload.rows)) || [];
+2657:     for (const r of rows) {
+2658:       const rCode = String(r.model_code || r.modelCode || '').trim();
+2659:       if (rCode !== c) continue;
+2660:       const normalized = {
+2661:         invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+2662:         customer_name: item.payload.customerName || '',
+2663:         customer_phone: item.payload.customerPhone || '',
+2664:         customer_code: item.payload.customerCode || '',
+2665:         supplier_name: item.payload.supplierName || '',
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

@@ -1,0 +1,484 @@
+⚠️ nav.registry.ts: NAV_ITEMS پیدا نشد
+
+══════ App.tsx — MainApp (خط 1259) ══════
+1259: function MainApp({ showToast, onCycleTheme, langTick }: any) {
+1260: 
+1261:   const [showLang, setShowLang] = useState(false);
+1262: 
+1263:   const [curLang, setCurLang] = useState(getLang());
+1264: 
+1265:   const [tab, setTab] = useState('dashboard');
+1266:   const [ledgerOpen, setLedgerOpen] = useState(false);
+1267: 
+1268:   const [plus, setPlus] = useState(false);
+1269: 
+1270:   useEffect(() => { (globalThis as any).__newFormHandlers = (globalThis as any).__newFormHandlers || {}; }, []);
+1271: 
+1272:   useEffect(() => { console.log('TAB_NOW:', tab); }, [tab]);
+1273: 
+1274: 
+1275: 
+1276:   useEffect(() => {
+1277: 
+1278:     (globalThis as any).__nav = { setTab };
+1279: 
+1280:     console.warn('NAV_BRIDGE_READY');
+1281: 
+1282:   }, []);
+1283: 
+1284:   useEffect(() => {
+1285: 
+1286:     (globalThis as any).__nav = { setTab: (t: string) => { console.warn('NAV_SET', t); setTab(t as any); } };
+1287: 
+1288:     console.warn('NAV_READY');
+1289: 
+1290:     setTimeout(() => { try { require('./lib.voice').speakText('سیستم آماده است', 'fa-IR'); } catch(e) { console.warn('TTS_STARTUP_ERR', e); } }, 1500);
+1291: 
+1292:   }, []);
+1293: 
+1294: 
+1295: 
+1296: 
+1297: 
+1298:   // 📖 دفترچه فرمان‌های تب‌های اصلی
+1299: 
+1300:   useEffect(() => {
+1301: 
+1302:     registerCommands('main', {
+1303: 
+1304:       'صرافی':        () => setTab('exchange'),
+1305: 
+1306:       'صراف':         () => setTab('exchange'),
+1307: 
+1308:       'بازار عمومی':  () => setTab('publicMarket'),
+1309: 
+1310:       'بازار':        () => setTab('publicMarket'),
+1311: 
+1312:       'سفارش':        () => setTab('order'),
+1313: 
+1314:       'فروش':         () => setTab('order'),
+1315: 
+1316:       'خانه':         () => setTab('order'),
+1317: 
+1318:       'داشبورد':      () => setTab('order'),
+1319: 
+1320:       'خرید':         () => setTab('purchase'),
+1321: 
+1322:       'انبار':        () => setTab('inventory'),
+1323: 
+1324:       'موجودی':       () => setTab('inventory'),
+1325: 
+1326:       'هزینه‌ها':     () => setTab('expenses'),
+1327: 
+1328:       'هزینه':        () => setTab('expenses'),
+1329: 
+1330:       'کارمندان':     () => setTab('employees'),
+1331: 
+1332:       'کارمند':       () => setTab('employees'),
+1333: 
+1334:       'سود':          () => setTab('profit'),
+1335: 
+1336:       'درآمد':        () => setTab('profit'),
+1337: 
+1338:       'بانک':         () => setTab('bankMatch'),
+1339: 
+1340:       'پیامک':        () => setTab('bankMatch'),
+1341: 
+1342:       'آموزش':        () => setTab('botLearning'),
+1343: 
+1344:       'دستیار':       () => setTab('manualEntry'),
+1345: 
+1346:       'ربات':         () => setTab('aiAssistant'),
+1347: 
+1348:       'مدیریت':       () => setTab('mgr'),
+1349: 
+1350:       'پرینت':        () => setTab('print'),
+1351: 
+1352:     });
+1353: 
+1354:   }, []);
+1355: 
+1356:   const [botInnerView, setBotInnerView] = useState<string>('bot');
+1357: 
+1358: 
+1359: 
+1360:   // 🌉 ثبت Navigator برای ربات
+1361: 
+1362:   useEffect(() => {
+1363: 
+1364:     try {
+1365: 
+1366:       
+1367: 
+1368:     } catch {}
+1369: 
+1370:     /* cleanup __nav حذف شد */
+1371: 
+1372:   }, [tab]);
+1373: 
+1374: 
+1375: 
+1376:   const navRef = React.useMemo(() => ({
+1377: 
+1378:     setTab: (t: string) => setTab(t as any),
+1379: 
+1380:     setSub: (s: string) => { try { (globalThis as any).__exchangeSetSub?.(s); } catch {} },
+1381: 
+1382:     openModal: (name: string, data?: any) => { try { (globalThis as any).__openModal?.(name, data); } catch {} },
+1383: 
+1384:     getState: () => ({ tab }),
+1385: 
+1386:   }), [tab]);
+1387: 
+1388:   const [unlockedTabs, setUnlockedTabs] = useState<Set<string>>(new Set());
+1389: 
+1390:   const [pendingTab, setPendingTab] = useState<string | null>(null);
+1391: 
+1392:   const [settings, setSettings] = useState<Settings>({});
+1393: 
+1394:   React.useEffect(function() { hydrateFromSettings(settings); }, [settings]);
+1395: 
+1396: 
+1397:   const reloadSettings = useCallback(() => {
+1398: 
+1399:     getSettings().then(setSettings).catch(() => {});
+1400: 
+1401:   }, []);
+1402: 
+1403: 
+1404: 
+1405:   useEffect(() => { reloadSettings(); }, [reloadSettings]);
+1406: 
+1407:   useEffect(() => { (globalThis as any).__openLang = () => setShowLang(true); }, []);
+1408: 
+1409:   // 🔍 WebView detection
+1410: 
+1411:   const _isWebView = (() => {
+1412: 
+1413:     try {
+1414: 
+1415:       if (typeof navigator === 'undefined') return true;
+1416: 
+1417:       const ua = navigator.userAgent || '';
+1418: 
+1419:       return /wv|WebView/i.test(ua) || typeof (window as any).ReactNativeWebView !== 'undefined';
+1420: 
+1421:     } catch { return false; }
+1422: 
+1423:   })();
+1424: 
+1425:   // ═══ SAFE_GLOBAL_POLLING — صدا در همه تب‌ها، امن برای APK ═══
+1426: 
+1427:   const [gPrefs, setGPrefs] = useState<any>({});
+1428: 
+1429:   const _gLastId = useRef<number>(0);
+1430: 
+1431:   const _gReady = useRef<boolean>(false);
+1432: 
+1433:   const _gPlaying = useRef<boolean>(false);
+1434: 
+1435:   const _gLastMsgId = useRef<number>(0);
+1436: 
+1437:   const _gMsgReady = useRef<boolean>(false);
+1438: 
+1439: 
+1440: 
+1441:   // Unlock audio در اولین کلیک (ایمن شده)
+1442: 
+1443:   useEffect(() => {
+1444: 
+1445:     try {
+1446: 
+1447:       if (_isWebView) return;
+1448: 
+1449:       if (typeof window === 'undefined') return;
+1450: 
+1451:       if (!window || typeof window.addEventListener !== 'function') return;
+1452: 
+1453:       const unlock = () => { try { if (typeof unlockAudio === 'function') unlockAudio(); } catch {} };
+1454: 
+1455:       window.addEventListener('click', unlock, { once: true });
+1456: 
+1457:       window.addEventListener('touchstart', unlock, { once: true });
+1458: 
+1459:       return () => {
+1460: 
+1461:         try {
+1462: 
+1463:           if (window && typeof window.removeEventListener === 'function') {
+1464: 
+1465:             window.removeEventListener('click', unlock);
+1466: 
+1467:             window.removeEventListener('touchstart', unlock);
+1468: 
+1469:           }
+1470: 
+1471:         } catch {}
+1472: 
+1473:       };
+1474: 
+1475:     } catch (e) {
+1476: 
+1477:       console.log('audio unlock err:', e);
+1478: 
+
+══════ هر جا «دستیار میزان» یا assistant در App.tsx ══════
+2: import { startGlobalBotWorker } from './lib.bot.worker';
+63: import LocalBotScreen from './LocalBotScreen';
+75: import SuperAssistant from './SuperAssistant';
+77: import BotUI from './BotUI';
+89: import SettingsAssistant from './SettingsAssistant';
+90: import AssistantHome from './AssistantHome';
+515: marginBottom: 14,
+593: marginBottom: 14,
+599: borderBottomWidth: 1,
+613: marginBottom: 10,
+665: marginBottom: 8,
+691: marginBottom: 6,
+731: startGlobalBotWorker();
+1209: ? ((Platform.OS === 'web' && AdminScreen) ? <AdminScreen showToast={showToast} /> : <View style={{ flex: 1, backgroundColor: '#0a1628', justifyContent: 'center', alignItems: 'center', padding: 24 }}><
+1342: 'آموزش':        () => setTab('botLearning'),
+1346: 'ربات':         () => setTab('aiAssistant'),
+1356: const [botInnerView, setBotInnerView] = useState<string>('bot');
+1732: { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },];
+1788: marginLeft: -14, marginRight: -14, marginTop: -14, marginBottom: 12,
+1832: {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && tab !== 'mgr' && !ledgerOpen && (
+1890: <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+1900: {tab === 'assistant' && (
+1901: <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+1902: <AssistantHome showToast={showToast} />
+1908: <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+1914: <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+1928: {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
+1930: {tab === 'botLearning' && <LearningScreen showToast={showToast} />}
+2066: style={{ position: 'absolute', bottom: 90, right: 14, width: 60, height: 60, borderRadius: 30, backgroundColor: '#7c3aed', borderWidth: 2, borderColor: '#d4af37', justifyContent: 'center', alignItems:
+2086: style={{ position: 'absolute', bottom: 90, right: 14, width: 60, height: 60, borderRadius: 30, backgroundColor: '#7c3aed', borderWidth: 2, borderColor: '#d4af37', justifyContent: 'center', alignItems:
+2178: <View style={[{ marginBottom: 8 }, containerStyle]}>
+2192: <TouchableOpacity key={opt} style={[s.acItem, { borderBottomColor: C.border }]} onPress={() => { onChange(opt); setShow(false); if (onSelect) onSelect(opt); }}>
+2316: style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, marginBottom: 8 }]}
+2346: style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
+2412: try { setStats(await getDashboardStats(next, settings?.dashboard_filter || 'both')); } catch {}
+2418: try { setStats(await getDashboardStats(rangeRef.current, settings?.dashboard_filter || 'both')); }
+2436: const filter = settings?.dashboard_filter || 'both';
+2474: <View style={{ alignItems: 'center', marginBottom: 10 }}>
+2965: <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 40 }}>
+3029: <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+3369: <View style={S.btnRowBottom}>
+3390: <Text style={{ fontSize: 18, fontWeight: 'bold', color: C.text, textAlign: 'center', marginBottom: 16 }}>📋 تأیید فاکتور فروش</Text>
+3392: <View style={{ backgroundColor: C.cardAlt, padding: 12, borderRadius: 8, marginBottom: 16 }}>
+3393: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+3397: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+3401: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+3405: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+3409: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+3419: <TouchableOpacity onPress={() => confirmSubmit('full')} style={{ backgroundColor: '#059669', padding: 14, borderRadius: 8, marginBottom: 8 }}>
+3422: <TouchableOpacity onPress={() => confirmSubmit('payment')} style={{ backgroundColor: '#d97706', padding: 14, borderRadius: 8, marginBottom: 8 }}>
+3444: <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+3472: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+3600: marginBottom: 12,
+3632: borderBottomWidth: 2,
+3634: borderBottomColor: borderClr,
+3652: marginBottom: 5,
+3698: marginBottom: 10,
+3710: marginBottom: 8,
+3756: marginBottom: 3,
+3838: marginBottom: 12,
+3852: summaryLbl: { color: '#cbd5e1', fontSize: 12, marginBottom: 4, textAlign: 'right' } as any,
+3858: btnRowBottom: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 } as any,
+3922: marginBottom: 8,
+3936: marginBottom: 8,
+3944: borderBottomWidth: 1,
+3950: borderBottomColor: borderClr,
+3958: listCardCust: { fontSize: 11, color: textMutClr, marginBottom: 6, textAlign: 'right' } as any,
+4211: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+4433: <Text style={{ fontSize: 18, fontWeight: 'bold', color: C.text, textAlign: 'center', marginBottom: 16 }}>📋 تأیید فاکتور خرید</Text>
+4434: <View style={{ backgroundColor: C.cardAlt, padding: 12, borderRadius: 8, marginBottom: 16 }}>
+4435: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+4439: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+4443: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+4447: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+4451: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+4460: <TouchableOpacity onPress={() => confirmSubmit('full')} style={{ backgroundColor: '#059669', padding: 14, borderRadius: 8, marginBottom: 8 }}>
+4463: <TouchableOpacity onPress={() => confirmSubmit('payment')} style={{ backgroundColor: '#d97706', padding: 14, borderRadius: 8, marginBottom: 8 }}>
+4485: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+4499: <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+4905: .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px double #0f2438; padding-bottom: 10px; margin-bottom: 15px; }
+4908: .info-box { display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-bottom: 15px; }
+4910: h3 { color: #1e40af; text-align: right; margin: 15px 0 5px 0; font-size: 13px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+4911: table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px; }
+4919: .sign-line { border-bottom: 1px dashed #64748b; height: 40px; margin-bottom: 8px; }
+4921: .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #cbd5e1; }
+4922: .summary-row:last-child { border-bottom: none; font-size: 15px; font-weight: bold; color: #dc2626; }
+5020: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
+5042: <View style={{ borderBottomWidth: 2, borderBottomColor: '#d4af37', paddingBottom: 6, marginBottom: 10 }}>
+5053: <View style={{ backgroundColor: '#f8fafc', borderRadius: 6, padding: 8, marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0' }}>
+5064: <View style={{ marginBottom: 16 }}>
+5065: <Text style={{ fontSize: 14, color: '#1e40af', fontWeight: 'bold', textAlign: 'right', backgroundColor: '#eff6ff', padding: 8, borderRadius: 6, marginBottom: 6 }}>
+5098: <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#fff', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', alignItems: 'center' }}>
+5145: <View style={{ marginBottom: 16 }}>
+5146: <Text style={{ fontSize: 14, color: '#9a3412', fontWeight: 'bold', textAlign: 'right', backgroundColor: '#fff7ed', padding: 8, borderRadius: 6, marginBottom: 6 }}>
+5179: <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#fff7ed' : '#fff', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#fed7aa', alignItems: 'center' }}>
+5227: <View style={{ marginBottom: 12 }}>
+5229: <Text style={{ fontSize: 12, color: '#065f46', fontWeight: 'bold', textAlign: 'right', backgroundColor: '#f0fdf4', padding: 6, borderRadius: 6, marginBottom: 4 }}>
+5264: <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f0fdf4' : '#fff', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#d1fae5', alignItems: 'center' }}>
+5296: <Text style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6, color: totals.net > 0 ? '#991b1b' : totals.net < 0 ? '#065f46' : '#475569' }}>
+5376: try { const d = await getDashboardStats(settings?.dashboard_range || 'month', settings?.dashboard_filter || 'both'); setModels(d.models); setStats(d); }
+5501: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+5505: <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10, gap: 8, marginTop: 8 }}>
+5506: <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10, marginTop: 8, justifyContent: 'flex-end' }}>
+6116: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+6340: <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginBottom: 10 }}>
+6350: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>نوع تعدیل</Text>
+6352: <View style={{ flexDirection: 'row-reverse', gap: 8, marginBottom: 8 }}>
+6368: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>مقدار تعدیل</Text>
+6370: <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 10, fontSize: 13, textAlign: 'right', marginBottom: 8 }} value={String(adjForm.amount)
+6371: <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 8 }}>
+6382: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>دلیل</Text>
+6384: <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+6398: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>تاریخ</Text>
+6402: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginTop: 8, marginBottom: 4 }}>یادداشت</Text>
+6404: <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 10, fontSize: 12, textAlign: 'right', minHeight: 50, marginBottom: 10 }} value={adjFor
+6406: <TouchableOpacity onPress={submitAdjustment} style={{ backgroundColor: '#059669', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12 }}>
+6414: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 6 }}>📋 تعدیلات اخیر ({adjList.length})</Text>
+6445: <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', alignItems: 'center' 
+6496: <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginBottom: 8 }}>
+6513: <TouchableOpacity onPress={modelKardexMenu} style={{ backgroundColor: '#8e44ad', padding: 10, borderRadius: 8, alignItems: 'center', marginBottom: 10 }}>
+6521: <View style={{ marginBottom: 12 }}>
+6523: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>🛒 خریدها ({modelKardexData.purchases
+6549: <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6581: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>🛍️ فروش‌ها ({modelKardexData.sales.l
+6607: <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6637: <View style={{ marginBottom: 12 }}>
+6638: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>↩️ برگشت از فروش ({modelKardexData.sa
+6652: <View key={'sr' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6668: <View style={{ marginBottom: 12 }}>
+6669: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>↪️ برگشت از خرید ({modelKardexData.pu
+6683: <View key={'pr' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6699: <View style={{ marginBottom: 12 }}>
+6700: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>⚖️ تعدیلات انبار ({modelKardexData.ad
+6717: <View key={'adj' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6842: <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+6956: <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+7664: <ScrollView contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+7897: <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+7999: <Text style={{ fontSize: 15, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>
+8002: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 8 }}>
+8007: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>دلیل برگشت</Text>
+8012: style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }}
+8015: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>هزینه باربری برگشت</Text>
+8021: style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'center' }}
+8024: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>روش تسویه</Text>
+8025: <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 8 }}>
+8035: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>بانک</Text>
+8036: <TextInput value={returnBank} onChangeText={setReturnBank} placeholder="نام بانک" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} /
+8038: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>صاحب حساب</Text>
+8039: <TextInput value={returnHolder} onChangeText={setReturnHolder} placeholder="نام صاحب حساب" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'ri
+8041: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>تاریخ واریز</Text>
+8046: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4, marginTop: 8 }}>اقلام برگشتی</Text>
+8048: <View key={i} style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+8065: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4, marginTop: 8 }}>یادداشت</Text>
+8071: style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right', minHeight: 50 }}
+8291: <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+8346: <Text style={{ fontSize: 15, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>
+8349: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 8 }}>
+8354: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>دلیل برگشت</Text>
+8355: <TextInput value={editReason} onChangeText={setEditReason} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} />
+8357: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>هزینه باربری</Text>
+8358: <TextInput value={editShipping} onChangeText={setEditShipping} keyboardType="numeric" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'center'
+8360: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>روش تسویه</Text>
+8361: <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 8 }}>
+8371: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>بانک</Text>
+8372: <TextInput value={editBank} onChangeText={setEditBank} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} />
+8373: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>صاحب حساب</Text>
+8374: <TextInput value={editHolder} onChangeText={setEditHolder} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right' }} />
+8375: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>تاریخ واریز</Text>
+8380: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4, marginTop: 8 }}>اقلام برگشتی</Text>
+8382: <View key={i} style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+8398: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4, marginTop: 8 }}>یادداشت</Text>
+8399: <TextInput value={editNote} onChangeText={setEditNote} multiline style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, marginBottom: 8, textAlign: 'right', minHeight: 50 }} />
+8772: <Text style={[s.lbl, { color: C.textMut, textAlign: 'center', marginBottom: 16 }]}>
+8800: marginBottom: 10,
+8816: borderBottomWidth: 0,
+8818: marginBottom: 0,
+8820: paddingBottom: 0,
+8944: { k: 'assistant', l: '🤝 دستیار میزان' },
+8950: <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+8961: <TouchableOpacity style={[s.btn, { backgroundColor: '#0ea5e9', marginBottom: 12 }]} onPress={() => { (globalThis as any).__openLang?.(); }}>
+8966: <Text style={{ color: C.textMut, fontSize: 11, textAlign: 'right', marginBottom: 6 }}>
+8994: {[{ k: 'both', l: '🔵 هر دو' }, { k: 'sales', l: '🟢 فروش' }, { k: 'purchase', l: '🟠 خرید' }].map((f) => (
+9043: <EL textKey="مثال: پین پیش‌فرض = 4242. برای غیرفعال کردن، خالی بگذارید." style={[s.lblS, { color: C.textMut, marginBottom: 8 }]} />
+9052: <View key={t.k} style={{ marginBottom: 8 }}>
+9107: <Text style={{ color: C.textMut, fontSize: 11, textAlign: 'right', marginBottom: 8 }}>
+9161: {settingsTab === 'assistant' && (
+9163: <SettingsAssistant showToast={showToast} />
+9170: <Text style={[s.lblS, { color: C.textMut, marginBottom: 6 }]}>
+9173: <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+9422: <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+9465: {['supplier','customer','both'].map((t: string) => (
+9506: {['supplier','customer','both'].map((t: string) => (
+9759: <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+9838: <TouchableOpacity onPress={addBankDraft} style={{ backgroundColor: '#7c3aed', padding: 10, borderRadius: 8, alignItems: 'center', marginBottom: 10 }}><Text style={{ color: '#fff', fontWeight: 'bold' }
+9840: <TouchableOpacity onPress={saveBankDrafts} style={{ backgroundColor: '#059669', padding: 10, borderRadius: 8, alignItems: 'center', marginBottom: 10 }}><Text style={{ color: '#fff', fontWeight: 'bold'
+9896: <View style={{ flexDirection: 'row-reverse', gap: 4, marginBottom: 8 }}>
+10002: <Text style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 6 }}>📋 کاردکس</Text>
+10098: <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+10209: <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+10274: contentContainerStyle={{ paddingBottom: 240 }}
+10277: <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+10432: <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+10572: <ScrollView style={[s.content, { backgroundColor: C.bg, flex: 1 }]} contentContainerStyle={{ padding: 10, paddingBottom: 60 }}>
+10834: <TouchableOpacity onPress={openEditor} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+10984: marginBottom: 0,
+11042: tabIcon: { fontSize: 22, marginBottom: 4 },
+11054: toast: { position: 'absolute', bottom: 40, left: 20, right: 20, backgroundColor: '#059669', padding: 12, borderRadius: 10, alignItems: 'center', zIndex: 9999 },
+11074: profitBox: { alignItems: 'center', paddingVertical: 16, marginBottom: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(0,255,136,0.2)' },
+11076: profitLbl: { color: '#94a3b8', fontSize: 13, marginBottom: 10, fontWeight: 'bold', letterSpacing: 1 },
+11084: dItem: { width: '48%', padding: 11, marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,255,136,0.18)', alignItems: 'center' },
+11086: dLbl: { color: '#94a3b8', fontSize: 10, marginBottom: 5 },
+11094: formTitle: { color: '#d4af37', fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 16 },
+11096: secT: { color: '#d4af37', fontSize: 14, fontWeight: 'bold', marginBottom: 8, marginTop: 12, textAlign: 'right' },
+11098: lbl: { fontSize: 11, marginBottom: 4, marginTop: 8, textAlign: 'right' },
+11100: lblS: { fontSize: 10, marginBottom: 3, marginTop: 6, textAlign: 'right' },
+11116: customerCard: { borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1 },
+11118: customerCardTitle: { fontSize: 15, fontWeight: 'bold', marginBottom: 6, textAlign: 'right', borderBottomWidth: 1, borderBottomColor: '#334155', paddingBottom: 8 },
+11124: itemCard: { borderRadius: 12, marginBottom: 10, borderWidth: 1, overflow: 'hidden' },
+11132: miniLbl: { fontSize: 10, marginBottom: 3, textAlign: 'right', fontWeight: 'bold' },
+11150: gsLbl: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold', marginBottom: 4, textAlign: 'right' },
+11160: tblHeader: { backgroundColor: '#0f2438', paddingVertical: 8, borderRadius: 8, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
+11162: tblRow: { borderBottomWidth: 1, borderBottomColor: '#334155', paddingVertical: 4, alignItems: 'center' },
+11176: acItem: { padding: 10, borderBottomWidth: 1 },
+11198: invCard: { borderRadius: 10, padding: 12, marginBottom: 8, borderRightWidth: 4, borderRightColor: '#1e3a8a' },
+11202: invCust: { color: '#64748b', fontSize: 11, marginBottom: 6, textAlign: 'right' },
+11210: statsCard: { backgroundColor: '#080b13', borderRadius: 14, padding: 16, marginBottom: 12, alignItems: 'center', borderWidth: 2, borderColor: '#1f3a5f' },
+11212: statsLbl: { color: '#94a3b8', fontSize: 11, marginBottom: 6 },
+11240: sBox: { width: '31%', marginHorizontal: '1.16%', marginBottom: 8, borderRadius: 10, padding: 10, alignItems: 'center', borderRightWidth: 3, borderRightColor: '#10b981' },
+11242: sBoxL: { color: '#94a3b8', fontSize: 9, fontWeight: 'bold', marginBottom: 4 },
+11284: modalLbl: { fontSize: 12, marginBottom: 4, textAlign: 'right' },
+11296: infoRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 8, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+11306: mgrHead: { flexDirection: 'row-reverse', alignItems: 'center', padding: 14, borderRadius: 10, marginBottom: 12 },
+11312: emailRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8, marginBottom: 6 },
+11322: invHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
+11332: invDateTxt: { textAlign: 'center', fontSize: 9, color: '#64748b', marginBottom: 6 },
+11336: invSectionTitle: { fontSize: 10, color: '#1e3a5f', fontWeight: 'bold', borderBottomWidth: 1, borderBottomColor: '#cbd5e1', paddingBottom: 3, marginBottom: 5, textAlign: 'right' },
+11342: invCellL: { fontSize: 8, color: '#64748b', marginBottom: 1, textAlign: 'right' },
+11350: invRow: { flexDirection: 'row-reverse', padding: 3, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+11356: invFooterTxt: { fontSize: 10, color: '#1e3a5f', fontFamily: 'ShareTechMono_400Regular', marginBottom: 3 },
+11360: sumRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', padding: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+11374: loginLogo: { fontSize: 54, textAlign: 'center', marginBottom: 8 },
+11376: loginTitle: { fontSize: 26, fontWeight: 'bold', textAlign: 'center', color: '#0f2438', marginBottom: 4 },
+11378: loginSub: { fontSize: 13, textAlign: 'center', color: '#64748b', marginBottom: 24 },
+11380: loginInp: { backgroundColor: '#f5f7fa', borderWidth: 2, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 10, color: '#1a2332', textAlign: 'right' },
+11388: searchCard: { borderRadius: 12, padding: 12, marginBottom: 10, borderRightWidth: 4, borderRightColor: '#1e3a8a' },
+11398: searchInfoGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', marginBottom: 8 },
+11402: searchInfoLbl: { color: '#94a3b8', fontSize: 10, fontWeight: 'bold', marginBottom: 2, textAlign: 'right' },
+11408: searchMoneyLbl: { color: '#64748b', fontSize: 10, fontWeight: 'bold', marginBottom: 4 },
+
+══════ هر جا key: '...' در نوار اصلی ══════
+1721: { key: 'dashboard', icon: '🏠', label: t('داشبورد'), color: '#0e7490' },
+1723: { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },
+1725: { key: 'publicMarket', icon: '🛒', label: t('بازار عمومی'), color: '#7c3aed' },
+1727: { key: 'employees', icon: '👥', label: t('کارمندان'), color: '#4c1d95' },
+1729: { key: 'expenses', icon: '💸', label: t('هزینه‌ها'), color: '#7f1d1d' },
+1732: { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },];
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

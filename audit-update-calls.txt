@@ -1,0 +1,79 @@
+══════ فراخوانی توابع update* در UI و App ══════
+AdminPanel.tsx:269 | updateUser | const { error: updErr } = await sb.auth.updateUser({ password: myNewPass });
+App.tsx:1132 | updateSettings | updateSettings({ ...st, theme_mode: next }).catch(() => {});
+App.tsx:5959 | updateProduct | await updateProduct(_found.id || _found._localId || _found.local_id, { shelf: shelfVal });
+App.tsx:5979 | updateSettings | try { const settings = await getSettings(); await updateSettings({ ...settings, inventory_threshold: v }); showToast('✅ ذخیره شد'); load(); }
+App.tsx:7256 | updateInvoiceInQueue | const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows);
+App.tsx:7277 | updateSale | await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta });
+App.tsx:7279 | updatePurchase | await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta });
+App.tsx:8224 | updateSettings | await updateSettings({
+App.tsx:8632 | updateSettings | await updateSettings({ ...settings, tab_pins: pins });
+App.tsx:8772 | updateDraft | updateDraft(idx, 'code', existing.code);
+App.tsx:8778 | updateDraft | updateDraft(idx, 'code', draftDup.code);
+App.tsx:8783 | updateDraft | if (next) updateDraft(idx, 'code', next);
+App.tsx:8803 | updateParty | if (editing.id || editing.local_id) await updateParty(editing.local_id || editing.id, payload);
+App.tsx:8909 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v: string) => updateDraft(idx, 'name', v)} placeholder="ن
+App.tsx:8912 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.phone || '')} onChangeText={(v: string) => updateDraft(idx, 'phone', v)} onEndEditing
+App.tsx:8915 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: string) => updateDraft(idx, 'code', v)} placeholder="ک
+App.tsx:8919 | updateDraft | <TouchableOpacity key={t} onPress={() => updateDraft(idx, 'type', t)} style={{ flex: 1, padding: 4, borderRadius: 4, backgroundColor: d.type === t ? typeColor(t) : '#e2e8f0', alignItems: 'center' }}>
+App.tsx:8926 | updateDraft | <TouchableOpacity key={st} onPress={() => updateDraft(idx, 'status', st)} style={{ flex: 1, padding: 4, borderRadius: 4, backgroundColor: d.status === st ? (st === 'active' ? '#059669' : '#dc2626') : 
+App.tsx:8932 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.address || '')} onChangeText={(v: string) => updateDraft(idx, 'address', v)} placehol
+App.tsx:8935 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.contact_name || '')} onChangeText={(v: string) => updateDraft(idx, 'contact_name', v)
+App.tsx:8938 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.note || '')} onChangeText={(v: string) => updateDraft(idx, 'note', v)} placeholder="ی
+App.tsx:9079 | updatePartner | if (editing.id || editing.local_id) await updatePartner(editing.local_id || editing.id, payload);
+App.tsx:9241 | updateDraft | <View style={{ width: 110, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: str
+App.tsx:9242 | updateDraft | <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v: str
+App.tsx:9243 | updateDraft | <View style={{ width: 130, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.phone || '')} onChangeText={(v: st
+App.tsx:9244 | updateDraft | <View style={{ width: 100, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.share_percent || '')} onChangeText
+App.tsx:9245 | updateDraft | <View style={{ width: 90, paddingHorizontal: 2 }}><TouchableOpacity onPress={() => updateDraft(idx, 'status', d.status === 'active' ? 'inactive' : 'active')} style={{ backgroundColor: d.status === 'ac
+App.tsx:9308 | updateBankDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.bank_name || '')} onChangeText={(v: string) => updateBankDraft(idx, 'bank_name', v)} 
+App.tsx:9311 | updateBankDraft | <TouchableOpacity key={b.local_id || b.id} onPress={() => updateBankDraft(idx, 'bank_name', b.name)} style={{ paddingHorizontal: 4, paddingVertical: 2, backgroundColor: '#e2e8f0', borderRadius: 4, mar
+App.tsx:9317 | updateBankDraft | <View style={{ width: 80, paddingHorizontal: 2 }}><TouchableOpacity onPress={() => updateBankDraft(idx, 'currency', currencies[(currencies.indexOf(d.currency) + 1) % currencies.length])} style={{ back
+App.tsx:9318 | updateBankDraft | <View style={{ width: 160, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.account_number || '')} onChangeTex
+App.tsx:9319 | updateBankDraft | <View style={{ width: 160, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.card_number || '')} onChangeText={
+App.tsx:9320 | updateBankDraft | <View style={{ width: 160, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.holder_name || '')} onChangeText={
+App.tsx:9519 | updateBank | if (editing.id || editing.local_id) await updateBank(editing.local_id || editing.id, payload);
+App.tsx:9570 | updateDraft | <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v) => 
+App.tsx:9571 | updateDraft | <View style={{ width: 120, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v) => 
+App.tsx:9572 | updateDraft | <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.note || '')} onChangeText={(v) => 
+App.tsx:9630 | updateShipping | if (editing.id || editing.local_id) await updateShipping(editing.local_id || editing.id, payload);
+App.tsx:9681 | updateDraft | <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v) => 
+App.tsx:9682 | updateDraft | <View style={{ width: 150, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.phone || '')} onChangeText={(v) =>
+App.tsx:9683 | updateDraft | <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.note || '')} onChangeText={(v) => 
+App.tsx:9808 | updateProduct | if (editing.id || editing.local_id) await updateProduct(editing.local_id || editing.id, payload);
+App.tsx:9905 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v: string) => updateDraft(idx, 'name', v)} placeholder="ن
+App.tsx:9908 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.price || '')} onChangeText={(v: string) => updateDraft(idx, 'price', parseFloat(v) ||
+App.tsx:9911 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.shelf || '')} onChangeText={(v: string) => updateDraft(idx, 'shelf', v)} placeholder=
+App.tsx:9914 | updateDraft | <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: string) => updateDraft(idx, 'code', v)} placeholder="ک
+EmployeesScreen.tsx:178 | updateEmployee | if (editId) await updateEmployee(editId, payload);
+EmployeesScreen.tsx:511 | updateSalaryPayment | await updateSalaryPayment(editId, payload);
+ExchangeScreen.tsx:566 | updateFxCustomer | if (custEditId) { await updateFxCustomer(custEditId, custForm); showToast('✅ ویرایش شد'); }
+ExchangeScreen.tsx:575 | updateFxPartner | if (partnerEditId) { await updateFxPartner(partnerEditId, partnerForm); showToast('✅ ویرایش شد'); }
+ExchangeScreen.tsx:1847 | updateHawala | if (hawEditId) await updateHawala(hawEditId, payload);
+ExchangeScreen.tsx:1976 | updateBox | if (boxEditId) await updateBox(boxEditId, payload);
+ExchangeScreen.tsx:2072 | updateCheck | if (ckEditId) await updateCheck(ckEditId, payload);
+ExpensesScreen.tsx:74 | updateExpense | await updateExpense(editId, payload);
+lib-db.ts:31 | updateProduct | export async function updateProduct(id: string, p: any) {
+lib-db.ts:96 | updateSaleRow | export async function updateSaleRow(id: string, patch: any) {
+lib-db.ts:196 | updatePurchaseRow | export async function updatePurchaseRow(id: string, patch: any) {
+lib-db.ts:397 | updateSettings | export async function updateSettings(patch: any) {
+ResetPasswordScreen.tsx:29 | updateUser | const { error: e } = await supabase.auth.updateUser({ password });
+
+══════ تعریف توابع update* در lib.offline.ts ══════
+294 | updateProduct
+385 | updateSettings
+1049 | updateInvoiceInQueue_original
+1501 | updateFxCustomer
+1545 | updateFxPartner
+1564 | updateFxTrade
+1577 | updateInvoiceInQueue
+2622 | updateParty
+2795 | updatePartner
+2915 | updateBank
+2972 | updateShipping
+3157 | updateSale
+3195 | updatePurchase
+
+══════ تعریف توابع update* در lib.emp.ts ══════
+142 | updateEmployee
+179 | updateSalaryPayment

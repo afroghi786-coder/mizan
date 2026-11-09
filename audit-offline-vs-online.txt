@@ -1,0 +1,498 @@
+══════ فراخوانی مستقیم سوپابیس ══════
+AdminPanel.tsx:380 | table=licenses | ✅ مجاز
+   const { error: insErr } = await supabase.from('licenses').insert({
+AdminPanel.tsx:418 | table=licenses | ✅ مجاز
+   await supabase.from('licenses').update({
+AdminPanel.tsx:424 | table=license_requests | ✅ مجاز
+   await supabase.from('license_requests')
+AdminPanel.tsx:438 | table=license_requests | ✅ مجاز
+   await supabase.from('license_requests')
+App.tsx:275 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
+App.tsx:7650 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('sales').select('*'),
+App.tsx:7652 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('purchases').select('*'),
+lib-db.ts:19 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { data, error } = await supabase.from('products').select('*')
+lib-db.ts:27 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('products').insert({ ...p, user_id: user.id });
+lib-db.ts:33 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('products').update(p).eq('id', id).eq('user_id', user.id);
+lib-db.ts:39 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('products').delete().eq('id', id).eq('user_id', user.id);
+lib-db.ts:46 | table=invoices_sales | ⚠️ بررسی
+   const { data, error } = await supabase.from('invoices_sales').select('*')
+lib-db.ts:92 | table=invoices_sales | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_sales').insert(rows);
+lib-db.ts:98 | table=invoices_sales | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_sales').update(patch).eq('id', id).eq('user_id', user.id);
+lib-db.ts:104 | table=invoices_sales | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_sales').delete()
+lib-db.ts:111 | table=invoices_sales | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_sales').delete().eq('id', id).eq('user_id', user.id);
+lib-db.ts:117 | table=invoices_sales | ⚠️ بررسی
+   const { data } = await supabase.from('invoices_sales')
+lib-db.ts:127 | table=invoices_purchases | ⚠️ بررسی
+   const { data, error } = await supabase.from('invoices_purchases').select('*')
+lib-db.ts:157 | table=invoices_purchases | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_purchases').insert({
+lib-db.ts:192 | table=invoices_purchases | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_purchases').insert(rows);
+lib-db.ts:198 | table=invoices_purchases | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_purchases').update(patch).eq('id', id).eq('user_id', user.id);
+lib-db.ts:204 | table=invoices_purchases | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_purchases').delete()
+lib-db.ts:211 | table=invoices_purchases | ⚠️ بررسی
+   const { error } = await supabase.from('invoices_purchases').delete().eq('id', id).eq('user_id', user.id);
+lib-db.ts:217 | table=invoices_purchases | ⚠️ بررسی
+   const { data } = await supabase.from('invoices_purchases')
+lib-db.ts:377 | table=? | ⚠️ بررسی
+   const { data, error } = await supabase.from(table).select('*')
+lib-db.ts:392 | table=subscriptions | ✅ مجاز
+   const { data } = await supabase.from('subscriptions').select('*')
+lib-db.ts:399 | table=subscriptions | ✅ مجاز
+   const { error } = await supabase.from('subscriptions').upsert({
+lib.emp.ts:29 | table=? | ⚠️ بررسی
+   const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+lib.emp.ts:57 | table=? | ⚠️ بررسی
+   ? await supabase.from(table).upsert(cleanItem, { onConflict: 'local_id' })
+lib.emp.ts:58 | table=? | ⚠️ بررسی
+   : await supabase.from(table).insert(cleanItem);
+lib.emp.ts:72 | table=? | ⚠️ بررسی
+   const { error } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.exp.ts:40 | table=? | ⚠️ بررسی
+   const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+lib.exp.ts:74 | table=? | ⚠️ بررسی
+   await supabase.from(table).upsert(clean, { onConflict: 'local_id' });
+lib.exp.ts:90 | table=? | ⚠️ بررسی
+   await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.fx.ts:28 | table=fx_hawalas | ✅ مجاز
+   try { await supabase.from('fx_hawalas').insert({ ...item, user_id: undefined, id: undefined }); } catch {}
+lib.fx.ts:34 | table=fx_hawalas | ✅ مجاز
+   try { await supabase.from('fx_hawalas').update(p).or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+lib.fx.ts:39 | table=fx_hawalas | ✅ مجاز
+   try { await supabase.from('fx_hawalas').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+lib.fx.ts:55 | table=fx_boxes | ✅ مجاز
+   try { await supabase.from('fx_boxes').insert({ ...item, user_id: undefined, id: undefined }); } catch {}
+lib.fx.ts:61 | table=fx_boxes | ✅ مجاز
+   try { await supabase.from('fx_boxes').update(p).or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+lib.fx.ts:66 | table=fx_boxes | ✅ مجاز
+   try { await supabase.from('fx_boxes').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+lib.fx.ts:82 | table=fx_transfers | ✅ مجاز
+   try { await supabase.from('fx_transfers').insert({ ...item, user_id: undefined, id: undefined }); } catch {}
+lib.fx.ts:88 | table=fx_transfers | ✅ مجاز
+   try { await supabase.from('fx_transfers').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+lib.fx.ts:104 | table=fx_checks | ✅ مجاز
+   try { await supabase.from('fx_checks').insert({ ...item, user_id: undefined, id: undefined }); } catch {}
+lib.fx.ts:110 | table=fx_checks | ✅ مجاز
+   try { await supabase.from('fx_checks').update(p).or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+lib.fx.ts:115 | table=fx_checks | ✅ مجاز
+   try { await supabase.from('fx_checks').delete().or('local_id.eq.' + id + ',id.eq.' + id); } catch {}
+lib.fx.ts:164 | table=fx_customers | ✅ مجاز
+   setTimeout(async () => { try { await supabase.from('fx_customers').upsert(clean, { onConflict: 'local_id' }); } catch {} }, 0);
+lib.offline.ts:116 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+lib.offline.ts:117 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+lib.offline.ts:564 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   lib.supabase.from('sales').select('*'),
+lib.offline.ts:565 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   lib.supabase.from('purchases').select('supplier_code, supplier_name, supplier_phone'),
+lib.offline.ts:1099 | table=fx_trades | ✅ مجاز
+   const { data } = await lib.supabase.from('fx_trades').select('*').order('created_at', { ascending: false });
+lib.offline.ts:1109 | table=fx_trades | ✅ مجاز
+   const { error } = await lib.supabase.from('fx_trades').insert({
+lib.offline.ts:1123 | table=fx_trades | ✅ مجاز
+   try { await lib.supabase.from('fx_trades').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+lib.offline.ts:1135 | table=expenses | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await lib.supabase.from('expenses').select('*').order('created_at', { ascending: false });
+lib.offline.ts:1163 | table=expenses | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await lib.supabase.from('expenses').insert({
+lib.offline.ts:1192 | table=expenses | 🔴 تجاری — باید آفلاین/شیت
+   try { await lib.supabase.from('expenses').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+lib.offline.ts:1204 | table=employees | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+lib.offline.ts:1214 | table=employees | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await lib.supabase.from('employees').insert({
+lib.offline.ts:1229 | table=employees | 🔴 تجاری — باید آفلاین/شیت
+   try { await lib.supabase.from('employees').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+lib.offline.ts:1241 | table=attendance | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+lib.offline.ts:1251 | table=attendance | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await lib.supabase.from('attendance').insert({
+lib.offline.ts:1302 | table=attendance | 🔴 تجاری — باید آفلاین/شیت
+   try { await lib.supabase.from('attendance').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); }
+lib.offline.ts:1315 | table=fx_customers | ✅ مجاز
+   const { data } = await lib.supabase.from('fx_customers').select('*').order('created_at', { ascending: false });
+lib.offline.ts:1332 | table=fx_customers | ✅ مجاز
+   await lib.supabase.from('fx_customers').insert({
+lib.offline.ts:1346 | table=fx_customers | ✅ مجاز
+   try { await lib.supabase.from('fx_customers').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+lib.offline.ts:1353 | table=fx_customers | ✅ مجاز
+   try { await lib.supabase.from('fx_customers').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+lib.offline.ts:1362 | table=fx_partners | ✅ مجاز
+   const { data } = await lib.supabase.from('fx_partners').select('*').order('created_at', { ascending: false });
+lib.offline.ts:1378 | table=fx_partners | ✅ مجاز
+   await lib.supabase.from('fx_partners').insert({
+lib.offline.ts:1390 | table=fx_partners | ✅ مجاز
+   try { await lib.supabase.from('fx_partners').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+lib.offline.ts:1397 | table=fx_partners | ✅ مجاز
+   try { await lib.supabase.from('fx_partners').delete().or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+lib.offline.ts:1409 | table=fx_trades | ✅ مجاز
+   try { await lib.supabase.from('fx_trades').update(p).or('local_id.eq.' + localId + ',id.eq.' + localId); } catch {}
+lib.offline.ts:1777 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+lib.offline.ts:1778 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+lib.offline.ts:1803 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+lib.offline.ts:1833 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+lib.offline.ts:1834 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+lib.offline.ts:2930 | table=salary_payments | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
+lib.offline.ts:2963 | table=employee_loans | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
+lib.sheets.ts:355 | table=google_sheet_connections | ⚠️ بررسی
+   await supabase.from('google_sheet_connections').delete().eq('user_id', user.id);
+lib.ts:267 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { data, error } = await supabase.from('products').select('*').order('name');
+lib.ts:273 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('products').insert(rest);
+lib.ts:291 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+lib.ts:297 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+lib.ts:308 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('products').update(clean).eq('id', targetId);
+lib.ts:323 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('products').delete().eq('code', code);
+lib.ts:331 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('products').delete().eq('id', id);
+lib.ts:437 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('sales').insert(rows);
+lib.ts:465 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+lib.ts:495 | table=? | ⚠️ بررسی
+   const { data: d2 } = await supabase.from(otherTable).select('*').eq('invoice_number', invoiceNumber).order('created_at');
+lib.ts:523 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('purchases').insert({
+lib.ts:568 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('purchases').insert(rows);
+lib.ts:597 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+lib.ts:643 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('purchases').select('*'),
+lib.ts:644 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('sales').select('*'),
+lib.ts:765 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('purchases').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+lib.ts:766 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('sales').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+lib.ts:767 | table=stock_adjustments | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('stock_adjustments').select('model_code, adjustment'),
+lib.ts:867 | table=settings | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await supabase.from('settings').select('*').limit(1);
+lib.ts:875 | table=settings | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await supabase.from('settings').select('id').limit(1);
+lib.ts:877 | table=settings | 🔴 تجاری — باید آفلاین/شیت
+   ? await supabase.from('settings').update(clean).eq('id', data[0].id)
+lib.ts:878 | table=settings | 🔴 تجاری — باید آفلاین/شیت
+   : await supabase.from('settings').insert(clean);
+lib.ts:897 | table=products | 🔴 تجاری — باید آفلاین/شیت
+   const { data: p1 } = await supabase.from('products').select('supplier_code').eq('supplier_name', name).limit(1);
+lib.ts:899 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   const { data: p2 } = await supabase.from('purchases').select('supplier_code').eq('supplier_name', name).limit(1);
+lib.ts:901 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   const { data: p3 } = await supabase.from('sales').select('customer_code').eq('customer_name', name).limit(1);
+lib.ts:911 | table=fx_trades | ✅ مجاز
+   const { error } = await supabase.from('fx_trades').insert({
+lib.ts:923 | table=expenses | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('expenses').insert({
+lib.ts:949 | table=employees | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('employees').insert({
+lib.ts:958 | table=attendance | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('attendance').insert({
+lib.ts:968 | table=fx_customers | ✅ مجاز
+   const { error } = await supabase.from('fx_customers').insert({
+lib.ts:976 | table=fx_partners | ✅ مجاز
+   const { error } = await supabase.from('fx_partners').insert({
+lib.ts:991 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   const { data: oldRows, error: fetchErr } = await supabase.from('sales').select('*').eq('invoice_number', invoiceNumber).limit(1);
+lib.ts:1015 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   const { error: delErr } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+lib.ts:1018 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('sales').insert(cleanRows);
+lib.ts:1027 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   const { data: oldRows, error: fetchErr } = await supabase.from('purchases').select('*').eq('invoice_number', invoiceNumber).limit(1);
+lib.ts:1047 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   const { error: delErr } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+lib.ts:1050 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('purchases').insert(cleanRows);
+lib.ts:1064 | table=expenses | 🔴 تجاری — باید آفلاین/شیت
+   const { error: delErr } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1066 | table=expenses | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('expenses').insert(clean);
+lib.ts:1072 | table=expenses | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1086 | table=? | ⚠️ بررسی
+   const { error: delErr } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1088 | table=? | ⚠️ بررسی
+   const { error } = await supabase.from(table).insert(clean);
+lib.ts:1104 | table=? | ⚠️ بررسی
+   const { error } = await supabase.from(table).delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1111 | table=? | ⚠️ بررسی
+   const { error } = await supabase.from(table).insert(clean);
+lib.ts:1155 | table=purchases | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('purchases').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+lib.ts:1156 | table=sales | 🔴 تجاری — باید آفلاین/شیت
+   supabase.from('sales').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+lib.ts:1166 | table=stock_adjustments | 🔴 تجاری — باید آفلاین/شیت
+   let q: any = supabase.from('stock_adjustments').select('*').order('created_at', { ascending: false });
+lib.ts:1175 | table=stock_adjustments | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('stock_adjustments').insert(clean);
+lib.ts:1180 | table=stock_adjustments | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('stock_adjustments').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1187 | table=parties | 🔴 تجاری — باید آفلاین/شیت
+   let q: any = supabase.from('parties').select('*').order('name', { ascending: true });
+lib.ts:1200 | table=parties | 🔴 تجاری — باید آفلاین/شیت
+   const { data, error } = await supabase.from('parties').insert(clean).select().single();
+lib.ts:1212 | table=parties | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('parties').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1220 | table=parties | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('parties').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1227 | table=parties | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await supabase.from('parties').select('*').eq('phone', p).limit(1);
+lib.ts:1234 | table=parties | 🔴 تجاری — باید آفلاین/شیت
+   const { data } = await supabase.from('parties').select('*').eq('name', n).limit(1);
+lib.ts:1241 | table=partners | 🔴 تجاری — باید آفلاین/شیت
+   const { data, error } = await supabase.from('partners').select('*').order('code', { ascending: true });
+lib.ts:1248 | table=partners | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('partners').insert(clean);
+lib.ts:1254 | table=partners | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('partners').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1258 | table=partners | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('partners').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1263 | table=partner_bank_accounts | 🔴 تجاری — باید آفلاین/شیت
+   const { data, error } = await supabase.from('partner_bank_accounts').select('*').eq('partner_code', partnerCode);
+lib.ts:1270 | table=partner_bank_accounts | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('partner_bank_accounts').insert(clean);
+lib.ts:1276 | table=partner_bank_accounts | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('partner_bank_accounts').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1280 | table=partner_bank_accounts | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('partner_bank_accounts').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1285 | table=partner_transactions | 🔴 تجاری — باید آفلاین/شیت
+   const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+lib.ts:1292 | table=partner_transactions | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('partner_transactions').insert(clean);
+lib.ts:1297 | table=partner_transactions | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1304 | table=banks | 🔴 تجاری — باید آفلاین/شیت
+   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+lib.ts:1311 | table=banks | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('banks').insert(clean);
+lib.ts:1317 | table=banks | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1321 | table=banks | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1329 | table=shippings | 🔴 تجاری — باید آفلاین/شیت
+   const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+lib.ts:1336 | table=shippings | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('shippings').insert(clean);
+lib.ts:1342 | table=shippings | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+lib.ts:1346 | table=shippings | 🔴 تجاری — باید آفلاین/شیت
+   const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+LicenseRequest.tsx:22 | table=license_requests | ✅ مجاز
+   const { error } = await supabase.from('license_requests').insert({
+
+══════ فراخوانی توابع lib آنلاین در App و کامپوننت‌ها ══════
+lib.app.executor.ts:102: const sales = await lib.getSalesGrouped() || [];
+lib.app.executor.ts:196: const sales = await lib.getSalesGrouped() || [];
+lib.app.panels.ts:256: const fn = type === 'sale' ? lib.getSalesGrouped : lib.getPurchasesGrouped;
+lib.app.panels.ts:300: const list = await lib.getSalesGrouped().catch(() => []) || [];
+lib.app.panels.ts:437: const sales = await lib.getSalesGrouped().catch(() => []) || [];
+lib.app.panels.ts:438: const purchases = await lib.getPurchasesGrouped().catch(() => []) || [];
+lib.local.exec.ts:216: const sales = await lib.getSalesGrouped() || [];
+lib.local.exec.ts:217: const purchases = await lib.getPurchasesGrouped() || [];
+lib.local.exec.ts:252: const sales = await lib.getSalesGrouped() || [];
+lib.offline.ts:113: lib.getProducts(),
+lib.offline.ts:114: lib.getSalesGrouped(),
+lib.offline.ts:115: lib.getPurchasesGrouped(),
+lib.offline.ts:118: lib.getSettings(),
+lib.offline.ts:147: try { return await cachedRead('products', () => lib.getProducts()); }
+lib.offline.ts:155: try { await lib.createProduct(p); await setLocal('products', await lib.getProducts()); }
+lib.offline.ts:180: try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+lib.offline.ts:204: try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+lib.offline.ts:212: try { return await lib.createSale(payload); }
+lib.offline.ts:223: try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+lib.offline.ts:234: try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+lib.offline.ts:241: return cachedRead('settings', () => lib.getSettings());
+lib.offline.ts:246: try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+lib.offline.ts:417: const fresh = await lib.getInventory();
+lib.offline.ts:433: var fresh = await lib.getDashboardStats(r, f);
+lib.offline.ts:530: const fresh = await lib.lookupSupplierByName(name);
+lib.offline.ts:543: const fresh = await lib.lookupCodeByName(name);
+lib.offline.ts:559: lib.getProducts(),
+lib.offline.ts:560: lib.getSalesGrouped(),
+lib.offline.ts:561: lib.getPurchasesGrouped(),
+lib.offline.ts:562: lib.getUnpaidInvoices(),
+lib.offline.ts:563: lib.getSettings(),
+lib.offline.ts:650: serverList = await lib.getSalesGrouped();
+lib.offline.ts:747: try { return await lib.createPurchase(payload); }
+lib.offline.ts:768: serverList = await lib.getPurchasesGrouped();
+lib.offline.ts:890: const fresh = await lib.getInvoiceDetail(invoiceNumber, type);
+lib.offline.ts:1040: const fresh = await lib.lookupCustomerByPhone(phone);
+lib.offline.ts:1266: try { await lib.deleteSalaryPayment(String(localId)); }
+lib.offline.ts:1278: try { await lib.deleteLoan(String(localId)); }
+lib.offline.ts:1290: try { await lib.deleteLeave(String(localId)); }
+lib.offline.ts:1519: var calType = (lib && lib.getCalType) ? lib.getCalType() : 'jalali';
+lib.offline.ts:1660: const fresh = await lib.getInventoryByModel(c);
+lib.offline.ts:1726: const fresh = await lib.getStockAdjustments(code);
+lib.offline.ts:1750: try { await lib.createStockAdjustment(item); }
+lib.offline.ts:1762: try { await lib.deleteStockAdjustment(id); }
+lib.offline.ts:2418: const base = (await cachedRead('parties', () => lib.getParties())) || [];
+lib.offline.ts:2446: try { await lib.createParty(item); }
+lib.offline.ts:2474: try { await lib.updateParty(id, item); }
+lib.offline.ts:2496: try { await lib.deleteParty(id); }
+lib.offline.ts:2505: try { const r = await lib.lookupPartyByPhone(phone); if (r) return r; } catch {}
+lib.offline.ts:2514: try { const r = await lib.lookupPartyByName(name); if (r) return r; } catch {}
+lib.offline.ts:2596: const list = (await cachedRead('partners', () => lib.getPartners())) || [];
+lib.offline.ts:2615: if (MODE === 'online') { try { await lib.createPartner(item); } catch { await enqueue('createPartner', item); } }
+lib.offline.ts:2624: if (MODE === 'online') { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+lib.offline.ts:2632: if (MODE === 'online') { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+lib.offline.ts:2637: const list = (await cachedRead('pba_' + partnerCode, () => lib.getPartnerBankAccounts(partnerCode))) || [];
+lib.offline.ts:2653: if (MODE === 'online') { try { await lib.createPartnerBankAccount(item); } catch { await enqueue('createPBA', item); } }
+lib.offline.ts:2661: if (MODE === 'online') { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+lib.offline.ts:2666: const list = (await cachedRead('ptx_' + partnerCode, () => lib.getPartnerTransactions(partnerCode))) || [];
+lib.offline.ts:2682: if (MODE === 'online') { try { await lib.createPartnerTransaction(item); } catch { await enqueue('createPTX', item); } }
+lib.offline.ts:2690: if (MODE === 'online') { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+lib.offline.ts:2697: const list = (await cachedRead('banks', () => lib.getBanks())) || [];
+lib.offline.ts:2713: if (MODE === 'online') { try { await lib.createBank(item); } catch { await enqueue('createBank', item); } }
+lib.offline.ts:2721: if (MODE === 'online') { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+lib.offline.ts:2729: const list = (await cachedRead('shippings', () => lib.getShippings())) || [];
+lib.offline.ts:2745: if (MODE === 'online') { try { await lib.createShipping(item); } catch { await enqueue('createShipping', item); } }
+lib.offline.ts:2753: if (MODE === 'online') { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+lib.offline.ts:2793: try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
+lib.offline.ts:2826: try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
+
+══════ استفاده از getMode / MODE / offline ══════
+App.tsx:69: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIP
+App.tsx:211: get isDark() { return THEME_MODE === 'dark'; },
+App.tsx:213: get isSimple() { return THEME_MODE === 'simple'; },
+App.tsx:215: get bg()      { return THEME_MODE === 'dark' ? '#0f2438' : '#f5f7fa'; },
+App.tsx:217: get card()    { return THEME_MODE === 'dark' ? '#1a2332' : '#ffffff'; },
+App.tsx:219: get cardAlt() { return THEME_MODE === 'dark' ? '#0a1628' : '#f8fafc'; },
+App.tsx:221: get text()    { return THEME_MODE === 'dark' ? '#ffffff' : '#1a2332'; },
+App.tsx:223: get textMut() { return THEME_MODE === 'dark' ? '#94a3b8' : '#64748b'; },
+App.tsx:225: get border()  { return THEME_MODE === 'dark' ? '#334155' : '#e2e8f0'; },
+App.tsx:227: get input()   { return THEME_MODE === 'dark' ? '#1a2332' : '#ffffff'; },
+App.tsx:1075: THEME_MODE === 'dark' ? 'light' :
+App.tsx:1077: THEME_MODE === 'light' ? 'simple' : 'dark';
+App.tsx:1710: {THEME_MODE === 'dark' ? '🌙' : THEME_MODE === 'light' ? '☀️' : '⚪'}
+App.tsx:3380: const dark = THEME_MODE === 'dark';
+App.tsx:8184: const _sMode = getMode();
+App.tsx:8186: alertMsg('✅ موفق', _sMode === 'offline' ? 'تنظیمات ذخیره شد و در صف آپلود قرار گرفت' : 'تنظیمات ذخیره شد');
+EmployeesScreen.tsx:18: import { createPartnerAutoTx, findPartnerByNameOrCode } from './lib.offline';
+EmployeesScreen.tsx:19: import { getPartners, getParties } from './lib.offline';
+EmployeesScreen.tsx:63: const { getProducts, getPartners, getParties } = require('./lib.offline');
+ExchangeScreen.tsx:13: import { getFxTrades, createFxTrade, updateFxTrade, deleteFxTrade, getFxCustomers, createFxCustomer, updateFxCustomer, deleteFxCustomer, getFxPartners, createFxPartner, updateFxPartner, deleteFxPartne
+ExpensesScreen.tsx:6: import { createPartnerAutoTx, findPartnerByNameOrCode, getPartners, getParties } from './lib.offline';
+ExpensesScreen.tsx:41: const { getProducts, getPartners, getParties } = require('./lib.offline');
+LedgerScreen.tsx:5: import { getLedgerData, getInvoiceDetail } from './lib.offline';
+lib.emp.ts:4: import { getMode, enqueue } from './lib.offline';
+lib.emp.ts:27: if (getMode() === 'offline') return local;
+lib.emp.ts:54: if (getMode() === 'online') {
+lib.emp.ts:70: if (getMode() === 'online') {
+lib.exp.ts:4: import { getMode, enqueue, getQueue } from './lib.offline';
+lib.exp.ts:38: if (getMode() === 'offline') return local;
+lib.exp.ts:72: if (getMode() === 'online') {
+lib.exp.ts:88: if (getMode() === 'online') {
+lib.network.ts:25: const mod: any = await import('./lib.offline');
+lib.offline.ts:1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+lib.offline.ts:11: let MODE: 'online' | 'offline' = 'online';
+lib.offline.ts:12: let listeners: Array<(m: 'online' | 'offline') => void> = [];
+lib.offline.ts:16: MODE = m === 'offline' ? 'offline' : 'online';
+lib.offline.ts:19: export function getMode() { return MODE; }
+lib.offline.ts:20: export async function setMode(m: 'online' | 'offline') {
+lib.offline.ts:25: export function subscribeMode(fn: (m: 'online' | 'offline') => void) {
+lib.offline.ts:130: if (MODE === 'online') {
+lib.offline.ts:154: if (MODE === 'online') {
+lib.offline.ts:179: if (MODE === 'online') {
+lib.offline.ts:203: if (MODE === 'online') {
+lib.offline.ts:211: if (MODE === 'online') {
+lib.offline.ts:222: if (MODE === 'online') {
+lib.offline.ts:233: if (MODE === 'online') {
+lib.offline.ts:245: if (MODE === 'online') {
+lib.offline.ts:415: if (MODE === 'online') {
+lib.offline.ts:431: if (MODE === "online") {
+lib.offline.ts:528: if (MODE === 'online') {
+lib.offline.ts:541: if (MODE === 'online') {
+lib.offline.ts:603: if (MODE === 'online') {
+lib.offline.ts:625: if (MODE === 'online') {
+lib.offline.ts:648: if (MODE === 'online') {
+lib.offline.ts:746: if (MODE === 'online') {
+lib.offline.ts:766: if (MODE === 'online') {
+lib.offline.ts:888: if (MODE === 'online') {
+lib.offline.ts:1038: if (MODE === 'online') {
+lib.offline.ts:1107: if (MODE === 'online') {
+lib.offline.ts:1122: if (MODE === 'online') {
+lib.offline.ts:1132: if (MODE === 'offline') return local;
+lib.offline.ts:1161: if (MODE === 'online') {
+lib.offline.ts:1191: if (MODE === 'online') {
+lib.offline.ts:1212: if (MODE === 'online') {
+lib.offline.ts:1228: if (MODE === 'online') {
+lib.offline.ts:1249: if (MODE === 'online') {
+lib.offline.ts:1265: if (MODE === 'online') {
+lib.offline.ts:1277: if (MODE === 'online') {
+lib.offline.ts:1289: if (MODE === 'online') {
+lib.offline.ts:1301: if (MODE === 'online') {
+lib.offline.ts:1330: if (MODE === 'online') {
+lib.offline.ts:1345: if (MODE === 'online') {
+lib.offline.ts:1352: if (MODE === 'online') {
+lib.offline.ts:1376: if (MODE === 'online') {
+lib.offline.ts:1389: if (MODE === 'online') {
+lib.offline.ts:1396: if (MODE === 'online') {
+lib.offline.ts:1408: if (MODE === 'online') {
+lib.offline.ts:1473: // === Dashboard local compute (offline + queue merge) ===
+lib.offline.ts:1658: if (MODE === 'online') {
+lib.offline.ts:1720: //  Stock Adjustments (offline + queue)
+lib.offline.ts:1724: if (MODE === 'online') {
+lib.offline.ts:1749: if (MODE === 'online') {
+lib.offline.ts:1761: if (MODE === 'online') {
+lib.offline.ts:1769: //  Report helpers (offline + queue merge)
+lib.offline.ts:1774: if (MODE === 'online') {
+lib.offline.ts:1801: if (MODE === 'online') {
+lib.offline.ts:1830: if (MODE === 'online') {
+lib.offline.ts:2445: if (MODE === 'online') {
+lib.offline.ts:2473: if (MODE === 'online') {
+lib.offline.ts:2495: if (MODE === 'online') {
+lib.offline.ts:2504: if (MODE === 'online') {
+lib.offline.ts:2513: if (MODE === 'online') {
+lib.offline.ts:2615: if (MODE === 'online') { try { await lib.createPartner(item); } catch { await enqueue('createPartner', item); } }
+lib.offline.ts:2624: if (MODE === 'online') { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+lib.offline.ts:2632: if (MODE === 'online') { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+lib.offline.ts:2653: if (MODE === 'online') { try { await lib.createPartnerBankAccount(item); } catch { await enqueue('createPBA', item); } }
+lib.offline.ts:2661: if (MODE === 'online') { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+lib.offline.ts:2682: if (MODE === 'online') { try { await lib.createPartnerTransaction(item); } catch { await enqueue('createPTX', item); } }
+lib.offline.ts:2690: if (MODE === 'online') { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+lib.offline.ts:2713: if (MODE === 'online') { try { await lib.createBank(item); } catch { await enqueue('createBank', item); } }
+lib.offline.ts:2721: if (MODE === 'online') { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+lib.offline.ts:2745: if (MODE === 'online') { try { await lib.createShipping(item); } catch { await enqueue('createShipping', item); } }
+lib.offline.ts:2753: if (MODE === 'online') { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+lib.offline.ts:2792: if (MODE === 'online') {
+lib.offline.ts:2825: if (MODE === 'online') {
+lib.offline.ts:2927: if (MODE === 'offline') return local;
+lib.offline.ts:2960: if (MODE === 'offline') return local;
+lib.sheets.ts:4: import { syncToServer, getQueue } from './lib.offline';
+lib.ts:1078: //  Sync helpers for employees module (offline queue)
+SyncControl.tsx:8: } from './lib.offline';
+SyncControl.tsx:9: import { getQueueDetails, retryFailed, clearFailedItems } from './lib.offline';
+SyncControl.tsx:13: const [mode, setModeLocal] = useState<'online' | 'offline'>('online');
+SyncControl.tsx:29: if (mode === 'offline') {
+SyncControl.tsx:34: await setMode('offline');
+SyncControl.tsx:89: {mode === 'offline' && queue > 0 && (
+SyncControl.tsx:173: {mode === 'offline' && queue > 0 && (
+SyncControl.tsx:194: {mode === 'offline' && queue > 0 ? '  •  ' + queue + ' مورد در انتظار' : ''}

@@ -1,0 +1,194 @@
+══════════ ۱) مسیرهای خواندن انبار ══════════
+
+─── App.tsx — انبار ───
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, c
+1208: purchase: '4242', print: '4242', mgr: '4242', profit: '4242', inventory: '4242', settings: '4242',
+1287: 'انبار':        () => setTab('inventory'),
+1289: 'موجودی':       () => setTab('inventory'),
+1735: tab === 'inventory' ? '#0f5132' :
+1887: {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
+1961: if (name === 'inventory') return <InventoryScreen showToast={showToast} />;
+5570: //  INVENTORY SCREEN — جدول ردیفی مثل وب
+5581: function InventoryScreen({ showToast }: any) {
+5643: const r = await shareHtmlAsPdf(html, 'inventory-' + Date.now() + '.pdf');
+5675: const r = await exportExcel([{ name: 'انبار', data }], 'inventory-' + Date.now() + '.xlsx');
+5727: const d = await getInventoryByModel(m.code);
+5973: try { const d = await getInventory(); setList(d.list); setStats(d.stats); setThresholdInput(String(d.threshold)); }
+6015: try { const settings = await getSettings(); await updateSettings({ ...settings, inventory_threshold: v }); showToast('✅ ذخیره شد'); load(); }
+8335: } else if (type === 'inventory') {
+8337: const d = await getInventory();
+8403: { k: 'inventory', l: '📦 موجودی' },
+8503: {type === 'inventory' && <>
+8826: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.inventory_threshold || 5)} onChangeText={(v) => setSettings({ ...settings, inventory_threshold: parseInt(v) || 5 })} keybo
+8870: { k: 'inventory', l: '📦 موجودی' },
+11049: // Inventory Stats Box
+
+─── lib.offline.ts — انبار ───
+543: async function computeLocalInventory() {
+555: const threshold = settings.inventory_threshold ?? 5;
+678: } catch (e) { console.log('[inventory] salesReturns effect fail:', e); }
+695: } catch (e) { console.log('[inventory] purchaseReturns effect fail:', e); }
+742: export async function getInventory() {
+745: return await computeLocalInventory();
+747: console.log('[getInventory] error:', e);
+2085: //  getInventoryByModel — کاردکس مدل (آفلاین + آنلاین + صف)
+2087: export async function getInventoryByModel(code: string) {
+2093: const fresh = await lib.getInventoryByModel(c);
+2096: console.log('[getInventoryByModel] online failed, using local:', e);
+
+─── lib.ts — انبار ───
+252: inventory_threshold?: number;
+761: export async function getInventory() {
+763: const threshold = settings.inventory_threshold ?? 5;
+1149: //  getInventoryByModel — کاردکس مدل (خرید/فروش)
+1151: export async function getInventoryByModel(code: string) {
+1158: if (pErr) console.log('[getInventoryByModel] purchases err:', pErr.message);
+1159: if (sErr) console.log('[getInventoryByModel] sales err:', sErr.message);
+
+══════════ ۲) ثبت فروش و خرید ══════════
+
+─── App.tsx — ثبت ───
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, c
+359: if (item.op === 'createSale' && item.payload?.customerCode === customerCode) {
+2734: const inv = await generateInvoiceNumber();
+2736: await createSale({
+2791: const inv = await generateInvoiceNumber();
+2798: await createSale({
+4122: const inv = await createPurchase({ invoiceNumber: '', manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: finalItems, paymentAmount: amt, paymentDate: payDate, invoiceDate: invoiceDate, bankAcco
+6903: generateInvoiceNumber().then(setInvoice);
+6971: const inv = await generateInvoiceNumber();
+6973: await createSale({ invoiceNumber: inv, customerCode: code, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid, receiverName, receiverCode, receiverBank, receiverAccount });
+6981: setInvoice(await generateInvoiceNumber());
+7450: await createSalesReturn(payload);
+7452: await createPurchaseReturn(payload);
+
+─── lib.offline.ts — ثبت ───
+28: 'createSale','updateSale','deleteSale',
+29: 'createPurchase','updatePurchase','deletePurchase',
+30: 'createSalesReturn','updateSalesReturn','deleteSalesReturn',
+31: 'createPurchaseReturn','updatePurchaseReturn','deletePurchaseReturn',
+92: createSale: { table: 'sales', type: 'sale_create', summary: 'ثبت فاکتور فروش' },
+94: createPurchase: { table: 'purchases', type: 'purchase_create', summary: 'ثبت فاکتور خرید' },
+387: async function _localUpsertSale(payload: any) {
+414: async function _localUpsertPurchase(payload: any) {
+442: export async function createSale(payload: any) {
+443: await _localUpsertSale(payload);
+446: const r = await lib.createSale(payload);
+450: catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+452: await enqueue('createSale', payload);
+490: .filter(x => (type === 'sales' ? x.op === 'createSalesReturn' : x.op === 'createPurchaseReturn'))
+619: if (item.op === 'createSale' && item.payload) {
+623: if (item.op === 'createPurchase' && item.payload) {
+915: export async function generateInvoiceNumber(): Promise<string> {
+917: try { return await lib.generateInvoiceNumber(); } catch {}
+928: ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.invoiceNumber || ''),
+946: ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.customerCode || ''),
+988: if (item.op === 'createSale') {
+1048: async function genPurchaseInvoiceNumber() {
+1061: if (q.op === 'createPurchase') {
+1071: //  createPurchase — با شماره P-
+1073: export async function createPurchase(payload: any) {
+1074: await _localUpsertPurchase(payload);
+1077: const r = await lib.createPurchase(payload);
+1082: const pInv = await genPurchaseInvoiceNumber();
+1084: await enqueue('createPurchase', newPayload);
+1089: const pInv = await genPurchaseInvoiceNumber();
+1091: await enqueue('createPurchase', newPayload);
+1127: if (item.op === 'createPurchase') {
+1162: if (item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber) {
+1192: if (item.op === 'createPurchase') {
+1253: const op = type === 'sales' ? 'createSale' : 'createPurchase';
+1317: !(item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber)
+1325: if (item.op !== 'createPurchase') return true;
+1356: if (item.op === 'createSale') {
+1368: if (item.op === 'createPurchase') {
+1799: const createOp = type === 'sales' ? 'createSale' : 'createPurchase';
+1866: if (item.op !== "createPurchase" && item.op !== "createSale") continue;
+1867: var target = item.op === "createPurchase" ? queuePurchases : queueSales;
+2108: if (item.op !== 'createPurchase' && item.op !== 'createSale') continue;
+2132: if (item.op === 'createPurchase') pAll = pAll.concat([normalized]);
+2225: if (item.op !== 'createSale') continue;
+2248: if (item.op !== 'createPurchase') continue;
+2358: if (item.op === 'createSale' && item.payload) {
+2387: if (item.op === 'createPurchase' && item.payload) {
+3712: export async function createSalesReturn(payload: any) {
+3734: await enqueue('createSalesReturn', item);
+3764: .filter(x => x.op === 'createSalesReturn')
+3835: export async function createPurchaseReturn(payload: any) {
+3857: await enqueue('createPurchaseReturn', item);
+3887: .filter(x => x.op === 'createPurchaseReturn')
+
+─── lib.ts — ثبت ───
+370: export async function generateInvoiceNumber(): Promise<string> {
+406: export async function createSale(payload: {
+513: export async function createPurchase(payload: any) {
+
+══════════ ۳) مسیرهای آنلاین که هنوز از Supabase می‌خوانند ══════════
+
+─── lib.offline.ts — آنلاین ───
+298: if (MODE === 'online') {
+841: if (MODE === 'online') {
+854: if (MODE === 'online') {
+877: lib.supabase.from('sales').select('*'),
+878: lib.supabase.from('purchases').select('supplier_code, supplier_name, supplier_phone'),
+916: if (MODE === 'online') {
+938: if (MODE === 'online') {
+1238: if (MODE === 'online') {
+1388: if (MODE === 'online') {
+1457: if (MODE === 'online') {
+1472: if (MODE === 'online') {
+1705: if (MODE === 'online') {
+1720: if (MODE === 'online') {
+1727: if (MODE === 'online') {
+1751: if (MODE === 'online') {
+1764: if (MODE === 'online') {
+1771: if (MODE === 'online') {
+1783: if (MODE === 'online') {
+2091: if (MODE === 'online') {
+2157: if (MODE === 'online') {
+2211: if (MODE === 'online') {
+2214: lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+2215: lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+2238: if (MODE === 'online') {
+2240: const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+3012: if (MODE === 'online') {
+3021: if (MODE === 'online') {
+
+─── lib.ts — آنلاین ───
+267: const { data, error } = await supabase.from('products').select('*').order('name');
+273: const { error } = await supabase.from('products').insert(rest);
+291: const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+297: const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+308: const { error } = await supabase.from('products').update(clean).eq('id', targetId);
+323: const { error } = await supabase.from('products').delete().eq('code', code);
+331: const { error } = await supabase.from('products').delete().eq('id', id);
+437: const { error } = await supabase.from('sales').insert(rows);
+465: const { error } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+523: const { error } = await supabase.from('purchases').insert({
+568: const { error } = await supabase.from('purchases').insert(rows);
+597: const { error } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+643: supabase.from('purchases').select('*'),
+644: supabase.from('sales').select('*'),
+765: supabase.from('purchases').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+766: supabase.from('sales').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+767: supabase.from('stock_adjustments').select('model_code, adjustment'),
+867: const { data } = await supabase.from('settings').select('*').limit(1);
+875: const { data } = await supabase.from('settings').select('id').limit(1);
+877: ? await supabase.from('settings').update(clean).eq('id', data[0].id)
+878: : await supabase.from('settings').insert(clean);
+897: const { data: p1 } = await supabase.from('products').select('supplier_code').eq('supplier_name', name).limit(1);
+899: const { data: p2 } = await supabase.from('purchases').select('supplier_code').eq('supplier_name', name).limit(1);
+901: const { data: p3 } = await supabase.from('sales').select('customer_code').eq('customer_name', name).limit(1);
+991: const { data: oldRows, error: fetchErr } = await supabase.from('sales').select('*').eq('invoice_number', invoiceNumber).limit(1);
+1015: const { error: delErr } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+1018: const { error } = await supabase.from('sales').insert(cleanRows);
+1027: const { data: oldRows, error: fetchErr } = await supabase.from('purchases').select('*').eq('invoice_number', invoiceNumber).limit(1);
+1047: const { error: delErr } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+1050: const { error } = await supabase.from('purchases').insert(cleanRows);
+1155: supabase.from('purchases').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1156: supabase.from('sales').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1166: let q: any = supabase.from('stock_adjustments').select('*').order('created_at', { ascending: false });
+1175: const { error } = await supabase.from('stock_adjustments').insert(clean);
+1180: const { error } = await supabase.from('stock_adjustments').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

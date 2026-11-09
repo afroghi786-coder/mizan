@@ -1,0 +1,265 @@
+══════ ۱) serverBusinessAllowed ══════
+
+── lib.offline.ts — serverBusinessAllowed (خط 49 تا 52) ──
+49: export async function serverBusinessAllowed() {
+50:   // BUSINESS_LOCAL_AND_SHEET_ONLY — هیچ عملیات تجاری به Supabase نمی‌رود.
+51:   return false;
+52: }
+
+══════ ۲) getInvoiceDetail — آیا sales_grouped fallback دارد؟ ══════
+
+── lib.offline.ts — getInvoiceDetail (خط 1463 تا 1607) ──
+1463: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+1464:   // ۱. صف آفلاین
+1465:   const queue = await getQueue();
+1466:   for (const item of queue) {
+1467:     if (item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber) {
+1468:       const p = item.payload;
+1469:       return (p.items || []).map((it: any, idx: number) => ({
+1470:         id: 'queued_' + idx,
+1471:         invoice_number: p.invoiceNumber,
+1472:         customer_code: p.customerCode,
+1473:         customer_name: p.customerName,
+1474:         customer_phone: p.customerPhone,
+1475:         customer_address: p.customerAddress,
+1476:         receiver_name: p.receiverName || '',
+1477:         receiver_code: p.receiverCode || '',
+1478:         receiver_bank: p.receiverBank || '',
+1479:         receiver_account: p.receiverAccount || '',
+1480:         shipping: p.shipping,
+1481:         model_code: it.modelCode,
+1482:         model_name: it.modelName,
+1483:         shelf: it.shelf || '',
+1484:         quantity: it.quantity,
+1485:         price_unit: it.priceUnit,
+1486:         payment: (() => {
+1487:           const rowPay = Number(it.payment) || 0;
+1488:           if (rowPay > 0) return rowPay;
+1489:           if (idx !== 0) return 0;
+1490:           return Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+1491:         })(),
+1492:         deposit_date: idx === 0 ? (p.payDate || p.depositDate || p.paymentDate || it.depositDate || '') : '',
+1493:         bank_name: idx === 0 ? (p.receiverBank || p.bankName || p.bank || it.bankName || '') : '',
+1494:         account_holder: idx === 0 ? (p.receiverName || p.holderName || p.accountHolder || it.accountHolder || '') : '',
+1495:         account_holder_code: idx === 0 ? (p.receiverCode || p.holderCode || p.accountHolderCode || it.accountHolderCode || '') : '',
+1496:         description: idx === 0 ? (p.note || it.description || '') : (it.description || ''),
+1497:         date_factor: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 10).replace(/-/g, '/'),
+1498:         date_reg: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+1499:         _pending: true,
+1500:       }));
+1501:     }
+1502:     if (item.op === 'createPurchase') {
+1503:       const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+1504:       if (pInv === invoiceNumber) {
+1505:         const p = item.payload;
+1506:         const items = (p.items && p.items.length) ? p.items : [{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }];
+1507:         return items.map((it: any, idx: number) => ({
+1508:           id: 'queued_' + idx,
+1509:           invoice_number: pInv,
+1510:           supplier_code: p.supplierCode,
+1511:           supplier_name: p.supplierName,
+1512:           supplier_phone: p.supplierPhone,
+1513:           payer_name: p.payerName || '',
+1514:           payer_code: p.payerCode || '',
+1515:           receiver_acc: p.receiverAcc || '',
+1516:           bank_name: p.bankAccount || '',
+1517:           model_code: it.modelCode,
+1518:           model_name: it.modelName,
+1519:           shelf: it.shelf || '',
+1520:           quantity: it.quantity,
+1521:           price_unit: it.priceUnit,
+1522:           payment: (() => {
+1523:             const rowPay = Number(it.payment) || 0;
+1524:             if (rowPay > 0) return rowPay;
+1525:             if (idx !== 0) return 0;
+1526:             return Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+1527:           })(),
+1528:           deposit_date: idx === 0 ? (p.paymentDate || p.depositDate || it.depositDate || '') : '',
+1529:           description: it.description || '',
+1530:           date_factor: String(p.invoiceDate || p.purchaseDate || p.factorDate || p.date || new Date(item.ts).toISOString()).slice(0, 10).replace(/-/g, '/'),
+1531:           date_reg: String(p.invoiceDate || p.purchaseDate || p.factorDate || p.date || new Date(item.ts).toISOString()).slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+1532:           _pending: true,
+1533:         }));
+1534:       }
+1535:     }
+1536:   }
+1537: 
+1538:   // ۲. کش محلی
+1539:   const cacheKey = type === 'purchase' ? 'purchases' : (type === 'sales' ? 'sales' : 'sales');
+1540:   const cached = (await getLocal<any[]>(cacheKey)) || [];
+1541:   const filtered = cached.filter((r: any) => String(r.invoice_number || '') === invoiceNumber);
+1542:   if (filtered.length > 0) {
+1543:     const rows = filtered.map((r: any) => ({ ...r }));
+1544:     const paidSum = rows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+1545:     if (paidSum === 0) {
+1546:       try {
+1547:         const groupedKey = type === 'purchase' ? 'purchases_grouped' : 'sales_grouped';
+1548:         const grouped = (await getLocal<any[]>(groupedKey)) || [];
+1549:         const g = grouped.find((x: any) => String(x.invoice || '') === invoiceNumber);
+1550:         if (g && Number(g.paid)) rows[0].payment = Number(g.paid);
+1551:       } catch {}
+1552:     }
+1553:     return rows;
+1554:   }
+1555: 
+1556:   // fallback: اگر فاکتور از شیت در grouped آمده باشد
+1557:   try {
+1558:     const groupedKey = type === 'purchase' ? 'purchases_grouped' : 'sales_grouped';
+1559:     const grouped = (await getLocal<any[]>(groupedKey)) || [];
+1560:     const g = grouped.find((x: any) => String(x.invoice || '') === invoiceNumber);
+1561:     if (g) {
+1562:       const isPurchase = groupedKey === 'purchases_grouped';
+1563:       return (g.items || []).map((it: any, idx: number) => ({
+1564:         id: 'grouped_' + idx,
+1565:         invoice_number: invoiceNumber,
+1566:         customer_code: isPurchase ? '' : (g.customerCode || g.code || ''),
+1567:         customer_name: isPurchase ? '' : (g.name || ''),
+1568:         customer_phone: isPurchase ? '' : (g.phone || ''),
+1569:         supplier_code: isPurchase ? (g.supplierCode || g.code || '') : '',
+1570:         supplier_name: isPurchase ? (g.name || '') : '',
+1571:         supplier_phone: isPurchase ? (g.phone || '') : '',
+1572:         model_code: it.modelCode || it.model_code || '',
+1573:         model_name: it.modelName || it.model_name || '',
+
+══════ ۳) findCustomerByPhoneOffline ══════
+
+── lib.offline.ts — findCustomerByPhoneOffline (خط 1715 تا 1762) ──
+1715: export async function findCustomerByPhoneOffline(phone: string) {
+1716:   const p = String(phone).replace(/[^0-9]/g, '');
+1717:   if (!p) return null;
+1718: 
+1719:   // ۱. جستجو در cache (sales_grouped + all_sales_for_lookup)
+1720:   const list = await getCustomerList();
+1721:   for (const s of list) {
+1722:     const sp = String(s.customer_phone || '').replace(/[^0-9]/g, '');
+1723:     if (sp === p) {
+1724:       return {
+1725:         customer_name: s.customer_name,
+1726:         customer_address: s.customer_address || '',
+1727:         customer_code: s.customer_code,
+1728:         found_as: 'customer',
+1729:       };
+1730:     }
+1731:   }
+1732: 
+1733:   // ۲. جستجو در صف (فاکتورهای آفلاین ثبت‌شده)
+1734:   const queue = await getQueue();
+1735:   for (const item of queue) {
+1736:     if (item.op === 'createSale') {
+1737:       const itemPhone = String(item.payload?.customerPhone || '').replace(/[^0-9]/g, '');
+1738:       if (itemPhone === p) {
+1739:         return {
+1740:           customer_name: item.payload?.customerName || '',
+1741:           customer_address: item.payload?.customerAddress || '',
+1742:           customer_code: item.payload?.customerCode || '',
+1743:           found_as: 'customer',
+1744:         };
+1745:       }
+1746:     }
+1747:     // فاکتورهای خرید — تأمین‌کننده‌ها رو هم چک کن
+1748:     if (item.op === 'createPurchase') {
+1749:       const sp = String(item.payload?.supplierPhone || '').replace(/[^0-9]/g, '');
+1750:       if (sp === p) {
+1751:         return {
+1752:           customer_name: item.payload?.supplierName || '',
+1753:           customer_address: '',
+1754:           customer_code: item.payload?.supplierCode || '',
+1755:           found_as: 'supplier',
+1756:         };
+1757:       }
+1758:     }
+1759:   }
+1760: 
+1761:   return null;
+1762: }
+
+══════ ۴) generateInvoiceNumber ══════
+
+── lib.offline.ts — generateInvoiceNumber (خط 1024 تا 1057) ──
+1024: export async function generateInvoiceNumber(): Promise<string> {
+1025:   try {
+1026:     const d = new Date();
+1027:     const ds = String(d.getFullYear()).slice(-2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+1028:     const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+1029:     const rows = (await getLocal<any[]>('sales')) || [];
+1030:     const q = await getQueue();
+1031:     const allInvs = new Set<string>();
+1032:     grouped.forEach((g: any) => { if (g.invoice) allInvs.add(String(g.invoice)); });
+1033:     rows.forEach((r: any) => { if (r.invoice_number) allInvs.add(String(r.invoice_number)); });
+1034:     q.forEach((item: any) => { if (item.op === 'createSale' && item.payload?.invoiceNumber) allInvs.add(String(item.payload.invoiceNumber)); });
+1035:     let maxN = 1000;
+1036:     for (const inv of allInvs) {
+1037:       const m = String(inv).match(/^(\d{6})-(\d+)$/);
+1038:       if (m && m[1] === ds) {
+1039:         const n = parseInt(m[2], 10);
+1040:         if (n > maxN) maxN = n;
+1041:       }
+1042:     }
+1043:     if (MODE === 'online') {
+1044:       try {
+1045:         const { bridgeNextNumber } = await import('./lib.sheets');
+1046:         const central = await bridgeNextNumber('sale', maxN);
+1047:         if (central && central > maxN) {
+1048:           return ds + '-' + String(central).padStart(4, '0');
+1049:         }
+1050:       } catch {}
+1051:     }
+1052:     return ds + '-' + String(maxN + 1).padStart(4, '0');
+1053:   } catch {
+1054:     const d = new Date();
+1055:     return String(d.getFullYear()).slice(-2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-1001';
+1056:   }
+1057: }
+
+══════ ۵) generateCustomerCode ══════
+
+── lib.offline.ts — generateCustomerCode (خط 1059 تا 1081) ──
+1059: export async function generateCustomerCode(): Promise<string> {
+1060:   const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+1061:   const queue = await getQueue();
+1062:   let maxN = 1000;
+1063:   const all: string[] = [
+1064:     ...salesGrouped.map((g: any) => g.customerCode || ''),
+1065:     ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.customerCode || ''),
+1066:   ];
+1067:   for (const ccode of all) {
+1068:     const m = String(ccode).match(/^M_(\d+)$/);
+1069:     if (m) { const n = +m[1]; if (n > maxN) maxN = n; }
+1070:   }
+1071:   if (MODE === 'online') {
+1072:     try {
+1073:       const { bridgeNextNumber } = await import('./lib.sheets');
+1074:       const central = await bridgeNextNumber('customer', maxN);
+1075:       if (central && central > maxN) {
+1076:         return 'M_' + central;
+1077:       }
+1078:     } catch {}
+1079:   }
+1080:   return 'M_' + (maxN + 1);
+1081: }
+
+══════ ۶) lookupCustomerByPhone ══════
+
+── lib.offline.ts — lookupCustomerByPhone (خط 1767 تا 1786) ──
+1767: export async function lookupCustomerByPhone(phone: string) {
+1768:   if (MODE === 'online') {
+1769:     try {
+1770:       const fresh = await lib.lookupCustomerByPhone(phone);
+1771:       if (fresh) {
+1772:         await setLocal('cust_' + phone, fresh);
+1773:         return fresh;
+1774:       }
+1775:       // اگه سرور پیدا نکرد، صف رو چک کن (چون ممکنه آفلاین ثبت شده باشه)
+1776:       const fromQueue = await findCustomerByPhoneOffline(phone);
+1777:       return fromQueue;
+1778:     } catch {
+1779:       return await findCustomerByPhoneOffline(phone);
+1780:     }
+1781:   }
+1782:   // آفلاین: اول cache، بعد صف
+1783:   const cached = await getLocal<any>('cust_' + phone);
+1784:   if (cached) return cached;
+1785:   return await findCustomerByPhoneOffline(phone);
+1786: }
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

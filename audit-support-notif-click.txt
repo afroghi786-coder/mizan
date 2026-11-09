@@ -1,0 +1,89 @@
+
+───── App.tsx — listener و تب پشتیبانی ─────
+91: import SupportSection from './SupportSection';
+123: addNotificationReceivedListener: () => ({ remove: () => {} }),
+125: addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+1287: (globalThis as any).__nav = { setTab: (t: string) => { console.warn('NAV_SET', t); setTab(t as any); } };
+1305: 'صرافی':        () => setTab('exchange'),
+1307: 'صراف':         () => setTab('exchange'),
+1309: 'بازار عمومی':  () => setTab('publicMarket'),
+1311: 'بازار':        () => setTab('publicMarket'),
+1313: 'سفارش':        () => setTab('order'),
+1315: 'فروش':         () => setTab('order'),
+1317: 'خانه':         () => setTab('order'),
+1319: 'داشبورد':      () => setTab('order'),
+1321: 'خرید':         () => setTab('purchase'),
+1323: 'انبار':        () => setTab('inventory'),
+1325: 'موجودی':       () => setTab('inventory'),
+1327: 'هزینه‌ها':     () => setTab('expenses'),
+1329: 'هزینه':        () => setTab('expenses'),
+1331: 'کارمندان':     () => setTab('employees'),
+1333: 'کارمند':       () => setTab('employees'),
+1335: 'سود':          () => setTab('profit'),
+1337: 'درآمد':        () => setTab('profit'),
+1339: 'بانک':         () => setTab('bankMatch'),
+1341: 'پیامک':        () => setTab('bankMatch'),
+1343: 'آموزش':        () => setTab('botLearning'),
+1345: 'دستیار':       () => setTab('manualEntry'),
+1347: 'ربات':         () => setTab('aiAssistant'),
+1349: 'مدیریت':       () => setTab('mgr'),
+1351: 'پرینت':        () => setTab('print'),
+1379: setTab: (t: string) => setTab(t as any),
+1735: { key: 'support', icon: '🎧', label: t('پشتیبانی'), color: '#0891b2' },];
+1745: if (t === 'order' || !isLocked(t)) { setTab(t); return; }
+1894: <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+1912: <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+1931: {tab === 'support' && (
+1933: <SupportSection showToast={showToast} />
+1937: {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
+2051: setTab(pendingTab);
+2073: onPress={() => setTab('order')}
+2093: onPress={() => setTab('order')}
+
+───── App.tsx — state تب ─────
+91: import SupportSection from './SupportSection';
+1266: const [tab, setTab] = useState('dashboard');
+1279: (globalThis as any).__nav = { setTab };
+1287: (globalThis as any).__nav = { setTab: (t: string) => { console.warn('NAV_SET', t); setTab(t as any); } };
+1305: 'صرافی':        () => setTab('exchange'),
+1307: 'صراف':         () => setTab('exchange'),
+1309: 'بازار عمومی':  () => setTab('publicMarket'),
+1311: 'بازار':        () => setTab('publicMarket'),
+1313: 'سفارش':        () => setTab('order'),
+1315: 'فروش':         () => setTab('order'),
+1317: 'خانه':         () => setTab('order'),
+1319: 'داشبورد':      () => setTab('order'),
+1321: 'خرید':         () => setTab('purchase'),
+1323: 'انبار':        () => setTab('inventory'),
+1325: 'موجودی':       () => setTab('inventory'),
+1327: 'هزینه‌ها':     () => setTab('expenses'),
+1329: 'هزینه':        () => setTab('expenses'),
+1331: 'کارمندان':     () => setTab('employees'),
+1333: 'کارمند':       () => setTab('employees'),
+1335: 'سود':          () => setTab('profit'),
+1337: 'درآمد':        () => setTab('profit'),
+1339: 'بانک':         () => setTab('bankMatch'),
+1341: 'پیامک':        () => setTab('bankMatch'),
+1343: 'آموزش':        () => setTab('botLearning'),
+1345: 'دستیار':       () => setTab('manualEntry'),
+1347: 'ربات':         () => setTab('aiAssistant'),
+1349: 'مدیریت':       () => setTab('mgr'),
+1351: 'پرینت':        () => setTab('print'),
+1379: setTab: (t: string) => setTab(t as any),
+1745: if (t === 'order' || !isLocked(t)) { setTab(t); return; }
+1883: {tab === 'dashboard' && <DashboardScreen onLedgerOpenChange={setLedgerOpen} lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabKey); 
+1894: <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+1912: <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+1931: {tab === 'support' && (
+1933: <SupportSection showToast={showToast} />
+1937: {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
+1969: const [tabKey, sub] = k.includes(':') ? k.split(':') : [k, undefined];
+2051: setTab(pendingTab);
+2073: onPress={() => setTab('order')}
+2093: onPress={() => setTab('order')}
+
+───── LiveMarketScreen.tsx — کلیک نوتیف در بازار زنده ─────
+893: const openChatFromNotif = async (nt: any) => {
+1522: onPress={() => openChatFromNotif(n)}
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

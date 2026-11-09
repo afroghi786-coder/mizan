@@ -1,0 +1,176 @@
+
+══════ getCustomerPreviousBalance (خط 250 تا 330) ══════
+250: 
+251:       { text: 'تأیید', onPress: () => resolve(true) },
+252: 
+253:     ]);
+254: 
+255:   });
+256: 
+257: };
+258: 
+259: // ⭐ محاسبه موجودی قبلی مشتری
+260: 
+261: async function getCustomerPreviousBalance(customerCode: string, currentInvoiceNumber: string) {
+262: 
+263:   try {
+264: 
+265:     const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+266: 
+267: 
+268: 
+269:     // ═══ ۱. تلاش آنلاین ═══
+270: 
+271:     let allSales: any[] = [];
+272: 
+273:     try {
+274: 
+275:       const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
+276: 
+277:       if (data && data.length) allSales = data;
+278: 
+279:     } catch {}
+280: 
+281: 
+282: 
+283:     // ═══ ۲. اگه آفلاین یا سرور خالی بود، از cache ═══
+284: 
+285:     if (!allSales.length) {
+286: 
+287:       const raw = await AsyncStorage.getItem('@mizan_local_all_sales_full');
+288: 
+289:       if (raw) {
+290: 
+291:         const local = JSON.parse(raw);
+292: 
+293:         allSales = local.filter((s: any) => s.customer_code === customerCode);
+294: 
+295:       }
+296: 
+297:     }
+298: 
+299: 
+300: 
+301:     // ═══ ۳. اگه بازم خالی بود، از sales_grouped ═══
+302: 
+303:     if (!allSales.length) {
+304: 
+305:       const groupedRaw = await AsyncStorage.getItem('@mizan_local_sales_grouped');
+306: 
+307:       if (groupedRaw) {
+308: 
+309:         const grouped = JSON.parse(groupedRaw);
+310: 
+311:         const matched = grouped.filter((g: any) =>
+312: 
+313:           g.customerCode === customerCode || g.code === customerCode
+314: 
+315:         );
+316: 
+317:         for (const g of matched) {
+318: 
+319:           allSales.push({
+320: 
+321:             invoice_number: g.invoice,
+322: 
+323:             customer_code: customerCode,
+324: 
+325:             quantity: 1,
+326: 
+327:             price_unit: g.total || 0,
+328: 
+329:             payment: g.paid || 0,
+330: 
+
+══════ ReportsSection.load (خط 7620 تا 7710) ══════
+7620:   );
+7621: 
+7622: }
+7623: 
+7624: 
+7625: 
+7626: // ══════════════════════════════════════════════════════════
+7627: 
+7628: //  REPORTS SECTION
+7629: 
+7630: // ══════════════════════════════════════════════════════════
+7631: 
+7632: function ReportsSection({ showToast }: any) {
+7633: 
+7634:   const [type, setType] = useState('debtors');
+7635: 
+7636:   const [data, setData] = useState<any>(null);
+7637: 
+7638:   const [loading, setLoading] = useState(false);
+7639: 
+7640: 
+7641: 
+7642:   const load = async () => {
+7643: 
+7644:     setLoading(true);
+7645: 
+7646:     try {
+7647: 
+7648:       const [{ data: sales }, { data: purchases }] = await Promise.all([
+7649: 
+7650:         supabase.from('sales').select('*'),
+7651: 
+7652:         supabase.from('purchases').select('*'),
+7653: 
+7654:       ]);
+7655: 
+7656: 
+7657: 
+7658:       if (type === 'debtors') {
+7659: 
+7660:         const map: any = {};
+7661: 
+7662:         (sales || []).forEach((r: any) => {
+7663: 
+7664:           const code = r.customer_code || r.customer_phone;
+7665: 
+7666:           if (!code) return;
+7667: 
+7668:           if (!map[code]) map[code] = { code, name: r.customer_name, phone: r.customer_phone, total: 0, paid: 0 };
+7669: 
+7670:           map[code].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+7671: 
+7672:           map[code].paid += Number(r.payment) || 0;
+7673: 
+7674:         });
+7675: 
+7676:         const rows = Object.values(map).map((m: any) => ({ ...m, balance: m.total - m.paid })).filter((r: any) => r.balance > 0);
+7677: 
+7678:         rows.sort((a: any, b: any) => b.balance - a.balance);
+7679: 
+7680:         setData({ rows, total: rows.reduce((a: number, r: any) => a + r.balance, 0), title: 'بدهکاران', columns: ['کد', 'نام', 'تلفن', 'جمع', 'پرداخت', 'بدهی'] });
+7681: 
+7682:       } else if (type === 'creditors') {
+7683: 
+7684:         const map: any = {};
+7685: 
+7686:         (purchases || []).forEach((r: any) => {
+7687: 
+7688:           const code = r.supplier_code || r.supplier_phone;
+7689: 
+7690:           if (!code) return;
+7691: 
+7692:           if (!map[code]) map[code] = { code, name: r.supplier_name, phone: r.supplier_phone, total: 0, paid: 0 };
+7693: 
+7694:           map[code].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+7695: 
+7696:           map[code].paid += Number(r.payment) || 0;
+7697: 
+7698:         });
+7699: 
+7700:         const rows = Object.values(map).map((m: any) => ({ ...m, balance: m.total - m.paid })).filter((r: any) => r.balance > 0);
+7701: 
+7702:         rows.sort((a: any, b: any) => b.balance - a.balance);
+7703: 
+7704:         setData({ rows, total: rows.reduce((a: number, r: any) => a + r.balance, 0), title: 'طلبکاران', columns: ['کد', 'نام', 'تلفن', 'جمع', 'پرداخت', 'طلب'] });
+7705: 
+7706:       } else if (type === 'sales24h') {
+7707: 
+7708:         const cutoff = Date.now() - 24 * 3600 * 1000;
+7709: 
+7710:         const rows = (sales || []).filter((r: any) => { const d = parseDateAny(r.date_reg || r.date_factor); return d && d.getTime() >= cutoff; });

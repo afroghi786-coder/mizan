@@ -1,0 +1,2444 @@
+{
+  "generatedAt": "2026-10-30T14:35:06.970Z",
+  "files": {
+    "AdminPanel.tsx": {
+      "lines": 1046,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.supabase.admin"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "supabase",
+        "payment",
+        "license",
+        "auth",
+        "admin"
+      ]
+    },
+    "AdminScreen.tsx": {
+      "lines": 6,
+      "imports": [
+        "./lib-date",
+        "./AdminPanel"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "admin"
+      ]
+    },
+    "App.tsx": {
+      "lines": 10697,
+      "imports": [
+        "./lib.bot.worker",
+        "./components/DashboardScreen",
+        "./components/PlusMenu",
+        "react",
+        "react-native-safe-area-context",
+        "expo-status-bar",
+        "./SyncControl",
+        "./ExchangeScreen",
+        "./PublicMarketScreen",
+        "./lib.notifications",
+        "./ExpensesScreen",
+        "./EmployeesScreen",
+        "./LanguageModal",
+        "./i18n",
+        "./customLabels",
+        "./presets",
+        "./LicenseGate",
+        "./LicenseNotification",
+        "react",
+        "react-native",
+        "@expo-google-fonts/orbitron",
+        "@expo-google-fonts/share-tech-mono",
+        "expo-print",
+        "expo-sharing",
+        "react-native-view-shot",
+        "xlsx",
+        "expo-file-system",
+        "./SmsMatchScreen",
+        "./ManualEntryScreen",
+        "./LocalBotScreen",
+        "./LearningScreen",
+        "./lib.datefield",
+        "./lib.offline",
+        "./lib",
+        "./SuperAssistant",
+        "./BotUI",
+        "./GlobalVoice",
+        "./CommandBus",
+        "./ResetPasswordScreen",
+        "./components/ErrorBoundary",
+        "./lib.backup",
+        "./SettingsSheets",
+        "./SettingsAssistant",
+        "./AssistantHome",
+        "./lib.sheets",
+        "./lib.share",
+        "./lib.currencyfield",
+        "./lib.storage",
+        "./lib.storage",
+        "./lib.currency"
+      ],
+      "exports": [
+        "ThemeMode",
+        "setThemeMode",
+        "getThemeMode",
+        "default"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "notifications",
+        "fileSystem",
+        "share",
+        "print",
+        "invoice",
+        "product",
+        "customer",
+        "payment",
+        "license",
+        "auth",
+        "exchange",
+        "publicMarket",
+        "admin",
+        "assistant"
+      ]
+    },
+    "AssistantHome.tsx": {
+      "lines": 574,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib.offline",
+        "./lib.assistant.rubika",
+        "expo-image-picker",
+        "./lib.storage",
+        "./lib.assistant"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "asyncStorage",
+        "imagePicker",
+        "botRubika",
+        "botTelegram",
+        "invoice",
+        "product",
+        "cart",
+        "customer",
+        "payment",
+        "assistant"
+      ]
+    },
+    "BotBrain.ts": {
+      "lines": 270,
+      "imports": [],
+      "exports": [
+        "APP_KNOWLEDGE",
+        "Intent",
+        "FLOWS",
+        "parseIntent",
+        "FlowEngine",
+        "unknownReply",
+        "helpText"
+      ],
+      "features": [
+        "invoice",
+        "product",
+        "customer",
+        "exchange",
+        "publicMarket"
+      ]
+    },
+    "BotUI.tsx": {
+      "lines": 436,
+      "imports": [
+        "./lib-date",
+        "./lib.voice",
+        "react",
+        "react-native",
+        "./BotBrain",
+        "./ExchangeScreen",
+        "./PublicMarketScreen",
+        "./lib.local.nlu",
+        "./lib.local.exec"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "invoice",
+        "exchange",
+        "publicMarket"
+      ]
+    },
+    "BoxesScreen.tsx": {
+      "lines": 726,
+      "imports": [
+        "react-native-view-shot",
+        "react-native",
+        "react-native",
+        "react",
+        "./lib.share",
+        "./lib",
+        "./lib.datefield",
+        "react",
+        "react-native",
+        "expo-print",
+        "expo-sharing",
+        "./lib.boxes"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "share",
+        "print",
+        "payment"
+      ]
+    },
+    "CommandBus.ts": {
+      "lines": 78,
+      "imports": [],
+      "exports": [
+        "registerCommands",
+        "unregisterCommands",
+        "getRegistry",
+        "findAndRun"
+      ],
+      "features": []
+    },
+    "CurrencyPicker.tsx": {
+      "lines": 131,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native"
+      ],
+      "exports": [
+        "CUR_INFO",
+        "ALL_CURS",
+        "curLabel",
+        "curFlag",
+        "default"
+      ],
+      "features": []
+    },
+    "customLabels.ts": {
+      "lines": 52,
+      "imports": [
+        "./lib-date",
+        "./lib.storage"
+      ],
+      "exports": [
+        "clRaw",
+        "cl",
+        "loadCustomLabels",
+        "setCustomLabel",
+        "resetCustomLabel",
+        "getAllCustom",
+        "resetAllCustom",
+        "subscribe"
+      ],
+      "features": [
+        "asyncStorage"
+      ]
+    },
+    "EmpHelpers.tsx": {
+      "lines": 276,
+      "imports": [
+        "./lib-date",
+        "react-native",
+        "./lib.share",
+        "./lib.currency"
+      ],
+      "exports": [
+        "payslipHtml",
+        "printPayslip",
+        "printPayslipDirect",
+        "sharePayslipExcel",
+        "payslipMenu",
+        "exportBankFile"
+      ],
+      "features": [
+        "payment"
+      ]
+    },
+    "EmployeesScreen.tsx": {
+      "lines": 1127,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.emp",
+        "./EmpHelpers",
+        "./HRDash",
+        "./lib.datefield",
+        "./lib",
+        "./lib.offline",
+        "./lib.offline"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "invoice",
+        "product",
+        "payment"
+      ]
+    },
+    "ExchangeBell.tsx": {
+      "lines": 326,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "exchange"
+      ]
+    },
+    "ExchangeInvoice.tsx": {
+      "lines": 252,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "react-native-view-shot",
+        "expo-print",
+        "expo-sharing",
+        "./lib.share"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "share",
+        "print",
+        "invoice",
+        "customer",
+        "payment",
+        "exchange"
+      ]
+    },
+    "ExchangeScreen.tsx": {
+      "lines": 2374,
+      "imports": [
+        "./lib.datefield",
+        "./LiveMarketScreen",
+        "./GroupsScreen",
+        "./lib.boxes",
+        "./lib.box-auto",
+        "./BoxesScreen",
+        "./lib.fx.cust",
+        "./ExchangeInvoice",
+        "./CurrencyPicker",
+        "./lib.fx.trade",
+        "react-native",
+        "./lib.offline",
+        "./lib",
+        "./lib.events",
+        "./lib.assistant.bridge",
+        "react",
+        "./CommandBus",
+        "./lib.fx"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "invoice",
+        "customer",
+        "payment",
+        "exchange"
+      ]
+    },
+    "ExpensesScreen.tsx": {
+      "lines": 408,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.exp",
+        "./lib.offline"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "invoice",
+        "product",
+        "payment"
+      ]
+    },
+    "GlobalVoice.tsx": {
+      "lines": 645,
+      "imports": [
+        "./lib-date",
+        "react",
+        "./BotBrain",
+        "react-native",
+        "expo-speech",
+        "./lib.voice",
+        "./lib.voice"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "speech",
+        "invoice",
+        "customer",
+        "exchange",
+        "publicMarket"
+      ]
+    },
+    "GroupsScreen.tsx": {
+      "lines": 335,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.network"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": []
+    },
+    "HRDash.tsx": {
+      "lines": 210,
+      "imports": [
+        "./lib-date",
+        "react-native"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "payment"
+      ]
+    },
+    "i18n.ts": {
+      "lines": 451,
+      "imports": [
+        "./lib-date",
+        "./lib.storage",
+        "./customLabels"
+      ],
+      "exports": [
+        "Lang",
+        "LANGS",
+        "t",
+        "getLang",
+        "loadLang",
+        "setLang",
+        "isFirstTime",
+        "markLangSet"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "product",
+        "customer",
+        "payment",
+        "license",
+        "auth",
+        "exchange"
+      ]
+    },
+    "index.ts": {
+      "lines": 16,
+      "imports": [
+        "./lib-date",
+        "expo",
+        "./App",
+        "react",
+        "./components/ErrorBoundary"
+      ],
+      "exports": [],
+      "features": []
+    },
+    "LanguageModal.tsx": {
+      "lines": 49,
+      "imports": [
+        "./lib-date",
+        "react-native",
+        "./i18n"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": []
+    },
+    "LearningScreen.tsx": {
+      "lines": 313,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.learning",
+        "./lib.learning.intents"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": []
+    },
+    "LedgerScreen.tsx": {
+      "lines": 1246,
+      "imports": [
+        "react",
+        "react-native",
+        "react-native-view-shot",
+        "./lib.offline",
+        "./lib.currency",
+        "./lib.share",
+        "./lib-date",
+        "./lib"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "share",
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib-date.ts": {
+      "lines": 92,
+      "imports": [
+        "./lib-jalali"
+      ],
+      "exports": [
+        "CalType",
+        "DateFields",
+        "dateToFields",
+        "fieldsToDate",
+        "isValidDate",
+        "toStorageDateFull",
+        "toStorageDate",
+        "displayDate",
+        "parseDateAny",
+        "displayDateOnly"
+      ],
+      "features": []
+    },
+    "lib-db.ts": {
+      "lines": 442,
+      "imports": [
+        "./lib-supabase",
+        "./lib-date"
+      ],
+      "exports": [
+        "getCurrentUser",
+        "getProducts",
+        "createProduct",
+        "updateProduct",
+        "deleteProduct",
+        "getSales",
+        "getSalesGrouped",
+        "createSale",
+        "updateSaleRow",
+        "deleteSale",
+        "deleteSaleRow",
+        "lookupCustomerByPhone",
+        "getPurchases",
+        "getPurchasesGrouped",
+        "createPurchase",
+        "updatePurchaseRow",
+        "deletePurchase",
+        "deletePurchaseRow",
+        "lookupSupplierByName",
+        "getDashboardStats",
+        "getProfitByModel",
+        "getInventory",
+        "searchAllInvoices",
+        "getInvoiceDetails",
+        "getUnpaidInvoices",
+        "getSettings",
+        "updateSettings",
+        "generateInvoiceNumber",
+        "generateCustomerCode",
+        "formatPrice",
+        "formatDate",
+        "formatDateTime"
+      ],
+      "features": [
+        "supabase",
+        "invoice",
+        "product",
+        "customer",
+        "payment",
+        "auth"
+      ]
+    },
+    "lib-jalali.ts": {
+      "lines": 96,
+      "imports": [
+        "./lib-date"
+      ],
+      "exports": [
+        "g2j",
+        "j2g",
+        "g2h",
+        "h2g",
+        "toFaNum",
+        "JALALI_MONTHS",
+        "HIJRI_MONTHS",
+        "GREGORIAN_MONTHS"
+      ],
+      "features": []
+    },
+    "lib-supabase.ts": {
+      "lines": 16,
+      "imports": [
+        "./lib-date",
+        "react-native-url-polyfill/auto",
+        "./lib.storage",
+        "@supabase/supabase-js"
+      ],
+      "exports": [
+        "supabase"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "auth"
+      ]
+    },
+    "lib.app.events.ts": {
+      "lines": 230,
+      "imports": [
+        "./lib.storage",
+        "./lib.currency"
+      ],
+      "exports": [
+        "AppEventType",
+        "AppEvent",
+        "subscribe",
+        "emit",
+        "getRecentEvents",
+        "getEventsByType",
+        "getTodayEvents",
+        "clearMemory",
+        "getTodaySummary",
+        "UserActivity",
+        "updateActivity",
+        "getActivity",
+        "getEventStats"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.app.executor.ts": {
+      "lines": 368,
+      "imports": [
+        "./lib.app.parser",
+        "./lib.app.events"
+      ],
+      "exports": [
+        "setNavigator",
+        "getNavigator",
+        "ExecResult",
+        "execute",
+        "executeConfirmed",
+        "getTodaySummary"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer",
+        "payment",
+        "exchange"
+      ]
+    },
+    "lib.app.manager.ts": {
+      "lines": 246,
+      "imports": [
+        "./lib.app.parser",
+        "./lib.app.panels"
+      ],
+      "exports": [
+        "ManagerResult",
+        "handleCommand",
+        "executeApproved"
+      ],
+      "features": [
+        "invoice",
+        "product",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.app.panels.ts": {
+      "lines": 560,
+      "imports": [
+        "./lib.app.parser"
+      ],
+      "exports": [
+        "PanelAction",
+        "Panel",
+        "buildWelcomePanel",
+        "buildBoxPanel",
+        "buildBoxListPanel",
+        "buildCustomerPanel",
+        "buildCustomerListPanel",
+        "buildInvoiceListPanel",
+        "buildInvoiceCardPanel",
+        "buildHawalaListPanel",
+        "buildCheckListPanel",
+        "buildRateListPanel",
+        "buildStatsPanel",
+        "buildHelpPanel",
+        "buildSearchPanel"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.app.parser.ts": {
+      "lines": 367,
+      "imports": [
+        "./lib.app.schema",
+        "./lib.app.events"
+      ],
+      "exports": [
+        "norm",
+        "lower",
+        "detectCurrency",
+        "extractAmount",
+        "extractPerson",
+        "Verb",
+        "detectVerb",
+        "CommandKind",
+        "ParsedCommand",
+        "parse",
+        "parseMulti",
+        "HELP_TEXT"
+      ],
+      "features": [
+        "invoice",
+        "customer",
+        "payment",
+        "exchange",
+        "publicMarket"
+      ]
+    },
+    "lib.app.registry.ts": {
+      "lines": 233,
+      "imports": [],
+      "exports": [
+        "ScreenField",
+        "ScreenButton",
+        "ScreenAction",
+        "RegisteredScreen",
+        "registerScreen",
+        "getRegisteredScreens",
+        "getScreen",
+        "findScreen",
+        "findField",
+        "findButton",
+        "findAction",
+        "getScreenSummary",
+        "listAllScreens"
+      ],
+      "features": []
+    },
+    "lib.app.schema.ts": {
+      "lines": 279,
+      "imports": [],
+      "exports": [
+        "TabDef",
+        "SubTabDef",
+        "FormDef",
+        "ActionDef",
+        "TABS",
+        "EXCHANGE_SUBS",
+        "FORMS",
+        "ACTIONS",
+        "findAction",
+        "findTab",
+        "findSubTab",
+        "findForm",
+        "SCHEMA_STATS"
+      ],
+      "features": [
+        "invoice",
+        "product",
+        "customer",
+        "payment",
+        "exchange",
+        "publicMarket"
+      ]
+    },
+    "lib.app.test-screen.ts": {
+      "lines": 123,
+      "imports": [
+        "./lib.app.registry",
+        "./lib",
+        "./App",
+        "./lib.storage"
+      ],
+      "exports": [
+        "registerSettingsScreen"
+      ],
+      "features": [
+        "asyncStorage"
+      ]
+    },
+    "lib.app.wizard.ts": {
+      "lines": 615,
+      "imports": [
+        "./lib.voice"
+      ],
+      "exports": [
+        "FormField",
+        "FormDef",
+        "WizardState",
+        "FORM_INVOICE",
+        "FORM_BOX",
+        "FORM_CUSTOMER",
+        "FORM_HAWALA",
+        "FORM_RATE",
+        "FORM_CHECK",
+        "FORM_PURCHASE",
+        "ALL_FORMS",
+        "getForm",
+        "startWizard",
+        "getCurrentQuestion",
+        "answerCurrent",
+        "WIZARD_HELP"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.assistant.bot.simple.ts": {
+      "lines": 383,
+      "imports": [
+        "./lib.storage",
+        "./lib.assistant",
+        "./lib.offline",
+        "./lib.assistant.catalog"
+      ],
+      "exports": [
+        "processRubikaUpdatesSimple"
+      ],
+      "features": [
+        "asyncStorage",
+        "fetch",
+        "botRubika",
+        "botTelegram",
+        "invoice",
+        "product",
+        "cart",
+        "customer",
+        "payment",
+        "auth"
+      ]
+    },
+    "lib.assistant.catalog.ts": {
+      "lines": 107,
+      "imports": [
+        "./lib.offline"
+      ],
+      "exports": [
+        "CatalogProduct",
+        "CatalogIndex",
+        "buildCatalogIndex",
+        "findProduct",
+        "searchProducts"
+      ],
+      "features": [
+        "product",
+        "auth"
+      ]
+    },
+    "lib.assistant.rubika.ts": {
+      "lines": 892,
+      "imports": [
+        "./lib.offline",
+        "./lib.assistant",
+        "./lib.storage",
+        "expo-file-system",
+        "react-native",
+        "./lib.assistant.catalog"
+      ],
+      "exports": [
+        "rubikaPing",
+        "rubikaGetUpdates",
+        "rubikaSendPhoto",
+        "rubikaSendMessage",
+        "rubikaEditInlineKeypad",
+        "buildOrderButton",
+        "rubikaExtractChannelId",
+        "rubikaSendMessageDebug",
+        "buildChannelPostText",
+        "processRubikaUpdates",
+        "resetBotOffset",
+        "rubikaExtractAdminChatId",
+        "requestAdminChatCapture",
+        "rubikaDebugUpdates",
+        "rubikaRemoveWebhook",
+        "forceFixBot",
+        "getBotLastError"
+      ],
+      "features": [
+        "asyncStorage",
+        "fetch",
+        "fileSystem",
+        "botRubika",
+        "botTelegram",
+        "invoice",
+        "product",
+        "cart",
+        "customer",
+        "payment",
+        "auth"
+      ]
+    },
+    "lib.assistant.telegram.ts": {
+      "lines": 50,
+      "imports": [],
+      "exports": [
+        "telegramPing",
+        "telegramGetUpdates"
+      ],
+      "features": [
+        "fetch",
+        "botTelegram"
+      ]
+    },
+    "lib.assistant.ts": {
+      "lines": 405,
+      "imports": [
+        "./lib.storage",
+        "react-native",
+        "./lib.offline"
+      ],
+      "exports": [
+        "getBotConfig",
+        "saveBotConfig",
+        "getWatcherConfig",
+        "saveWatcherConfig",
+        "getWatcherSources",
+        "saveWatcherSources",
+        "getAdsConfig",
+        "saveAdsConfig",
+        "isSecureStorageAvailable",
+        "getSecureStorageMode",
+        "getOrders",
+        "saveOrder",
+        "updateOrderStatus",
+        "getRateSnapshots",
+        "saveRateSnapshot",
+        "getRateSummary",
+        "saveRateSummary",
+        "getAdsQueue",
+        "enqueueAd",
+        "markAdSent",
+        "getAdsHistory",
+        "AssistantInvoiceStatus",
+        "getAssistantInvoices",
+        "getAssistantInvoiceById",
+        "issueAssistantInvoice",
+        "updateAssistantInvoice",
+        "deleteAssistantInvoice",
+        "approveAssistantInvoice",
+        "rejectAssistantInvoice",
+        "markAssistantInvoiceTransferred",
+        "getAssistantPayments",
+        "saveAssistantPayment",
+        "approveAssistantPayment",
+        "rejectAssistantPayment",
+        "transferAssistantInvoice"
+      ],
+      "features": [
+        "asyncStorage",
+        "secureStore",
+        "botRubika",
+        "botTelegram",
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.backup.ts": {
+      "lines": 179,
+      "imports": [
+        "./lib.storage",
+        "expo-sharing",
+        "expo-document-picker"
+      ],
+      "exports": [
+        "BackupPayload",
+        "createBackup",
+        "getLastAutoBackup",
+        "autoBackup",
+        "exportBackup",
+        "importBackup"
+      ],
+      "features": [
+        "asyncStorage",
+        "fileSystem",
+        "share"
+      ]
+    },
+    "lib.bot.worker.ts": {
+      "lines": 81,
+      "imports": [
+        "./lib.assistant",
+        "./lib.assistant.bot.simple"
+      ],
+      "exports": [
+        "startGlobalBotWorker",
+        "stopGlobalBotWorker"
+      ],
+      "features": [
+        "botRubika"
+      ]
+    },
+    "lib.box-auto.ts": {
+      "lines": 113,
+      "imports": [
+        "./lib-date",
+        "./lib.boxes"
+      ],
+      "exports": [
+        "applyTradeToBoxes"
+      ],
+      "features": [
+        "customer"
+      ]
+    },
+    "lib.boxes.ts": {
+      "lines": 269,
+      "imports": [
+        "./lib-date",
+        "./lib.storage"
+      ],
+      "exports": [
+        "TYPE_LABEL",
+        "getBoxes",
+        "saveBox",
+        "deleteBox",
+        "getBoxTransactions",
+        "addBoxTransaction",
+        "deleteBoxTransaction",
+        "getAllBalances",
+        "getBoxKardex",
+        "doTransfer",
+        "migrateOldTransfers",
+        "getBoxTxsByCounterparty",
+        "getBoxSummaryForPerson",
+        "getBoxesForPerson"
+      ],
+      "features": [
+        "asyncStorage",
+        "payment"
+      ]
+    },
+    "lib.currency.ts": {
+      "lines": 99,
+      "imports": [
+        "./lib.storage"
+      ],
+      "exports": [
+        "Currency",
+        "COMMON_CURRENCIES",
+        "getCurrencySync",
+        "hydrateFromSettings",
+        "setCurrency",
+        "formatMoney",
+        "currencyLabelByCode",
+        "currencyFromCode"
+      ],
+      "features": [
+        "asyncStorage"
+      ]
+    },
+    "lib.currencyfield.tsx": {
+      "lines": 120,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib.currency"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": []
+    },
+    "lib.datefield.tsx": {
+      "lines": 163,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib"
+      ],
+      "exports": [
+        "CalType",
+        "DateField",
+        "default"
+      ],
+      "features": []
+    },
+    "lib.emp.ts": {
+      "lines": 357,
+      "imports": [
+        "./lib.storage",
+        "./lib",
+        "./lib.offline"
+      ],
+      "exports": [
+        "getEmployees",
+        "createEmployee",
+        "updateEmployee",
+        "deleteEmployee",
+        "getAttendance",
+        "createAttendance",
+        "deleteAttendance",
+        "getLeaves",
+        "createLeave",
+        "deleteLeave",
+        "getSalaryPayments",
+        "createSalaryPayment",
+        "updateSalaryPayment",
+        "deleteSalaryPayment",
+        "getLoans",
+        "createLoan",
+        "deleteLoan",
+        "getBatches",
+        "createBatch",
+        "deleteBatch",
+        "TAX_BRACKETS",
+        "calcTax",
+        "calcInsurance",
+        "calcEmployeeSalary"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "invoice",
+        "payment"
+      ]
+    },
+    "lib.events.ts": {
+      "lines": 15,
+      "imports": [
+        "./lib-date"
+      ],
+      "exports": [
+        "emitHawalaUpdate",
+        "onHawalaUpdate"
+      ],
+      "features": []
+    },
+    "lib.exp.ts": {
+      "lines": 143,
+      "imports": [
+        "./lib.storage",
+        "./lib",
+        "./lib.offline"
+      ],
+      "exports": [
+        "getExpenses",
+        "createExpense",
+        "updateExpense",
+        "deleteExpense"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "invoice",
+        "payment"
+      ]
+    },
+    "lib.fx.cust.ts": {
+      "lines": 56,
+      "imports": [
+        "./lib-date",
+        "./lib.storage"
+      ],
+      "exports": [
+        "getAllCust",
+        "saveCust",
+        "deleteCust",
+        "getFxCustomers",
+        "createFxCustomer",
+        "updateFxCustomer",
+        "deleteFxCustomer"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "customer"
+      ]
+    },
+    "lib.fx.trade.ts": {
+      "lines": 141,
+      "imports": [
+        "./lib-date",
+        "./lib.storage"
+      ],
+      "exports": [
+        "getAllTrades",
+        "saveTrade",
+        "deleteTrade"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer"
+      ]
+    },
+    "lib.fx.ts": {
+      "lines": 169,
+      "imports": [
+        "./lib.storage",
+        "./lib",
+        "./lib"
+      ],
+      "exports": [
+        "getHawalas",
+        "createHawala",
+        "updateHawala",
+        "deleteHawala",
+        "getBoxes",
+        "createBox",
+        "updateBox",
+        "deleteBox",
+        "getTransfers",
+        "createTransfer",
+        "deleteTransfer",
+        "getChecks",
+        "createCheck",
+        "updateCheck",
+        "deleteCheck",
+        "getFxCustomers",
+        "findFxCustomerByPhone",
+        "createFxCustomer",
+        "updateFxCustomer",
+        "deleteFxCustomer"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "customer",
+        "exchange"
+      ]
+    },
+    "lib.learning.intents.ts": {
+      "lines": 15,
+      "imports": [
+        "./lib-date"
+      ],
+      "exports": [
+        "LEARNABLE_INTENTS"
+      ],
+      "features": [
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.learning.ts": {
+      "lines": 162,
+      "imports": [
+        "./lib-date",
+        "./lib.storage",
+        "./lib.local.nlu"
+      ],
+      "exports": [
+        "Lesson",
+        "getLessons",
+        "addLesson",
+        "removeLesson",
+        "clearLessons",
+        "matchLesson",
+        "Alias",
+        "getAliases",
+        "addAlias",
+        "removeAlias",
+        "applyAliases",
+        "FailLog",
+        "getFails",
+        "logFail",
+        "clearFails",
+        "markFailTaught",
+        "getStats"
+      ],
+      "features": [
+        "asyncStorage"
+      ]
+    },
+    "lib.local.exec.ts": {
+      "lines": 301,
+      "imports": [
+        "./lib-date",
+        "./lib.local.nlu"
+      ],
+      "exports": [
+        "ExecResult",
+        "setLastEntity",
+        "getLastEntity",
+        "clearLastEntity",
+        "execute"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.local.nlu.ts": {
+      "lines": 258,
+      "imports": [
+        "./lib-date"
+      ],
+      "exports": [
+        "norm",
+        "lower",
+        "nameScore",
+        "detectCurrency",
+        "extractAmount",
+        "extractName",
+        "Intent",
+        "Command",
+        "parseCommand",
+        "parseMulti"
+      ],
+      "features": [
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.manual.ts": {
+      "lines": 1100,
+      "imports": [
+        "./lib-date",
+        "./lib.storage"
+      ],
+      "exports": [
+        "Person",
+        "ParsedResult",
+        "LearnedPattern",
+        "normDigits",
+        "wordsToNumber",
+        "getLearned",
+        "addLearned",
+        "removeLearned",
+        "clearLearned",
+        "HistoryItem",
+        "getHistory",
+        "addHistory",
+        "ParseContext",
+        "parseCommand",
+        "SaveResult",
+        "saveManual",
+        "getLearningStats",
+        "ManualSettings",
+        "DEFAULT_SETTINGS",
+        "getManualSettings",
+        "saveManualSettings",
+        "UndoEntry",
+        "pushUndo",
+        "getLastUndo",
+        "markUndone",
+        "Shortcut",
+        "DEFAULT_SHORTCUTS",
+        "getShortcuts",
+        "saveShortcuts",
+        "bumpShortcut",
+        "exportToExcel",
+        "ExchangeCmd",
+        "parseExchangeCommand",
+        "QueryResult",
+        "parseQuery",
+        "answerQuery",
+        "DialogueStep",
+        "DialogueState",
+        "startDialogue",
+        "processDialogueAnswer"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer",
+        "payment",
+        "exchange"
+      ]
+    },
+    "lib.network.ts": {
+      "lines": 962,
+      "imports": [
+        "./lib-date",
+        "./lib.storage"
+      ],
+      "exports": [
+        "NET_CITIES",
+        "emailToKey",
+        "getCurrentEmail",
+        "getMyNetInfo",
+        "isNetReady",
+        "loadNetSettings",
+        "saveNetSettings",
+        "initNetwork",
+        "fetchNotifications",
+        "markNotificationRead",
+        "sendBroadcastHawala",
+        "claimHawala",
+        "sendFXOffer",
+        "claimFXOffer",
+        "deleteFXOffer",
+        "extendFXOffer",
+        "fetchMyFXOffers",
+        "sendDirectHawala",
+        "acceptDirectHawala",
+        "deliverDirectHawala",
+        "createGroup",
+        "inviteToGroupByEmail",
+        "joinGroupByCode",
+        "leaveGroup",
+        "kickGroupMember",
+        "deleteGroup",
+        "saveDailyRateWithBase",
+        "deleteMyRate",
+        "fetchDailyRates",
+        "getAgents",
+        "fetchOpenHawalas",
+        "fetchFXOffers",
+        "expireOldOffers",
+        "fetchGroupFeed",
+        "fetchMyHawalas",
+        "fetchDirectInbox",
+        "fetchMyGroups",
+        "getGroupDetails",
+        "stopPoll",
+        "listenOpenHawalas",
+        "listenFXOffers",
+        "listenMyHawalas",
+        "listenDirectInbox",
+        "listenMyGroups",
+        "listenDailyRates",
+        "listenNotifications",
+        "listenMyFXOffers",
+        "stopAllListeners",
+        "testFirebaseConnection",
+        "fetchPreferences",
+        "savePreferences",
+        "fetchAllNotifications",
+        "markAllRead",
+        "deleteNotification",
+        "sendMessage",
+        "fetchMessages",
+        "markRoomRead",
+        "fetchMyUnreadMessages",
+        "listenMessages",
+        "stopMessagesListen",
+        "fetchMyFXDeals",
+        "fetchMyHawalaDeals",
+        "listenMyFXDeals",
+        "listenMyHawalaDeals",
+        "deliverHawalaByUser",
+        "fetchPublicAds",
+        "createPublicAd",
+        "deletePublicAd",
+        "cancelDirectHawala",
+        "cancelHawala",
+        "cancelFXOffer",
+        "getUnreadByRoom"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "auth",
+        "exchange",
+        "publicMarket"
+      ]
+    },
+    "lib.notifications.ts": {
+      "lines": 172,
+      "imports": [
+        "./lib-date"
+      ],
+      "exports": [
+        "unlockAudio",
+        "playNotifSound",
+        "showNotifWithDetails",
+        "vibrateNotif",
+        "showBrowserNotif",
+        "requestNotifPermission",
+        "isWebView"
+      ],
+      "features": [
+        "notifications"
+      ]
+    },
+    "lib.offline.ts": {
+      "lines": 3410,
+      "imports": [
+        "./lib.storage",
+        "./lib"
+      ],
+      "exports": [
+        "loadMode",
+        "getMode",
+        "serverBusinessAllowed",
+        "isBusinessLocked",
+        "setBusinessLock",
+        "setMode",
+        "subscribeMode",
+        "getQueue",
+        "getDirtyTables",
+        "setDirtyTables",
+        "removeDirtyTables",
+        "enqueue",
+        "getQueueCount",
+        "clearQueue",
+        "recordTombstone",
+        "getTombstones",
+        "syncToServer",
+        "pullFromServer",
+        "getProducts",
+        "createProduct",
+        "updateProduct",
+        "deleteProduct",
+        "createSale",
+        "deleteSale",
+        "deletePurchase",
+        "getSettings",
+        "updateSettings",
+        "getInventory",
+        "getDashboardStats",
+        "getUnpaidInvoices",
+        "findSupplierByNameOffline",
+        "findCodeByNameOffline",
+        "lookupSupplierByName",
+        "lookupCodeByName",
+        "prepareOffline",
+        "generateInvoiceNumber",
+        "generateCustomerCode",
+        "getSalesGrouped",
+        "searchAllInvoices",
+        "createPurchase",
+        "getPurchasesGrouped",
+        "getInvoiceDetail",
+        "updateInvoiceInQueue_original",
+        "deleteSaleFromQueue",
+        "deletePurchaseFromQueue",
+        "findCustomerByPhoneOffline",
+        "lookupCustomerByPhone",
+        "getFxTrades",
+        "createFxTrade",
+        "deleteFxTrade",
+        "getExpenses",
+        "createExpense",
+        "deleteExpense",
+        "getEmployees",
+        "createEmployee",
+        "deleteEmployee",
+        "getAttendance",
+        "createAttendance",
+        "deleteSalaryPayment",
+        "deleteLoan",
+        "deleteLeave",
+        "deleteAttendance",
+        "getFxCustomers",
+        "createFxCustomer",
+        "updateFxCustomer",
+        "deleteFxCustomer",
+        "getFxPartners",
+        "createFxPartner",
+        "updateFxPartner",
+        "deleteFxPartner",
+        "updateFxTrade",
+        "updateInvoiceInQueue",
+        "getQueueDetails",
+        "retryFailed",
+        "clearFailedItems",
+        "getInventoryByModel",
+        "getStockAdjustments",
+        "createStockAdjustment",
+        "deleteStockAdjustment",
+        "getSalesRowsForReport",
+        "getPurchasesRowsForReport",
+        "getLedgerData",
+        "getParties",
+        "createParty",
+        "updateParty",
+        "deleteParty",
+        "lookupPartyByPhone",
+        "lookupPartyByName",
+        "suggestProductCode",
+        "suggestPartyCode",
+        "getPartners",
+        "createPartner",
+        "updatePartner",
+        "deletePartner",
+        "getPartnerBankAccounts",
+        "createPartnerBankAccount",
+        "deletePartnerBankAccount",
+        "getPartnerTransactions",
+        "createPartnerTransaction",
+        "deletePartnerTransaction",
+        "getBanks",
+        "createBank",
+        "updateBank",
+        "deleteBank",
+        "getShippings",
+        "createShipping",
+        "updateShipping",
+        "deleteShipping",
+        "lookupPayerUniversal",
+        "recordAuditEvent",
+        "getAuditEvents",
+        "getUnseenAuditCount",
+        "markAuditSeen",
+        "clearAuditEvents",
+        "updateSale",
+        "updatePurchase",
+        "createPartnerAutoTx",
+        "findPartnerByNameOrCode",
+        "getSalaryPayments",
+        "getLoans"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "invoice",
+        "product",
+        "customer",
+        "payment",
+        "exchange"
+      ]
+    },
+    "lib.share.ts": {
+      "lines": 193,
+      "imports": [
+        "react-native",
+        "expo-print",
+        "expo-sharing",
+        "expo-file-system",
+        "xlsx",
+        "react-native-view-shot",
+        "./lib.currency"
+      ],
+      "exports": [
+        "mizanStandardCss",
+        "mizanBrandHeaderHtml",
+        "buildStandardHtml",
+        "printHtml",
+        "shareHtmlAsPdf",
+        "shareViewAsImage",
+        "exportExcel",
+        "numToWords",
+        "currencyLabel",
+        "mizanSignaturesHtml",
+        "mizanComputerNoteHtml"
+      ],
+      "features": [
+        "fileSystem",
+        "share",
+        "print"
+      ]
+    },
+    "lib.sheets.ts": {
+      "lines": 1149,
+      "imports": [
+        "react-native",
+        "./lib",
+        "./lib.storage",
+        "./lib.offline"
+      ],
+      "exports": [
+        "SyncDestination",
+        "getSyncDestination",
+        "setSyncDestination",
+        "getBridgeConfig",
+        "setBridgeConfig",
+        "bridgePing",
+        "bridgePull",
+        "bridgeSaveTest",
+        "bridgeSaveTable",
+        "bridgeUpsertTable",
+        "bridgeSaveAll",
+        "getPrivateConnection",
+        "startPrivateOAuth",
+        "syncPrivateTables",
+        "pullBridgeTables",
+        "syncBridgeTables",
+        "syncByDestination",
+        "clearAuditInSheet",
+        "disconnectPrivate",
+        "applyConflictSheet",
+        "keepLocalConflict",
+        "getConflicts",
+        "clearConflicts",
+        "pullPrivateTables"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "fetch",
+        "linking",
+        "invoice",
+        "product",
+        "payment",
+        "auth"
+      ]
+    },
+    "lib.sms.patterns.ts": {
+      "lines": 262,
+      "imports": [
+        "./lib-date",
+        "./lib.storage"
+      ],
+      "exports": [
+        "SmsPattern",
+        "BUILTIN_PATTERNS",
+        "getPatterns",
+        "savePattern",
+        "deletePattern",
+        "resetPatterns",
+        "normalizeDigits",
+        "extractAllNumbers",
+        "smartExtractAmount",
+        "smartDetectType",
+        "ParseResult",
+        "parseSmsWithPatterns",
+        "testPattern"
+      ],
+      "features": [
+        "asyncStorage",
+        "payment"
+      ]
+    },
+    "lib.sms.ts": {
+      "lines": 277,
+      "imports": [
+        "./lib-date",
+        "./lib.storage",
+        "react-native"
+      ],
+      "exports": [
+        "DEFAULT_SETTINGS",
+        "getSettings",
+        "saveSettings",
+        "getProcessedIds",
+        "markProcessed",
+        "getTransactions",
+        "saveTransactions",
+        "addTransaction",
+        "updateTransaction",
+        "deleteTransaction",
+        "normalizeDigits",
+        "extractAmount",
+        "detectType",
+        "isAdvertisementOrOtp",
+        "readSmsInbox",
+        "processNewSms",
+        "matchTransactions",
+        "confirmMatch",
+        "rejectMatch",
+        "getStats"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "lib.storage.ts": {
+      "lines": 242,
+      "imports": [
+        "react-native",
+        "@react-native-async-storage/async-storage"
+      ],
+      "exports": [
+        "setStorageUserId",
+        "getStorageUserId",
+        "getDeviceLock",
+        "setDeviceLock",
+        "canUseDevice",
+        "default"
+      ],
+      "features": [
+        "asyncStorage",
+        "sqlite",
+        "license"
+      ]
+    },
+    "lib.supabase.admin.ts": {
+      "lines": 29,
+      "imports": [
+        "@supabase/supabase-js",
+        "./lib.storage"
+      ],
+      "exports": [
+        "supabaseAdmin"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "auth",
+        "admin"
+      ]
+    },
+    "lib.sw.ts": {
+      "lines": 17,
+      "imports": [
+        "./lib-date"
+      ],
+      "exports": [
+        "registerSW",
+        "subscribeToPush",
+        "VAPID_PUBLIC_KEY"
+      ],
+      "features": []
+    },
+    "lib.ts": {
+      "lines": 1383,
+      "imports": [
+        "@supabase/supabase-js",
+        "./lib.storage"
+      ],
+      "exports": [
+        "_safeSupabase",
+        "supabase",
+        "pad2",
+        "fmt",
+        "parseNum",
+        "toFaNum",
+        "normText",
+        "normPhone",
+        "g2j",
+        "j2g",
+        "g2h",
+        "h2g",
+        "CalType",
+        "getCalType",
+        "setCalType",
+        "loadCalType",
+        "saveCalType",
+        "parseDateAny",
+        "toStorageDate",
+        "toStorageDateFull",
+        "formatDateForType",
+        "displayDate",
+        "displayDateOnly",
+        "jalaliDisplay",
+        "BANKS",
+        "SHIPPINGS",
+        "DASH_RANGE_LABELS",
+        "Product",
+        "SaleItem",
+        "PurchaseItem",
+        "Settings",
+        "getProducts",
+        "createProduct",
+        "updateProduct",
+        "deleteProduct",
+        "lookupCustomerByPhone",
+        "generateCustomerCode",
+        "generateInvoiceNumber",
+        "generatePurchaseInvoiceNumber",
+        "createSale",
+        "getSalesGrouped",
+        "deleteSale",
+        "getUnpaidInvoices",
+        "searchAllInvoices",
+        "getInvoiceDetail",
+        "lookupSupplierByName",
+        "createPurchase",
+        "getPurchasesGrouped",
+        "deletePurchase",
+        "getDashboardStats",
+        "getProfitByModel",
+        "getInventory",
+        "getSettings",
+        "updateSettings",
+        "lookupCodeByName",
+        "createFxTrade",
+        "createExpense",
+        "createEmployee",
+        "createAttendance",
+        "createFxCustomer",
+        "createFxPartner",
+        "updateSale",
+        "updatePurchase",
+        "updateExpense",
+        "deleteExpense",
+        "updateEmployee",
+        "deleteEmployee",
+        "updateAttendance",
+        "deleteAttendance",
+        "createLeave",
+        "updateLeave",
+        "deleteLeave",
+        "createSalaryPayment",
+        "updateSalaryPayment",
+        "deleteSalaryPayment",
+        "createLoan",
+        "updateLoan",
+        "deleteLoan",
+        "createBatch",
+        "updateBatch",
+        "deleteBatch",
+        "getInventoryByModel",
+        "getStockAdjustments",
+        "createStockAdjustment",
+        "deleteStockAdjustment",
+        "getParties",
+        "createParty",
+        "updateParty",
+        "deleteParty",
+        "lookupPartyByPhone",
+        "lookupPartyByName",
+        "getPartners",
+        "createPartner",
+        "updatePartner",
+        "deletePartner",
+        "getPartnerBankAccounts",
+        "createPartnerBankAccount",
+        "updatePartnerBankAccount",
+        "deletePartnerBankAccount",
+        "getPartnerTransactions",
+        "createPartnerTransaction",
+        "deletePartnerTransaction",
+        "getBanks",
+        "createBank",
+        "updateBank",
+        "deleteBank",
+        "getShippings",
+        "createShipping",
+        "updateShipping",
+        "deleteShipping",
+        "createPTX",
+        "deletePTX",
+        "createPBA",
+        "deletePBA",
+        "getSalaryPayments",
+        "getLoans"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "invoice",
+        "product",
+        "customer",
+        "payment",
+        "auth",
+        "exchange"
+      ]
+    },
+    "lib.voice.ts": {
+      "lines": 255,
+      "imports": [
+        "react-native",
+        "./lib.storage"
+      ],
+      "exports": [
+        "isWeb",
+        "isAndroid",
+        "getActiveVoiceLang",
+        "setActiveVoiceLang",
+        "isSTTAvailable",
+        "requestMicPermission",
+        "startSTT",
+        "stopSTT",
+        "speakText",
+        "stopSpeak",
+        "isContinuousMode",
+        "startContinuous",
+        "stopContinuous",
+        "getVoices"
+      ],
+      "features": [
+        "asyncStorage",
+        "speech"
+      ]
+    },
+    "license.ts": {
+      "lines": 125,
+      "imports": [
+        "./lib.storage",
+        "./lib"
+      ],
+      "exports": [
+        "LicenseInfo",
+        "checkLicense",
+        "isLicenseValid",
+        "clearLicenseCache"
+      ],
+      "features": [
+        "supabase",
+        "asyncStorage",
+        "license",
+        "auth"
+      ]
+    },
+    "LicenseGate.tsx": {
+      "lines": 84,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./license",
+        "./LicenseRequest"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "license"
+      ]
+    },
+    "LicenseNotification.tsx": {
+      "lines": 120,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib",
+        "./lib"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "supabase",
+        "license",
+        "auth"
+      ]
+    },
+    "LicenseRequest.tsx": {
+      "lines": 113,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "supabase",
+        "license",
+        "auth"
+      ]
+    },
+    "LiveMarketScreen.tsx": {
+      "lines": 2533,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.network",
+        "./lib.events"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "supabase",
+        "notifications",
+        "exchange",
+        "publicMarket"
+      ]
+    },
+    "LocalBotScreen.tsx": {
+      "lines": 386,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.local.nlu",
+        "./lib.local.exec",
+        "./lib.voice",
+        "./lib.learning"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "asyncStorage",
+        "invoice",
+        "customer",
+        "payment",
+        "assistant"
+      ]
+    },
+    "ManualEntryScreen.tsx": {
+      "lines": 686,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib.storage",
+        "./lib.manual",
+        "./lib.fx.cust",
+        "./lib.fx",
+        "./lib",
+        "expo-file-system",
+        "expo-sharing"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "asyncStorage",
+        "speech",
+        "fileSystem",
+        "share",
+        "customer",
+        "exchange"
+      ]
+    },
+    "nav.registry.ts": {
+      "lines": 39,
+      "imports": [],
+      "exports": [
+        "Group",
+        "NavItem",
+        "NAV",
+        "byGroup",
+        "findNav"
+      ],
+      "features": [
+        "customer",
+        "exchange",
+        "publicMarket"
+      ]
+    },
+    "PanelRenderer.tsx": {
+      "lines": 507,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.app.panels"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "invoice",
+        "customer",
+        "payment"
+      ]
+    },
+    "presets.ts": {
+      "lines": 91,
+      "imports": [
+        "./lib-date",
+        "./lib.storage"
+      ],
+      "exports": [
+        "PresetKey",
+        "Preset",
+        "TERM_KEYS",
+        "TERM_LABELS",
+        "PRESETS",
+        "getPreset",
+        "getTerms",
+        "term",
+        "getTabs",
+        "loadPreset",
+        "setPreset",
+        "setTerm",
+        "setTabs",
+        "resetToPreset"
+      ],
+      "features": [
+        "asyncStorage",
+        "product",
+        "customer",
+        "exchange"
+      ]
+    },
+    "PublicMarketScreen.tsx": {
+      "lines": 787,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "product",
+        "publicMarket"
+      ]
+    },
+    "ResetPasswordScreen.tsx": {
+      "lines": 123,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "supabase",
+        "location",
+        "customer",
+        "auth"
+      ]
+    },
+    "SettingsAssistant.tsx": {
+      "lines": 499,
+      "imports": [
+        "./lib.assistant.rubika",
+        "react",
+        "react-native",
+        "./lib.storage",
+        "./lib.assistant.telegram",
+        "./lib.assistant.rubika",
+        "./lib.assistant"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "asyncStorage",
+        "secureStore",
+        "botRubika",
+        "botTelegram",
+        "invoice",
+        "product",
+        "cart",
+        "customer",
+        "assistant"
+      ]
+    },
+    "SettingsSheets.tsx": {
+      "lines": 561,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib.storage",
+        "./lib.offline",
+        "./lib.sheets"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "asyncStorage",
+        "linking",
+        "invoice",
+        "product",
+        "payment",
+        "auth"
+      ]
+    },
+    "SmsMatchScreen.tsx": {
+      "lines": 514,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.sms",
+        "./lib.sms.patterns"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "invoice",
+        "payment"
+      ]
+    },
+    "SuperAssistant.tsx": {
+      "lines": 659,
+      "imports": [
+        "react",
+        "react-native",
+        "./lib.app.parser",
+        "./lib.app.wizard",
+        "./lib.app.manager",
+        "./lib.app.panels",
+        "./PanelRenderer",
+        "./lib.app.events",
+        "./lib.app.registry",
+        "./lib.voice"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "invoice",
+        "customer",
+        "payment",
+        "exchange",
+        "publicMarket",
+        "assistant"
+      ]
+    },
+    "SyncControl.tsx": {
+      "lines": 291,
+      "imports": [
+        "./lib-date",
+        "react",
+        "react-native",
+        "./lib.offline",
+        "./lib.offline",
+        "./lib.sheets"
+      ],
+      "exports": [
+        "default"
+      ],
+      "features": [
+        "product",
+        "payment"
+      ]
+    }
+  },
+  "summary": {
+    "dependencies": {
+      "@expo-google-fonts/orbitron": "^0.4.2",
+      "@expo-google-fonts/share-tech-mono": "^0.4.1",
+      "@expo/metro-runtime": "~57.0.16",
+      "@react-native-async-storage/async-storage": "2.2.0",
+      "@react-navigation/bottom-tabs": "^7.19.2",
+      "@react-navigation/native": "^7.4.1",
+      "@supabase/supabase-js": "^2.117.1",
+      "buffer": "^6.0.3",
+      "events": "^3.3.0",
+      "expo": "~57.0.24",
+      "expo-document-picker": "~57.0.3",
+      "expo-file-system": "~57.0.7",
+      "expo-image-picker": "~57.0.20",
+      "expo-network": "~57.0.2",
+      "expo-notifications": "^57.0.23",
+      "expo-print": "~57.0.2",
+      "expo-secure-store": "~57.0.4",
+      "expo-sharing": "~57.0.22",
+      "expo-speech": "^57.0.3",
+      "expo-speech-recognition": "^3.1.0",
+      "expo-sqlite": "~57.0.4",
+      "expo-status-bar": "~57.0.1",
+      "firebase": "^9.23.0",
+      "path-browserify": "^1.0.1",
+      "process": "^0.11.10",
+      "react": "19.2.3",
+      "react-dom": "19.2.3",
+      "react-native": "0.86.3",
+      "react-native-background-actions": "^4.1.0",
+      "react-native-safe-area-context": "~5.7.0",
+      "react-native-screens": "~4.26.0",
+      "react-native-url-polyfill": "^4.0.0",
+      "react-native-view-shot": "5.1.0",
+      "react-native-vosk": "*",
+      "react-native-web": "^0.21.2",
+      "readable-stream": "^4.5.2",
+      "string_decoder": "^1.3.0",
+      "url": "^0.11.3",
+      "util": "^0.12.5",
+      "whisper.rn": "^0.7.4",
+      "xlsx": "^0.18.5"
+    },
+    "devDependencies": {
+      "@types/react": "~19.2.2",
+      "typescript": "~6.0.3"
+    },
+    "appJson": {
+      "name": "میزان",
+      "slug": "mizan",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/icon.png",
+      "userInterfaceStyle": "light",
+      "ios": {
+        "supportsTablet": true
+      },
+      "android": {
+        "adaptiveIcon": {
+          "foregroundImage": "./assets/icon.png",
+          "backgroundColor": "#0a1628"
+        },
+        "predictiveBackGestureEnabled": false,
+        "package": "com.mezan786.mizan",
+        "permissions": [
+          "android.permission.RECORD_AUDIO",
+          "android.permission.MODIFY_AUDIO_SETTINGS",
+          "android.permission.POST_NOTIFICATIONS",
+          "android.permission.VIBRATE",
+          "android.permission.RECEIVE_BOOT_COMPLETED",
+          "RECORD_AUDIO",
+          "INTERNET"
+        ]
+      },
+      "web": {
+        "favicon": "./assets/favicon.png"
+      },
+      "extra": {
+        "eas": {
+          "projectId": "22c7aaeb-2a8a-46c6-bd20-14eeefc5bc29"
+        }
+      },
+      "owner": "mezan786",
+      "plugins": [
+        [
+          "expo-notifications",
+          {
+            "icon": "./assets/icon.png",
+            "color": "#7c3aed"
+          }
+        ],
+        "expo-sqlite",
+        [
+          "expo-speech-recognition",
+          {
+            "microphonePermission": "این برنامه به میکروفون نیاز دارد تا دستورات شما را بشنود",
+            "speechRecognitionPermission": "این برنامه به تشخیص گفتار نیاز دارد",
+            "androidSpeechServicePackages": [
+              "com.google.android.googlequicksearchbox"
+            ]
+          }
+        ],
+        "react-native-vosk",
+        "./plugins/withVoskNoCompress",
+        "expo-asset",
+        "expo-secure-store"
+      ],
+      "newArchEnabled": true,
+      "splash": {
+        "image": "./assets/icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0a1628"
+      },
+      "scheme": "mizanapp"
+    }
+  }
+}

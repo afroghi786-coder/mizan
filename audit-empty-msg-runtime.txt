@@ -1,0 +1,41 @@
+فایل‌های بررسی‌شده: 103
+
+───── AssistantHome.tsx ─────
+122 [SEND_MESSAGE]: const r = await rubikaSendMessage(bot.rubika_token, bot.rubika_channel_id, item.payload.caption);
+210 [SEND_MESSAGE]: const r = await rubikaSendMessage(bot.rubika_token, bot.rubika_channel_id, caption);
+
+───── ExchangeBell.tsx ─────
+132 [SEND_MESSAGE]: await (m as any).sendMessage(chatRoom.id, chatPeer.email, text);
+
+───── lib.ads.worker.ts ─────
+57 [SEND_MESSAGE]: mid = await telegramSendMessage(token, chat, text);
+185 [SEND_MESSAGE]: const r = await rubikaSendMessage(token, channel, text);
+
+───── lib.assistant.rubika.ts ─────
+160 [SEND_MESSAGE]: export async function rubikaSendMessage(token: string, chatId: string, text: string, inlineKeypad?: any): Promise<{ ok: boolean; message_id?: string; error?: string; raw?: string; request?: any }> {
+
+───── lib.assistant.telegram.ts ─────
+52 [SEND_MESSAGE]: export async function telegramSendMessage(token: string, chatId: string, text: string): Promise<string> {
+
+───── lib.network.ts ─────
+693 [SEND_MESSAGE]: export async function sendMessage(roomId: string, toEmail: string, text: string): Promise<any> {
+697 [DIRECT_INSERT_NET_MESSAGES]: const { error } = await _sb.from('net_messages').insert({
+
+───── LiveMarketScreen.tsx ─────
+456 [virtual_message]: type: 'virtual_message',
+473 [virtual_message]: else if (t === 'virtual_message') key = p.room_id || ('v_' + nn.id);
+956 [SEND_MESSAGE]: await m.sendMessage(chatRoom.id, chatPeer.email, text);
+1489 [virtual_message]: virtual_message: `💬 پیام جدید از ${p.from || "کاربر"}${p.code ? ' [' + p.code + ']' : ''}`,
+1532 [virtual_message]: else if (t === 'virtual_message') rId = p.room_id;
+
+───── PublicMarketScreen.tsx ─────
+280 [SEND_MESSAGE]: await (m as any).sendMessage(chatRoom.id, chatPeer.email, text);
+
+───── SettingsAssistant.tsx ─────
+234 [SEND_MESSAGE]: const r = await rubikaSendMessage(botConfig.rubika_token, botConfig.rubika_admin_chat_id, '✅ این یک پیام تست است. شناسه ادمین شما به درستی ثبت شده است.');
+301 [SEND_MESSAGE]: const r = await rubikaSendMessage(botConfig.rubika_token, botConfig.rubika_channel_id, '✅ تست ارسال از دستیار میزان');
+321 [SEND_MESSAGE]: const r = await rubikaSendMessage(botConfig.rubika_token, botConfig.rubika_channel_id, caption);
+337 [SEND_MESSAGE]: const r = await rubikaSendMessage(botConfig.rubika_token, botConfig.rubika_channel_id, '✅ این یک پیام متنی ساده است (بدون دکمه)');
+
+مجموع موارد: 19
+✅ audit تمام — هیچ کدی تغییر نکرد.

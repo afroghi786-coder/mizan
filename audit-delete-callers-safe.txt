@@ -1,0 +1,141 @@
+
+══════ ExpensesScreen.tsx ══════
+5: import { getExpenses, createExpense, updateExpense, deleteExpense } from './lib.exp';
+6: import { createPartnerAutoTx, findPartnerByNameOrCode, getPartners, getParties } from './lib.offline';
+115: await deleteExpense(id);
+
+══════ EmployeesScreen.tsx ══════
+6: getEmployees, createEmployee, updateEmployee, deleteEmployee,
+7: getAttendance, createAttendance, updateAttendance, deleteAttendance,
+8: getSalaryPayments, createSalaryPayment, updateSalaryPayment, deleteSalaryPayment,
+9: getLoans, createLoan, updateLoan, deleteLoan,
+10: getLeaves, createLeave, deleteLeave,
+11: getBatches, createBatch, deleteBatch,
+13: } from './lib.emp';
+18: import { createPartnerAutoTx, findPartnerByNameOrCode } from './lib.offline';
+19: import { getPartners, getParties } from './lib.offline';
+190: await deleteEmployee(id);
+405: <TouchableOpacity onPress={async () => { await deleteAttendance(a.local_id || a.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+551: await deleteSalaryPayment(id);
+755: <TouchableOpacity onPress={async () => { await deleteLoan(l.local_id || l.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+848: <TouchableOpacity onPress={async () => { await deleteLeave(l.local_id || l.id); await reload(); showToast('🗑'); }} style={s.iconBtn}><Text>🗑</Text></TouchableOpacity>
+1071: <TouchableOpacity onPress={async () => { await deleteBatch(b.local_id || b.id); await reload(); showToast('🗑'); }} style={[s.iconBtn, { marginTop: 6, alignSelf: 'flex-end' }]}>
+
+══════ App.tsx ══════
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, c
+5938: await deleteStockAdjustment(id);
+8644: try { await deleteParty(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+8920: try { await deletePartner(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+8968: try { await deletePartnerBankAccount(b.local_id || b.id, bankPartner.code); await loadBanks(bankPartner); showToast('✅ حذف شد'); } catch (e: any) { showToast(e?.message || String(e), true); }
+9034: try { await deletePartnerTransaction(t.local_id || t.id, txnPartner.code); await reloadTransactions(); showToast('✅ حذف شد'); }
+9358: try { await deleteBank(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9469: try { await deleteShipping(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9649: try { await deleteProduct(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+
+══════ lib.emp.ts ══════
+4: import { getMode, enqueue, recordAuditEvent } from './lib.offline';
+44: deleteEmployee: { type: 'employee_delete', summary: 'حذف کارمند' },
+46: deleteAttendance: { type: 'attendance_delete', summary: 'حذف حضور' },
+48: deleteLeave: { type: 'leave_delete', summary: 'حذف مرخصی' },
+51: deleteSalaryPayment: { type: 'salary_delete', summary: 'حذف حقوق' },
+53: deleteLoan: { type: 'loan_delete', summary: 'حذف وام' },
+55: deleteBatch: { type: 'batch_delete', summary: 'حذف لیست حقوق' },
+143: export const deleteEmployee = (id: string) => removeById('employees', 'employees', id, 'deleteEmployee');
+153: export const deleteAttendance = (id: string) => removeById('attendance', 'attendance', id, 'deleteAttendance');
+163: export const deleteLeave = (id: string) => removeById('employee_leaves', 'employee_leaves', id, 'deleteLeave');
+180: export const deleteSalaryPayment = (id: string) => removeById('salary_payments', 'salary_payments', id, 'deleteSalaryPayment');
+190: export const deleteLoan = (id: string) => removeById('employee_loans', 'employee_loans', id, 'deleteLoan');
+206: export const deleteBatch = (id: string) => removeById('payroll_batches', 'payroll_batches', id, 'deleteBatch');
+
+══════ lib.exp.ts ══════
+4: import { getMode, enqueue, getQueue, serverBusinessAllowed, recordAuditEvent } from './lib.offline';
+52: if (it.op === 'deleteExpense') {
+118: await enqueue('deleteExpense', id);
+121: await enqueue('deleteExpense', id);
+142: export const deleteExpense = (id: string) => removeById('expenses', 'expenses', id);
+
+══════ lib.offline.ts ══════
+27: 'createProduct','updateProduct','deleteProduct',
+30: 'createExpense','updateExpense','deleteExpense',
+31: 'createEmployee','updateEmployee','deleteEmployee',
+32: 'createAttendance','updateAttendance','deleteAttendance',
+33: 'createSalaryPayment','updateSalaryPayment','deleteSalaryPayment',
+34: 'createLoan','updateLoan','deleteLoan',
+35: 'createLeave','updateLeave','deleteLeave',
+36: 'createBatch','updateBatch','deleteBatch',
+37: 'createParty','updateParty','deleteParty',
+38: 'createPartner','updatePartner','deletePartner',
+41: 'createBank','updateBank','deleteBank',
+42: 'createShipping','updateShipping','deleteShipping',
+43: 'createStockAdjustment','deleteStockAdjustment',
+93: deleteProduct: { table: 'products', type: 'product_delete', summary: 'حذف کالا' },
+99: deleteExpense: { table: 'expenses', type: 'expense_delete', summary: 'حذف هزینه' },
+102: deleteEmployee: { table: 'employees', type: 'employee_delete', summary: 'حذف کارمند' },
+105: deleteAttendance: { table: 'attendance', type: 'attendance_delete', summary: 'حذف حضور' },
+108: deleteSalaryPayment: { table: 'salary_payments', type: 'salary_delete', summary: 'حذف حقوق' },
+111: deleteLoan: { table: 'employee_loans', type: 'loan_delete', summary: 'حذف وام' },
+114: deleteLeave: { table: 'employee_leaves', type: 'leave_delete', summary: 'حذف مرخصی' },
+117: deleteBatch: { table: 'payroll_batches', type: 'batch_delete', summary: 'حذف لیست حقوق' },
+120: deleteParty: { table: 'parties', type: 'party_delete', summary: 'حذف طرف‌حساب' },
+123: deletePartner: { table: 'partners', type: 'partner_delete', summary: 'حذف شریک' },
+130: deleteBank: { table: 'banks', type: 'bank_delete', summary: 'حذف بانک' },
+133: deleteShipping: { table: 'shippings', type: 'shipping_delete', summary: 'حذف باربری' },
+135: deleteStockAdjustment: { table: 'stock_adjustments', type: 'stock_delete', summary: 'حذف تعدیل انبار' },
+380: export async function deleteProduct(id: string) {
+394: console.log('[deleteProduct] removed pending createProduct from queue');
+400: try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+402: await enqueue('deleteProduct', payload);
+1358: if (it.op === 'deleteExpense') {
+1398: export async function deleteExpense(localId: string) {
+1405: catch { await enqueue('deleteExpense', String(localId)); }
+1407: await enqueue('deleteExpense', String(localId));
+1438: export async function deleteEmployee(localId: string) {
+1445: catch { await enqueue('deleteEmployee', String(localId)); }
+1447: await enqueue('deleteEmployee', String(localId));
+1478: export async function deleteSalaryPayment(localId: string) {
+1484: try { await lib.deleteSalaryPayment(String(localId)); }
+1485: catch { await enqueue('deleteSalaryPayment', String(localId)); }
+1487: await enqueue('deleteSalaryPayment', String(localId));
+1491: export async function deleteLoan(localId: string) {
+1497: try { await lib.deleteLoan(String(localId)); }
+1498: catch { await enqueue('deleteLoan', String(localId)); }
+1500: await enqueue('deleteLoan', String(localId));
+1504: export async function deleteLeave(localId: string) {
+1510: try { await lib.deleteLeave(String(localId)); }
+1511: catch { await enqueue('deleteLeave', String(localId)); }
+1513: await enqueue('deleteLeave', String(localId));
+1517: export async function deleteAttendance(localId: string) {
+1524: catch { await enqueue('deleteAttendance', String(localId)); }
+1526: await enqueue('deleteAttendance', String(localId));
+1530: export async function deleteBatch(localId: string) {
+1537: catch { await enqueue('deleteBatch', String(localId)); }
+1539: await enqueue('deleteBatch', String(localId));
+1994: export async function deleteStockAdjustment(id: string) {
+2000: try { await lib.deleteStockAdjustment(id); }
+2001: catch { await enqueue('deleteStockAdjustment', id); }
+2003: await enqueue('deleteStockAdjustment', id);
+2665: } else if (item.op === 'deleteParty') {
+2725: export async function deleteParty(idOrPayload: any) {
+2740: try { await lib.deleteParty(id); }
+2741: catch { await enqueue('deleteParty', { local_id: id, id }); }
+2743: await enqueue('deleteParty', { local_id: id, id });
+2848: } else if (item.op === 'deletePartner') {
+2879: export async function deletePartner(id: string) {
+2884: if (await serverBusinessAllowed()) { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+2885: else { await enqueue('deletePartner', id); }
+2915: export async function deletePartnerBankAccount(id: string, partnerCode: string) {
+2920: if (await serverBusinessAllowed()) { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+2951: export async function deletePartnerTransaction(id: string, partnerCode: string) {
+2956: if (await serverBusinessAllowed()) { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+2968: else if (item.op === 'deleteBank') {
+3007: export async function deleteBank(id: string) {
+3012: if (await serverBusinessAllowed()) { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+3013: else { await enqueue('deleteBank', id); }
+3025: else if (item.op === 'deleteShipping') {
+3064: export async function deleteShipping(id: string) {
+3069: if (await serverBusinessAllowed()) { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+3070: else { await enqueue('deleteShipping', id); }
+3396: if (it.op === 'deleteSalaryPayment') {
+3429: if (it.op === 'deleteLoan') {
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

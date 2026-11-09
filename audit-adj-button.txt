@@ -1,0 +1,172 @@
+══════ ۱) ردیف مدل در جدول انبار — دکمه تعدیل ══════
+
+══════ inventory row with openAdjustment (خط 6200 تا 6280) ══════
+6200:             <Text style={[HDR.cell, { width: 110 }]}>وضعیت</Text>
+6201: 
+6202:             <Text style={[HDR.cell, { width: 140 }]}>عملیات</Text>
+6203: 
+6204:           </View>
+6205: 
+6206:           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((m: any, i: number) => {
+6207: 
+6208:             const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
+6209: 
+6210:             return (<>
+6211: 
+6212:               <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: rowBg, borderRightWidth: 3, borderRightColor: statusColor(m.status) }]}>
+6213: 
+6214:                 <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+6215: 
+6216:                 <TouchableOpacity onPress={() => openModelKardex(m)} style={[s.tdCell, { width: 100 }]}><Text style={{ color: '#7c3aed', fontWeight: 'bold', textDecorationLine: 'underline' }}>{m.code}</Text></TouchableOpacity>
+6217: 
+6218:                 <Text style={[s.tdCell, { width: 180, fontSize: 12, color: C.text, textAlign: 'right', fontWeight: 'bold' }]} numberOfLines={1}>{m.name}</Text>
+6219: 
+6220:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.bought)}</Text>
+6221: 
+6222:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.sold)}</Text>
+6223: 
+6224:                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: statusColor(m.status), fontWeight: 'bold', fontSize: 15 }]}>{fmt(m.currentQty)}</Text>
+6225: 
+6226:                 <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0891b2', fontSize: 11 }]}>{fmt(m.unitCost || 0)}</Text>
+6227: 
+6228:                 <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#059669', fontWeight: 'bold', fontSize: 11 }]}>{fmt(m.totalValue || 0)}</Text>
+6229: 
+6230:                 <TouchableOpacity onPress={() => openAdjustment(m)} style={[s.tdCell, { width: 110, alignItems: 'center' }]}>
+6231: 
+6232:                   <View style={{ backgroundColor: (m.adjustment || 0) === 0 ? '#fef3c7' : (m.adjustment || 0) > 0 ? '#d1fae5' : '#fee2e2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: (m.adjustment || 0) === 0 ? '#f59e0b' : (m.adjustment || 0) > 0 ? '#059669' : '#dc2626', minWidth: 50, alignItems: 'center' }}>
+6233: 
+6234:                     <Text style={{ color: (m.adjustment || 0) === 0 ? '#92400e' : (m.adjustment || 0) > 0 ? '#065f46' : '#991b1b', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
+6235: 
+6236:                       {(m.adjustment || 0) === 0 ? '➕' : ((m.adjustment || 0) > 0 ? '+' : '') + fmt(m.adjustment)}
+6237: 
+6238:                     </Text>
+6239: 
+6240:                   </View>
+6241: 
+6242:                 </TouchableOpacity>
+6243: 
+6244:                 <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#64748b', fontSize: 10 }]}>{m.lastSaleDate ? (displayDateOnly ? displayDateOnly(m.lastSaleDate) : m.lastSaleDate.slice(0,10)) : '—'}</Text>
+6245: 
+6246:                 <Text style={[s.tdCell, { width: 100, fontSize: 12, color: (m.daysSinceLastSale !== null && m.daysSinceLastSale > 90) ? '#dc2626' : (m.daysSinceLastSale !== null && m.daysSinceLastSale > 60) ? '#f59e0b' : '#059669', fontWeight: 'bold', fontSize: 11 }]}>{m.daysSinceLastSale !== null ? toFaNum(m.daysSinceLastSale) : '—'}</Text>
+6247: 
+6248:                 <TouchableOpacity style={{ width: 120, alignItems: 'center', paddingVertical: 4 }} onPress={() => { setEditItem(m); setShelfVal(m.shelf || ''); }}>
+6249: 
+6250:                   <View style={{ backgroundColor: '#f0f9ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+6251: 
+6252:                     <Text style={{ color: '#075985', fontSize: 11, fontWeight: 'bold' }}>📍 {m.shelf || 'ثبت نشده'}</Text>
+6253: 
+6254:                   </View>
+6255: 
+6256:                 </TouchableOpacity>
+6257: 
+6258:                 <View style={[s.tdCell, { width: 110, alignItems: 'center' }]}>
+6259: 
+6260:                   <Text style={{ color: statusColor(m.status), fontSize: 11, fontWeight: 'bold' }}>{statusLabel(m.status)}</Text>
+6261: 
+6262:                 </View>
+6263: 
+6264:                 <TouchableOpacity onPress={() => openAdjustment(m)} style={[s.tdCell, { width: 40, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>⚖️</Text></TouchableOpacity>
+6265: 
+6266:                 <TouchableOpacity onPress={() => { setEditItem(m); setShelfVal(m.shelf || ''); }} style={[s.tdCell, { width: 100, alignItems: 'center' }]}>
+6267: 
+6268:                   <View style={{ backgroundColor: '#7c3aed', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}>
+6269: 
+6270:                     <EL textKey="📍 قفسه" style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+6271: 
+6272:                   </View>
+6273: 
+6274:                 </TouchableOpacity>
+6275: 
+6276:               </View>
+6277: 
+6278:             
+6279: 
+6280:       <Modal visible={adjModal} transparent animationType="slide" onRequestClose={() => setAdjModal(false)}>
+
+══════ ۲) removeAdjustment — محدوده کامل ══════
+
+══════ removeAdjustment (خط 5962 تا 5982) ══════
+5962:   const removeAdjustment = async (id: string) => {
+5963: 
+5964:     if (!id) return;
+5965: 
+5966:     if (Platform.OS !== 'web' && !(await new Promise<boolean>(res => { Alert.alert('حذف تعدیل', 'مطمئنی؟', [{ text: 'لغو', style: 'cancel', onPress: () => res(false) }, { text: 'حذف', style: 'destructive', onPress: () => res(true) }]); }))) return;
+5967: 
+5968:     try {
+5969: 
+5970:       await deleteStockAdjustment(id);
+5971: 
+5972:       showToast('✅ حذف شد');
+5973: 
+5974:       const list = await getStockAdjustments(adjModel?.code);
+5975: 
+5976:       setAdjList(list || []);
+5977: 
+5978:       load();
+5979: 
+5980:     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+5981: 
+5982:   };
+
+══════ ۳) computeLocalInventory — ساخت adjAll و adjustmentMap ══════
+
+══════ adjAll building start (خط 640 تا 660) ══════
+640: async function computeLocalInventory() {
+641:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+642:     getLocal<any[]>('products'),
+643:     getLocal<any[]>('sales'),
+644:     getLocal<any[]>('purchases'),
+645:     getLocal<any>('settings'),
+646:     getLocal<any[]>('stock_adjustments'),
+647:   ]);
+648:   const products = productsRaw || [];
+649:   let sales = salesRaw || [];
+650:   let purchases = purchasesRaw || [];
+651:   const settings = (settingsRaw as any) || {};
+652:   const threshold = settings.inventory_threshold ?? 5;
+653:   let adjAll = (adjRaw || []).slice();
+654: 
+655:   // BUSINESS_LOCAL_ONLY — Merge grouped (device 2) + apply tombstones
+656:   try {
+657:     const _grpS = (await getLocal<any[]>('sales_grouped')) || [];
+658:     const _grpP = (await getLocal<any[]>('purchases_grouped')) || [];
+659:     const _haveS = new Set(sales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+660:     const _haveP = new Set(purchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+
+══════ adjustmentMap building (خط 770 تا 800) ══════
+770:     if (item.op === 'createSale' && item.payload) {
+771:       const rows = item.payload.rows || item.payload.items || [];
+772:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+773:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+774:       if (inv && sales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+775:       for (const r of rows) {
+776:         sales.push({
+777:           customer_code: item.payload.customerCode || item.payload.customer_code || '',
+778:           customer_name: item.payload.customerName || item.payload.customer_name || '',
+779:           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
+780:           model_code: r.model_code || r.modelCode || '',
+781:           model_name: r.model_name || r.modelName || '',
+782:           quantity: Number(r.quantity) || 0,
+783:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+784:           payment: Number(r.payment) || 0,
+785:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+786:           invoice_number: inv,
+787:           date_factor: r.date_factor || r.dateFactor || baseDate,
+788:           date_reg: r.date_reg || r.dateReg || baseDate,
+789:           description: r.description || '',
+790:           _pending: true,
+791:         });
+792:       }
+793:     }
+794:     if (item.op === 'createPurchase' && item.payload) {
+795:       const rows = item.payload.rows || item.payload.items || [];
+796:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+797:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+798:       if (inv && purchases.some((p: any) => String(p.invoice_number || '') === String(inv))) continue;
+799:       for (const r of rows) {
+800:         purchases.push({
+
+══════ ۴) adjModal info line (مجموع تعدیلات) ══════
+6302: <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>📊 مجموع تعدیلات: {(adjModel?.adjustment || 0) > 0 ? '+' : ''}{fmt(adjModel?.adjustment || 0)}</Text>
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

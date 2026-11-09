@@ -1,0 +1,301 @@
+FILE: LedgerScreen.tsx (1262 lines)
+1: // LedgerScreen.tsx — ترازنامه یکپارچه با مودال جامع (۱۹ ستون)
+2: import React, { useState, useEffect, useRef } from 'react';
+3: import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Share, Modal, TextInput } from 'react-native';
+4: import { captureRef } from 'react-native-view-shot';
+5: import { getLedgerData, getInvoiceDetail } from './lib.offline';
+6: import { getCurrencySync } from './lib.currency';
+7: import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
+8: import { displayDate } from './lib-date';
+9: import { toFaNum } from './lib';
+10: function _safeLedgerDate(input: any): string {
+11:   if (input === null || input === undefined || input === '') return '—';
+12:   let s = String(input).trim();
+13:   if (!s) return '—';
+14:   s = s.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+15:        .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+16:   const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+17:   if (m) {
+18:     const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0));
+19:     if (!isNaN(d.getTime())) return displayDate(d.toISOString());
+20:   }
+21:   const d2 = new Date(s);
+22:   if (!isNaN(d2.getTime())) return displayDate(d2.toISOString());
+23:   return s;
+24: }
+25: 
+26: 
+27: const fmt = (n) => (Number(n) || 0).toLocaleString('en-US');
+28: const TYPE_LABEL = {
+29:   sale: 'فروش', purchase: 'خرید',
+30:   payment_received: 'دریافت وجه', payment_sent: 'پرداخت',
+31:   triangular_received: 'دریافت مثلثی',
+32:   partner_deposit: 'واریز شریک', partner_withdraw: 'برداشت شریک',
+33:   partner_transfer_in: 'انتقال به شریک', partner_transfer_out: 'انتقال از شریک',
+34:   transfer_in: 'انتقال ورودی', transfer_out: 'انتقال خروجی',
+35:   salary: 'حقوق', salary_payment: 'پرداخت حقوق',
+36:   expense: 'هزینه', expense_payment: 'پرداخت هزینه',
+37:   loan: 'وام', loan_payment: 'بازپرداخت وام',
+38:   deposit: 'واریز', withdraw: 'برداشت',
+39: };
+40: const TYPE_COLOR = {
+41:   sale: '#1e40af', purchase: '#dc2626',
+42:   payment_received: '#059669', payment_sent: '#0891b2',
+43:   triangular_received: '#7c3aed',
+44:   partner_deposit: '#059669', partner_withdraw: '#dc2626',
+45:   partner_transfer_in: '#7c3aed', partner_transfer_out: '#7c3aed',
+46:   transfer_in: '#7c3aed', transfer_out: '#7c3aed',
+47:   salary: '#f59e0b', salary_payment: '#059669',
+48:   expense: '#dc2626', expense_payment: '#059669',
+49:   loan: '#dc2626', loan_payment: '#059669',
+50:   deposit: '#059669', withdraw: '#dc2626',
+51: };
+52: 
+53: const CP_LABEL: Record<string, string> = {
+54:   expense: 'هزینه', employee: 'کارمند',
+55:   customer: 'مشتری', supplier: 'تأمین‌کننده',
+56:   partner: 'شریک', box: 'صندوق', bank: 'بانک',
+57:   none: '—', '': '—',
+58: };
+59: function cpLabel(t: any) {
+60:   const k = String(t?.counterpartType || '').trim();
+61:   if (k && k !== 'none') return CP_LABEL[k] || '—';
+62:   const st = String(t?.sourceType || t?.source_type || '').trim().toLowerCase();
+63:   const ty = String(t?.type || '').trim().toLowerCase();
+64:   const infer: Record<string,string> = {
+65:     expense: 'هزینه', salary: 'کارمند', sale: 'مشتری', purchase: 'تأمین‌کننده',
+66:     loan: 'کارمند', transfer: 'انتقال',
+67:   };
+68:   if (infer[st]) return infer[st];
+69:   if (ty.includes('expense')) return 'هزینه';
+70:   if (ty.includes('salary') || ty.includes('loan')) return 'کارمند';
+71:   if (ty.includes('sale')) return 'مشتری';
+72:   if (ty.includes('purchase')) return 'تأمین‌کننده';
+73:   if (ty.includes('transfer')) return 'انتقال';
+74:   return '—';
+75: }
+76: function cleanDesc(t: any) {
+77:   let s = String(t?.description || '');
+78:   s = s.replace(/طرف:\s*none(\s*\([^)]*\))?/gi, '')
+79:        .replace(/طرف:\s*(customer|supplier|partner|employee|expense|box|bank)[^|]*/gi, '')
+80:        .replace(/\|\s*(customer|supplier|partner|employee|expense|box|bank)\s*\([^)]*\)/gi, '')
+81:        .replace(/\b(customer|supplier|partner|employee|expense|box|bank)\s*\([^)]*\)/gi, '')
+82:        .replace(/\s*\|\s*$/g, '')
+83:        .replace(/\s*\|\s*\|/g, ' | ')
+84:        .trim();
+85:   if (!s) s = TYPE_LABEL[t?.type] || t?.type || '—';
+86:   return s;
+87: }
+88: 
+89: export default function LedgerScreen({ onBack, showToast }) {
+90:   const [data, setData] = useState([]);
+91:   const [loading, setLoading] = useState(true);
+92:   const [searchQuery, setSearchQuery] = useState('');
+93:   const [activeTab, setActiveTab] = useState<'parties' | 'partners' | 'employees' | 'expenses'>('parties');
+94:   const [selectedParty, setSelectedParty] = useState(null);
+95:   const [modalVisible, setModalVisible] = useState(false);
+96:   const [partyFilter, setPartyFilter] = useState('all');
+97:   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
+98:   const [partyViewMode, setPartyViewMode] = useState<'all' | 'in' | 'out'>('all');
+99:   const [invoiceList, setInvoiceList] = useState<any[] | null>(null);
+100:   const [invoiceDetailRows, setInvoiceDetailRows] = useState<any[] | null>(null);
+101:   const [invoiceDetailMeta, setInvoiceDetailMeta] = useState<any>(null);
+102:   const [invoiceLoading, setInvoiceLoading] = useState(false);
+103:   const invoiceModalRef = useRef(null);
+104:   const invoiceRef = useRef(null);
+105:   const [treeMode, setTreeMode] = useState<'flat'|'groups'|'group'|'counterparty'>('flat');
+106:   const [activeGroup, setActiveGroup] = useState('');
+107:   const [activeCounterparty, setActiveCounterparty] = useState('');
+108:   const ref = useRef(null);
+109:   const modalRef = useRef(null);
+110: 
+111:   const load = async () => {
+112:     setLoading(true);
+113:     try {
+114:       const result = await getLedgerData();
+115:       setData(result);
+116:     } catch (e) { if (showToast) showToast('خطا در بارگذاری', true); console.log(e); }
+117:     finally { setLoading(false); }
+118:   };
+119:   useEffect(() => { load(); }, []);
+120: 
+121:   const curLabel = (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : 'افغانی');
+122: 
+123:   function buildInvoices(p: any) {
+124:     const map: any = {};
+125:     (p?.transactions || []).forEach((t: any) => {
+126:       const inv = String(t.invoice || '').trim();
+127:       if (!inv) return;
+128:       const ty = String(t.type || '');
+129:       const isSale = ty === 'sale';
+130:       const isPurchase = ty === 'purchase';
+131:       const isPay = ty === 'payment_received' || ty === 'payment_sent' || ty === 'triangular_received';
+132:       if (isSale || isPurchase) {
+133:         if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0 };
+134:         map[inv].total += Number(t.lineTotal) || Number(t.credit) || Number(t.debit) || 0;
+135:       } else if (isPay) {
+136:         if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0 };
+137:         map[inv].paid += Number(t.credit) || Number(t.debit) || Number(t.lineTotal) || 0;
+138:       }
+139:     });
+140:     return Object.values(map).map((x: any) => ({ ...x, balance: x.total - x.paid })).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+141:   }
+142: 
+143:   const openInvoiceDetail = async (inv: any) => {
+144:     setInvoiceLoading(true);
+145:     try {
+146:       const rows = await getInvoiceDetail(inv.invoice, inv.type === 'purchase' ? 'purchase' : 'sales');
+147:       setInvoiceDetailRows(rows || []);
+148:       setInvoiceDetailMeta(inv);
+149:     } catch (e: any) { if (showToast) showToast(e.message, true); }
+150:     finally { setInvoiceLoading(false); }
+151:   };
+152: 
+153:   function buildInvoicesList(p: any) {
+154:     const map: any = {};
+155:     (p?.transactions || []).forEach((t: any) => {
+156:       const inv = String(t.invoice || '').trim();
+157:       if (!inv) return;
+158:       const ty = String(t.type || '');
+159:       const isSale = ty === 'sale';
+160:       const isPurchase = ty === 'purchase';
+161:       const isPay = ty === 'payment_received' || ty === 'payment_sent' || ty === 'triangular_received';
+162:       if (isSale || isPurchase) {
+163:         if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+164:         map[inv].total += Number(t.lineTotal) || 0;
+165:         map[inv].count += 1;
+166:       } else if (isPay) {
+167:         if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+168:         map[inv].paid += Number(t.lineTotal) || 0;
+169:       }
+170:     });
+171:     return Object.values(map).map((x: any) => ({ ...x, balance: x.total - x.paid })).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+172:   }
+173: 
+174:   function buildPartyTransactions(p: any) {
+175:     let run = 0;
+176:     return (p?.transactions || []).map((t: any) => {
+177:       const d = Number(t.debit) || 0;
+178:       const c = Number(t.credit) || 0;
+179:       run += c - d;
+180:       return { ...t, _running: run };
+181:     });
+182:   }
+183:   function buildPaymentsList(p: any) {
+184:     return (p?.transactions || [])
+185:       .filter((t: any) => t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received')
+186:       .sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')));
+187:   }
+188: 
+189:   const openParty = (p: any) => {
+190:   if (activeTab === 'parties') {
+191:     setSelectedParty(p);
+192:     setInvoiceList(buildInvoicesList(p));
+193:     setInvoiceDetailRows([]);
+194:     setInvoiceDetailMeta(null);
+195:     setPartyViewMode(String(p?.type || '').includes('مشتری') ? 'out' : 'in');
+196:     setInvoiceModalVisible(true);
+197:     return;
+198:   }
+199:   setSelectedParty(p);
+200:   setPartyFilter('all');
+201:   setTreeMode('flat');
+202:   setActiveGroup('');
+203:   setActiveCounterparty('');
+204:   setModalVisible(true);
+205: };;;
+206:   const partyDetails = selectedParty ? selectedParty.transactions : [];
+207:   const filteredPartyDetails = (partyDetails || []).filter((t: any) => {
+208:     if (partyFilter === 'all') return true;
+209:     if (partyFilter === 'in') return (Number(t.credit) || 0) > 0;
+210:     if (partyFilter === 'out') return (Number(t.debit) || 0) > 0;
+211:     if (partyFilter === 'transfer') return String(t.type || '').includes('transfer');
+212:     if (partyFilter === 'salary') return String(t.type || '') === 'salary';
+213:     if (partyFilter === 'salary_payment') return String(t.type || '') === 'salary_payment';
+214:     if (partyFilter === 'expense') return String(t.type || '') === 'expense';
+215:     if (partyFilter === 'expense_payment') return String(t.type || '') === 'expense_payment';
+216:     return String(t.accountType || 'current') === partyFilter;
+217:   });
+218: 
+219:   const filteredData = data.filter((r) => {
+220:     const q = searchQuery.trim();
+221:     if (!q) return true;
+222:     if ((r.name || '').includes(q)) return true;
+223:     if ((r.phone || '').includes(q)) return true;
+224:     if ((r.allCodes || []).some((c) => String(c).includes(q))) return true;
+225:     return false;
+226:   });
+227: 
+228:   const getDisplayData = () => {
+229:     if (activeTab === 'parties') {
+230:       return filteredData.filter((r: any) => r.type !== 'شریک' && r.type !== 'کارمند' && r.type !== 'هزینه‌گیرنده');
+231:     }
+232:     if (activeTab === 'partners') {
+233:       return filteredData.filter((r: any) => r.type === 'شریک');
+234:     }
+235:     if (activeTab === 'employees') {
+236:       return filteredData.filter((r: any) => r.type === 'کارمند');
+237:     }
+238:     return filteredData.filter((r: any) => r.type === 'هزینه‌گیرنده');
+239:   };
+240: 
+241:   function treeGroupOf(t: any) {
+242:     const cp = String(t?.counterpartType || '').toLowerCase();
+243:     const st = String(t?.sourceType || '').toLowerCase();
+244:     const ty = String(t?.type || '').toLowerCase();
+245:     if (cp === 'expense' || st === 'expense' || ty.includes('expense')) return '🧾 هزینه‌ها';
+246:     if (cp === 'employee' || st === 'salary' || st === 'loan' || ty.includes('salary') || ty.includes('loan')) return '👷 کارمندان';
+247:     if (cp === 'customer' || st === 'sale' || ty.includes('sale')) return '👥 مشتریان';
+248:     if (cp === 'supplier' || st === 'purchase' || ty.includes('purchase')) return '🏭 تأمین‌کنندگان';
+249:     if (cp === 'partner' || ty.includes('partner')) return '🤝 شرکا';
+250:     if (cp === 'box' || cp === 'bank') return '🏦 صندوق و بانک';
+251:     if (ty.includes('transfer')) return '🔁 انتقالات';
+252:     return '📦 سایر';
+253:   }
+254:   function treeKeyOf(t: any) {
+255:     const g = treeGroupOf(t);
+256:     if (g === '🧾 هزینه‌ها') {
+257:       const s = cleanDesc(t);
+258:       const m = s.match(/هزینه\s*:?\s*([^\-|]+)/);
+259:       if (m && m[1]) return m[1].trim();
+260:       const cp = cpLabel(t);
+261:       return cp !== '—' ? cp : 'متفرقه';
+262:     }
+263:     const cp = cpLabel(t);
+264:     if (cp !== '—') {
+265:       const code = String(t?.counterpartCode || t?.sourceId || '');
+266:       return cp + (code ? ' (' + code + ')' : '');
+267:     }
+268:     return (cleanDesc(t).split('|')[0] || 'متفرقه').trim();
+269:   }
+270:   function getTreeGroups() {
+271:     const map: Record<string, any> = {};
+272:     (filteredPartyDetails || []).forEach((t: any) => {
+273:       const g = treeGroupOf(t);
+274:       if (!map[g]) map[g] = { name: g, count: 0, debit: 0, credit: 0 };
+275:       map[g].count++;
+276:       map[g].debit += Number(t.debit) || 0;
+277:       map[g].credit += Number(t.credit) || 0;
+278:     });
+279:     return Object.values(map).map((x: any) => ({ ...x, balance: x.credit - x.debit }));
+280:   }
+281:   function getTreeCounterparties(group: string) {
+282:     const map: Record<string, any> = {};
+283:     (filteredPartyDetails || []).forEach((t: any) => {
+284:       if (treeGroupOf(t) !== group) return;
+285:       const k = treeKeyOf(t);
+286:       if (!map[k]) map[k] = { name: k, count: 0, debit: 0, credit: 0 };
+287:       map[k].count++;
+288:       map[k].debit += Number(t.debit) || 0;
+289:       map[k].credit += Number(t.credit) || 0;
+290:     });
+291:     return Object.values(map).map((x: any) => ({ ...x, balance: x.credit - x.debit }));
+292:   }
+293:   function getTreeTxns() {
+294:     return (filteredPartyDetails || []).filter((t: any) => treeKeyOf(t) === activeCounterparty);
+295:   }
+296:   const treeTxns = getTreeTxns();
+297:   const treeTxnsDebit = treeTxns.reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0);
+298:   const treeTxnsCredit = treeTxns.reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0);
+299:   const pTotal = partyDetails.reduce((a, t) => ({
+300:     qty: a.qty + (t.qty || 0), debit: a.debit + (t.debit || 0), credit: a.credit + (t.credit || 0),

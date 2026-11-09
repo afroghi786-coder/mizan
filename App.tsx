@@ -89,6 +89,7 @@ import SettingsSheets from './SettingsSheets';
 import SettingsAssistant from './SettingsAssistant';
 import AssistantHome from './AssistantHome';
 import SupportSection from './SupportSection';
+import RecoveryPanel from './RecoveryPanel';
 import { syncByDestination } from './lib.sheets';
 
 import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, currencyLabel, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
@@ -1786,7 +1787,9 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
   
     { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },
 
-    { key: 'support', icon: '🎧', label: t('پشتیبانی') + (supportUnread > 0 ? ' (' + supportUnread + ')' : ''), color: '#0891b2' },];
+    { key: 'support', icon: '🎧', label: t('پشتیبانی') + (supportUnread > 0 ? ' (' + supportUnread + ')' : ''), color: '#0891b2' },
+    { key: 'recovery', icon: '??', label: t('بازیابی'), color: '#059669' },
+  ];
 
 
 
@@ -1886,7 +1889,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
 
       </View>
 
-      {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && tab !== 'mgr' && !ledgerOpen && (
+      {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && tab !== 'mgr' && tab !== 'recovery' && !ledgerOpen && (
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
 
@@ -1986,6 +1989,12 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
         <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 120 }}>
           <SupportSection showToast={showToast} initialTicketId={supportOpenTicketId} />
         </ScrollView>
+      )}
+
+      {tab === 'recovery' && (
+        <View style={{ flex: 1 }}>
+          <RecoveryPanel showToast={showToast} onBack={() => setTab('dashboard')} />
+        </View>
       )}
 
       {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}

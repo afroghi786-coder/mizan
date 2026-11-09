@@ -1,0 +1,447 @@
+══════════ ۱) تب منابع و کشیدگی صفحه ══════════
+
+─── App.tsx — SourcesSection (خط 10086) ───
+10086: function SourcesSection({ showToast }: any) {
+10087:   const [sub, setSub] = useState<'parties' | 'products' | 'partners' | 'banks' | 'shippings'>('parties');
+10088:   return (
+10089:     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+10090:     <View>
+10091:       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+10092:         <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+10093:           <TouchableOpacity onPress={() => setSub('parties')} style={[s.btn, { backgroundColor: sub === 'parties' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>👥 طرف‌حساب‌ها</Text></TouchableOpacity>
+10094:           <TouchableOpacity onPress={() => setSub('products')} style={[s.btn, { backgroundColor: sub === 'products' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>📦 کالاها</Text></TouchableOpacity>
+10095:           <TouchableOpacity onPress={() => setSub('partners')} style={[s.btn, { backgroundColor: sub === 'partners' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>👥 شرکا</Text></TouchableOpacity>
+10096:           <TouchableOpacity onPress={() => setSub('banks')} style={[s.btn, { backgroundColor: sub === 'banks' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>🏦 بانک‌ها</Text></TouchableOpacity>
+10097:           <TouchableOpacity onPress={() => setSub('shippings')} style={[s.btn, { backgroundColor: sub === 'shippings' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>🚚 باربری‌ها</Text></TouchableOpacity>
+10098:         </View>
+10099:       </ScrollView>
+10100:       {sub === 'parties' ? <PartiesSection showToast={showToast} /> : sub === 'products' ? <ProductsSection showToast={showToast} /> : sub === 'partners' ? <PartnersSection showToast={showToast} /> : sub === 'banks' ? <BanksSection showToast={showToast} /> : <ShippingsSection showToast={showToast} />}
+10101:     </View>
+10102:     </KeyboardAvoidingView>
+10103:   );
+10104: }
+10105: 
+10106: function ProductsSection({ showToast }: any) {
+10107:   const [list, setList] = useState<any[]>([]);
+10108:   const [q, setQ] = useState('');
+10109:   const [loading, setLoading] = useState(true);
+10110:   const [editing, setEditing] = useState<any>(null);
+10111:   const [drafts, setDrafts] = useState<any[]>([]);
+10112: 
+10113:   const load = async () => {
+10114:     setLoading(true);
+10115:     try {
+10116:       const data = await getProducts();
+10117:       const sorted = [...(data || [])].sort((a: any, b: any) => {
+10118:         const ca = String(a.code || '');
+10119:         const cb = String(b.code || '');
+10120:         if (!ca && !cb) return 0;
+10121:         if (!ca) return 1;
+10122:         if (!cb) return -1;
+10123:         return ca.localeCompare(cb, undefined, { numeric: true, sensitivity: 'base' });
+10124:       });
+10125:       setList(sorted);
+10126:     } catch {}
+10127:     finally { setLoading(false); }
+10128:   };
+10129:   useEffect(() => { load(); }, []);
+10130: 
+10131:   const filtered = q
+10132:     ? list.filter((p: any) => (String(p.code || '') + ' ' + String(p.name || '') + ' ' + String(p.shelf || '')).toLowerCase().includes(q.toLowerCase()))
+10133:     : list;
+10134: 
+10135:   const getNextProductCode = (listData: any[], draftData: any[], excludeIdx: number = -1) => {
+10136:     const codes = [
+10137:       ...listData.map(x => String(x.code || '')),
+10138:       ...draftData.filter((_, i) => i !== excludeIdx).map(x => String(x.code || ''))
+10139:     ].filter(Boolean);
+10140:     if (!codes.length) return '';
+10141:     let best: any = null;
+10142:     codes.forEach(c => {
+10143:       const m = c.match(/^(.*?)(\d+)$/);
+10144:       if (m) {
+10145:         const n = parseInt(m[2], 10);
+10146:         if (!best || n > best.n) best = { prefix: m[1], n, width: m[2].length };
+10147:       }
+10148:     });
+10149:     if (best) return best.prefix + String(best.n + 1).padStart(best.width, '0');
+10150:     return codes[codes.length - 1] + '-2';
+10151:   };
+10152: 
+10153:   const autoProductCode = () => {
+10154:     if (!editing || editing.id || editing.local_id) return;
+10155:     if (String(editing.code || '').trim()) return;
+10156:     const next = getNextProductCode(list, [], -1);
+10157:     if (next) setEditing({ ...editing, code: next });
+10158:   };
+10159: 
+10160:   const checkDuplicateName = (name: string, excludeLocalId?: string, excludeId?: string) => {
+10161:     const n = String(name || '').trim();
+10162:     if (!n) return null;
+10163:     return list.find((x: any) => (x.local_id !== excludeLocalId) && (x.id !== excludeId) && String(x.name || '').trim() === n) || null;
+10164:   };
+10165: 
+
+─── App.tsx — منابع و والد مدیریت ───
+43: import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Switch } from 'react-native';
+2980: <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+3387: </KeyboardAvoidingView>
+4162: <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+4430: </KeyboardAvoidingView>
+6701: {sub === 'sources' && <SourcesSection showToast={showToast} />}
+10086: function SourcesSection({ showToast }: any) {
+10089: <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+10102: </KeyboardAvoidingView>
+10385: <ScrollView style={[s.content, { backgroundColor: C.bg, flex: 1 }]} contentContainerStyle={{ padding: 10, paddingBottom: 60 }}>
+10737: <KeyboardAvoidingView style={[s.loginWrap, { backgroundColor: C.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+10765: </KeyboardAvoidingView>
+
+══════════ ۲) فروش — بانک/صاحب/کد در دفتر معین ══════════
+
+─── lib.offline.ts — _localUpsertSale (خط 387) ───
+387: async function _localUpsertSale(payload: any) {
+388:   try {
+389:     const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+390:     if (!inv) return;
+391:     const items = payload.items || payload.rows || [];
+392:     const old = (await getLocal<any[]>('sales')) || [];
+393:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+394:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+395:     const rows = items.map((it: any, idx: number) => ({
+396:       invoice_number: inv,
+397:       manual_invoice: payload.manualInvoice || '',
+398:       customer_code: payload.customerCode || payload.customer_code || '',
+399:       customer_name: payload.customerName || payload.customer_name || '',
+400:       customer_phone: payload.customerPhone || payload.customer_phone || '',
+401:       account_holder: payload.holderName || payload.accountHolder || it.accountHolder || it.holderName || '',
+402:       account_holder_code: payload.holderCode || payload.accountHolderCode || it.accountHolderCode || it.holderCode || '',
+403:       model_code: it.modelCode || it.model_code || '',
+404:       model_name: it.modelName || it.model_name || '',
+405:       quantity: Number(it.quantity) || 0,
+406:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+407:       payment: idx === 0 ? (Number(payload.paymentAmount ?? payload.payment ?? payload.paid ?? it.payment) || 0) : 0,
+408:       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+409:       bank_name: payload.bank || payload.bankName || it.bankName || '',
+410:       deposit_date: payload.depositDate || payload.payDate || it.depositDate || '',
+411:       shipping: payload.shipping || '',
+412:       date_factor: it.dateFactor || it.date_factor || baseDate,
+413:       date_reg: it.dateReg || it.date_reg || baseDate,
+414:       description: it.description || '',
+415:       _pending: true,
+416:     }));
+417:     await setLocal('sales', [...filtered, ...rows]);
+418:   } catch {}
+419: }
+420: 
+421: async function _localUpsertPurchase(payload: any) {
+422:   try {
+423:     const inv = String(payload.invoiceNumber || payload.invoice_number || payload._pendingInvNumber || '').trim();
+424:     if (!inv) return;
+425:     const items = payload.items || payload.rows || [];
+426:     const old = (await getLocal<any[]>('purchases')) || [];
+427:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+428:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+429:     const rows = items.map((it: any, idx: number) => ({
+430:       invoice_number: inv,
+431:       manual_invoice: payload.manualInvoice || '',
+432:       supplier_code: payload.supplierCode || payload.supplier_code || '',
+433:       supplier_name: payload.supplierName || payload.supplier_name || '',
+434:       supplier_phone: payload.supplierPhone || payload.supplier_phone || '',
+435:       account_holder: payload.payerName || payload.accountHolder || it.accountHolder || it.payerName || '',
+436:       payer_code: payload.payerCode || payload.accountHolderCode || it.accountHolderCode || it.payerCode || '',
+437:       model_code: it.modelCode || it.model_code || '',
+438:       model_name: it.modelName || it.model_name || '',
+439:       quantity: Number(it.quantity) || 0,
+440:       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+441:       payment: idx === 0 ? (Number(payload.paymentAmount ?? payload.payment ?? payload.paid ?? it.payment) || 0) : 0,
+442:       total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+443:       bank_name: payload.bankAccount || payload.bank || it.bankName || '',
+444:       deposit_date: payload.paymentDate || payload.depositDate || it.depositDate || '',
+445:       shipping: payload.shipping || '',
+446:       date_factor: it.dateFactor || it.date_factor || baseDate,
+447:       date_reg: it.dateReg || it.date_reg || baseDate,
+448:       description: it.description || '',
+449:       _pending: true,
+450:     }));
+451:     await setLocal('purchases', [...filtered, ...rows]);
+452:   } catch {}
+453: }
+454: 
+455: export async function createSale(payload: any) {
+456:   await _localUpsertSale(payload);
+457:   if (await serverBusinessAllowed()) {
+458:     try {
+459:       const r = await lib.createSale(payload);
+460:         try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+461:       return r;
+462:     }
+463:     catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+464:   }
+465:   await enqueue('createSale', payload);
+466:   try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+
+─── lib.offline.ts — getLedgerData createSale (خط 2519 تا 2550) ───
+2519:           description: r.description || '',
+2520:           payer_code: r.payerCode || r.accountHolderCode || '',
+2521:           _pending: true,
+2522:         });
+2523:       }
+2524:       continue;
+2525:     }
+2526:     if (item.op === 'createSale' && item.payload) {
+2527:       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+2528:       if (inv && allSales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+2529:       const rows = item.payload.rows || item.payload.items || [];
+2530:       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+2531:       for (const r of rows) {
+2532:         allSales.push({
+2533:           customer_code: item.payload.customerCode || item.payload.customer_code || '',
+2534:           customer_name: item.payload.customerName || item.payload.customer_name || '',
+2535:           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
+2536:           account_holder_code: item.payload.holderCode || item.payload.account_holder_code || r.accountHolderCode || r.account_holder_code || '',
+2537:           account_holder: item.payload.holderName || item.payload.account_holder || r.accountHolder || r.account_holder || '',
+2538:           quantity: Number(r.quantity) || 0,
+2539:           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
+2540:           payment: Number(r.payment) || 0,
+2541:           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+2542:           model_code: r.model_code || r.modelCode || '',
+2543:           model_name: r.model_name || r.modelName || '',
+2544:           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
+2545:           manual_invoice: '',
+2546:           date_factor: r.date_factor || r.dateFactor || baseDate,
+2547:           date_reg: r.date_reg || r.dateReg || baseDate,
+2548:           bank_name: item.payload.bank || item.payload.bankName || item.payload.bankAccount || r.bankName || r.bank_name || '',
+2549:           deposit_date: item.payload.depositDate || item.payload.paymentDate || r.depositDate || r.deposit_date || '',
+2550:           shipping: item.payload.shipping || r.shipping || '',
+
+─── lib.offline.ts — getLedgerData allSales common (خط 2619 تا 2663) ───
+2619:       }
+2620:     }
+2621:     return null;
+2622:   };;
+2623: 
+2624:   allSales.forEach(function(s: any) {
+2625:     const code = String(s.customer_code || '').trim();
+2626:     const name = String(s.customer_name || '').trim();
+2627:     const phone = String(s.customer_phone || '').trim();
+2628:     const acc = getOrCreate(name, code, phone);
+2629:     if (!acc) return;
+2630: 
+2631:     const qty = Number(s.quantity) || 0;
+2632:     const price = Number(s.price_unit) || 0;
+2633:     const total = Number(s.total) || (qty * price);
+2634:     const payment = Number(s.payment) || 0;
+2635: 
+2636:     const common = {
+2637:       date: s.date_factor || s.date_reg || s.created_at || '',
+2638:       invoice: s.invoice_number || '',
+2639:       manualInvoice: s.manual_invoice || '',
+2640:       modelCode: s.model_code || '',
+2641:       modelName: s.model_name || '',
+2642:       bank: s.bank_name || '',
+2643:       holder: s.account_holder || '',
+2644:       holderCode: s.account_holder_code || '',
+2645:       depositDate: s.deposit_date || '',
+2646:       shipping: s.shipping || '',
+2647:       description: s.description || '',
+2648:     };
+2649: 
+2650:     if (total > 0) {
+2651:       acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0 });
+2652:     }
+2653:     if (payment > 0) {
+2654:       acc.transactions.push({ ...common, type: 'payment_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: 0, credit: payment, description: 'دریافت وجه' });
+2655: 
+2656:       const hCode = String(s.account_holder_code || '').trim();
+2657:       const hName = String(s.account_holder || '').trim();
+2658:       if (hCode && hCode !== code) {
+2659:         const hAcc = getOrCreate(hName, hCode, '');
+2660:         if (hAcc) {
+2661:           hAcc.transactions.push({
+2662:             ...common, type: 'triangular_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0,
+2663:             description: 'دریافت مثلثی از طرف ' + name,
+
+══════════ ۳) مودال مشتری — لیست فاکتور و جزییات ══════════
+
+─── LedgerScreen.tsx — openInvoiceDetail (خط 127) ───
+127:   const openInvoiceDetail = async (inv: any) => {
+128:     setInvoiceLoading(true);
+129:     try {
+130:       const rows = await getInvoiceDetail(inv.invoice, inv.type === 'purchase' ? 'purchase' : 'sales');
+131:       setInvoiceDetailRows(rows || []);
+132:       setInvoiceDetailMeta(inv);
+133:     } catch (e: any) { if (showToast) showToast(e.message, true); }
+134:     finally { setInvoiceLoading(false); }
+135:   };
+136: 
+137:   function buildInvoicesList(p: any) {
+138:     const map: any = {};
+139:     (p?.transactions || []).forEach((t: any) => {
+140:       const inv = String(t.invoice || '').trim();
+141:       if (!inv) return;
+142:       const ty = String(t.type || '');
+143:       const isSale = ty === 'sale';
+144:       const isPurchase = ty === 'purchase';
+145:       const isPay = ty === 'payment_received' || ty === 'payment_sent' || ty === 'triangular_received';
+146:       if (isSale || isPurchase) {
+147:         if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+148:         map[inv].total += Number(t.lineTotal) || 0;
+149:         map[inv].count += 1;
+150:       } else if (isPay) {
+151:         if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+152:         map[inv].paid += Number(t.lineTotal) || 0;
+153:       }
+154:     });
+155:     return Object.values(map).map((x: any) => ({ ...x, balance: x.total - x.paid })).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+156:   }
+157: 
+158:   function buildPartyTransactions(p: any) {
+159:     let run = 0;
+160:     return (p?.transactions || []).map((t: any) => {
+161:       const d = Number(t.debit) || 0;
+162:       const c = Number(t.credit) || 0;
+163:       run += c - d;
+164:       return { ...t, _running: run };
+165:     });
+166:   }
+167:   function buildPaymentsList(p: any) {
+168:     return (p?.transactions || [])
+169:       .filter((t: any) => t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received')
+170:       .sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')));
+171:   }
+172: 
+173:   const openParty = (p: any) => {
+174:     if (activeTab === 'parties') {
+175:       setSelectedParty(p);
+176:       setInvoiceList(buildInvoicesList(p));
+177:       setInvoiceDetailRows([]);
+178:       setInvoiceDetailMeta(null);
+179:       setPartyViewMode('all');
+180:       setInvoiceModalVisible(true);
+181:       return;
+182:     }
+183:     setSelectedParty(p);
+184:     setPartyFilter('all');
+185:     setTreeMode('flat');
+186:     setActiveGroup('');
+187:     setActiveCounterparty('');
+188:     setModalVisible(true);
+189:   };
+190:   const partyDetails = selectedParty ? selectedParty.transactions : [];
+191:   const filteredPartyDetails = (partyDetails || []).filter((t: any) => {
+192:     if (partyFilter === 'all') return true;
+193:     if (partyFilter === 'in') return (Number(t.credit) || 0) > 0;
+194:     if (partyFilter === 'out') return (Number(t.debit) || 0) > 0;
+195:     if (partyFilter === 'transfer') return String(t.type || '').includes('transfer');
+196:     if (partyFilter === 'salary') return String(t.type || '') === 'salary';
+197:     if (partyFilter === 'salary_payment') return String(t.type || '') === 'salary_payment';
+198:     if (partyFilter === 'expense') return String(t.type || '') === 'expense';
+199:     if (partyFilter === 'expense_payment') return String(t.type || '') === 'expense_payment';
+200:     return String(t.accountType || 'current') === partyFilter;
+201:   });
+202: 
+203:   const filteredData = data.filter((r) => {
+204:     const q = searchQuery.trim();
+205:     if (!q) return true;
+206:     if ((r.name || '').includes(q)) return true;
+
+─── LedgerScreen.tsx — مودال و لیست فاکتور ───
+78: const [selectedParty, setSelectedParty] = useState(null);
+83: const [invoiceList, setInvoiceList] = useState<any[] | null>(null);
+84: const [invoiceDetailRows, setInvoiceDetailRows] = useState<any[] | null>(null);
+85: const [invoiceDetailMeta, setInvoiceDetailMeta] = useState<any>(null);
+127: const openInvoiceDetail = async (inv: any) => {
+131: setInvoiceDetailRows(rows || []);
+132: setInvoiceDetailMeta(inv);
+175: setSelectedParty(p);
+176: setInvoiceList(buildInvoicesList(p));
+177: setInvoiceDetailRows([]);
+178: setInvoiceDetailMeta(null);
+183: setSelectedParty(p);
+190: const partyDetails = selectedParty ? selectedParty.transactions : [];
+328: _p.push('<div class="title">📋 کارت حساب: ' + (selectedParty?.name || '—') + '</div>');
+329: _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (selectedParty?.type || '—') + '</div>');
+330: var _stBal = Number(selectedParty?.balance || 0);
+371: const pdfParty = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(true), 'statement-' + selectedParty.code + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true
+387: const r = await exportExcel(sheets, 'statement-' + (selectedParty?.code || 'party') + '-' + Date.now() + '.xlsx');
+396: _p.push('<div class="title">📄 فاکتور: ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+397: _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + '</div>');
+401: (invoiceDetailRows || []).forEach(function(r, i) {
+415: const _buildInvoiceListHtml = () => {
+418: if (partyViewMode === 'all') title = '📋 همه حرکات ' + (selectedParty?.name || '');
+419: else if (partyViewMode === 'in') title = '📥 ورودی‌های ' + (selectedParty?.name || '');
+420: else title = '📤 خروجی‌های ' + (selectedParty?.name || '');
+422: _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + '</div>');
+426: (buildPartyTransactions(selectedParty) || []).forEach(function(t: any, i: number) {
+429: } else if ((selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in')) {
+432: (invoiceList || []).forEach(function(inv: any, i: number) {
+440: (buildPaymentsList(selectedParty) || []).forEach(function(t: any, i: number) {
+448: var _bal = Number(selectedParty?.balance || 0);
+458: _p.push('<div class="title">📄 فاکتور ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+459: _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + displayDate(invoiceDetailMeta?.date || '') + '</div>');
+463: (invoiceDetailRows || []).forEach(function(r: any, i: number) {
+478: const pdfInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await shareHtmlAsPdf(html, 'statement-' + (selectedParty?.code || 'party') + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.m
+479: const printInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await printHtml(html); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (sho
+480: const imgInvoiceList = async () => { try { if (!invoiceModalRef.current) return; const uri = await captureRef(invoiceModalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'فاکتورها', url: uri }); } else if (awai
+482: const xlsInvoiceList = async () => {
+488: rows = (buildPartyTransactions(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.cre
+491: rows = (invoiceList || []).map((inv: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(inv.date), 'نوع': inv.type === 'purchase' ? 'خرید' : 'فروش', 'شماره فاکتور': inv.invoice, 'تعداد': inv.count || 0, 'مبلغ کل': inv.total, 'پرداخت': inv.paid, 'مانده': Math
+494: rows = (buildPaymentsList(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': displayDate(t.date), 'سند': t.invoice || '', 'شرح': cleanDesc(t), 'مبلغ پرداخت': Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0, 'بانک': t.bank ||
+496: const r = await exportExcel([{ name, data: rows }], 'party-' + (selectedParty?.code || 'p') + '-' + Date.now() + '.xlsx');
+504: _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + displayDate(meta?.date || '') + '</div>');
+527: const pdfInvoice = async () => { try { var html = _buildInvoiceHTMLInline(invoiceDetailMeta, invoiceDetailRows); var r = await shareHtmlAsPdf(html, 'invoice-' + (invoiceDetailMeta?.invoice || '') + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌
+528: const printInvoice = async () => { try { var html = _buildInvoiceHTMLInline(invoiceDetailMeta, invoiceDetailRows); var r = await printHtml(html); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { console.error('[pr
+530: const xlsInvoice = async () => { try { const rows = (invoiceDetailRows || []).map((r: any, i: number) => ({ '#': i+1, 'کد مدل': r.model_code || r.modelCode || '', 'نام مدل': r.model_name || r.modelName || '', 'قفسه': r.shelf || '', 'تعداد': Number(r.quantity) 
+684: <Text style={s.modalTitle}>📋 کارت حساب: {selectedParty?.name}</Text>
+697: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>کدها: </Text>{(selectedParty?.allCodes || []).join(', ')}</Text>
+698: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>تلفن‌ها: </Text>{(selectedParty?.allPhones || []).join(', ')}</Text>
+699: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>نوع: </Text>{selectedParty?.type || '—'}</Text>
+701: {selectedParty?.type === 'شریک' && (
+703: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#059669' }}>سرمایه: </Text>{fmt(selectedParty?.capital || 0)} {curLabel}</Text>
+704: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: (selectedParty?.current || 0) >= 0 ? '#059669' : '#dc2626' }}>جاری: </Text>{fmt(selectedParty?.current || 0)} {curLabel}</Text>
+705: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#dc2626' }}>برداشت: </Text>{fmt(selectedParty?.drawings || 0)} {curLabel}</Text>
+709: {selectedParty?.type === 'کارمند' && (
+711: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#059669' }}>جمع حقوق: </Text>{fmt(selectedParty?.totalCredit || 0)} {curLabel}</Text>
+712: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#1e40af' }}>جمع پرداخت: </Text>{fmt(selectedParty?.totalDebit || 0)} {curLabel}</Text>
+716: {selectedParty?.type === 'هزینه‌گیرنده' && (
+718: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#059669' }}>جمع هزینه: </Text>{fmt(selectedParty?.totalCredit || 0)} {curLabel}</Text>
+719: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#1e40af' }}>جمع پرداخت: </Text>{fmt(selectedParty?.totalDebit || 0)} {curLabel}</Text>
+723: <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>مانده نهایی: </Text>{fmt(Math.abs(selectedParty?.balance || 0))} {curLabel}</Text>
+726: <Text style={{ color: selectedParty?.balance > 0 ? '#dc2626' : selectedParty?.balance < 0 ? '#059669' : '#64748b', fontWeight: 'bold' }}>
+727: {selectedParty?.type === 'شریک'
+728: ? (selectedParty?.balance > 0 ? 'شرکت بدهکار به شریک' : selectedParty?.balance < 0 ? 'شریک بدهکار به شرکت' : 'تسویه')
+729: : selectedParty?.type === 'کارمند'
+730: ? (selectedParty?.balance < 0 ? 'شرکت بدهکار به کارمند' : selectedParty?.balance > 0 ? 'کارمند بدهکار به شرکت' : 'تسویه')
+731: : selectedParty?.type === 'هزینه‌گیرنده'
+732: ? (selectedParty?.balance > 0 ? 'ما بدهکاریم' : selectedParty?.balance < 0 ? 'ما بستانکاریم' : 'تسویه')
+733: : (selectedParty?.balance > 0 ? 'ما بستانکاریم' : selectedParty?.balance < 0 ? 'ما بدهکاریم' : 'تسویه')}
+739: {(selectedParty?.type === 'شریک'
+745: : selectedParty?.type === 'کارمند'
+750: : selectedParty?.type === 'هزینه‌گیرنده'
+771: <Text style={[s.td, { width: 45, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.qty) || 0), 0))}</Text>
+773: <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal
+774: <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#1e40af' }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
+775: <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
+776: <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
+977: <Text style={s.modalTitle}>{invoiceDetailMeta ? '📄 فاکتور: ' + invoiceDetailMeta.invoice : '📋 ' + (selectedParty?.name || '')}</Text>
+981: {invoiceDetailMeta ? (
+1002: <TouchableOpacity onPress={pdfInvoiceList} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+1003: <TouchableOpacity onPress={printInvoiceList} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+1004: <TouchableOpacity onPress={imgInvoiceList} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+1005: <TouchableOpacity onPress={xlsInvoiceList} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+1011: {invoiceDetailMeta ? (
+1013: <TouchableOpacity onPress={() => { setInvoiceDetailMeta(null); setInvoiceDetailRows([]); }} style={{ alignSelf: 'flex-end', padding: 6, backgroundColor: '#e2e8f0', borderRadius: 6, marginBottom: 6 }}>
+1032: {(invoiceDetailRows || []).map((r: any, i: number) => (
+1099: <TouchableOpacity onPress={() => openInvoiceDetail({ invoice: t.invoice, type: (t.type === 'purchase' || t.type === 'payment_sent') ? 'purchase' : 'sales' })}>
+1132: ) : (selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in') ? (
+1146: {(invoiceList || []).map((inv: any, i: number) => (
+1157: <TouchableOpacity onPress={() => openInvoiceDetail(inv)} style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1167: <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1168: <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1169: <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1170: <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1188: {(buildPaymentsList(selectedParty) || []).map((t: any, i: number) => (
+1199: <TouchableOpacity onPress={() => openInvoiceDetail({ invoice: t.invoice, type: (t.type === 'payment_sent' || t.type === 'purchase') ? 'purchase' : 'sales' })}>
+1213: <Text style={[s.td, { width: 110, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((buildPaymentsList(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0), 0))}</Text>
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

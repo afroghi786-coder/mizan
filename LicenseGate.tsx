@@ -67,6 +67,44 @@ export default function LicenseGate({ children, showToast }: any) {
     );
   }
 
+  // PHASE4_EXPIRY_WARNING — هشدار یک هفته آخر لایسنس
+  let _daysLeft: number | null = null;
+  let _warningColor = '';
+  let _warningText = '';
+  try {
+    if (info?.expiresAt && info.status === 'active') {
+      const _exp = new Date(info.expiresAt).getTime();
+      const _now = Date.now();
+      const _ms = _exp - _now;
+      if (_ms > 0 && _ms <= 7 * 86400000) {
+        _daysLeft = Math.ceil(_ms / 86400000);
+        if (_daysLeft <= 1) {
+          _warningColor = '#dc2626';
+          _warningText = '⛔ فقط ' + _daysLeft + ' روز تا پایان لایسنس! لطفاً از تب پشتوانی جهت تمدید لایسنس اقدام کنید.';
+        } else if (_daysLeft <= 3) {
+          _warningColor = '#ea580c';
+          _warningText = '⚠️ فقط ' + _daysLeft + ' روز تا پایان لایسنس. لطفاً از تب پشتوانی جهت تمدید لایسنس اقدام کنید.';
+        } else {
+          _warningColor = '#d97706';
+          _warningText = '🔔 ' + _daysLeft + ' روز تا پایان لایسنس باقی مانده. برای تمدید از تب پشتوانی اقدام کنید.';
+        }
+      }
+    }
+  } catch {}
+
+  if (_warningText) {
+    return (
+      <View style={{ flex: 1 }}>
+        <View style={{ backgroundColor: _warningColor, paddingVertical: 8, paddingHorizontal: 12 }}>
+          <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold', textAlign: 'center' }}>
+            {_warningText}
+          </Text>
+        </View>
+        {children}
+      </View>
+    );
+  }
+
   return children;
 }
 

@@ -1,0 +1,213 @@
+
+───── lib.sheets.ts — مسیر حذف در sheets ─────
+36: { tab: '_deleted', keys: ['@mizan_tombstones'] },
+197: export async function bridgeSaveTable(table: string, rows: any[]) {
+214: export async function bridgeDeleteTable(table: string, keys: string[]) {
+221: body: JSON.stringify({ action: 'delete', key: cfg.key, table: table, keys: keys || [] }),
+231: export async function bridgeUpsertTable(table: string, rows: any[]) {
+280: await bridgeSaveTable(t.tab, rows);
+341: const always = ['_deleted', '_audit', 'partner_transactions', 'partner_bank_accounts'];
+385: // PHASE_D_SHEET_DELETE — حذف واقعی ردیف‌های tombstone از شیت
+387: const _rawT = await AsyncStorage.getItem('@mizan_tombstones');
+397: if (_tab === '_deleted' || _tab === '_audit') continue;
+405: await bridgeDeleteTable(_tab, _keys);
+436: if (tab === '_deleted') r = await mergeTombstones(rows);
+462: const always = ['_deleted', '_audit', 'partner_transactions', 'partner_bank_accounts'];
+505: const useSave = (t.tab === '_deleted' || t.tab === '_audit');
+507: await bridgeSaveTable(t.tab, rows);
+528: await bridgeUpsertTable(t.tab, finalRows);
+555: await bridgeUpsertTable(f.tab, rows);
+658: '_deleted','_audit','sales','purchases',
+700: async function getTombstones(): Promise<Record<string, string>> {
+701: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+713: async function saveTombstones(map: Record<string, string>) {
+715: await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(arr));
+718: async function getTombstonesForTable(table: string): Promise<Record<string, string>> {
+719: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+733: async function saveTombstonesForTable(table: string, map: Record<string, string>) {
+734: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+740: await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify([...others, ...mine]));
+985: const tombstones = await getTombstonesForTable(table);
+991: const tombAt = tombstones[k] || '';
+1007: const old = tombstones[k] || '';
+1008: if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+1013: const tombAt = tombstones[k] || '';
+1044: await saveTombstonesForTable(table, tombstones);
+1164: const tombstones = await getTombstonesForTable(table);
+1168: const tombAt = tombstones[k] || '';
+1185: const old = tombstones[k] || '';
+1186: if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+1191: const tombAt = tombstones[k] || '';
+1222: await saveTombstonesForTable(table, tombstones);
+1236: const _tombKeys = Object.keys(tombstones);
+1251: async function mergeTombstones(rows: any[]) {
+1252: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1287: await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(Object.values(map)));
+1343: if (tab === '_deleted') r = await mergeTombstones(rows);
+
+───── lib.offline.ts — توابع حذف در offline ─────
+27: 'createProduct','updateProduct','deleteProduct',
+28: 'createSale','updateSale','deleteSale',
+29: 'createPurchase','updatePurchase','deletePurchase',
+30: 'createSalesReturn','updateSalesReturn','deleteSalesReturn',
+31: 'createPurchaseReturn','updatePurchaseReturn','deletePurchaseReturn',
+40: 'createPartner','updatePartner','deletePartner',
+43: 'createBank','updateBank','deleteBank',
+99: deleteProduct: { table: 'products', type: 'product_delete', summary: 'حذف کالا' },
+101: deleteSale: { table: 'sales', type: 'sale_delete', summary: 'حذف فاکتور فروش' },
+103: deletePurchase: { table: 'purchases', type: 'purchase_delete', summary: 'حذف فاکتور خرید' },
+129: deletePartner: { table: 'partners', type: 'partner_delete', summary: 'حذف شریک' },
+136: deleteBank: { table: 'banks', type: 'bank_delete', summary: 'حذف بانک' },
+242: const TOMBSTONES_KEY = '@mizan_tombstones';
+244: export async function recordTombstone(table: string, key: string, meta?: any) {
+247: const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+257: await AsyncStorage.setItem(TOMBSTONES_KEY, JSON.stringify(clean));
+258: } catch (e) { console.log('[recordTombstone]', e); }
+261: export async function getTombstones(): Promise<any[]> {
+263: const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+269: let _deletedPartiesCache: { phones: Set<string>, codes: Set<string>, names: Set<string>, ts: number } | null = null;
+272: if (_deletedPartiesCache && Date.now() - _deletedPartiesCache.ts < 5000) {
+273: return _deletedPartiesCache;
+279: const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+298: _deletedPartiesCache = { phones, codes, names, ts: Date.now() };
+299: return _deletedPartiesCache;
+303: _deletedPartiesCache = null;
+373: async function _applyTombstones(table: string, arr: any[]) {
+375: const raw = await AsyncStorage.getItem(TOMBSTONES_KEY);
+398: return _applyTombstones('products', local || []);
+412: // پاک کردن tombstone قدیمی برای همان code/local_id تا کالای جدید پاک نشود
+414: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+427: await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(filtered));
+462: export async function deleteProduct(id: string) {
+463: if (!id) { console.log('[deleteProduct] id empty, skip'); return; }
+482: for (const k of keys) await recordTombstone('products', k);
+509: await enqueue('deleteProduct', { id, local_id: localId, code });
+623: if (type === 'sales' && item.op === 'deleteSalesReturn') {
+627: if (type === 'purchase' && item.op === 'deletePurchaseReturn') {
+633: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+656: export async function deleteSale(inv: string) {
+660: await recordTombstone('sales', String(inv));
+665: try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+667: await enqueue('deleteSale', inv);
+671: export async function deletePurchase(inv: string) {
+675: await recordTombstone('purchases', String(inv));
+680: try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+682: await enqueue('deletePurchase', inv);
+716: // BUSINESS_LOCAL_ONLY — Merge grouped (device 2) + apply tombstones
+758: const _tomb = await getTombstones();
+767: } catch (e) { console.log('[inventory] merge/tombstone fail:', e); }
+773: if (item.op === 'deleteSale') {
+776: if (item.op === 'deletePurchase') {
+891: // BUSINESS_LOCAL_ONLY — tombstone filter for adjustments (final safety)
+893: const _rawT = await AsyncStorage.getItem('@mizan_tombstones');
+1372: if (item.op === 'deleteSale') {
+1378: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1454: //  deleteSale — اگه توی صف بود، از صف حذف کن
+1557: if (item.op === 'deletePurchase') {
+1563: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1800: const validRows = rows.filter((r: any) => !r._deleted);
+1864: export async function deleteSaleFromQueue(invoiceNumber: string) {
+1872: export async function deletePurchaseFromQueue(invoiceNumber: string) {
+2059: return _applyTombstones('expenses', Object.values(map));
+2096: await recordTombstone('expenses', String(localId));
+2113: return _applyTombstones('employees', (await getLocal<any[]>('employees')) || []);
+2136: await recordTombstone('employees', String(localId));
+2153: return _applyTombstones('attendance', (await getLocal<any[]>('attendance')) || []);
+2174: await recordTombstone('salary_payments', String(localId));
+2187: await recordTombstone('employee_loans', String(localId));
+2200: await recordTombstone('employee_leaves', String(localId));
+2213: await recordTombstone('attendance', String(localId));
+2226: await recordTombstone('payroll_batches', String(localId));
+2414: // BUSINESS_LOCAL_ONLY — Merge grouped (device 2) + apply tombstones
+2470: var _tomb2 = await getTombstones();
+2479: } catch (e) { console.log('[dashboard] merge/tombstone fail:', e); }
+2796: const _tomb = await getTombstones();
+2858: // برگشت‌ها (getSalesReturns / getPurchaseReturns خودشان tombstone را اعمال می‌کنند)
+2924: // Tombstones — فیلتر تعدیل‌های حذف‌شده
+2925: const _deletedAdj = new Set<string>();
+2927: const _rawT = await AsyncStorage.getItem('@mizan_tombstones');
+2935: if (_k) _deletedAdj.add(_k);
+2942: if (k1 && _deletedAdj.has(k1)) return false;
+2943: if (k2 && _deletedAdj.has(k2)) return false;
+2984: await recordTombstone('stock_adjustments', String(id));
+3129: // BUSINESS_LOCAL_ONLY — Apply tombstones (sales/purchases)
+3131: const _tombL = await getTombstones();
+3145: if (item.op === 'deleteSale' && item.payload) {
+3151: if (item.op === 'deletePurchase' && item.payload) {
+3164: if (r._deleted) continue;
+3201: if (r._deleted) continue;
+3837: return _applyTombstones('parties', out.sort((a: any, b: any) => String(a.code || '').localeCompare(String(b.code || ''))));
+3867: await recordTombstone('parties', String(id));
+3898: await recordTombstone('parties', String(id), _meta);
+4020: } else if (item.op === 'deletePartner') {
+4025: return _applyTombstones('partners', result.sort((a, b) => String(a.code || '').localeCompare(String(b.code || ''))));
+4080: export async function deletePartner(id: string) {
+4081: await recordTombstone('partners', String(id));
+4085: if (await serverBusinessAllowed()) { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+4086: else { await enqueue('deletePartner', id); }
+4148: return _applyTombstones('partner_bank_accounts', result);
+4162: export async function deletePartnerBankAccount(id: string, partnerCode: string) {
+4163: await recordTombstone('partner_bank_accounts', String(id));
+4185: return _applyTombstones('partner_transactions', result.sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || ''))));
+4199: export async function deletePartnerTransaction(id: string, partnerCode: string) {
+4200: await recordTombstone('partner_transactions', String(id));
+4216: else if (item.op === 'deleteBank') {
+4221: return _applyTombstones('banks', result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
+4257: export async function deleteBank(id: string) {
+4258: await recordTombstone('banks', String(id));
+4262: if (await serverBusinessAllowed()) { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+4263: else { await enqueue('deleteBank', id); }
+4284: return _applyTombstones('shippings', result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))));
+4321: await recordTombstone('shippings', String(id));
+4502: const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+4543: const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+4656: return _applyTombstones('salary_payments', Object.values(map));
+4681: return _applyTombstones('employee_loans', Object.values(map));
+4720: if (item.op === 'deleteSalesReturn') {
+4726: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+4791: export async function deleteSalesReturn(localId: string) {
+4792: await recordTombstone('sales_returns', String(localId));
+4805: await enqueue('deleteSalesReturn', String(localId));
+4843: if (item.op === 'deletePurchaseReturn') {
+4849: const raw = await AsyncStorage.getItem('@mizan_tombstones');
+4914: export async function deletePurchaseReturn(localId: string) {
+4915: await recordTombstone('purchase_returns', String(localId));
+4928: await enqueue('deletePurchaseReturn', String(localId));
+
+───── SyncControl.tsx — SyncControl ─────
+87: createSale: 'ثبت فروش', updateSale: 'ویرایش فروش', deleteSale: 'حذف فروش',
+88: createPurchase: 'ثبت خرید', updatePurchase: 'ویرایش خرید', deletePurchase: 'حذف خرید',
+89: createExpense: 'ثبت هزینه', updateExpense: 'ویرایش هزینه', deleteExpense: 'حذف هزینه',
+90: createEmployee: 'ثبت کارمند', updateEmployee: 'ویرایش کارمند', deleteEmployee: 'حذف کارمند',
+91: createAttendance: 'ثبت حضور', updateAttendance: 'ویرایش حضور', deleteAttendance: 'حذف حضور',
+92: createSalaryPayment: 'ثبت حقوق', updateSalaryPayment: 'ویرایش حقوق', deleteSalaryPayment: 'حذف حقوق',
+93: createLoan: 'ثبت وام', updateLoan: 'ویرایش وام', deleteLoan: 'حذف وام',
+94: createLeave: 'ثبت مرخصی', updateLeave: 'ویرایش مرخصی', deleteLeave: 'حذف مرخصی',
+95: createBatch: 'ثبت لیست حقوق', updateBatch: 'ویرایش لیست حقوق', deleteBatch: 'حذف لیست حقوق',
+96: createParty: 'ثبت طرف‌حساب', updateParty: 'ویرایش طرف‌حساب', deleteParty: 'حذف طرف‌حساب',
+97: createPartner: 'ثبت شریک', updatePartner: 'ویرایش شریک', deletePartner: 'حذف شریک',
+98: createPBA: 'ثبت حساب بانکی شریک', deletePBA: 'حذف حساب بانکی شریک',
+99: createPTX: 'ثبت حرکت شریک', deletePTX: 'حذف حرکت شریک',
+100: createBank: 'ثبت بانک', updateBank: 'ویرایش بانک', deleteBank: 'حذف بانک',
+101: createShipping: 'ثبت باربری', updateShipping: 'ویرایش باربری', deleteShipping: 'حذف باربری',
+102: createProduct: 'ثبت کالا', updateProduct: 'ویرایش کالا', deleteProduct: 'حذف کالا',
+103: createStockAdjustment: 'ثبت تعدیل انبار', deleteStockAdjustment: 'حذف تعدیل انبار',
+
+───── lib.network.ts — network ─────
+227: export async function deleteFXOffer(offerId: string): Promise<void> {
+229: try { await _sb.from('net_fx_offers').delete().eq('id', offerId).eq('seller_email', _myEmail); } catch {}
+373: await _sb.from('net_group_members').delete().eq('group_id', groupId).eq('member_email', _myEmail);
+383: await _sb.from('net_group_members').delete().eq('group_id', groupId).eq('member_email', memberEmail);
+389: export async function deleteGroup(groupId: string): Promise<any> {
+394: await _sb.from('net_group_members').delete().eq('group_id', groupId);
+395: await _sb.from('net_groups').delete().eq('id', groupId);
+407: await _sb.from('net_daily_rates').delete().eq('date_str', dateStr).eq('currency', currency).eq('by_email', _myEmail);
+420: export async function deleteMyRate(currency: string): Promise<any> {
+424: const { error } = await _sb.from('net_daily_rates').delete().eq('date_str', dateStr).eq('currency', currency).eq('by_email', _myEmail);
+599: if (_polls[key]) { clearInterval(_polls[key]); delete _polls[key]; }
+684: export async function deleteNotification(id: number): Promise<void> {
+686: try { await _sb.from('net_notifications').delete().eq('id', id); } catch {}
+916: export async function deletePublicAd(id: any): Promise<any> {
+918: const { error } = await _sb.from('public_general_ads').delete().eq('id', id).eq('user_email', _myEmail);
+
+✅ audit تمام — هیچ کدی تغییر نکرد.

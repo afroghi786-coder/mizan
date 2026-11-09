@@ -1,0 +1,686 @@
+══════════ ۱) searchAllInvoices / getSalesGrouped ══════════
+
+─── lib.offline.ts — searchAllInvoices (خط 1142) ───
+1142: export async function searchAllInvoices(q: string) {
+1143:   const [sales, purchases] = await Promise.all([
+1144:     getSalesGrouped(),
+1145:     getPurchasesGrouped(),
+1146:   ]);
+1147:   const query = (q || '').toLowerCase().trim();
+1148:   const filt = (arr: any[], type: string) =>
+1149:     arr.map((r) => ({ ...r, type, sheetType: type }))
+1150:       .filter((r) => !query ||
+1151:         (String(r.invoice) + ' ' + String(r.name || '') + ' ' + String(r.phone || '')).toLowerCase().includes(query));
+1152:   return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
+1153: }
+1154: 
+1155: // ═══════════════════════════════════════════
+1156: //  getInvoiceDetail — از صف یا سرور
+1157: // ═══════════════════════════════════════════
+1158: 
+1159: // ═══════════════════════════════════════════
+1160: //  deleteSale — اگه توی صف بود، از صف حذف کن
+1161: // ═══════════════════════════════════════════
+1162: 
+1163: 
+1164: // ═══════════════════════════════════════════
+1165: //  updateInvoiceInQueue — ویرایش فاکتور آفلاین
+1166: // ═══════════════════════════════════════════
+1167: 
+1168: // ═══════════════════════════════════════════
+1169: //  شماره فاکتور خرید آفلاین با P-
+1170: // ═══════════════════════════════════════════
+1171: async function genPurchaseInvoiceNumber() {
+1172:   const today = new Date();
+1173:   const ds = String(today.getFullYear()).slice(-2)
+1174:     + String(today.getMonth() + 1).padStart(2, '0')
+1175:     + String(today.getDate()).padStart(2, '0');
+1176:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+1177:   const queue = await getQueue();
+1178:   let maxN = 1000;
+1179:   for (const g of grouped) {
+1180:     const m = String(g.invoice || '').match(/^P-\d{6}-(\d+)$/);
+1181:     if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+1182:   }
+1183:   for (const q of queue) {
+1184:     if (q.op === 'createPurchase') {
+1185:       const inv = q.payload?._pendingInvNumber || q.payload?.invoiceNumber || '';
+1186:       const m = String(inv).match(/^P-\d{6}-(\d+)$/);
+1187:       if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+1188:     }
+1189:   }
+1190:   return 'P-' + ds + '-' + (maxN + 1);
+1191: }
+1192: 
+1193: // ═══════════════════════════════════════════
+1194: //  createPurchase — با شماره P-
+1195: // ═══════════════════════════════════════════
+1196: export async function createPurchase(payload: any) {
+1197:   if (await serverBusinessAllowed()) {
+1198:     try {
+1199:       const r = await lib.createPurchase(payload);
+1200:       const inv = String(r || payload.invoiceNumber || '');
+1201:       if (inv) await _localUpsertPurchase({ ...payload, invoiceNumber: inv });
+1202:       try {
+1203:         await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1204:       } catch {}
+1205:       return r;
+1206:     } catch {}
+1207:   }
+1208: 
+1209:   const pInv = await genPurchaseInvoiceNumber();
+1210:   const newPayload = { ...payload, _pendingInvNumber: pInv, invoiceNumber: pInv };
+1211:   await _localUpsertPurchase(newPayload);
+1212:   await enqueue('createPurchase', newPayload);
+1213:   try {
+1214:     await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(pInv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1215:   } catch {}
+1216:   return pInv;
+1217: }
+1218: 
+1219: // ═══════════════════════════════════════════
+1220: //  getPurchasesGrouped — با شماره P-
+1221: // ═══════════════════════════════════════════
+1222: export async function getPurchasesGrouped() {
+1223:   let serverList: any[] = [];
+1224:   // BUSINESS_LOCAL_AND_SHEET_ONLY — خرید فقط محلی + صف
+1225:   serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+1226: 
+1227:   const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
+1228:   if (localPurchaseRows.length) {
+1229:     const groupedFromPurchases = _groupPurchaseRows(localPurchaseRows);
+1230:     const map: Record<string, any> = {};
+1231:     for (const g of serverList) map[String(g.invoice || '')] = g;
+1232:     for (const g of groupedFromPurchases) map[String(g.invoice || '')] = g;
+1233:     serverList = Object.values(map);
+1234:   }
+1235: 
+1236:   const queue = await getQueue();
+1237:   const deletedInvs = new Set<string>();
+1238:   for (const item of queue) {
+1239:     if (item.op === 'deletePurchase') {
+1240:       const inv = String(item.payload || '').trim();
+1241:       if (inv) deletedInvs.add(inv);
+1242:     }
+1243:   }
+1244:   try {
+1245:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1246:     let arr: any[] = [];
+1247:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+1248:     if (Array.isArray(arr)) {
+1249:       for (const t of arr) {
+1250:         if (!t) continue;
+1251:         if (String(t.table || '') !== 'purchases') continue;
+1252:         const k = String(t.key || '').trim();
+1253:         if (k) deletedInvs.add(k);
+1254:       }
+1255:     }
+1256:   } catch {}
+1257: 
+1258:   const pendingByInv: Record<string, any> = {};
+1259:   for (const item of queue) {
+1260:     if (item.op === 'createPurchase') {
+1261:       const p = item.payload;
+1262:       const inv = p._pendingInvNumber || p.invoiceNumber || 'P-PENDING';
+1263:       if (deletedInvs.has(String(inv))) continue;
+1264:       if (!pendingByInv[inv]) {
+1265:         pendingByInv[inv] = {
+1266:           invoice: inv,
+1267:           manual: p.manualInvoice || '',
+1268:           name: p.supplierName,
+1269:           phone: p.supplierPhone,
+1270:           total: 0, paid: 0, items: [],
+1271:           date: new Date(item.ts).toISOString(),
+1272:           _pending: true,
+1273:         };
+1274:       }
+1275:       const items = (p.items && p.items.length) ? p.items : [{ modelName: '—', quantity: 0, priceUnit: 0 }];
+1276:       for (const it of items) {
+1277:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+1278:         pendingByInv[inv].items.push(it);
+1279:       }
+1280:       pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
+1281:     }
+1282:   }
+1283: 
+1284:   const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+1285:   const finalMap: Record<string, any> = {};
+1286:   for (const g of cleanedServer) {
+1287:     const k = String(g.invoice || '');
+1288:     if (k) finalMap[k] = g;
+1289:   }
+1290:   for (const g of Object.values(pendingByInv)) {
+1291:     const k = String((g as any).invoice || '');
+1292:     if (k) finalMap[k] = g;
+1293:   }
+1294:   return Object.values(finalMap);
+1295: }
+1296: 
+1297: // ═══════════════════════════════════════════
+1298: //  getInvoiceDetail — از صف یا سرور
+1299: // ═══════════════════════════════════════════
+1300: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+1301:   // ۱. صف آفلاین
+
+─── lib.offline.ts — getSalesGrouped (خط 1063) ───
+1063: export async function getSalesGrouped() {
+1064:   let serverList: any[] = [];
+1065:   // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
+1066:   serverList = (await getLocal<any[]>('sales_grouped')) || [];
+1067: 
+1068:   // ادغام فروش‌های محلی که هنوز گروه‌بندی نشده‌اند
+1069:   const localSalesRows = (await getLocal<any[]>('sales')) || [];
+1070:   if (localSalesRows.length) {
+1071:     const groupedFromSales = _groupSalesRows(localSalesRows);
+1072:     const map: Record<string, any> = {};
+1073:     for (const g of serverList) map[String(g.invoice || '')] = g;
+1074:     for (const g of groupedFromSales) map[String(g.invoice || '')] = g;
+1075:     serverList = Object.values(map);
+1076:   }
+1077: 
+1078:   const queue = await getQueue();
+1079:   const deletedInvs = new Set<string>();
+1080:   for (const item of queue) {
+1081:     if (item.op === 'deleteSale') {
+1082:       const inv = String(item.payload || '').trim();
+1083:       if (inv) deletedInvs.add(inv);
+1084:     }
+1085:   }
+1086:   try {
+1087:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1088:     let arr: any[] = [];
+1089:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+1090:     if (Array.isArray(arr)) {
+1091:       for (const t of arr) {
+1092:         if (!t) continue;
+1093:         if (String(t.table || '') !== 'sales') continue;
+1094:         const k = String(t.key || '').trim();
+1095:         if (k) deletedInvs.add(k);
+1096:       }
+1097:     }
+1098:   } catch {}
+1099: 
+1100:   const pendingByInv: Record<string, any> = {};
+1101:   for (const item of queue) {
+1102:     if (item.op === 'createSale') {
+1103:       const p = item.payload;
+1104:       const inv = p.invoiceNumber;
+1105:       if (deletedInvs.has(String(inv))) continue;
+1106:       if (!pendingByInv[inv]) {
+1107:         pendingByInv[inv] = {
+1108:           invoice: inv, name: p.customerName, phone: p.customerPhone,
+1109:           total: 0, paid: 0, items: [],
+1110:           date: new Date(item.ts).toISOString(),
+1111:           _pending: true,
+1112:         };
+1113:       }
+1114:       for (const it of p.items || []) {
+1115:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+1116:         pendingByInv[inv].paid += Number(it.payment) || 0;
+1117:         pendingByInv[inv].items.push(it);
+1118:       }
+1119:     }
+1120:   }
+1121: 
+1122:   const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+1123:   const finalMap: Record<string, any> = {};
+1124:   for (const g of cleanedServer) {
+1125:     const k = String(g.invoice || '');
+1126:     if (k) finalMap[k] = g;
+1127:   }
+1128:   for (const g of Object.values(pendingByInv)) {
+1129:     const k = String((g as any).invoice || '');
+1130:     if (k) finalMap[k] = g;
+1131:   }
+1132:   return Object.values(finalMap);
+1133: }
+1134: 
+1135: // ═══════════════════════════════════════════
+1136: //  getPurchasesGrouped — با ادغام صف
+1137: // ═══════════════════════════════════════════
+1138: 
+1139: // ═══════════════════════════════════════════
+1140: //  searchAllInvoices — با ادغام صف آفلاین
+1141: // ═══════════════════════════════════════════
+1142: export async function searchAllInvoices(q: string) {
+1143:   const [sales, purchases] = await Promise.all([
+1144:     getSalesGrouped(),
+1145:     getPurchasesGrouped(),
+1146:   ]);
+1147:   const query = (q || '').toLowerCase().trim();
+1148:   const filt = (arr: any[], type: string) =>
+1149:     arr.map((r) => ({ ...r, type, sheetType: type }))
+1150:       .filter((r) => !query ||
+1151:         (String(r.invoice) + ' ' + String(r.name || '') + ' ' + String(r.phone || '')).toLowerCase().includes(query));
+1152:   return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
+1153: }
+1154: 
+1155: // ═══════════════════════════════════════════
+1156: //  getInvoiceDetail — از صف یا سرور
+1157: // ═══════════════════════════════════════════
+1158: 
+1159: // ═══════════════════════════════════════════
+1160: //  deleteSale — اگه توی صف بود، از صف حذف کن
+1161: // ═══════════════════════════════════════════
+1162: 
+1163: 
+1164: // ═══════════════════════════════════════════
+1165: //  updateInvoiceInQueue — ویرایش فاکتور آفلاین
+1166: // ═══════════════════════════════════════════
+1167: 
+1168: // ═══════════════════════════════════════════
+1169: //  شماره فاکتور خرید آفلاین با P-
+1170: // ═══════════════════════════════════════════
+1171: async function genPurchaseInvoiceNumber() {
+1172:   const today = new Date();
+1173:   const ds = String(today.getFullYear()).slice(-2)
+1174:     + String(today.getMonth() + 1).padStart(2, '0')
+1175:     + String(today.getDate()).padStart(2, '0');
+1176:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+1177:   const queue = await getQueue();
+1178:   let maxN = 1000;
+1179:   for (const g of grouped) {
+1180:     const m = String(g.invoice || '').match(/^P-\d{6}-(\d+)$/);
+1181:     if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+1182:   }
+1183:   for (const q of queue) {
+1184:     if (q.op === 'createPurchase') {
+1185:       const inv = q.payload?._pendingInvNumber || q.payload?.invoiceNumber || '';
+1186:       const m = String(inv).match(/^P-\d{6}-(\d+)$/);
+1187:       if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+1188:     }
+1189:   }
+1190:   return 'P-' + ds + '-' + (maxN + 1);
+1191: }
+1192: 
+1193: // ═══════════════════════════════════════════
+1194: //  createPurchase — با شماره P-
+1195: // ═══════════════════════════════════════════
+1196: export async function createPurchase(payload: any) {
+1197:   if (await serverBusinessAllowed()) {
+1198:     try {
+1199:       const r = await lib.createPurchase(payload);
+1200:       const inv = String(r || payload.invoiceNumber || '');
+1201:       if (inv) await _localUpsertPurchase({ ...payload, invoiceNumber: inv });
+1202:       try {
+
+══════════ ۲) getLedgerData — ساخت تراکنش‌ها ══════════
+
+─── lib.offline.ts — ساخت تراکنش فروش/خرید/برگشت (خط 2598 تا 2734) ───
+2598:     }
+2599:     return null;
+2600:   };;
+2601: 
+2602:   allSales.forEach(function(s: any) {
+2603:     const code = String(s.customer_code || '').trim();
+2604:     const name = String(s.customer_name || '').trim();
+2605:     const phone = String(s.customer_phone || '').trim();
+2606:     const acc = getOrCreate(name, code, phone);
+2607:     if (!acc) return;
+2608: 
+2609:     const qty = Number(s.quantity) || 0;
+2610:     const price = Number(s.price_unit) || 0;
+2611:     const total = Number(s.total) || (qty * price);
+2612:     const payment = Number(s.payment) || 0;
+2613: 
+2614:     const common = {
+2615:       date: s.date_factor || s.date_reg || s.created_at || '',
+2616:       invoice: s.invoice_number || '',
+2617:       manualInvoice: s.manual_invoice || '',
+2618:       modelCode: s.model_code || '',
+2619:       modelName: s.model_name || '',
+2620:       bank: s.bank_name || '',
+2621:       holder: s.account_holder || '',
+2622:       holderCode: s.account_holder_code || '',
+2623:       depositDate: s.deposit_date || '',
+2624:       shipping: s.shipping || '',
+2625:       description: s.description || '',
+2626:     };
+2627: 
+2628:     if (total > 0) {
+2629:       acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0 });
+2630:     }
+2631:     if (payment > 0) {
+2632:       acc.transactions.push({ ...common, type: 'payment_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: 0, credit: payment, description: 'دریافت وجه' });
+2633: 
+2634:       const hCode = String(s.account_holder_code || '').trim();
+2635:       const hName = String(s.account_holder || '').trim();
+2636:       if (hCode && hCode !== code) {
+2637:         const hAcc = getOrCreate(hName, hCode, '');
+2638:         if (hAcc) {
+2639:           hAcc.transactions.push({
+2640:             ...common, type: 'triangular_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0,
+2641:             description: 'دریافت مثلثی از طرف ' + name,
+2642:           });
+2643:         }
+2644:       }
+2645:     }
+2646:   });
+2647: 
+2648:   allPurchases.forEach(function(p: any) {
+2649:     const code = String(p.supplier_code || '').trim();
+2650:     const name = String(p.supplier_name || '').trim();
+2651:     const phone = String(p.supplier_phone || '').trim();
+2652:     const acc = getOrCreate(name, code, phone);
+2653:     if (!acc) return;
+2654: 
+2655:     const qty = Number(p.quantity) || 0;
+2656:     const price = Number(p.price_unit) || 0;
+2657:     const total = Number(p.total) || (qty * price);
+2658:     const payment = Number(p.payment) || 0;
+2659: 
+2660:     const common = {
+2661:       date: p.date_factor || p.date_reg || p.created_at || '',
+2662:       invoice: p.invoice_number || '',
+2663:       manualInvoice: p.manual_invoice || '',
+2664:       modelCode: p.model_code || '',
+2665:       modelName: p.model_name || '',
+2666:       bank: p.bank_name || '',
+2667:       holder: p.account_holder || '',
+2668:       holderCode: p.payer_code || '',
+2669:       depositDate: p.deposit_date || '',
+2670:       shipping: p.shipping || '',
+2671:       description: p.description || '',
+2672:     };
+2673: 
+2674:     if (total > 0) {
+2675:       acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit: total });
+2676:     }
+2677:     if (payment > 0) {
+2678:       acc.transactions.push({ ...common, type: 'payment_sent', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0, description: 'پرداخت به تأمین‌کننده' });
+2679:     }
+2680:   });
+2681: 
+2682:   // ─── اثر برگشت از فروش روی دفتر معین: بستانکار مشتری ───
+2683:   try {
+2684:     const salesReturns = await getSalesReturns();
+2685:     for (const r of salesReturns || []) {
+2686:       const name = String(r.party_name || '').trim();
+2687:       const code = String(r.party_code || '').trim();
+2688:       const acc = findExistingAccount(name, code) || getOrCreate(name, code, '');
+2689:       if (!acc) continue;
+2690:       const total = Number(r.total) || 0;
+2691:       if (total <= 0) continue;
+2692:       acc.transactions.push({
+2693:         date: r.date || r.created_at || '',
+2694:         invoice: r.original_invoice_number || '',
+2695:         manualInvoice: '',
+2696:         modelCode: '',
+2697:         modelName: '',
+2698:         bank: r.bank || '',
+2699:         holder: r.account_holder || '',
+2700:         holderCode: '',
+2701:         depositDate: r.deposit_date || '',
+2702:         shipping: '',
+2703:         description: 'برگشت از فروش' + (r.reason ? ' — ' + r.reason : ''),
+2704:         type: 'sale_return',
+2705:         qty: 0, priceUnit: 0, lineTotal: total,
+2706:         debit: 0, credit: total,
+2707:       });
+2708:     }
+2709:   } catch (e) { console.log('[ledger] salesReturns effect fail:', e); }
+2710: 
+2711:   // ─── اثر برگشت از خرید روی دفتر معین: بدهکار تأمین‌کننده ───
+2712:   try {
+2713:     const purchaseReturns = await getPurchaseReturns();
+2714:     for (const r of purchaseReturns || []) {
+2715:       const name = String(r.party_name || '').trim();
+2716:       const code = String(r.party_code || '').trim();
+2717:       const acc = findExistingAccount(name, code) || getOrCreate(name, code, '');
+2718:       if (!acc) continue;
+2719:       const total = Number(r.total) || 0;
+2720:       if (total <= 0) continue;
+2721:       acc.transactions.push({
+2722:         date: r.date || r.created_at || '',
+2723:         invoice: r.original_invoice_number || '',
+2724:         manualInvoice: '',
+2725:         modelCode: '',
+2726:         modelName: '',
+2727:         bank: r.bank || '',
+2728:         holder: r.account_holder || '',
+2729:         holderCode: '',
+2730:         depositDate: r.deposit_date || '',
+2731:         shipping: '',
+2732:         description: 'برگشت از خرید' + (r.reason ? ' — ' + r.reason : ''),
+2733:         type: 'purchase_return',
+2734:         qty: 0, priceUnit: 0, lineTotal: total,
+
+══════════ ۳) SearchSection — رندر لیست جستجو ══════════
+
+─── App.tsx — ستون‌های لیست جستجو (خط 7760 تا 7810) ───
+7760:             <EL textKey="وضعیت" style={[s.thCell, { width: 130 }]} />
+7761: 
+7762:             <EL textKey="عملیات" style={[s.thCell, { width: 120 }]} />
+7763: 
+7764:           </View>
+7765: 
+7766:           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.slice(0, 200).map((r: any, i: number) => (
+7767: 
+7768:             <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+7769: 
+7770:               <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+7771: 
+7772:               <Text style={[s.tdCell, { width: 150, fontSize: 12, color: '#1e3a5f', fontWeight: 'bold', fontSize: 12 }]}>{r.invoice}</Text>
+7773: 
+7774:               <View style={[s.tdCell, { width: 100, alignItems: 'center' }]}>
+7775: 
+7776:                 <Text style={{ backgroundColor: r.type === 'purchases' ? '#fce7f3' : '#dbeafe', color: r.type === 'purchases' ? '#9d174d' : '#1e40af', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, fontSize: 10, fontWeight: 'bold' }}>{typeLabel(r.type)}</Text>
+7777: 
+7778:               </View>
+7779: 
+7780:               <Text style={[s.tdCell, { width: 150, fontSize: 12, color: C.text, textAlign: 'right' }]} numberOfLines={1}>{r.name || '—'}</Text>
+7781: 
+7782:               <Text style={[s.tdCell, { width: 120, fontSize: 12, color: C.textMut, fontSize: 11 }]}>{r.phone || '—'}</Text>
+7783: 
+7784:               <Text style={[s.tdCell, { width: 130, fontSize: 12, color: C.text, fontSize: 11 }]}>{displayDateOnly(r.date)}</Text>
+7785: 
+7786:               <Text style={[s.tdCell, { width: 70, fontSize: 12, color: C.text }]}>{toFaNum(r.rowCount || r.items?.length || 0)}</Text>
+7787: 
+7788:               <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(r.total)}</Text>
+7789: 
+7790:               <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.paid)}</Text>
+7791: 
+7792:               <Text style={[s.tdCell, { width: 130, fontSize: 12, color: r.total - r.paid > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{fmt(r.total - r.paid)}</Text>
+7793: 
+7794:               <View style={[s.tdCell, { width: 130, alignItems: 'center' }]}>
+7795: 
+7796:                 <Text style={{ backgroundColor: statusColorFn(r.total, r.paid) + '20', color: statusColorFn(r.total, r.paid), paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, fontSize: 10, fontWeight: 'bold' }}>{statusLabel(r.total, r.paid)}</Text>
+7797: 
+7798:               </View>
+7799: 
+7800:               <View style={[s.tdCell, { width: 120, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+7801: 
+7802:                 <TouchableOpacity onPress={() => openEdit(r.invoice, r.type)} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>✏️</Text></TouchableOpacity>
+7803: 
+7804:                 <TouchableOpacity onPress={() => remove(r.invoice, r.type)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>🗑</Text></TouchableOpacity>
+7805:                 <TouchableOpacity onPress={() => openReturn(r.invoice, r.type)} style={{ backgroundColor: '#ede9fe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>↩️</Text></TouchableOpacity>
+7806: 
+7807:               </View>
+7808: 
+7809:             </View>
+7810: 
+
+══════════ ۴) LedgerScreen — سرستون‌ها و ردیف‌ها ══════════
+
+─── LedgerScreen.tsx — جدول ریز تراکنش‌های طرف‌حساب (خط 1020 تا 1105) ───
+1020:                           <Text style={[s.th, { width: 30 }]}>#</Text>
+1021:                           <Text style={[s.th, { width: 80 }]}>کد مدل</Text>
+1022:                           <Text style={[s.th, { width: 130, textAlign: 'right' }]}>نام مدل</Text>
+1023:                           <Text style={[s.th, { width: 60 }]}>قفسه</Text>
+1024:                           <Text style={[s.th, { width: 60 }]}>تعداد</Text>
+1025:                           <Text style={[s.th, { width: 80 }]}>قیمت</Text>
+1026:                           <Text style={[s.th, { width: 90 }]}>جمع</Text>
+1027:                           <Text style={[s.th, { width: 90 }]}>پرداخت</Text>
+1028:                           <Text style={[s.th, { width: 100 }]}>بانک</Text>
+1029:                           <Text style={[s.th, { width: 90 }]}>تاریخ واریز</Text>
+1030:                           <Text style={[s.th, { width: 100 }]}>باربری</Text>
+1031:                         </View>
+1032:                         {(invoiceDetailRows || []).map((r: any, i: number) => (
+1033:                           <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1034:                             <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1035:                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{r.model_code || '—'}</Text>
+1036:                             <Text style={[s.td, { width: 130, fontSize: 9, textAlign: 'right' }]}>{r.model_name || '—'}</Text>
+1037:                             <Text style={[s.td, { width: 60, fontSize: 9 }]}>{r.shelf || '—'}</Text>
+1038:                             <Text style={[s.td, { width: 60, fontSize: 9 }]}>{toFaNum(Number(r.quantity) || 0)}</Text>
+1039:                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{fmt(Number(r.price_unit) || 0)}</Text>
+1040:                             <Text style={[s.td, { width: 90, fontSize: 9, fontWeight: 'bold' }]}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+1041:                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{fmt(Number(r.payment) || 0)}</Text>
+1042:                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.bank_name || r.receiver_bank || '—'}</Text>
+1043:                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{r.deposit_date ? displayDate(r.deposit_date) : '—'}</Text>
+1044:                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.shipping || '—'}</Text>
+1045:                           </View>
+1046:                         ))}
+1047:                       </View>
+1048:                     </ScrollView>
+1049:                   )}
+1050:                 </>
+1051:               ) : partyViewMode === 'all' ? (
+1052:                 <ScrollView horizontal>
+1053:                   <View>
+1054:                     <View style={[s.thead, { backgroundColor: '#334155' }]}>
+1055:                       <Text style={[s.th, { width: 30 }]}>#</Text>
+1056:                       <Text style={[s.th, { width: 75 }]}>تاریخ</Text>
+1057:                       <Text style={[s.th, { width: 75 }]}>نوع</Text>
+1058:                       <Text style={[s.th, { width: 90 }]}>فاکتور</Text>
+1059:                       <Text style={[s.th, { width: 85 }]}>فاکتور دستی</Text>
+1060:                       <Text style={[s.th, { width: 60 }]}>کد مدل</Text>
+1061:                       <Text style={[s.th, { width: 120, textAlign: 'right' }]}>نام مدل</Text>
+1062:                       <Text style={[s.th, { width: 45 }]}>تعداد</Text>
+1063:                       <Text style={[s.th, { width: 65 }]}>قیمت</Text>
+1064:                       <Text style={[s.th, { width: 75 }]}>جمع ردیف</Text>
+1065:                       <Text style={[s.th, { width: 75 }]}>بدهکار</Text>
+1066:                       <Text style={[s.th, { width: 75 }]}>بستانکار</Text>
+1067:                       <Text style={[s.th, { width: 75 }]}>مانده</Text>
+1068:                       <Text style={[s.th, { width: 80 }]}>بانک</Text>
+1069:                       <Text style={[s.th, { width: 90 }]}>صاحب حساب</Text>
+1070:                       <Text style={[s.th, { width: 65 }]}>کد صاحب</Text>
+1071:                       <Text style={[s.th, { width: 90 }]}>تاریخ واریز</Text>
+1072:                       <Text style={[s.th, { width: 85 }]}>باربری</Text>
+1073:                       <Text style={[s.th, { width: 120, textAlign: 'right' }]}>شرح</Text>
+1074:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1075:                     </View>
+1076:                     {filteredPartyDetails.map((t: any, i: number) => (
+1077:                       <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1078:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1079:                         <Text style={[s.td, { width: 75, fontSize: 9 }]}>{displayDate(t.date)}</Text>
+1080:                         <Text style={[s.td, { width: 75, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
+1081:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#7c3aed' }]}>{t.invoice || '—'}</Text>
+1082:                         <Text style={[s.td, { width: 85, fontSize: 9 }]}>{t.manualInvoice || '—'}</Text>
+1083:                         <Text style={[s.td, { width: 60, fontSize: 9 }]}>{t.modelCode || '—'}</Text>
+1084:                         <Text style={[s.td, { width: 120, fontSize: 9, textAlign: 'right' }]} numberOfLines={1}>{t.modelName || '—'}</Text>
+1085:                         <Text style={[s.td, { width: 45, fontSize: 9 }]}>{t.qty ? toFaNum(t.qty) : '—'}</Text>
+1086:                         <Text style={[s.td, { width: 65, fontSize: 9 }]}>{t.priceUnit ? fmt(t.priceUnit) : '—'}</Text>
+1087:                         <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) && t.lineTotal ? fmt(t.lineTotal) : '—'}</Text>
+1088:                         <Text style={[s.td, { width: 75, fontSize: 9, color: t.debit ? '#1e40af' : '#475569', fontWeight: 'bold' }]}>{t.debit ? fmt(t.debit) : '—'}</Text>
+1089:                         <Text style={[s.td, { width: 75, fontSize: 9, color: t.credit ? '#059669' : '#475569', fontWeight: 'bold' }]}>{t.credit ? fmt(t.credit) : '—'}</Text>
+1090:                         <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}</Text>
+1091:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{t.bank || '—'}</Text>
+1092:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.holder || '—'}</Text>
+1093:                         <Text style={[s.td, { width: 65, fontSize: 9 }]}>{t.holderCode || '—'}</Text>
+1094:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.depositDate ? displayDate(t.depositDate) : '—'}</Text>
+1095:                         <Text style={[s.td, { width: 85, fontSize: 9 }]}>{t.shipping || '—'}</Text>
+1096:                         <Text style={[s.td, { width: 120, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
+1097:                         <View style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1098:                           {t.invoice && (t.type === 'sale' || t.type === 'purchase' || t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received') ? (
+1099:                             <TouchableOpacity onPress={() => openInvoiceDetail({ invoice: t.invoice, type: (t.type === 'purchase' || t.type === 'payment_sent') ? 'purchase' : 'sales' })}>
+1100:                               <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>👁️</Text>
+1101:                             </TouchableOpacity>
+1102:                           ) : (
+1103:                             <Text style={{ color: '#94a3b8', fontSize: 10 }}>—</Text>
+1104:                           )}
+1105:                         </View>
+
+─── LedgerScreen.tsx — جدول فاکتورها (خط 1130 تا 1175) ───
+1130:                     </View></View>
+1131:                 </ScrollView>
+1132:               ) : (selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in') ? (
+1133:                 <ScrollView horizontal>
+1134:                   <View>
+1135:                     <View style={[s.thead, { backgroundColor: '#334155' }]}>
+1136:                       <Text style={[s.th, { width: 30 }]}>#</Text>
+1137:                       <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
+1138:                       <Text style={[s.th, { width: 80 }]}>نوع</Text>
+1139:                       <Text style={[s.th, { width: 110 }]}>شماره فاکتور</Text>
+1140:                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
+1141:                       <Text style={[s.th, { width: 100 }]}>جمع</Text>
+1142:                       <Text style={[s.th, { width: 100 }]}>پرداخت</Text>
+1143:                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
+1144:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1145:                     </View>
+1146:                     {(invoiceList || []).map((inv: any, i: number) => (
+1147:                       <View key={i} style={[s.trow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1148:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1149:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{displayDate(inv.date)}</Text>
+1150:                         <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
+1151:                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{inv.invoice}</Text>
+1152:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{toFaNum(inv.count || 0)}</Text>
+1153:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
+1154:                         <Text style={[s.td, { width: 100, fontSize: 9, color: '#059669' }]}>{fmt(inv.paid)}</Text>
+1155:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(inv.balance))}
+1156:                       </Text>
+1157:                         <TouchableOpacity onPress={() => openInvoiceDetail(inv)} style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1158:                           <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>👁️</Text>
+1159:                         </TouchableOpacity>
+1160:                       </View>
+1161:                     ))}
+1162:                       <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438' }]}>
+1163:                         <Text style={[s.td, { width: 30 }]}></Text>
+1164:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1165:                         <Text style={[s.td, { width: 80 }]}></Text>
+1166:                         <Text style={[s.td, { width: 110 }]}></Text>
+1167:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1168:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1169:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1170:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1171:                         <Text style={[s.td, { width: 70 }]}></Text>
+1172:                       </View>
+1173:                   </View>
+1174:                 </ScrollView>
+1175:               ) : (
+
+══════════ ۵) فیلدهای تراکنش در دفتر معین ══════════
+
+─── lib.offline.ts — common فروش (خط 2610 تا 2628) ───
+2610:     const price = Number(s.price_unit) || 0;
+2611:     const total = Number(s.total) || (qty * price);
+2612:     const payment = Number(s.payment) || 0;
+2613: 
+2614:     const common = {
+2615:       date: s.date_factor || s.date_reg || s.created_at || '',
+2616:       invoice: s.invoice_number || '',
+2617:       manualInvoice: s.manual_invoice || '',
+2618:       modelCode: s.model_code || '',
+2619:       modelName: s.model_name || '',
+2620:       bank: s.bank_name || '',
+2621:       holder: s.account_holder || '',
+2622:       holderCode: s.account_holder_code || '',
+2623:       depositDate: s.deposit_date || '',
+2624:       shipping: s.shipping || '',
+2625:       description: s.description || '',
+2626:     };
+2627: 
+2628:     if (total > 0) {
+
+─── lib.offline.ts — common خرید (خط 2656 تا 2675) ───
+2656:     const price = Number(p.price_unit) || 0;
+2657:     const total = Number(p.total) || (qty * price);
+2658:     const payment = Number(p.payment) || 0;
+2659: 
+2660:     const common = {
+2661:       date: p.date_factor || p.date_reg || p.created_at || '',
+2662:       invoice: p.invoice_number || '',
+2663:       manualInvoice: p.manual_invoice || '',
+2664:       modelCode: p.model_code || '',
+2665:       modelName: p.model_name || '',
+2666:       bank: p.bank_name || '',
+2667:       holder: p.account_holder || '',
+2668:       holderCode: p.payer_code || '',
+2669:       depositDate: p.deposit_date || '',
+2670:       shipping: p.shipping || '',
+2671:       description: p.description || '',
+2672:     };
+2673: 
+2674:     if (total > 0) {
+2675:       acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit: total });
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

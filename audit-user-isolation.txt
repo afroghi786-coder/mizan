@@ -1,0 +1,93 @@
+
+══════════ ۱. احراز هویت (Auth) ══════════
+
+══════ auth — App.tsx ══════
+759: const { data: sub } = supabase.auth.onAuthStateChange((event: any) => {
+905: const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+1057: supabase.auth.getSession()
+1063: const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+8605: await supabase.auth.signOut();
+10277: const { error: e1 } = await supabase.auth.signInWithPassword({ email: loginEmail, password: pass });
+10281: const { error: e2 } = await supabase.auth.signUp({ email, password: pass });
+10285: const { error: e3 } = await supabase.auth.signInWithPassword({ email, password: pass });
+
+══════ auth — lib.ts ══════
+⚠️ هیچ موردی پیدا نشد
+
+══════ auth — lib.offline.ts ══════
+⚠️ هیچ موردی پیدا نشد
+❌ lib.auth.ts نیست
+
+══════════ ۲. user_id در insertها ══════════
+
+══════ user_id references — lib.ts ══════
+1063: delete clean.id; delete clean.user_id;
+1084: delete clean.id; delete clean.user_id;
+1109: delete clean.id; delete clean.user_id;
+1174: delete clean.id; delete clean.user_id;
+1196: delete clean.id; delete clean.user_id;
+1210: delete clean.id; delete clean.user_id;
+1246: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1253: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1268: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1275: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1290: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1309: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1316: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1334: const clean = { ...p }; delete clean.id; delete clean.user_id;
+1341: const clean = { ...p }; delete clean.id; delete clean.user_id;
+
+══════ user_id references — lib.offline.ts ══════
+⚠️ هیچ موردی پیدا نشد
+
+══════════ ۳. select و filter ══════════
+
+══════ select/eq — lib.ts ══════
+267: const { data, error } = await supabase.from('products').select('*').order('name');
+291: const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+297: const { data: found } = await supabase.from('products').select('id').eq('code', code).limit(1);
+575: .from('purchases').select('*')
+643: supabase.from('purchases').select('*'),
+644: supabase.from('sales').select('*'),
+765: supabase.from('purchases').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+766: supabase.from('sales').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+767: supabase.from('stock_adjustments').select('model_code, adjustment'),
+867: const { data } = await supabase.from('settings').select('*').limit(1);
+875: const { data } = await supabase.from('settings').select('id').limit(1);
+897: const { data: p1 } = await supabase.from('products').select('supplier_code').eq('supplier_name', name).limit(1);
+899: const { data: p2 } = await supabase.from('purchases').select('supplier_code').eq('supplier_name', name).limit(1);
+901: const { data: p3 } = await supabase.from('sales').select('customer_code').eq('customer_name', name).limit(1);
+991: const { data: oldRows, error: fetchErr } = await supabase.from('sales').select('*').eq('invoice_number', invoiceNumber).limit(1);
+1027: const { data: oldRows, error: fetchErr } = await supabase.from('purchases').select('*').eq('invoice_number', invoiceNumber).limit(1);
+1155: supabase.from('purchases').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1156: supabase.from('sales').select('*').eq('model_code', c).order('created_at', { ascending: true }),
+1166: let q: any = supabase.from('stock_adjustments').select('*').order('created_at', { ascending: false });
+1187: let q: any = supabase.from('parties').select('*').order('name', { ascending: true });
+1227: const { data } = await supabase.from('parties').select('*').eq('phone', p).limit(1);
+1234: const { data } = await supabase.from('parties').select('*').eq('name', n).limit(1);
+1241: const { data, error } = await supabase.from('partners').select('*').order('code', { ascending: true });
+1263: const { data, error } = await supabase.from('partner_bank_accounts').select('*').eq('partner_code', partnerCode);
+1285: const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+1304: const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1329: const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+
+══════ select/eq — lib.offline.ts ══════
+90: lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+91: lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+535: lib.supabase.from('sales').select('*'),
+536: lib.supabase.from('purchases').select('supplier_code, supplier_name, supplier_phone'),
+1070: const { data } = await lib.supabase.from('fx_trades').select('*').order('created_at', { ascending: false });
+1106: const { data } = await lib.supabase.from('expenses').select('*').order('created_at', { ascending: false });
+1171: const { data } = await lib.supabase.from('employees').select('*').order('created_at', { ascending: false });
+1204: const { data } = await lib.supabase.from('attendance').select('*').order('created_at', { ascending: false });
+1238: const { data } = await lib.supabase.from('fx_customers').select('*').order('created_at', { ascending: false });
+1285: const { data } = await lib.supabase.from('fx_partners').select('*').order('created_at', { ascending: false });
+1699: lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+1700: lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+1725: const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+1755: lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+1756: lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+2845: const { data } = await lib.supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
+2878: const { data } = await lib.supabase.from('employee_loans').select('*').order('created_at', { ascending: false });
+
+══════════ ۴. همه جدول‌ها ══════════

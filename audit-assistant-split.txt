@@ -1,0 +1,12 @@
+=== تب اصلی assistant ===
+1687: { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },];
+1845: {tab === 'assistant' && (
+
+=== تب تنظیمات assistant ===
+8218: { k: 'assistant', l: '🤝 دستیار میزان' },
+8435: {settingsTab === 'assistant' && (
+
+=== import SettingsAssistant ===
+87: import SettingsAssistant from './SettingsAssistant';
+1847: <SettingsAssistant showToast={showToast} />
+8437: <SettingsAssistant showToast={showToast} />

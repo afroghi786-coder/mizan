@@ -1,0 +1,100 @@
+══════ جستجوی لاگین در AdminPanel ══════
+84: const { error } = await sb.auth.signInWithPassword({
+266: const { error: verifyErr } = await sb.auth.signInWithPassword({ email: userEmail, password: myOldPass });
+
+84: const { error } = await sb.auth.signInWithPassword({
+266: const { error: verifyErr } = await sb.auth.signInWithPassword({ email: userEmail, password: myOldPass });
+
+25: const [loginEmail, setLoginEmail] = useState('');
+26: const [loginPassword, setLoginPassword] = useState('');
+27: const [loginLoading, setLoginLoading] = useState(false);
+28: const [loginError, setLoginError] = useState('');
+76: if (!loginEmail || !loginPassword) {
+85: email: loginEmail,
+86: password: loginPassword,
+471: value={loginEmail}
+482: value={loginPassword}
+489: {loginError ? (
+490: <Text style={{ color: '#ef4444', fontSize: 13, textAlign: 'center', marginBottom: 12 }}>❌ {loginError}</Text>
+495: disabled={loginLoading}
+499: {loginLoading ? 'در حال ورود...' : '🔓 ورود'}
+
+86: password: loginPassword,
+142: const { error } = await sb.rpc('admin_set_user_password', {
+144: p_new_password: passInput,
+202: password: newAdminPassword,
+266: const { error: verifyErr } = await sb.auth.signInWithPassword({ email: userEmail, password: myOldPass });
+269: const { error: updErr } = await sb.auth.updateUser({ password: myNewPass });
+
+20: const [email, setEmail] = useState('');
+51: const checkAdmin = async (email: string) => {
+52: if (!email) { setIsAdmin(false); return; }
+54: const { data } = await sb.from('admin_users').select('email').eq('email', email).maybeSingle();
+61: await checkAdmin(data?.session?.user?.email || '');
+66: await checkAdmin(sess?.user?.email || '');
+85: email: loginEmail,
+143: p_email: passEmail,
+160: const openPassModal = (email: string) => {
+161: setPassEmail(email);
+193: const { data: existing } = await sb.from('admin_users').select('email').eq('email', newAdminEmail).maybeSingle();
+201: email: newAdminEmail,
+218: email: newAdminEmail,
+239: const doRemoveAdmin = async (email: string) => {
+240: if (email === userEmail) {
+244: if (typeof window !== 'undefined' && !window.confirm('حذف ادمین: ' + email + '؟')) return;
+247: const { error } = await sb.from('admin_users').delete().eq('email', email);
+266: const { error: verifyErr } = await sb.auth.signInWithPassword({ email: userEmail, password: myOldPass });
+397: if (!email.trim() || !email.includes('@')) return showToast('ایمیل معتبر وارد کن', true);
+400: const { data: uid, error } = await supabase.rpc('get_user_id_by_email', {
+401: user_email: email.trim().toLowerCase(),
+450: const userEmail = session?.user?.email || '';
+476: keyboardType="email-address"
+536: norm(x.email).includes(_q1) ||
+543: norm(x.email).includes(_q2) ||
+602: value={email}
+606: keyboardType="email-address"
+673: <Text style={s.reqRow}>📧 <Text style={s.reqBold}>{r.email}</Text></Text>
+742: {l.email || '—'}
+749: <TouchableOpacity onPress={() => openPassModal(l.email)} style={{ padding: 6, marginLeft: 4 }}>
+785: <Text style={{ color: '#475569', fontSize: 11, textAlign: 'right', marginTop: 2 }}>{a.email}</Text>
+787: {a.email === userEmail ? (
+790: <TouchableOpacity onPress={() => doRemoveAdmin(a.email)} style={{ backgroundColor: '#dc2626', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 }}>
+814: keyboardType="email-address"
+
+24: const [authReady, setAuthReady] = useState(false);
+59: sb.auth.getSession().then(async ({ data }: any) => {
+64: const { data: sub } = sb.auth.onAuthStateChange(async (_e: any, sess: any) => {
+70: console.log('auth effect err:', e);
+84: const { error } = await sb.auth.signInWithPassword({
+191: const { data: { session: savedSession } } = await sb.auth.getSession();
+200: const { error: signErr } = await sb.auth.signUp({
+213: await sb.auth.setSession({ access_token: savedSession.access_token, refresh_token: savedSession.refresh_token });
+266: const { error: verifyErr } = await sb.auth.signInWithPassword({ email: userEmail, password: myOldPass });
+269: const { error: updErr } = await sb.auth.updateUser({ password: myNewPass });
+284: await sb.auth.signOut();
+452: if (!authReady) {
+
+23: const [session, setSession] = useState<any>(null);
+60: setSession(data?.session || null);
+61: await checkAdmin(data?.session?.user?.email || '');
+191: const { data: { session: savedSession } } = await sb.auth.getSession();
+344: // 📊 هر وقت session تغییر کرد، داده‌ها رو دوباره لود کن
+345: if (session) {
+351: }, [session]);
+450: const userEmail = session?.user?.email || '';
+461: if (!session) {
+
+64: const { data: sub } = sb.auth.onAuthStateChange(async (_e: any, sess: any) => {
+
+══════ آیا از supabaseAdmin استفاده می‌کند؟ ══════
+5: import { supabaseAdmin as supabase } from './lib.supabase.admin';
+48: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+83: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+98: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+116: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+141: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+171: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+190: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+246: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+265: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;
+283: const sb = (require('./lib.supabase.admin') as any).supabaseAdmin;

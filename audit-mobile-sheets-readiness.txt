@@ -1,0 +1,374 @@
+
+══════════════════════════════════════════
+🔎 پکیج‌های پروژه
+══════════════════════════════════════════
+✅ expo = ~57.0.24
+✅ react-native = 0.86.3
+✅ react-native-web = ^0.21.2
+✅ expo-image-picker = ~57.0.20
+❌ expo-linking = نصب نیست
+❌ expo-auth-session = نصب نیست
+✅ expo-secure-store = ~57.0.4
+✅ expo-file-system = ~57.0.7
+✅ expo-sharing = ~57.0.22
+✅ expo-notifications = ^57.0.23
+✅ expo-document-picker = ~57.0.3
+
+══════════════════════════════════════════
+🔎 شرط‌های Platform.OS در بخش‌های غیر ادمین
+══════════════════════════════════════════
+
+─── SettingsSheets.tsx — Platform.OS ───
+18: if (Platform.OS !== 'web') return null;
+232: if (Platform.OS === 'web') window.open(BRIDGE_TEMPLATE_URL, '_blank');
+239: if (Platform.OS === 'web') await navigator.clipboard.writeText(txt);
+246: if (Platform.OS !== 'web') return;
+258: const openAppsScript = () => { if (Platform.OS === 'web') window.open('https://script.google.com/home', '_blank'); };
+262: if (Platform.OS === 'web' && typeof crypto !== 'undefined' && crypto.randomUUID) {
+278: if (Platform.OS === 'web') {
+
+─── lib.sheets.ts — Platform.OS ───
+248: if (Platform.OS === 'web') {
+281: if (Platform.OS === 'web') window.open(data.authUrl, '_blank');
+
+─── lib.storage.ts — Platform.OS ───
+9: const isWeb = Platform.OS === 'web';
+
+─── lib.assistant.ts — Platform.OS ───
+17: const isWeb = Platform.OS === 'web';
+
+─── lib.assistant.rubika.ts — Platform.OS ───
+ℹ️ موردی پیدا نشد
+
+─── lib.assistant.telegram.ts — Platform.OS ───
+ℹ️ موردی پیدا نشد
+
+─── AssistantHome.tsx — Platform.OS ───
+ℹ️ موردی پیدا نشد
+
+─── SettingsAssistant.tsx — Platform.OS ───
+ℹ️ موردی پیدا نشد
+
+─── lib.share.ts — Platform.OS ───
+38: if (Platform.OS === 'web') {
+84: if (Platform.OS === 'web') {
+140: if (Platform.OS === 'web') {
+
+─── lib.notifications.ts — Platform.OS ───
+47: if (Platform.OS === 'web') {
+89: if (Platform.OS === 'web') {
+
+─── LiveMarketScreen.tsx — Platform.OS ───
+133: if (Platform.OS === 'web') {
+179: if (Platform.OS === 'web') {
+
+─── ResetPasswordScreen.tsx — Platform.OS ───
+ℹ️ موردی پیدا نشد
+
+─── App.tsx — Platform.OS ───
+142: if (Platform.OS === 'web') {
+172: if (Platform.OS === 'web') {
+242: if (Platform.OS === 'web') window.alert(title + '\n\n' + msg);
+250: if (Platform.OS === 'web') return Promise.resolve(window.confirm(title + '\n\n' + msg));
+1087: if (Platform.OS === 'web') window.alert(msg);
+1114: if (Platform.OS === 'web') window.alert(msg);
+1882: {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
+5670: if (Platform.OS === 'web') { _invPrint(); return; }
+5826: if (Platform.OS === 'web') { _mkPrint(); return; }
+5934: if (Platform.OS !== 'web' && !(await new Promise<boolean>(res => { Alert.alert('حذف تعدیل', 'مطمئنی؟', [{ text: 'لغو', style: 'cancel', onPress: () => res(false) }, { text: 'حذف', style: 'destructive', onPress: () => res(true) }]); }))) ret
+9812: if (Platform.OS === 'web') {
+
+══════════════════════════════════════════
+🔎 وابستگی‌های وب‌محور (window / document / localStorage) در بخش‌های غیر ادمین
+══════════════════════════════════════════
+
+─── SettingsSheets.tsx — وابستگی وب ───
+232: if (Platform.OS === 'web') window.open(BRIDGE_TEMPLATE_URL, '_blank');
+239: if (Platform.OS === 'web') await navigator.clipboard.writeText(txt);
+249: const ok = window.confirm(
+256: window.open('https://sheets.new', '_blank');
+258: const openAppsScript = () => { if (Platform.OS === 'web') window.open('https://script.google.com/home', '_blank'); };
+262: if (Platform.OS === 'web' && typeof crypto !== 'undefined' && crypto.randomUUID) {
+263: return 'mizan_' + crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+279: if (bridgeSuggestedKey) await navigator.clipboard.writeText(bridgeSuggestedKey);
+280: window.open('https://script.google.com/home', '_blank');
+
+─── lib.sheets.ts — وابستگی وب ───
+249: try { return Object.keys(localStorage).filter(k => k.startsWith('@mizan_')); } catch { return []; }
+281: if (Platform.OS === 'web') window.open(data.authUrl, '_blank');
+
+─── lib.storage.ts — وابستگی وب ───
+ℹ️ موردی پیدا نشد
+
+─── lib.assistant.ts — وابستگی وب ───
+ℹ️ موردی پیدا نشد
+
+─── lib.assistant.rubika.ts — وابستگی وب ───
+ℹ️ موردی پیدا نشد
+
+─── lib.assistant.telegram.ts — وابستگی وب ───
+ℹ️ موردی پیدا نشد
+
+─── AssistantHome.tsx — وابستگی وب ───
+ℹ️ موردی پیدا نشد
+
+─── SettingsAssistant.tsx — وابستگی وب ───
+ℹ️ موردی پیدا نشد
+
+─── lib.share.ts — وابستگی وب ───
+43: var iframe = document.createElement('iframe');
+46: document.body.appendChild(iframe);
+60: setTimeout(function() { try { document.body.removeChild(iframe); } catch(e) {} }, 120000);
+89: var iframe = document.createElement('iframe');
+92: document.body.appendChild(iframe);
+106: setTimeout(function() { try { document.body.removeChild(iframe); } catch(e) {} }, 120000);
+148: return await _doShare(path, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+─── lib.notifications.ts — وابستگی وب ───
+ℹ️ موردی پیدا نشد
+
+─── LiveMarketScreen.tsx — وابستگی وب ───
+20: const ua = navigator.userAgent || '';
+51: const r = localStorage.getItem(DASH_CURS_KEY);
+60: try { localStorage.setItem(DASH_CURS_KEY, JSON.stringify(arr)); } catch {}
+178: // ═══ وب: navigator.vibrate ═══
+233: window.addEventListener('click', handler, { once: true });
+234: window.addEventListener('touchstart', handler, { once: true });
+235: window.addEventListener('keydown', handler, { once: true });
+239: window.removeEventListener('click', handler);
+240: window.removeEventListener('touchstart', handler);
+241: window.removeEventListener('keydown', handler);
+392: // 📌 بارگذاری ارزهای داشبورد از localStorage
+638: if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+733: if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+797: if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+1373: const ok = (typeof window !== 'undefined' && window.confirm) ? window.confirm('آیا تحویل انجام شد؟') : true;
+1586: if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+
+─── ResetPasswordScreen.tsx — وابستگی وب ───
+34: window.history.replaceState(null, '', ((window as any)?.location?.pathname || ''));
+35: window.location.reload();
+
+─── App.tsx — وابستگی وب ───
+242: if (Platform.OS === 'web') window.alert(title + '\n\n' + msg);
+250: if (Platform.OS === 'web') return Promise.resolve(window.confirm(title + '\n\n' + msg));
+1014: if (window && window.location) {
+1087: if (Platform.OS === 'web') window.alert(msg);
+1114: if (Platform.OS === 'web') window.alert(msg);
+1381: const ua = navigator.userAgent || '';
+1415: if (!window || typeof window.addEventListener !== 'function') return;
+1419: window.addEventListener('click', unlock, { once: true });
+1421: window.addEventListener('touchstart', unlock, { once: true });
+1427: if (window && typeof window.removeEventListener === 'function') {
+1429: window.removeEventListener('click', unlock);
+1431: window.removeEventListener('touchstart', unlock);
+1491: if (typeof document !== 'undefined' && document.hidden) return;
+1605: if (typeof document !== 'undefined' && document.hidden) return;
+9813: const w = window.open('', '_blank');
+9818: w.document.open();
+9819: w.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>چاپ فاکتور</title><style>body{margin:0;padding:0;background:#fff} img{width:100%;max-width:100%;height:auto;display:block} @page{size:A4;margin:8mm}</style>
+9820: w.document.close();
+9821: const img = w.document.getElementById('inv');
+
+══════════════════════════════════════════
+🔎 توابع مهم lib.sheets.ts
+══════════════════════════════════════════
+
+─── lib.sheets.ts — تابع getAllMizanKeys ───
+247: async function getAllMizanKeys(): Promise<string[]> {
+
+─── lib.sheets.ts — تابع getToken ───
+242: async function getToken() {
+
+─── lib.sheets.ts — تابع getSyncDestination ───
+34: export async function getSyncDestination(): Promise<SyncDestination> {
+
+─── lib.sheets.ts — تابع setSyncDestination ───
+40: export async function setSyncDestination(v: SyncDestination) {
+
+─── lib.sheets.ts — تابع getBridgeConfig ───
+47: export async function getBridgeConfig() {
+
+─── lib.sheets.ts — تابع setBridgeConfig ───
+78: export async function setBridgeConfig(url: string, key: string) {
+
+─── lib.sheets.ts — تابع bridgePing ───
+118: export async function bridgePing() {
+
+─── lib.sheets.ts — تابع bridgePull ───
+135: export async function bridgePull() {
+
+─── lib.sheets.ts — تابع bridgeSaveTable ───
+170: export async function bridgeSaveTable(table: string, rows: any[]) {
+
+─── lib.sheets.ts — تابع bridgeSaveAll ───
+204: export async function bridgeSaveAll() {
+
+─── lib.sheets.ts — تابع pullPrivateTables ───
+1117: export async function pullPrivateTables(onProgress?: (done: number, total: number, tab: string) => void) {
+
+─── lib.sheets.ts — تابع syncPrivateTables ───
+286: export async function syncPrivateTables(onProgress?: (done: number, total: number, tab: string) => void) {
+
+─── lib.sheets.ts — تابع pullBridgeTables ───
+349: export async function pullBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+
+─── lib.sheets.ts — تابع syncBridgeTables ───
+377: export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+
+─── lib.sheets.ts — تابع syncByDestination ───
+455: export async function syncByDestination(onProgress?: (done: number, total: number) => void) {
+
+─── lib.sheets.ts — تابع mergeList ───
+803: async function mergeList(localKey: string, sheetRows: any[]) {
+
+─── lib.sheets.ts — تابع mergeGroupedInvoices ───
+969: async function mergeGroupedInvoices(localKey: string, rows: any[]) {
+
+─── lib.sheets.ts — تابع mergePartnerPrefixed ───
+896: async function mergePartnerPrefixed(prefix: string, rows: any[]) {
+
+─── lib.sheets.ts — تابع mergeTombstones ───
+1049: async function mergeTombstones(rows: any[]) {
+
+─── lib.sheets.ts — تابع getTombstones ───
+545: async function getTombstones(): Promise<Record<string, string>> {
+
+─── lib.sheets.ts — تابع recordTombstone ───
+ℹ️ موردی پیدا نشد
+
+─── lib.sheets.ts — تابع startPrivateOAuth ───
+272: export async function startPrivateOAuth() {
+
+══════════════════════════════════════════
+🔎 وضعیت SettingsSheets.tsx روی گوشی
+══════════════════════════════════════════
+
+─── SettingsSheets.tsx — شرط وب/گوشی ───
+17: if (!SHOW_PRIVATE_STORAGE) return null;
+18: if (Platform.OS !== 'web') return null;
+232: if (Platform.OS === 'web') window.open(BRIDGE_TEMPLATE_URL, '_blank');
+239: if (Platform.OS === 'web') await navigator.clipboard.writeText(txt);
+246: if (Platform.OS !== 'web') return;
+258: const openAppsScript = () => { if (Platform.OS === 'web') window.open('https://script.google.com/home', '_blank'); };
+262: if (Platform.OS === 'web' && typeof crypto !== 'undefined' && crypto.randomUUID) {
+278: if (Platform.OS === 'web') {
+
+══════════════════════════════════════════
+🔎 وضعیت lib.storage.ts
+══════════════════════════════════════════
+
+─── lib.storage.ts — ذخیره‌سازی ───
+1: // lib.storage.ts — آداپتر SQLite (گوشی) + AsyncStorage (وب)
+3: // 💻 وب: AsyncStorage (سازگار با مرورگر)
+4: // 🎯 همون API AsyncStorage — منطق اپ دست‌نخورده
+9: const isWeb = Platform.OS === 'web';
+12: console.log('[storage] 🌐 وب — فقط AsyncStorage');
+60: // API (کاملاً مثل AsyncStorage)
+103: const AsyncStorage = {
+154: out.push([k, await AsyncStorage.getItem(k)]);
+161: await AsyncStorage.setItem(k, v);
+167: await AsyncStorage.removeItem(k);
+205: await AsyncStorage.removeItem(k);
+219: const v = await AsyncStorage.getItem(DEVICE_LOCK_KEY);
+228: await AsyncStorage.setItem(DEVICE_LOCK_KEY, v);
+240: export default AsyncStorage;
+241: export { AsyncStorage };
+
+══════════════════════════════════════════
+🔎 وضعیت دستیار میزان روی گوشی
+══════════════════════════════════════════
+
+─── lib.assistant.ts — lib.assistant ───
+1: import AsyncStorage from './lib.storage';
+5: let SecureStore: any = null;
+7: SecureStore = require('expo-secure-store');
+9: SecureStore = null;
+17: const isWeb = Platform.OS === 'web';
+18: const canSecure = !isWeb && SecureStore && typeof SecureStore.getItemAsync === 'function';
+22: try { return await SecureStore.getItemAsync(key); } catch {}
+24: return await AsyncStorage.getItem(key);
+29: try { await SecureStore.setItemAsync(key, value); } catch {}
+31: await AsyncStorage.setItem(key, value);
+47: try { const raw = await AsyncStorage.getItem(key); if (!raw) return fallback; return JSON.parse(raw); } catch { return fallback; }
+50: await AsyncStorage.setItem(key, JSON.stringify(value));
+113: if (isWeb) return 'web-fallback';
+417: await AsyncStorage.setItem(ADS_QUEUE_KEY, JSON.stringify(list));
+426: await AsyncStorage.setItem(ADS_QUEUE_KEY, JSON.stringify(list));
+432: try { await AsyncStorage.setItem(ADS_QUEUE_KEY, '[]'); return true; } catch { return false; }
+438: const raw = await AsyncStorage.getItem(ADS_HISTORY_KEY);
+443: await AsyncStorage.setItem(ADS_HISTORY_KEY, JSON.stringify(trimmed));
+449: try { await AsyncStorage.setItem(ADS_HISTORY_KEY, '[]'); return true; } catch { return false; }
+
+─── AssistantHome.tsx — AssistantHome ───
+2: import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Image, KeyboardAvoidingView, Platform } from 'react-native';
+6: import * as ImagePicker from 'expo-image-picker';
+33: const [showProductModal, setShowProductModal] = useState(false);
+132: const openProductModal = () => {
+142: setShowProductModal(true);
+147: const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+149: const res = await ImagePicker.launchImageLibraryAsync({
+150: mediaTypes: ImagePicker.MediaTypeOptions.Images,
+215: setShowProductModal(false);
+227: setShowProductModal(false);
+332: <TouchableOpacity onPress={openProductModal} style={[btnStyle, { backgroundColor: '#f59e0b' }]}>
+482: <Modal visible={showProductModal} transparent animationType="slide" onRequestClose={() => setShowProductModal(false)}>
+484: behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+485: keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+561: <TouchableOpacity onPress={() => setShowProductModal(false)} style={{ flex: 1, backgroundColor: '#64748b', padding: 10, borderRadius: 6 }}>
+571: </Modal>
+
+─── SettingsAssistant.tsx — SettingsAssistant ───
+7: import { getBotConfig, saveBotConfig, getWatcherConfig, saveWatcherConfig, getWatcherSources, saveWatcherSources, getAdsConfig, saveAdsConfig, getSecureStorageMode } from './lib.assistant';
+83: showToast?.('✅ تنظیمات دستیار فروش ذخیره شد (توکن‌ها در فاز نهایی به SecureStore منتقل می‌شوند)');
+135: const secureMode = getSecureStorageMode();
+172: این دستیار فروش با توکن رسمی هر پلتفرم کار می‌کند. توکن‌ها فعلاً به‌عنوان جای‌نگهدار ذخیره می‌شوند و در فاز نهایی به SecureStore منتقل خواهند شد.
+
+══════════════════════════════════════════
+🔎 بخش‌های وب‌محور غیر ادمین
+══════════════════════════════════════════
+📌 LiveMarketScreen: localStorage و window
+
+─── LiveMarketScreen.tsx — بازار زنده ───
+51: const r = localStorage.getItem(DASH_CURS_KEY);
+60: try { localStorage.setItem(DASH_CURS_KEY, JSON.stringify(arr)); } catch {}
+233: window.addEventListener('click', handler, { once: true });
+234: window.addEventListener('touchstart', handler, { once: true });
+235: window.addEventListener('keydown', handler, { once: true });
+239: window.removeEventListener('click', handler);
+240: window.removeEventListener('touchstart', handler);
+241: window.removeEventListener('keydown', handler);
+392: // 📌 بارگذاری ارزهای داشبورد از localStorage
+638: if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+733: if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+797: if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+1373: const ok = (typeof window !== 'undefined' && window.confirm) ? window.confirm('آیا تحویل انجام شد؟') : true;
+1586: if (typeof window !== 'undefined') window.dispatchEvent(new Event('mizan-hawala-updated'));
+
+📌 ResetPasswordScreen: window.history / reload
+
+─── ResetPasswordScreen.tsx — بازیابی رمز ───
+34: window.history.replaceState(null, '', ((window as any)?.location?.pathname || ''));
+35: window.location.reload();
+
+📌 lib.share.ts: iframe / window برای وب
+
+─── lib.share.ts — اشتراک‌گذاری ───
+38: if (Platform.OS === 'web') {
+43: var iframe = document.createElement('iframe');
+46: document.body.appendChild(iframe);
+60: setTimeout(function() { try { document.body.removeChild(iframe); } catch(e) {} }, 120000);
+84: if (Platform.OS === 'web') {
+89: var iframe = document.createElement('iframe');
+92: document.body.appendChild(iframe);
+106: setTimeout(function() { try { document.body.removeChild(iframe); } catch(e) {} }, 120000);
+140: if (Platform.OS === 'web') {
+148: return await _doShare(path, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+══════════════════════════════════════════
+🔎 جمع‌بندی خودکار
+══════════════════════════════════════════
+✅ این فایل فقط خواندنی بود.
+✅ هیچ کدی تغییر نکرد.
+✅ بخش ادمین در این audit جدا شد.
+📌 خروجی بالا را کامل کپی کن و بفرست.

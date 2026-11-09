@@ -17,7 +17,7 @@ function _initSB() {
     _sbClient = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
     storage: AsyncStorage,
-    autoRefreshToken: true,
+    autoRefreshToken: false,
     persistSession: true,
     detectSessionInUrl: false,
   },

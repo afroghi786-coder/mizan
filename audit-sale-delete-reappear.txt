@@ -1,0 +1,406 @@
+══════════ ۱) ایمپورت deleteSale / deletePurchase در App.tsx ══════════
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerBy
+6748: try { for (const inv of Array.from(selected)) await deleteSale(inv); showToast('✅ حذف شد'); setSelected(new Set()); load(); }
+7328: await deleteSale(inv);
+7330: await deletePurchase(inv);
+
+══════════ ۲) lib.ts — deleteSale / deletePurchase ══════════
+
+─── lib.ts — deleteSale (خط 464) ───
+464: export async function deleteSale(invoiceNumber: string) {
+465:   const { error } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+466:   if (error) throw new Error(error.message);
+467: }
+468: export async function getUnpaidInvoices() {
+469:   const grouped: any[] = await getSalesGrouped();
+470:   return grouped.filter((g) => (g.paid || 0) === 0);
+471: }
+472: export async function searchAllInvoices(q: string) {
+473:   const [sales, purchases] = await Promise.all([
+474:     getSalesGrouped(),
+475:     getPurchasesGrouped(),
+476:   ]);
+477:   const query = (q || '').toLowerCase().trim();
+478:   const filt = (arr: any[], type: string) =>
+479:     arr.map((r) => ({ ...r, type, sheetType: type }))
+480:       .filter((r) => !query ||
+481:         `${r.invoice} ${r.name || ''} ${r.phone || ''}`.toLowerCase().includes(query));
+482:   return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
+483: }
+484: export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+485:   const table = type === 'purchase' ? 'purchases' : 'sales';
+486:   const { data, error } = await supabase
+487:     .from(table).select('*')
+488:     .eq('invoice_number', invoiceNumber)
+489:     .order('created_at');
+490:   if (error) throw new Error(error.message);
+491:   if (data && data.length > 0) return data;
+492:   // اگر در جدول اصلی نبود، جدول دیگر را امتحان کن
+493:   if (!type) {
+494:     const otherTable = table === 'sales' ? 'purchases' : 'sales';
+495:     const { data: d2 } = await supabase.from(otherTable).select('*').eq('invoice_number', invoiceNumber).order('created_at');
+496:     return d2 || [];
+497:   }
+498:   return [];
+499: }
+500: 
+501: // ═══════════════════════════════════════════════════
+502: // 🗄️ DB — خرید
+503: // ═══════════════════════════════════════════════════
+
+─── lib.ts — deletePurchase (خط 596) ───
+596: export async function deletePurchase(invoiceNumber: string) {
+597:   const { error } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+598:   if (error) throw new Error(error.message);
+599: }
+600: 
+601: // ═══════════════════════════════════════════════════
+602: // 🗄️ DB — داشبورد و سود
+603: // ═══════════════════════════════════════════════════
+604: export async function getDashboardStats(range: string = 'month', filter: string = 'both') {
+605:   const settings = await getSettings();
+606:   const margin = settings.profit_margin ?? 0.10;
+607: 
+608:   const now = new Date();
+609:   let startDate: Date | null = null;
+610:   const calType = getCalType();
+611:   
+612:   if (range === 'today') {
+613:     startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+614:   } else if (range === 'month') {
+615:     try {
+616:       if (calType === 'jalali') {
+617:         const [jy, jm] = g2j(now.getFullYear(), now.getMonth() + 1, now.getDate());
+618:         const g = j2g(jy, jm, 1);
+619:         startDate = new Date(g.y, g.m - 1, g.d);
+620:       } else if (calType === 'hijri') {
+621:         const h = g2h(now);
+622:         const g = h2g(h.y, h.m, 1);
+623:         startDate = new Date(g.y, g.m - 1, g.d);
+624:       } else {
+625:         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+626:       }
+627:     } catch (e) {
+628:       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+629:     }
+630:   } else if (range === 'year') {
+631:     startDate = new Date(now.getFullYear(), 0, 1); // برای سال، معمولاً سال میلادی مبناست، اگر نیاز شد تغییر می‌دهیم
+632:   } else if (range === 'last6months') {
+633:     startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+634:   }
+635: 
+
+══════════ ۳) lib.offline.ts — deleteSale / deletePurchase ══════════
+
+─── lib.offline.ts — deleteSale (خط 419) ───
+419: export async function deleteSale(inv: string) {
+420:   await recordTombstone('sales', String(inv));
+421:   const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+422:   await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+423:   try { await _pushAudit({ type: 'sale_delete', table: 'sales', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور فروش' }); } catch {}
+424:   if (await serverBusinessAllowed()) {
+425:     try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+426:   } else {
+427:     await enqueue('deleteSale', inv);
+428:   }
+429: }
+430: 
+431: export async function deletePurchase(inv: string) {
+432:   await recordTombstone('purchases', String(inv));
+433:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+434:   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+435:   try { await _pushAudit({ type: 'purchase_delete', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور خرید' }); } catch {}
+436:   if (await serverBusinessAllowed()) {
+437:     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+438:   } else {
+439:     await enqueue('deletePurchase', inv);
+440:   }
+441: }
+442: 
+443: export async function getSettings() {
+444:   return cachedRead('settings', () => lib.getSettings());
+445: }
+446: export async function updateSettings(s: any) {
+447:   await setLocal('settings', s);
+448:   try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+
+─── lib.offline.ts — deletePurchase (خط 431) ───
+431: export async function deletePurchase(inv: string) {
+432:   await recordTombstone('purchases', String(inv));
+433:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+434:   await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+435:   try { await _pushAudit({ type: 'purchase_delete', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور خرید' }); } catch {}
+436:   if (await serverBusinessAllowed()) {
+437:     try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+438:   } else {
+439:     await enqueue('deletePurchase', inv);
+440:   }
+441: }
+442: 
+443: export async function getSettings() {
+444:   return cachedRead('settings', () => lib.getSettings());
+445: }
+446: export async function updateSettings(s: any) {
+447:   await setLocal('settings', s);
+448:   try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+449:   if (await serverBusinessAllowed()) {
+450:     try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+451:   } else {
+452:     await enqueue('updateSettings', s);
+453:   }
+454: }
+455: 
+456: async function computeLocalInventory() {
+457:   const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+458:     getLocal<any[]>('products'),
+459:     getLocal<any[]>('sales'),
+460:     getLocal<any[]>('purchases'),
+
+══════════ ۴) getSalesGrouped / getPurchasesGrouped ══════════
+
+─── lib.offline.ts — getSalesGrouped (خط 850) ───
+850: export async function getSalesGrouped() {
+851:   let serverList: any[] = [];
+852:   if (MODE === 'online') {
+853:     try {
+854:       serverList = await lib.getSalesGrouped();
+855:       await setLocal('sales_grouped', serverList);
+856:     } catch {
+857:       serverList = (await getLocal<any[]>('sales_grouped')) || [];
+858:     }
+859:   } else {
+860:     serverList = (await getLocal<any[]>('sales_grouped')) || [];
+861:   }
+862: 
+863:   // ادغام با صف
+864:   const queue = await getQueue();
+865:   const pendingByInv: Record<string, any> = {};
+866:   for (const item of queue) {
+867:     if (item.op === 'createSale') {
+868:       const p = item.payload;
+869:       const inv = p.invoiceNumber;
+870:       if (!pendingByInv[inv]) {
+871:         pendingByInv[inv] = {
+872:           invoice: inv, name: p.customerName, phone: p.customerPhone,
+873:           total: 0, paid: 0, items: [],
+874:           date: new Date(item.ts).toISOString(),
+875:           _pending: true,
+876:         };
+877:       }
+878:       for (const it of p.items || []) {
+879:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+880:         pendingByInv[inv].paid += Number(it.payment) || 0;
+881:         pendingByInv[inv].items.push(it);
+882:       }
+883:     }
+884:   }
+885:   return [...Object.values(pendingByInv), ...serverList];
+886: }
+887: 
+888: // ═══════════════════════════════════════════
+889: //  getPurchasesGrouped — با ادغام صف
+
+─── lib.offline.ts — getPurchasesGrouped (خط 973) ───
+973: export async function getPurchasesGrouped() {
+974:   let serverList: any[] = [];
+975:   if (MODE === 'online') {
+976:     try {
+977:       serverList = await lib.getPurchasesGrouped();
+978:       await setLocal('purchases_grouped', serverList);
+979:     } catch {
+980:       serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+981:     }
+982:   } else {
+983:     serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+984:   }
+985: 
+986:   const queue = await getQueue();
+987:   const pendingByInv: Record<string, any> = {};
+988:   for (const item of queue) {
+989:     if (item.op === 'createPurchase') {
+990:       const p = item.payload;
+991:       const inv = p._pendingInvNumber || p.invoiceNumber || 'P-PENDING';
+992:       if (!pendingByInv[inv]) {
+993:         pendingByInv[inv] = {
+994:           invoice: inv,
+995:           manual: p.manualInvoice || '',
+996:           name: p.supplierName,
+997:           phone: p.supplierPhone,
+998:           total: 0, paid: 0, items: [],
+999:           date: new Date(item.ts).toISOString(),
+1000:           _pending: true,
+1001:         };
+1002:       }
+1003:       const items = (p.items && p.items.length) ? p.items : [{ modelName: '—', quantity: 0, priceUnit: 0 }];
+1004:       for (const it of items) {
+1005:         pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+1006:         pendingByInv[inv].items.push(it);
+1007:       }
+1008:       pendingByInv[inv].paid += Number(p.paymentAmount) || 0;
+1009:     }
+1010:   }
+1011:   return [...Object.values(pendingByInv), ...serverList];
+1012: }
+
+══════════ ۵) pullFromServer ══════════
+
+─── lib.offline.ts — pullFromServer (خط 298) ───
+298: export async function pullFromServer() {
+299:   try {
+300:     const [products, salesGrouped, purchasesGrouped, sales, purchases, settings] = await Promise.all([
+301:       lib.getProducts(),
+302:       lib.getSalesGrouped(),
+303:       lib.getPurchasesGrouped(),
+304:       lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+305:       lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+306:       lib.getSettings(),
+307:     ]);
+308:     await setLocal('products', products);
+309:     await setLocal('sales_grouped', salesGrouped);
+310:     await setLocal('purchases_grouped', purchasesGrouped);
+311:     await setLocal('sales', sales.data || []);
+312:     await setLocal('purchases', purchases.data || []);
+313:     await setLocal('settings', settings);
+314:   } catch (e) { console.log('Pull failed:', e); }
+315: }
+316: 
+317: async function cachedRead<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+318:   if (MODE === 'online') {
+319:     try {
+320:       const fresh = await fetcher();
+321:       await setLocal(key, fresh);
+322:       return fresh;
+323:     } catch {
+324:       const cached = await getLocal<T>(key);
+325:       if (cached) return cached;
+326:       throw new Error('آفلاین — داده‌ای موجود نیست');
+327:     }
+328:   }
+329:   const cached = await getLocal<T>(key);
+330:   if (cached) return cached;
+331:   try { return await fetcher(); } catch { throw new Error('داده‌ای موجود نیست'); }
+332: }
+333: 
+334: export async function getProducts() {
+335:   try { return await cachedRead('products', () => lib.getProducts()); }
+336:   catch { return []; }
+337: }
+338: export async function createProduct(p: any) {
+339:   const list: any[] = (await getLocal('products')) || [];
+340:   const item = { ...p, _localId: Date.now() };
+341:   list.push(item);
+342:   await setLocal('products', list);
+343:   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+344:   if (await serverBusinessAllowed()) {
+345:     try {
+346:       await lib.createProduct(p);
+347:       await setLocal('products', await lib.getProducts());
+348:         try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+349:     }
+350:     catch { await enqueue('createProduct', p); }
+351:   } else {
+352:     await enqueue('createProduct', p);
+353:   }
+354: }
+355: export async function updateProduct(id: string, p: any) {
+356:   const list: any[] = (await getLocal('products')) || [];
+357:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+
+══════════ ۶) syncByDestination (بخش private) ══════════
+
+─── lib.sheets.ts — syncByDestination (خط 464) ───
+464: export async function syncByDestination(onProgress?: (done: number, total: number) => void) {
+465:   const dest = await getSyncDestination();
+466:   const cfg = await getBridgeConfig();
+467:   const useBridge = !!(cfg.url && cfg.key);
+468: 
+469:   if (dest === 'private') {
+470:     // ابتدا صف غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+471:     // تجاری داخل syncToServer حذف می‌شود و به Supabase نمی‌رود.
+472:     const serverRes = await syncToServer(onProgress);
+473: 
+474:     if (!useBridge) {
+475:       if (Platform.OS !== 'web') {
+476:         throw new Error('برای سینک در گوشی، ابتدا واسط امن را تنظیم کنید');
+477:       }
+478:       await pullPrivateTables((d, t) => onProgress?.(d, t));
+479:       const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+480:       const ok = rows.filter(r => r.ok).length;
+481:       return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+482:     }
+483:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+484:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+485:     const ok = rows.filter(r => r.ok).length;
+486:     return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+487:   }
+488: 
+489:   if (dest === 'server') {
+490:     return await syncToServer(onProgress);
+491:   }
+492: 
+493:   const serverRes = await syncToServer(onProgress);
+494:   if (useBridge) {
+495:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+496:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+497:     const pOk = rows.filter(r => r.ok).length;
+498:     return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+499:   }
+500:   if (Platform.OS !== 'web') {
+501:     return serverRes;
+502:   }
+503:   await pullPrivateTables((d, t) => onProgress?.(d, t));
+504:   const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+505:   const pOk = rows.filter(r => r.ok).length;
+506:   return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+507: }
+508: 
+509: export async function clearAuditInSheet() {
+510:   const token = await getToken();
+511:   if (!token) throw new Error('لطفاً وارد شوید');
+512:   const res = await fetch(FN_BASE + '/google-sheets-clear-audit', {
+513:     method: 'POST',
+514:     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+515:     body: JSON.stringify({}),
+516:   });
+517:   const data: any = await res.json();
+518:   if (!res.ok || data?.ok !== true) {
+519:     throw new Error(data?.error || data?.detail || 'خطا در پاک کردن تاریخچه شیت');
+520:   }
+521:   return true;
+522: }
+523: 
+
+══════════ ۷) جستجوی sales_grouped در همه فایل‌ها ══════════
+App.tsx:307: // ═══ ۳. اگه بازم خالی بود، از sales_grouped ═══
+App.tsx:311: const groupedRaw = await AsyncStorage.getItem('@mizan_local_sales_grouped');
+lib.offline.ts:309: await setLocal('sales_grouped', salesGrouped);
+lib.offline.ts:310: await setLocal('purchases_grouped', purchasesGrouped);
+lib.offline.ts:421: const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+lib.offline.ts:422: await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+lib.offline.ts:433: const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+lib.offline.ts:434: await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+lib.offline.ts:700: const grouped = await getLocal<any[]>('purchases_grouped') || [];
+lib.offline.ts:775: if (salesGrouped.status === 'fulfilled') await setLocal('sales_grouped', salesGrouped.value);
+lib.offline.ts:776: if (purchasesGrouped.status === 'fulfilled') await setLocal('purchases_grouped', purchasesGrouped.value);
+lib.offline.ts:814: const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+lib.offline.ts:832: const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+lib.offline.ts:855: await setLocal('sales_grouped', serverList);
+lib.offline.ts:857: serverList = (await getLocal<any[]>('sales_grouped')) || [];
+lib.offline.ts:860: serverList = (await getLocal<any[]>('sales_grouped')) || [];
+lib.offline.ts:929: const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+lib.offline.ts:978: await setLocal('purchases_grouped', serverList);
+lib.offline.ts:980: serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+lib.offline.ts:983: serverList = (await getLocal<any[]>('purchases_grouped')) || [];
+lib.offline.ts:1198: // ۱. جستجو در cache (sales_grouped + all_sales_for_lookup)
+lib.offline.ts:1284: // از sales_grouped
+lib.offline.ts:1285: const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+lib.sheets.ts:10: { tab: 'sales', keys: ['@mizan_local_sales_grouped'] },
+lib.sheets.ts:11: { tab: 'purchases', keys: ['@mizan_local_purchases_grouped'] },
+lib.sheets.ts:372: else if (tab === 'sales') r = await mergeGroupedInvoices('@mizan_local_sales_grouped', rows);
+lib.sheets.ts:373: else if (tab === 'purchases') r = await mergeGroupedInvoices('@mizan_local_purchases_grouped', rows);
+lib.sheets.ts:701: if (table === 'sales') return '@mizan_local_sales_grouped';
+lib.sheets.ts:702: if (table === 'purchases') return '@mizan_local_purchases_grouped';
+lib.sheets.ts:1163: else if (tab === 'sales') r = await mergeGroupedInvoices('@mizan_local_sales_grouped', rows);
+lib.sheets.ts:1164: else if (tab === 'purchases') r = await mergeGroupedInvoices('@mizan_local_purchases_grouped', rows);
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

@@ -1,0 +1,135 @@
+══════ همه enqueue در lib.offline.ts ══════
+42: export async function enqueue(op: string, payload: any) {
+156: catch { await enqueue('createProduct', p); }
+158: await enqueue('createProduct', p);
+180: try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+182: await enqueue('updateProduct', payload);
+204: try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+206: await enqueue('deleteProduct', payload);
+213: catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+215: await enqueue('createSale', payload);
+223: try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+225: await enqueue('deleteSale', inv);
+234: try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+236: await enqueue('deletePurchase', inv);
+246: try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+248: await enqueue('updateSettings', s);
+751: await enqueue('createPurchase', newPayload);
+757: await enqueue('createPurchase', newPayload);
+1115: } catch { await enqueue('createFxTrade', p); }
+1116: } else { await enqueue('createFxTrade', p); }
+1183: } catch { await enqueue('createExpense', p); }
+1184: } else { await enqueue('createExpense', p); }
+1193: catch { await enqueue('deleteExpense', String(localId)); }
+1195: await enqueue('deleteExpense', String(localId));
+1220: } catch { await enqueue('createEmployee', p); }
+1221: } else { await enqueue('createEmployee', p); }
+1230: catch { await enqueue('deleteEmployee', String(localId)); }
+1232: await enqueue('deleteEmployee', String(localId));
+1257: } catch { await enqueue('createAttendance', p); }
+1258: } else { await enqueue('createAttendance', p); }
+1267: catch { await enqueue('deleteSalaryPayment', String(localId)); }
+1269: await enqueue('deleteSalaryPayment', String(localId));
+1279: catch { await enqueue('deleteLoan', String(localId)); }
+1281: await enqueue('deleteLoan', String(localId));
+1291: catch { await enqueue('deleteLeave', String(localId)); }
+1293: await enqueue('deleteLeave', String(localId));
+1303: catch { await enqueue('deleteAttendance', String(localId)); }
+1305: await enqueue('deleteAttendance', String(localId));
+1337: } catch { await enqueue('createFxCustomer', { ...p, code }); }
+1338: } else { await enqueue('createFxCustomer', { ...p, code }); }
+1381: } catch { await enqueue('createFxPartner', { ...p, code }); }
+1382: } else { await enqueue('createFxPartner', { ...p, code }); }
+1751: catch { await enqueue('createStockAdjustment', item); }
+1753: await enqueue('createStockAdjustment', item);
+1763: catch { await enqueue('deleteStockAdjustment', id); }
+1765: await enqueue('deleteStockAdjustment', id);
+2447: catch { await enqueue('createParty', item); }
+2449: await enqueue('createParty', item);
+2475: catch { await enqueue('updateParty', item); }
+2477: await enqueue('updateParty', item);
+2497: catch { await enqueue('deleteParty', { local_id: id, id }); }
+2499: await enqueue('deleteParty', { local_id: id, id });
+2615: if (MODE === 'online') { try { await lib.createPartner(item); } catch { await enqueue('createPartner', item); } }
+2616: else { await enqueue('createPartner', item); }
+2624: if (MODE === 'online') { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+2625: else { await enqueue('updatePartner', item); }
+2632: if (MODE === 'online') { try { await lib.deletePartner(id); } catch { await enqueue('deletePartner', id); } }
+2633: else { await enqueue('deletePartner', id); }
+2653: if (MODE === 'online') { try { await lib.createPartnerBankAccount(item); } catch { await enqueue('createPBA', item); } }
+2654: else { await enqueue('createPBA', item); }
+2661: if (MODE === 'online') { try { await lib.deletePartnerBankAccount(id); } catch { await enqueue('deletePBA', id); } }
+2662: else { await enqueue('deletePBA', id); }
+2682: if (MODE === 'online') { try { await lib.createPartnerTransaction(item); } catch { await enqueue('createPTX', item); } }
+2683: else { await enqueue('createPTX', item); }
+2690: if (MODE === 'online') { try { await lib.deletePartnerTransaction(id); } catch { await enqueue('deletePTX', id); } }
+2691: else { await enqueue('deletePTX', id); }
+2713: if (MODE === 'online') { try { await lib.createBank(item); } catch { await enqueue('createBank', item); } }
+2714: else { await enqueue('createBank', item); }
+2721: if (MODE === 'online') { try { await lib.deleteBank(id); } catch { await enqueue('deleteBank', id); } }
+2722: else { await enqueue('deleteBank', id); }
+2745: if (MODE === 'online') { try { await lib.createShipping(item); } catch { await enqueue('createShipping', item); } }
+2746: else { await enqueue('createShipping', item); }
+2753: if (MODE === 'online') { try { await lib.deleteShipping(id); } catch { await enqueue('deleteShipping', id); } }
+2754: else { await enqueue('deleteShipping', id); }
+2793: try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
+2795: await enqueue('updateSale', payload);
+2826: try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
+2828: await enqueue('updatePurchase', payload);
+
+══════ سوییچ syncToServer ══════
+76: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+77:   const q = await getQueue();
+78:   const remaining: any[] = [];
+79:   let ok = 0, fail = 0;
+80:   const total = q.length;
+81:   for (let i = 0; i < q.length; i++) {
+82:     const item = q[i];
+83:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+84:     try {
+85:       await (lib as any)[item.op](item.payload);
+86:       ok++;
+87:     } catch (e: any) {
+88:       const msg = String(e?.message || e || '');
+89:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+90:       if (isDup) { ok++; } else {
+91:         const attempts = (item.attempts || 0) + 1;
+92:         if (attempts >= 5) {
+93:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+94:         } else {
+95:           remaining.push({ ...item, attempts, lastError: msg });
+96:         }
+97:         fail++;
+98:       }
+99:     }
+100:     if (onProgress) onProgress(i + 1, total);
+101:     if ((i + 1) % 20 === 0) {
+102:       await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+103:       await new Promise(r => setTimeout(r, 10));
+104:     }
+105:   }
+106:   await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+107:   return { ok, fail };
+108: }
+
+══════ aliases عملیات صف در lib.ts ══════
+1126: export const updateEmployee = (p: any) => _empUpsert('employees', p);
+1127: export const deleteEmployee = (id: string) => _empDelete('employees', id);
+1129: export const updateAttendance = (p: any) => _empUpsert('attendance', p);
+1130: export const deleteAttendance = (id: string) => _empDelete('attendance', id);
+1132: export const createLeave = (p: any) => _empCreate('employee_leaves', p);
+1133: export const updateLeave = (p: any) => _empUpsert('employee_leaves', p);
+1134: export const deleteLeave = (id: string) => _empDelete('employee_leaves', id);
+1136: export const createSalaryPayment = (p: any) => _empCreate('salary_payments', p);
+1137: export const updateSalaryPayment = (p: any) => _empUpsert('salary_payments', p);
+1138: export const deleteSalaryPayment = (id: string) => _empDelete('salary_payments', id);
+1140: export const createLoan = (p: any) => _empCreate('employee_loans', p);
+1141: export const updateLoan = (p: any) => _empUpsert('employee_loans', p);
+1142: export const deleteLoan = (id: string) => _empDelete('employee_loans', id);
+1144: export const createBatch = (p: any) => _empCreate('payroll_batches', p);
+1145: export const updateBatch = (p: any) => _empUpsert('payroll_batches', p);
+1146: export const deleteBatch = (id: string) => _empDelete('payroll_batches', id);
+1353: export const createPTX = createPartnerTransaction;
+1354: export const deletePTX = deletePartnerTransaction;
+1355: export const createPBA = createPartnerBankAccount;
+1356: export const deletePBA = deletePartnerBankAccount;

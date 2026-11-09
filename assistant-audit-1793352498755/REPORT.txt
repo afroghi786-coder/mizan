@@ -1,0 +1,313 @@
+AUDIT DIR: assistant-audit-1793352498755
+DATE: 2026-10-30T09:28:18.756Z
+
+=== KEY FILES COPIED ===
+OK   AssistantHome.tsx
+OK   SettingsAssistant.tsx
+OK   lib.assistant.ts
+OK   lib.assistant.rubika.ts
+OK   lib.assistant.catalog.ts
+OK   lib.bot.worker.ts
+OK   lib.offline.ts
+OK   lib.storage.ts
+OK   package.json
+OK   app.json
+MISS app.config.js
+MISS app.config.ts
+
+=== ALL TS/TSX FILES (88) ===
+AdminPanel.tsx  (1046 lines)
+AdminScreen.tsx  (6 lines)
+App.tsx  (10697 lines)
+AssistantHome.tsx  (574 lines)
+BotBrain.ts  (270 lines)
+BotUI.tsx  (436 lines)
+BoxesScreen.tsx  (726 lines)
+CommandBus.ts  (78 lines)
+CurrencyPicker.tsx  (131 lines)
+customLabels.ts  (52 lines)
+EmpHelpers.tsx  (276 lines)
+EmployeesScreen.tsx  (1127 lines)
+ExchangeBell.tsx  (326 lines)
+ExchangeInvoice.tsx  (252 lines)
+ExchangeScreen.tsx  (2374 lines)
+ExpensesScreen.tsx  (408 lines)
+GlobalVoice.tsx  (645 lines)
+GroupsScreen.tsx  (335 lines)
+HRDash.tsx  (210 lines)
+i18n.ts  (451 lines)
+index.ts  (16 lines)
+LanguageModal.tsx  (49 lines)
+LearningScreen.tsx  (313 lines)
+LedgerScreen.tsx  (1246 lines)
+lib-date.ts  (92 lines)
+lib-db.ts  (442 lines)
+lib-jalali.ts  (96 lines)
+lib-supabase.ts  (16 lines)
+lib.app.events.ts  (230 lines)
+lib.app.executor.ts  (368 lines)
+lib.app.manager.ts  (246 lines)
+lib.app.panels.ts  (560 lines)
+lib.app.parser.ts  (367 lines)
+lib.app.registry.ts  (233 lines)
+lib.app.schema.ts  (279 lines)
+lib.app.test-screen.ts  (123 lines)
+lib.app.wizard.ts  (615 lines)
+lib.assistant.catalog.ts  (107 lines)
+lib.assistant.rubika.ts  (882 lines)
+lib.assistant.telegram.ts  (50 lines)
+lib.assistant.ts  (405 lines)
+lib.backup.ts  (179 lines)
+lib.bot.worker.ts  (59 lines)
+lib.box-auto.ts  (113 lines)
+lib.boxes.ts  (269 lines)
+lib.currency.ts  (99 lines)
+lib.currencyfield.tsx  (120 lines)
+lib.datefield.tsx  (163 lines)
+lib.emp.ts  (357 lines)
+lib.events.ts  (15 lines)
+lib.exp.ts  (143 lines)
+lib.fx.cust.ts  (56 lines)
+lib.fx.trade.ts  (141 lines)
+lib.fx.ts  (169 lines)
+lib.learning.intents.ts  (15 lines)
+lib.learning.ts  (162 lines)
+lib.local.exec.ts  (301 lines)
+lib.local.nlu.ts  (258 lines)
+lib.manual.ts  (1100 lines)
+lib.network.ts  (962 lines)
+lib.notifications.ts  (172 lines)
+lib.offline.ts  (3410 lines)
+lib.share.ts  (193 lines)
+lib.sheets.ts  (1149 lines)
+lib.sms.patterns.ts  (262 lines)
+lib.sms.ts  (277 lines)
+lib.storage.ts  (242 lines)
+lib.supabase.admin.ts  (29 lines)
+lib.sw.ts  (17 lines)
+lib.ts  (1383 lines)
+lib.voice.ts  (255 lines)
+license.ts  (125 lines)
+LicenseGate.tsx  (84 lines)
+LicenseNotification.tsx  (120 lines)
+LicenseRequest.tsx  (113 lines)
+LiveMarketScreen.tsx  (2533 lines)
+LocalBotScreen.tsx  (386 lines)
+ManualEntryScreen.tsx  (686 lines)
+nav.registry.ts  (39 lines)
+PanelRenderer.tsx  (507 lines)
+presets.ts  (91 lines)
+PublicMarketScreen.tsx  (787 lines)
+ResetPasswordScreen.tsx  (123 lines)
+SettingsAssistant.tsx  (499 lines)
+SettingsSheets.tsx  (561 lines)
+SmsMatchScreen.tsx  (514 lines)
+SuperAssistant.tsx  (659 lines)
+SyncControl.tsx  (291 lines)
+
+=== FILES MATCHING ASSISTANT/BOT KEYWORDS (68) ===
+AdminPanel.tsx
+App.tsx
+AssistantHome.tsx
+BotBrain.ts
+BotUI.tsx
+BoxesScreen.tsx
+CommandBus.ts
+CurrencyPicker.tsx
+EmpHelpers.tsx
+EmployeesScreen.tsx
+ExchangeBell.tsx
+ExchangeInvoice.tsx
+ExchangeScreen.tsx
+ExpensesScreen.tsx
+GlobalVoice.tsx
+GroupsScreen.tsx
+HRDash.tsx
+i18n.ts
+LanguageModal.tsx
+LearningScreen.tsx
+LedgerScreen.tsx
+lib-db.ts
+lib.app.events.ts
+lib.app.executor.ts
+lib.app.manager.ts
+lib.app.panels.ts
+lib.app.parser.ts
+lib.app.registry.ts
+lib.app.schema.ts
+lib.app.test-screen.ts
+lib.app.wizard.ts
+lib.assistant.catalog.ts
+lib.assistant.rubika.ts
+lib.assistant.telegram.ts
+lib.assistant.ts
+lib.bot.worker.ts
+lib.currencyfield.tsx
+lib.datefield.tsx
+lib.emp.ts
+lib.exp.ts
+lib.fx.trade.ts
+lib.learning.intents.ts
+lib.learning.ts
+lib.local.exec.ts
+lib.local.nlu.ts
+lib.manual.ts
+lib.network.ts
+lib.offline.ts
+lib.share.ts
+lib.sheets.ts
+lib.sms.ts
+lib.ts
+LicenseGate.tsx
+LicenseNotification.tsx
+LicenseRequest.tsx
+LiveMarketScreen.tsx
+LocalBotScreen.tsx
+ManualEntryScreen.tsx
+nav.registry.ts
+PanelRenderer.tsx
+presets.ts
+PublicMarketScreen.tsx
+ResetPasswordScreen.tsx
+SettingsAssistant.tsx
+SettingsSheets.tsx
+SmsMatchScreen.tsx
+SuperAssistant.tsx
+SyncControl.tsx
+
+=== IMPORTS IN AssistantHome.tsx ===
+1: import React, { useEffect, useState } from 'react';
+2: import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Image, KeyboardAvoidingView, Platform } from 'react-native';
+3: import { getProducts } from './lib.offline';
+4: import { rubikaSendMessage, buildChannelPostText, rubikaSendPhoto, resetBotOffset, rubikaRemoveWebhook, forceFixBot, getBotLastError, processRubikaUpdates } from './lib.assistant.rubika';
+5: import * as ImagePicker from 'expo-image-picker';
+6: import AsyncStorage from './lib.storage';
+7: import {
+
+=== GREP KEY SYMBOLS (limit 800 lines) ===
+
+--- App.tsx ---
+1: import { startGlobalBotWorker } from './lib.bot.worker';
+70: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, c
+727: startGlobalBotWorker();
+2715: const inv = await generateInvoiceNumber();
+2772: const inv = await generateInvoiceNumber();
+6876: generateInvoiceNumber().then(setInvoice);
+6944: const inv = await generateInvoiceNumber();
+6954: setInvoice(await generateInvoiceNumber());
+
+--- AssistantHome.tsx ---
+4: import { rubikaSendMessage, buildChannelPostText, rubikaSendPhoto, resetBotOffset, rubikaRemoveWebhook, forceFixBot, getBotLastError, processRubikaUpdates } from './lib.assistant.rubika';
+8: getBotConfig, getWatcherConfig, getWatcherSources, getAdsConfig,
+10: getAssistantInvoices, approveAssistantInvoice, deleteAssistantInvoice, transferAssistantInvoice, issueAssistantInvoice,
+48: getBotConfig(), getWatcherConfig(), getWatcherSources(), getAdsConfig(),
+69: const inv = await issueAssistantInvoice({
+244: const r = await processRubikaUpdates(bot.rubika_token);
+298: <TouchableOpacity onPress={async () => { await resetBotOffset(); showToast?.('✅ offset ریست شد'); }} style={[btnStyle, { backgroundColor: '#ef4444' }]}>
+
+--- lib-db.ts ---
+406: export async function generateInvoiceNumber(): Promise<string> {
+
+--- lib.assistant.catalog.ts ---
+46: export async function buildCatalogIndex(): Promise<CatalogIndex> {
+78: export function findProduct(index: CatalogIndex, query: string): CatalogProduct | null {
+
+--- lib.assistant.rubika.ts ---
+2: import { getBotConfig, saveBotConfig, issueAssistantInvoice } from './lib.assistant';
+165: if (inlineKeypad) body.inline_keypad = inlineKeypad;
+203: inline_keypad: inlineKeypad,
+344: const body: any = { chat_id: chatId, text: text || '', inline_keypad: inlineKeypad };
+410: import { buildCatalogIndex, findProduct } from './lib.assistant.catalog';
+413: async function botSend(t: string, chatId: string, text: string, keypad?: any) {
+434: body.chat_keypad = { rows: cleanRows };
+435: body.chat_keypad_type = 'New';
+444: console.log('[botSend Error]', e);
+448: async function getBotOffset(): Promise<string> {
+451: async function setBotOffset(v: string): Promise<void> {
+454: async function getBotCart(chatId: string): Promise<any[]> {
+461: async function setBotCart(chatId: string, cart: any[]): Promise<void> {
+464: async function getBotState(chatId: string): Promise<any> {
+470: async function setBotState(chatId: string, state: any): Promise<void> {
+500: await botSend(t, chatId, reply, { rows: [{ buttons: [{ type: 'Simple', button_text: '✅ تایید نهایی' }, { type: 'Simple', button_text: '❌ انصراف' }] }] });
+503: async function botShowMainMenu(t: string, chatId: string) {
+504: await botSend(t, chatId, '🏠 **منوی اصلی میزان:**', {
+512: async function botShowProducts(t: string, chatId: string) {
+514: const catalog = await buildCatalogIndex();
+518: await botSend(t, chatId, '❌ هیچ محصولی یافت نشد. لطفاً ابتدا در میزان کالا ثبت کنید.', { rows: [{ buttons: [{ id: 'menu', type: 'Simple', button_text: '🔙 بازگشت به منو' }] }] });
+532: await botSend(t, chatId, '❌ محصولات یافت شدند اما هیچ‌کدام کد نداشتند.', { rows: [{ buttons: [{ id: 'menu', type: 'Simple', button_text: '🔙 بازگشت به منو' }] }] });
+537: await botSend(t, chatId, '📦 **لیست کد محصولات:**\nبرای انتخاب، روی کد کلیک کنید:', { rows });
+539: await botSend(t, chatId, '❌ خطا در دریافت محصولات: ' + (e?.message || ''));
+543: async function botShowCart(t: string, chatId: string) {
+544: const cart = await getBotCart(chatId);
+546: await botSend(t, chatId, '🛒 سبد خرید شما خالی است.', {
+569: await botSend(t, chatId, text, { rows });
+573: export async function processRubikaUpdates(token: string): Promise<{ ok: boolean; processed: number; error?: string }> {
+578: const offset = await getBotOffset();
+616: const cart = await getBotCart(chatId);
+617: const state = await getBotState(chatId);
+621: await botShowMainMenu(t, chatId); processed++; continue;
+625: await botShowProducts(t, chatId); processed++; continue;
+629: await botShowCart(t, chatId); processed++; continue;
+632: await setBotCart(chatId, []);
+634: await botSend(t, chatId, '🧹 سبد خرید شما خالی شد.');
+635: await botShowMainMenu(t, chatId); processed++; continue;
+638: if (!cart.length) { await botSend(t, chatId, '❌ سبد خرید شما خالی است.'); processed++; continue; }
+639: await setBotState(chatId, { step: 'waiting_name' });
+640: await botSend(t, chatId, '📝 لطفاً نام و نام خانوادگی خود را وارد کنید:'); processed++; continue;
+646: if (isNaN(num) || num <= 0) { await botSend(t, chatId, '❌ لطفاً یک عدد معتبر وارد کنید.'); processed++; continue; }
+648: const catalog = await buildCatalogIndex();
+649: const p = findProduct(catalog, state.selected_code);
+663: await setBotCart(chatId, cart);
+666: await botShowCart(t, chatId);
+671: state.name = text; state.step = 'waiting_phone'; await setBotState(chatId, state);
+672: await botSend(t, chatId, '📱 لطفاً شماره تماس خود را وارد کنید:'); processed++; continue;
+675: state.phone = text; state.step = 'waiting_address'; await setBotState(chatId, state);
+676: await botSend(t, chatId, '📍 لطفاً آدرس دقیق خود را وارد کنید:'); processed++; continue;
+679: state.address = text; state.step = 'waiting_shipping'; await setBotState(chatId, state);
+680: await botSend(t, chatId, '🚚 لطفاً نام شرکت باربری مورد نظر را وارد کنید:'); processed++; continue;
+683: state.shipping = text; state.step = 'confirm'; await setBotState(chatId, state);
+687: await botSend(t, chatId, reply, { rows: [{ buttons: [{ type: 'Simple', button_text: '✅ تایید نهایی' }, { type: 'Simple', button_text: '❌ انصراف' }] }] });
+693: const botCfg = await getBotConfig();
+695: try { invNum = await generateInvoiceNumber(); } catch { invNum = 'INV-' + Date.now(); }
+701: await botSend(t, chatId, invoiceText + '\n\n📌 لطفاً مبلغ واریزی خود را در همین چت ارسال کنید تا برای حسابدار ثبت شود.');
+707: await setBotState(chatId, { ...state, step: 'waiting_payment', invoice_number: invNum, admin_msg_id: adminData?.result?.message_id || '' });
+709: try { await issueAssistantInvoice({ id: 'inv_' + Date.now(), invoice_number: invNum, customer_name: state.name, customer_phone: state.phone, customer_address: state.address, customer_shipping: state.shipping, items: cart.map((it: any) => ({
+710: await setBotCart(chatId, []);
+714: await setBotCart(chatId, []); await clearBotState(chatId); await botSend(t, chatId, '❌ سفارش لغو شد.'); await botShowMainMenu(t, chatId); processed++; continue;
+719: const botCfg = await getBotConfig();
+724: await botSend(t, chatId, '✅ پیام واریز شما برای حسابدار ارسال شد.');
+731: const catalog = await buildCatalogIndex();
+732: const p = findProduct(catalog, text);
+734: await setBotState(chatId, { step: 'waiting_quantity', selected_code: p.code });
+735: await botSend(t, chatId, '📦 لطفاً تعداد برای مدل [ ' + p.code + ' ] را وارد کنید:', { rows: [{ buttons: [{ type: 'Simple', button_text: '🔙 بازگشت به منو' }] }] });
+740: if (!cbData) await botShowMainMenu(t, chatId);
+745: if (nextOffset && nextOffset !== offset) await setBotOffset(nextOffset);
+753: export async function resetBotOffset() {
+
+--- lib.assistant.ts ---
+3: import { generateInvoiceNumber, generateCustomerCode, createSale, getSalesGrouped, getQueue } from './lib.offline';
+46: export async function getBotConfig() {
+224: export async function issueAssistantInvoice(inv: any) {
+370: invoiceNumber = await generateInvoiceNumber();
+373: invoiceNumber = await generateInvoiceNumber();
+
+--- lib.bot.worker.ts ---
+1: import { getBotConfig } from './lib.assistant';
+2: import { processRubikaUpdates } from './lib.assistant.rubika';
+13: cachedConfig = await getBotConfig();
+31: await processRubikaUpdates(config.rubika_token);
+44: export async function startGlobalBotWorker() {
+51: export function stopGlobalBotWorker() {
+
+--- lib.offline.ts ---
+792: export async function generateInvoiceNumber(): Promise<string> {
+794: try { return await lib.generateInvoiceNumber(); } catch {}
+
+--- lib.ts ---
+370: export async function generateInvoiceNumber(): Promise<string> {
+
+--- SettingsAssistant.tsx ---
+7: import { getBotConfig, saveBotConfig, getWatcherConfig, saveWatcherConfig, getWatcherSources, saveWatcherSources, getAdsConfig, saveAdsConfig, getSecureStorageMode } from './lib.assistant';
+55: const b = await getBotConfig();
+
+=== END ===

@@ -1,0 +1,23 @@
+table | local_id | device_id | updated_at | pull_tables | tab_tasks | mergeFn | in UI conflicts
+sales_grouped            | ❌ | ❌ | ❌ | ❌ | ❌ | mergeGroupedInvoices
+purchases_grouped        | ❌ | ❌ | ❌ | ❌ | ❌ | mergeGroupedInvoices
+sales_returns            | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+purchase_returns         | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+products                 | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+parties                  | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+partners                 | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+partner_transactions     | ❌ | ❌ | ❌ | ✅ | ✅ | mergePartnerPrefixed
+partner_bank_accounts    | ❌ | ❌ | ❌ | ✅ | ✅ | mergePartnerPrefixed
+banks                    | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+shippings                | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+stock_adjustments        | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+settings                 | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+expenses                 | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+employees                | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+salary_payments          | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+employee_loans           | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+attendance               | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+employee_leaves          | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+payroll_batches          | ❌ | ❌ | ❌ | ✅ | ✅ | mergeList
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

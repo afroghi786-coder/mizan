@@ -1,0 +1,841 @@
+
+─── lib.sheets.ts — mergeList ادامه (849 تا 1000) ───
+849: async function mergeList(localKey: string, sheetRows: any[]) {
+850:   const table = localKey.replace('@mizan_local_', '');
+851: 
+852:   if (localKey === '@mizan_local_settings') {
+853:     const rawS = await AsyncStorage.getItem(localKey);
+854:     let existing: any = null;
+855:     try { existing = rawS ? JSON.parse(rawS) : null; } catch { existing = null; }
+856:     if (existing && typeof existing === 'object' && !Array.isArray(existing) && Object.keys(existing).length > 0) {
+857:       return { added: 0, updated: 0, removed: 0 };
+858:     }
+859:     const first = (sheetRows || [])[0];
+860:     if (!first) return { added: 0, updated: 0, removed: 0 };
+861:     await AsyncStorage.setItem(localKey, JSON.stringify(first));
+862:     return { added: 1, updated: 0, removed: 0 };
+863:   }
+864: 
+865:   const raw = await AsyncStorage.getItem(localKey);
+866:   let localArr: any[] = [];
+867:   try { localArr = raw ? JSON.parse(raw) : []; } catch { localArr = []; }
+868:   if (!Array.isArray(localArr)) localArr = [];
+869: 
+870:   const localMap = new Map<string, any>();
+871:   for (const r of localArr) {
+872:     const k = keyOfRow(r);
+873:     if (k) localMap.set(k, r);
+874:   }
+875: 
+876:   const tombstones = await getTombstonesForTable(table);
+877:   const pendingByTable = await getPendingKeysByTable();
+878:   const pending = pendingByTable[table] || new Set<string>();
+879:   let added = 0, updated = 0, removed = 0;
+880: 
+881:   for (const [k, r] of Array.from(localMap.entries())) {
+882:     const tombAt = tombstones[k] || '';
+883:     if (tombAt) {
+884:       const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+885:       if (!localUp || tsOf(tombAt) >= tsOf(localUp)) {
+886:         localMap.delete(k);
+887:         removed++;
+888:       }
+889:     }
+890:   }
+891: 
+892:   for (const row of sheetRows || []) {
+893:     const k = keyOfRow(row);
+894:     if (!k) continue;
+895: 
+896:     const sheetDel = row.deleted_at || row.deletedAt || '';
+897:     if (sheetDel) {
+898:       const old = tombstones[k] || '';
+899:       if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+900:       if (localMap.has(k)) { localMap.delete(k); removed++; }
+901:       continue;
+902:     }
+903: 
+904:     const tombAt = tombstones[k] || '';
+905:     if (tombAt) {
+906:       const sheetUp = row.updated_at || row.updatedAt || '';
+907:       if (!sheetUp || tsOf(tombAt) >= tsOf(sheetUp)) continue;
+908:     }
+909: 
+910:     const existing = localMap.get(k);
+911:     if (!existing) {
+912:       localMap.set(k, row);
+913:       added++;
+914:       continue;
+915:     }
+916: 
+917:     const localUp = existing.updated_at || existing.updatedAt || '';
+918:     const sheetUp = row.updated_at || row.updatedAt || '';
+919:     const sheetIsNewer = sheetUp && (!localUp || tsOf(sheetUp) > tsOf(localUp));
+920: 
+921:     if (pending.has(k)) {
+922:       if (sheetIsNewer) {
+923:         await recordConflict(table, k, existing, row);
+924:         console.log('[mergeList] conflict kept local for', table, k);
+925:       }
+926:       continue;
+927:     }
+928: 
+929:     if (sheetIsNewer) {
+930:       localMap.set(k, { ...existing, ...row });
+931:       updated++;
+932:     }
+933:   }
+934: 
+935:   await saveTombstonesForTable(table, tombstones);
+936:   if (added || updated || removed) {
+937:     await AsyncStorage.setItem(localKey, JSON.stringify(Array.from(localMap.values())));
+938:   }
+939:   return { added, updated, removed };
+940: }
+941: 
+942: async function mergePartnerPrefixed(prefix: string, rows: any[]) {
+943:   const byPartner: Record<string, any[]> = {};
+944:   for (const r of rows || []) {
+945:     const pc = String(r.partner_code || '').trim();
+946:     if (!pc) continue;
+947:     if (!byPartner[pc]) byPartner[pc] = [];
+948:     byPartner[pc].push(r);
+949:   }
+950:   let added = 0, updated = 0, removed = 0;
+951:   for (const pc of Object.keys(byPartner)) {
+952:     const res = await mergeList(prefix + pc, byPartner[pc]);
+953:     added += res.added; updated += res.updated; removed += res.removed;
+954:   }
+955:   return { added, updated, removed };
+956: }
+957: 
+958: function invoiceKeyOf(r: any): string {
+959:   return String(r?.local_id || r?.invoice || r?.invoice_number || '');
+960: }
+961: 
+962: async function getPendingInvoiceKeys(): Promise<Set<string>> {
+963:   const keys = new Set<string>();
+964:   try {
+965:     const q = await getQueue();
+966:     for (const it of q || []) {
+967:       const p = it?.payload;
+968:       if (!p) continue;
+969:       const inv = String(p.invoiceNumber || p.invoice_number || p.invoice || '');
+970:       if (inv) keys.add(inv);
+971:       if (p.local_id) keys.add(String(p.local_id));
+972:     }
+973:   } catch {}
+974:   return keys;
+975: }
+976: 
+977: function buildGroupedFromSheet(rows: any[]): any[] {
+978:   const map: Record<string, any> = {};
+979:   for (const r of rows || []) {
+980:     const inv = String(r.invoice || '').trim();
+981:     if (!inv) continue;
+982:     const key = String(r.local_id || inv);
+983:     if (!map[key]) {
+984:       map[key] = {
+985:         invoice: inv,
+986:         date: r.date || '',
+987:         name: r.name || '',
+988:         phone: r.phone || '',
+989:         total: Number(r.total) || 0,
+990:         paid: Number(r.paid) || 0,
+991:         manual: r.manual || '',
+992:         local_id: r.local_id || inv,
+993:         updated_at: r.updated_at || '',
+994:         deleted_at: r.deleted_at || '',
+995:         device_id: r.device_id || '',
+996:         items: [],
+997:       };
+998:     }
+999:     const it = {
+1000:       modelCode: r.model_code || '',
+
+─── lib.sheets.ts — mergeGroupedInvoices (1000 تا 1170) ───
+1000:       modelCode: r.model_code || '',
+1001:       modelName: r.model_name || '',
+1002:       quantity: Number(r.quantity) || 0,
+1003:       priceUnit: Number(r.price_unit) || 0,
+1004:       payment: Number(r.payment) || 0,
+1005:       description: r.description || '',
+1006:       shelf: r.shelf || '',
+1007:     };
+1008:     if (it.modelCode || it.modelName || it.quantity || it.priceUnit) {
+1009:       map[key].items.push(it);
+1010:     }
+1011:   }
+1012:   return Object.values(map);
+1013: }
+1014: 
+1015: async function mergeGroupedInvoices(localKey: string, rows: any[]) {
+1016:   const table = localKey.includes('purchases') ? 'purchases' : 'sales';
+1017:   const sheetGroups = buildGroupedFromSheet(rows);
+1018:   const raw = await AsyncStorage.getItem(localKey);
+1019:   let localArr: any[] = [];
+1020:   try { localArr = raw ? JSON.parse(raw) : []; } catch { localArr = []; }
+1021:   if (!Array.isArray(localArr)) localArr = [];
+1022: 
+1023:   const pendingInvoices = await getPendingInvoiceKeys();
+1024:   const localMap = new Map<string, any>();
+1025:   for (const r of localArr) {
+1026:     const k = invoiceKeyOf(r);
+1027:     if (k) localMap.set(k, r);
+1028:   }
+1029: 
+1030:   const tombstones = await getTombstonesForTable(table);
+1031:   let added = 0, updated = 0, removed = 0;
+1032: 
+1033:   for (const [k, r] of Array.from(localMap.entries())) {
+1034:     const tombAt = tombstones[k] || '';
+1035:     if (tombAt) {
+1036:       const localUp = (r as any)?.updated_at || (r as any)?.updatedAt || '';
+1037:       if (!localUp || tsOf(tombAt) >= tsOf(localUp)) {
+1038:         localMap.delete(k);
+1039:         removed++;
+1040:       }
+1041:     }
+1042:   }
+1043: 
+1044:   for (const g of sheetGroups) {
+1045:     const k = invoiceKeyOf(g);
+1046:     if (!k) continue;
+1047:     const isPending = pendingInvoices.has(String(g.invoice || '')) || pendingInvoices.has(k);
+1048: 
+1049:     const sheetDel = g.deleted_at || '';
+1050:     if (sheetDel) {
+1051:       const old = tombstones[k] || '';
+1052:       if (!old || tsOf(sheetDel) > tsOf(old)) tombstones[k] = sheetDel;
+1053:       if (!isPending && localMap.has(k)) { localMap.delete(k); removed++; }
+1054:       continue;
+1055:     }
+1056: 
+1057:     const tombAt = tombstones[k] || '';
+1058:     if (tombAt) {
+1059:       const sheetUp = g.updated_at || g.updatedAt || '';
+1060:       if (!sheetUp || tsOf(tombAt) >= tsOf(sheetUp)) continue;
+1061:     }
+1062: 
+1063:     const existing = localMap.get(k);
+1064:     if (!existing) {
+1065:       localMap.set(k, g);
+1066:       added++;
+1067:       continue;
+1068:     }
+1069: 
+1070:     const localUp = tsOf(existing.updated_at || existing.updatedAt);
+1071:     const sheetUp = tsOf(g.updated_at || g.updatedAt);
+1072:     const sheetIsNewer = sheetUp > localUp;
+1073: 
+1074:     if (isPending) {
+1075:       if (sheetIsNewer) {
+1076:         await recordConflict(table, k, existing, g);
+1077:         console.log('[mergeGroupedInvoices] conflict kept local for', table, k);
+1078:       }
+1079:       continue;
+1080:     }
+1081: 
+1082:     if (sheetIsNewer) {
+1083:       localMap.set(k, { ...existing, ...g });
+1084:       updated++;
+1085:     }
+1086:   }
+1087: 
+1088:   await saveTombstonesForTable(table, tombstones);
+1089:   if (added || updated || removed) {
+1090:     await AsyncStorage.setItem(localKey, JSON.stringify(Array.from(localMap.values())));
+1091:   }
+1092:   return { added, updated, removed };
+1093: }
+1094: 
+1095: async function mergeTombstones(rows: any[]) {
+1096:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+1097:   let local: any[] = [];
+1098:   try { local = raw ? JSON.parse(raw) : []; } catch { local = []; }
+1099:   if (!Array.isArray(local)) local = [];
+1100: 
+1101:   const map: Record<string, any> = {};
+1102:   for (const t of local) {
+1103:     if (t && t.table && t.key) map[String(t.table) + '|' + String(t.key)] = t;
+1104:   }
+1105: 
+1106:   let added = 0, updated = 0;
+1107: 
+1108:   for (const r of rows || []) {
+1109:     if (!r || !r.table || !r.key) continue;
+1110:     const k = String(r.table) + '|' + String(r.key);
+1111:     const old = map[k];
+1112:     const oldTs = old ? Date.parse(String(old.deleted_at || '')) : 0;
+1113:     const newTs = Date.parse(String(r.deleted_at || ''));
+1114:     if (!old || (newTs && newTs > oldTs)) {
+1115:       map[k] = {
+1116:         table: String(r.table),
+1117:         key: String(r.key),
+1118:         deleted_at: r.deleted_at || new Date().toISOString(),
+1119:         device_id: r.device_id || '',
+1120:       };
+1121:       if (old) updated++; else added++;
+1122:     }
+1123:   }
+1124: 
+1125:   await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(Object.values(map)));
+1126:   return { added, updated, removed: 0 };
+1127: }
+1128: 
+1129: async function mergeAuditEvents(rows: any[]) {
+1130:   const raw = await AsyncStorage.getItem('@mizan_audit_events');
+1131:   let local: any[] = [];
+1132:   try { local = raw ? JSON.parse(raw) : []; } catch { local = []; }
+1133:   if (!Array.isArray(local)) local = [];
+1134: 
+1135:   const map = new Map<string, any>();
+1136:   for (const ev of local) {
+1137:     const id = String(ev?.id || '');
+1138:     if (!id) continue;
+1139:     map.set(id, ev);
+1140:   }
+1141: 
+1142:   let added = 0, updated = 0;
+1143: 
+1144:   for (const r of rows || []) {
+1145:     if (!r || !r.id) continue;
+1146:     const id = String(r.id);
+1147:     const existing = map.get(id);
+1148:     if (!existing) { map.set(id, r); added++; continue; }
+1149:     const oldAt = String(existing.at || '');
+1150:     const newAt = String(r.at || '');
+1151:     if (newAt && (!oldAt || newAt > oldAt)) {
+1152:       map.set(id, { ...existing, ...r });
+1153:       updated++;
+1154:     }
+1155:   }
+1156: 
+1157:   const merged = Array.from(map.values()).sort((a: any, b: any) => String(a.at || '').localeCompare(String(b.at || '')));
+1158:   const trimmed = merged.length > 500 ? merged.slice(merged.length - 500) : merged;
+1159:   await AsyncStorage.setItem('@mizan_audit_events', JSON.stringify(trimmed));
+1160:   return { added, updated, removed: 0 };
+1161: }
+1162: 
+1163: export async function pullPrivateTables(onProgress?: (done: number, total: number, tab: string) => void) {
+1164:   const token = await getToken();
+1165:   if (!token) throw new Error('لطفاً وارد شوید');
+1166:   const res = await fetch(FN_BASE + '/google-sheets-pull', {
+1167:     method: 'POST',
+1168:     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+1169:     body: JSON.stringify({ tables: PULL_TABLES }),
+1170:   });
+
+─── lib.sheets.ts — pullPrivateTables و syncPrivateTables (1170 تا 1260) ───
+1170:   });
+1171:   const data: any = await res.json();
+1172:   if (!res.ok || !data?.tables) throw new Error(data?.error || 'خطا در دریافت');
+1173: 
+1174:   let added = 0, updated = 0, removed = 0;
+1175:   let done = 0;
+1176:   const total = PULL_TABLES.length;
+1177: 
+1178:   for (const tab of PULL_TABLES) {
+1179:     const rows = data.tables[tab] || [];
+1180:     let r = { added: 0, updated: 0, removed: 0 };
+1181:     if (tab === '_deleted') r = await mergeTombstones(rows);
+1182:     else if (tab === '_audit') r = await mergeAuditEvents(rows);
+1183:     else if (tab === 'sales') r = await mergeGroupedInvoices('@mizan_local_sales_grouped', rows);
+1184:     else if (tab === 'purchases') r = await mergeGroupedInvoices('@mizan_local_purchases_grouped', rows);
+1185:     else if (tab === 'partner_transactions') r = await mergePartnerPrefixed('@mizan_local_ptx_', rows);
+1186:     else if (tab === 'partner_bank_accounts') r = await mergePartnerPrefixed('@mizan_local_pba_', rows);
+1187:     else if (PULL_LOCAL_KEYS[tab]) r = await mergeList(PULL_LOCAL_KEYS[tab], rows);
+1188:     added += r.added; updated += r.updated; removed += r.removed;
+1189:     done++;
+1190:     if (onProgress) onProgress(done, total, tab);
+1191:   }
+1192: 
+1193:   return { ok: true, added, updated, removed, totalTables: total };
+1194: }
+1195: 
+
+─── lib.sheets.ts — bridgeUpsertTable و bridgeSaveAll (460 تا 549) ───
+460:     await removeDirtyTables(successful);
+461:   }
+462: 
+463:   return results;
+464: }
+465: 
+466: export async function syncByDestination(onProgress?: (done: number, total: number) => void) {
+467:   const dest = await getSyncDestination();
+468:   const cfg = await getBridgeConfig();
+469:   const useBridge = !!(cfg.url && cfg.key);
+470: 
+471:   if (dest === 'private') {
+472:     // ابتدا صف غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+473:     // تجاری داخل syncToServer حذف می‌شود و به Supabase نمی‌رود.
+474:     const serverRes = await syncToServer(onProgress);
+475: 
+476:     if (!useBridge) {
+477:       if (Platform.OS !== 'web') {
+478:         throw new Error('برای سینک در گوشی، ابتدا واسط امن را تنظیم کنید');
+479:       }
+480:       await pullPrivateTables((d, t) => onProgress?.(d, t));
+481:       const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+482:       const ok = rows.filter(r => r.ok).length;
+483:       return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+484:     }
+485:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+486:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+487:     const ok = rows.filter(r => r.ok).length;
+488:     return { ok: serverRes.ok + ok, fail: serverRes.fail + (rows.length - ok) };
+489:   }
+490: 
+491:   if (dest === 'server') {
+492:     // بخش غیرتجاری (مثل بازار زنده صرافی) به Supabase می‌رود.
+493:     const serverRes = await syncToServer(onProgress);
+494: 
+495:     // بخش تجاری حتی با مقصد سرور، فقط به Google Sheets می‌رود.
+496:     if (!useBridge) {
+497:       if (Platform.OS !== 'web') {
+498:         return serverRes;
+499:       }
+500:       await pullPrivateTables((d, t) => onProgress?.(d, t));
+501:       const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+502:       const pOk = rows.filter(r => r.ok).length;
+503:       return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+504:     }
+505:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+506:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+507:     const pOk = rows.filter(r => r.ok).length;
+508:     return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+509:   }
+510: 
+511:   const serverRes = await syncToServer(onProgress);
+512:   if (useBridge) {
+513:     await pullBridgeTables((d, t) => onProgress?.(d, t));
+514:     const rows = await syncBridgeTables((d, t) => onProgress?.(d, t));
+515:     const pOk = rows.filter(r => r.ok).length;
+516:     return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+517:   }
+518:   if (Platform.OS !== 'web') {
+519:     return serverRes;
+520:   }
+521:   await pullPrivateTables((d, t) => onProgress?.(d, t));
+522:   const rows = await syncPrivateTables((d, t) => onProgress?.(d, t));
+523:   const pOk = rows.filter(r => r.ok).length;
+524:   return { ok: serverRes.ok + pOk, fail: serverRes.fail + (rows.length - pOk) };
+525: }
+526: 
+527: export async function clearAuditInSheet() {
+528:   const token = await getToken();
+529:   if (!token) throw new Error('لطفاً وارد شوید');
+530:   const res = await fetch(FN_BASE + '/google-sheets-clear-audit', {
+531:     method: 'POST',
+532:     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+533:     body: JSON.stringify({}),
+534:   });
+535:   const data: any = await res.json();
+536:   if (!res.ok || data?.ok !== true) {
+537:     throw new Error(data?.error || data?.detail || 'خطا در پاک کردن تاریخچه شیت');
+538:   }
+539:   return true;
+540: }
+541: 
+542: export async function disconnectPrivate() {
+543:   const { data: { user } } = await supabase.auth.getUser();
+544:   if (!user) return;
+545:   await supabase.from('google_sheet_connections').delete().eq('user_id', user.id);
+546: }
+547: 
+548: 
+549: const PULL_TABLES = [
+
+─── App.tsx — فرم فروش — نحوه generateInvoiceNumber (2594 تا 2820) ───
+2594:   const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+2595:   const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
+2596:   const [note, setNote] = useState('');
+2597:   const [receiverName, setReceiverName] = useState('');
+2598:   const [receiverCode, setReceiverCode] = useState('');
+2599:   const [receiverBank, setReceiverBank] = useState('');
+2600:   const [receiverAccount, setReceiverAccount] = useState('');
+2601:   const [partnersList, setPartnersList] = useState<any[]>([]);
+2602:   const [partiesList, setPartiesList] = useState<any[]>([]);
+2603:   const [banksList, setBanksList] = useState<any[]>([]);
+2604:   useEffect(() => {
+2605:     getPartners().then(setPartnersList).catch(()=>{});
+2606:     getParties().then(setPartiesList).catch(()=>{});
+2607:     getBanks().then(setBanksList).catch(()=>{});
+2608:   }, []);
+2609: 
+2610:   const onReceiverPick = async (v: string) => {
+2611:     try {
+2612:       const f = await lookupPayerUniversal(v);
+2613:       if (f) {
+2614:         setReceiverCode(f.code || '');
+2615:         if (f.bank) setReceiverBank(f.bank);
+2616:         if (f.account) setReceiverAccount(f.account);
+2617:       }
+2618:     } catch {}
+2619:   };
+2620: 
+2621:   const [items, setItems] = useState<SaleItem[]>([]);
+2622: 
+2623:   const [saving, setSaving] = useState(false);
+2624:   const [returnModalOpen, setReturnModalOpen] = useState(false);
+2625:   const [returnInvoice, setReturnInvoice] = useState<any>(null);
+2626:   const [returnRows, setReturnRows] = useState<any[]>([]);
+2627:   const [returnSaving, setReturnSaving] = useState(false);
+2628:   const [pendingConfirm, setPendingConfirm] = useState<any>(null);
+2629: 
+2630:   const [customerStatus, setCustomerStatus] = useState('');
+2631: 
+2632: 
+2633: 
+2634:   useEffect(() => { getSettings().then(setSettings).catch(() => {}); }, []);
+2635: 
+2636:   const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+2637: 
+2638:   const load = async () => { setLoading(true); try { setList(await getSalesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+2639: 
+2640:   useEffect(() => { load(); loadProds(); }, []);
+2641: 
+2642: 
+2643: 
+2644:   const onPhone = async (v: string) => {
+2645: 
+2646:     const d = v.replace(/\D/g, '').slice(0, 11);
+2647: 
+2648:     setPhone(d); setCustomerStatus('');
+2649: 
+2650:     if (d.length === 11) {
+2651: 
+2652:       setCustomerStatus('⏳');
+2653: 
+2654:       try {
+2655: 
+2656:         const f = await lookupCustomerByPhone(d);
+2657: 
+2658:         if (f) { setCustomerStatus('✅ قبلی'); if (f.customer_name && !name) setName(f.customer_name); if (f.customer_address && !address) setAddress(f.customer_address); }
+2659: 
+2660:         else setCustomerStatus('🆕 جدید');
+2661: 
+2662:       } catch { setCustomerStatus(''); }
+2663: 
+2664:     }
+2665: 
+2666:   };
+2667: 
+2668: 
+2669: 
+2670:   const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '' }]);
+2671: 
+2672:   const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
+2673: 
+2674:   const delItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+2675: 
+2676:   const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].shelf = p.shelf || ''; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
+2677: 
+2678: 
+2679: 
+2680:   const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+2681: 
+2682:   const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+2683: 
+2684: 
+2685: 
+2686:   const resetForm = () => {
+2687:     setPhone('');
+2688:     setName('');
+2689:     setAddress('');
+2690:     setShipping('');
+2691:     setPaymentAmount(0);
+2692:     setInvoiceDate(toStorageDateFull(new Date()));
+2693:     setPayDate(toStorageDateFull(new Date()));
+2694:     setNote('');
+2695:     setReceiverName('');
+2696:     setReceiverCode('');
+2697:     setReceiverBank('');
+2698:     setReceiverAccount('');
+2699:     setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '', shelf: '' }]);
+2700:     setView('form');
+2701:   };
+2702: 
+2703:   const submit = async () => {
+2704:     if (!/^09\d{9}$/.test(phone)) return alertMsg('⚠️ خطا', 'شماره معتبر نیست');
+2705:     if (!name || name.length < 2) return alertMsg('⚠️ خطا', 'نام الزامی است');
+2706:     
+2707:     const invalidItem = items.find(it => it.modelName && (!it.quantity || !it.priceUnit));
+2708:     if (invalidItem) {
+2709:       return alertMsg('⚠️ خطا', 'مدل «' + invalidItem.modelName + '» تعداد یا قیمت ندارد. لطفاً تکمیل کنید.');
+2710:     }
+2711: 
+2712:     const valid = items.filter((it) => it.modelName && it.quantity > 0);
+2713:     const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+2714:     
+2715:     setPendingConfirm({ name, phone, count: valid.length, total, paymentAmount, valid, note });
+2716:     return;
+2717: 
+2718:     if (!mode) return;
+2719:     if (mode === 'full' && !valid.length) {
+2720:       return alertMsg('⚠️ خطا', 'برای ثبت فاکتور، حداقل یک مدل با تعداد معتبر وارد کنید.');
+2721:     }
+2722: 
+2723:     let finalItems = valid;
+2724:     if (mode === 'payment') {
+2725:       finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: note }];
+2726:     }
+2727: 
+2728:     setSaving(true);
+2729:     try {
+2730:       let customerCode = '';
+2731:       const found = await lookupCustomerByPhone(phone);
+2732:       if (found?.customer_code && /^M_\d+$/.test(found.customer_code)) customerCode = found.customer_code;
+2733:       else customerCode = await generateCustomerCode();
+2734:       const inv = await generateInvoiceNumber();
+2735:       
+2736:       await createSale({ 
+2737:         invoiceNumber: inv, 
+2738:         customerCode, 
+2739:         customerName: name, 
+2740:         customerPhone: phone, 
+2741:         customerAddress: address, 
+2742:         shipping, 
+2743:         items: finalItems, 
+2744:         paymentAmount, 
+2745:         invoiceDate, 
+2746:         payDate, 
+2747:         note, 
+2748:         receiverName, 
+2749:         receiverCode, 
+2750:         receiverBank, 
+2751:         receiverAccount 
+2752:       });
+2753: 
+2754:       await new Promise(r => setTimeout(r, 100));
+2755: 
+2756:       const rows = await getInvoiceDetail(inv, 'sales');
+2757:       if (rows.length > 0) {
+2758:         const r = rows[0];
+2759:         const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
+2760:         const tot = its.reduce((a: number, it: any) => a + it.total, 0);
+2761:         const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+2762:         const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
+2763:         setInvoice({
+2764:           customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+2765:           current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+2766:           previous: prev,
+2767:           totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
+2768:           timeString: displayDate(r.date_reg),
+2769:         });
+2770:         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
+2771:         setPaymentAmount(0); setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
+2772:         setNote(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount('');
+2773:         setView('invoice');
+2774:       } else {
+2775:         showToast('✅ فروش ثبت شد');
+2776:         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+2777:       }
+2778:     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+2779:     finally { setSaving(false); }
+2780:   }
+2781:   const confirmSubmit = async (mode: string) => {
+2782:     if (!pendingConfirm) return;
+2783:     const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2 } = pendingConfirm;
+2784:     setPendingConfirm(null);
+2785:     setSaving(true);
+2786:     try {
+2787:       let customerCode = '';
+2788:       const found = await lookupCustomerByPhone(p);
+2789:       if (found?.customer_code && /^M_\d+$/.test(found.customer_code)) customerCode = found.customer_code;
+2790:       else customerCode = await generateCustomerCode();
+2791:       const inv = await generateInvoiceNumber();
+2792: 
+2793:       let finalItems = valid;
+2794:       if (mode === 'payment') {
+2795:         finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: n2, shelf: '' }];
+2796:       }
+2797: 
+2798:       await createSale({
+2799:         invoiceNumber: inv, customerCode, customerName: n, customerPhone: p,
+2800:         customerAddress: address, shipping, items: finalItems,
+2801:         paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+2802:         receiverName, receiverCode, receiverBank, receiverAccount
+2803:       });
+2804: 
+2805:       // ═══ اگر دریافت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+2806:       try {
+2807:         const partner = await findPartnerByNameOrCode(receiverName || receiverCode);
+2808:         if (partner && payAmt > 0) {
+2809:           const cur = (typeof getCurrencySync === 'function' ? ((getCurrencySync() as any).code || 'AFN') : 'AFN');
+2810:           await createPartnerAutoTx({
+2811:             partner_code: partner.code,
+2812:             partner_name: partner.name,
+2813:             type: 'deposit',
+2814:             amount: payAmt,
+2815:             currency: cur,
+2816:             account_type: 'current',
+2817:             counterpart_type: 'customer',
+2818:             counterpart_code: customerCode,
+2819:             source_type: 'sales',
+2820:             source_id: inv,
+
+─── App.tsx — فرم خرید — نحوه genPurchaseInvoiceNumber (4000 تا 4160) ───
+4000: 
+4001:   const [payAmt, setPayAmt] = useState('');
+4002: 
+4003:   const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
+4004:   const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+4005: 
+4006:   const [bankAcc, setBankAcc] = useState('');
+4007: 
+4008:   const [payerName, setPayerName] = useState('');
+4009: 
+4010:   const [payerCode, setPayerCode] = useState('');
+4011: 
+4012:   const [receiverAcc, setReceiverAcc] = useState('');
+4013: 
+4014:   const [note, setNote] = useState('');
+4015: 
+4016:   const [saving, setSaving] = useState(false);
+4017: 
+4018:   const [hiddenPurchases, setHiddenPurchases] = useState<string[]>([]);
+4019: 
+4020: 
+4021: 
+4022:   useEffect(() => { getSettings().then(setSettings).catch(() => {}); }, []);
+4023: 
+4024:   const load = async () => { setLoading(true); try { setList(await getPurchasesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+4025: 
+4026:   const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+4027: 
+4028:   const [partySuppliers, setPartySuppliers] = useState<any[]>([]);
+4029:   const loadParties = async () => { try { setPartySuppliers(await getParties('supplier')); } catch {} };
+4030:   useEffect(() => { loadParties(); }, []);
+4031: 
+4032:   useEffect(() => { load(); loadProds(); }, []);
+4033: 
+4034: 
+4035: 
+4036:   const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }]);
+4037: 
+4038:   const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
+4039: 
+4040:   const delItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+4041: 
+4042:   const setModel = (i: number, v: string) => {
+4043: 
+4044:     const n = [...items]; n[i].modelName = v;
+4045: 
+4046:     const p = prods.find((x) => x.name === v);
+4047: 
+4048:     if (p) {
+4049: 
+4050:       n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0;
+4051: 
+4052:       if (!sName && p.supplier_name) setSName(p.supplier_name);
+4053: 
+4054:       if (!sPhone && p.supplier_phone) setSPhone(p.supplier_phone);
+4055: 
+4056:       if (!sCode && p.supplier_code) setSCode(p.supplier_code);
+4057: 
+4058:     }
+4059: 
+4060:     setItems(n);
+4061: 
+4062:   };
+4063: 
+4064:   const onSupplierPick = async (v: string) => {
+4065: 
+4066:     setSName(v);
+4067: 
+4068:     try { const party = await lookupPartyByName(v); if (party) { if (party.code && !sCode) setSCode(party.code); if (party.phone && !sPhone) setSPhone(party.phone); } else { const f = await lookupSupplierByName(v); if (f) { if (f.supplier_code && !sCode) setSCode(f.supplier_code); if (f.supplier_phone && !sPhone) setSPhone(f.supplier_phone); } } } catch {}
+4069: 
+4070:   };
+4071: 
+4072:     const remove = async (inv: string) => {
+4073: 
+4074:     const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
+4075: 
+4076:     if (!ok) return;
+4077: 
+4078:     setHiddenPurchases([...hiddenPurchases, inv]);
+4079: 
+4080:     showToast('✅ از لیست پنهان شد');
+4081: 
+4082:   };
+4083: 
+4084: 
+4085: 
+4086:   const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+4087: 
+4088:   const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+4089: 
+4090:   const paidAmt = parseNum(payAmt);
+4091: 
+4092:   const remaining = grandTotal - paidAmt;
+4093: 
+4094: 
+4095: 
+4096:     const submit = async () => {
+4097:     if (!sName || sName.length < 2) return alertMsg('⚠️ خطا', 'نام تأمین‌کننده الزامی است');
+4098:     if (!manualInv) return alertMsg('⚠️ خطا', 'شماره فاکتور دستی الزامی است');
+4099:     const valid = items.filter((it) => it.modelName && it.quantity > 0);
+4100:     const amt = parseNum(payAmt);
+4101:     if (!valid.length && amt <= 0) return alertMsg('⚠️ خطا', 'حداقل یک مدل یا مبلغ پرداخت وارد کن');
+4102:     for (const it of items) {
+4103:       if (it.modelName && (!it.quantity || !it.priceUnit)) {
+4104:         return alertMsg('⚠️ خطا', 'مدل «' + it.modelName + '» تعداد یا قیمت ندارد.');
+4105:       }
+4106:     }
+4107:     const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+4108:     setPendingConfirm({ name: sName, inv: manualInv, count: valid.length, total, payAmt: amt });
+4109:   };
+4110: 
+4111:   const confirmSubmit = async (mode: string) => {
+4112:     if (!pendingConfirm) return;
+4113:     setPendingConfirm(null);
+4114:     const valid = items.filter((it) => it.modelName && it.quantity > 0);
+4115:     const amt = parseNum(payAmt);
+4116:     setSaving(true);
+4117:     try {
+4118:       let finalItems = valid;
+4119:       if (mode === 'payment') {
+4120:         finalItems = [{ modelCode: '', modelName: 'پرداخت به تأمین‌کننده', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: note, shelf: '' }];
+4121:       }
+4122:       const inv = await createPurchase({ invoiceNumber: '', manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: finalItems, paymentAmount: amt, paymentDate: payDate, invoiceDate: invoiceDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
+4123: 
+4124:       // ═══ اگر پرداخت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+4125:       try {
+4126:         const partner = await findPartnerByNameOrCode(payerName || payerCode);
+4127:         if (partner && amt > 0) {
+4128:           const cur = (typeof getCurrencySync === 'function' ? ((getCurrencySync() as any).code || 'AFN') : 'AFN');
+4129:           await createPartnerAutoTx({
+4130:             partner_code: partner.code,
+4131:             partner_name: partner.name,
+4132:             type: 'withdraw',
+4133:             amount: amt,
+4134:             currency: cur,
+4135:             account_type: 'current',
+4136:             counterpart_type: 'supplier',
+4137:             counterpart_code: sCode || sPhone || '',
+4138:             source_type: 'purchase',
+4139:             source_id: inv,
+4140:             transaction_date: payDate || invoiceDate || new Date().toISOString(),
+4141:             note: 'خرید از ' + sName + ' - فاکتور ' + inv,
+4142:             bank_account_local_id: '',
+4143:           });
+4144:           console.log('[partner auto] purchase withdraw ثبت شد:', partner.name, amt);
+4145:         }
+4146:       } catch (e) { console.log('[partner auto purchase]', e); }
+4147: 
+4148:       const isPending = typeof inv === 'string' && inv.startsWith('P-') && !/^\d{6}-/.test(inv);
+4149:       alertMsg('✅ موفق', 'فاکتور خرید ثبت شد' + (isPending ? '\n(در انتظار آپلود)' : ''));
+4150:       setSName(''); setSCode(''); setSPhone(''); setManualInv(''); setItems([]);
+4151:       setPayAmt(''); setBankAcc(''); setPayerName(''); setPayerCode(''); setReceiverAcc(''); setNote('');
+4152:       setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
+4153:       setView('list'); load();
+4154:     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+4155:     finally { setSaving(false); }
+4156:   };
+4157: 
+4158: 
+4159: 
+4160:   if (view === 'form') return (
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

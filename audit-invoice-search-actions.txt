@@ -1,0 +1,13 @@
+
+══════ App.tsx ══════
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, update
+6759: try { for (const inv of Array.from(selected)) await deleteSale(inv); showToast('✅ حذف شد'); setSelected(new Set()); load(); }
+7135: const load = async () => { setLoading(true); try { setList(await searchAllInvoices('')); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+7339: await deleteSale(inv);
+7341: await deletePurchase(inv);
+10676: searchInvoice: { color: '#1e3a5f', fontSize: 15, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+❌ ManagementScreen.tsx نیست
+❌ SalesScreen.tsx نیست
+❌ PurchaseScreen.tsx نیست
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

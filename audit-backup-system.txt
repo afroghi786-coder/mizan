@@ -1,0 +1,233 @@
+══════ lib.backup.ts — سیستم بکاپ موجود ══════
+
+─── lib.backup.ts — exportBackup (خط 126) ───
+126: export async function exportBackup(): Promise<{ ok: boolean; message: string }> {
+127:   try {
+128:     const dir = await ensureDir();
+129:     const b = await createBackup();
+130:     if (dir && FS.writeAsStringAsync) {
+131:       const stamp = new Date().toISOString().slice(0, 10);
+132:       const filename = dir + 'mizan-backup-' + stamp + '.json';
+133:       await FS.writeAsStringAsync(filename, JSON.stringify(b, null, 2), { encoding: 'utf8' });
+134:       if (await Sharing.isAvailableAsync()) {
+135:         await Sharing.shareAsync(filename, {
+136:           mimeType: 'application/json',
+137:           dialogTitle: 'ذخیره بکاپ میزان',
+138:           UTI: 'public.json',
+139:         });
+140:         return { ok: true, message: 'بکاپ ساخته و ارسال شد' };
+141:       }
+142:       return { ok: true, message: 'بکاپ ساخته شد' };
+143:     }
+144:     return { ok: false, message: 'FileSystem در دسترس نیست' };
+145:   } catch (e: any) {
+146:     return { ok: false, message: e?.message || String(e) };
+147:   }
+148: }
+149: 
+150: export async function importBackup(): Promise<{ ok: boolean; message: string }> {
+151:   try {
+152:     const res: any = await DocumentPicker.getDocumentAsync({
+153:       type: 'application/json',
+154:       copyToCacheDirectory: true,
+155:     });
+156:     if (res?.canceled) return { ok: false, message: 'لغو شد' };
+157:     if (res?.type === 'cancel') return { ok: false, message: 'لغو شد' };
+158:     let uri: string | undefined;
+159:     if (res?.assets && res.assets[0]) uri = res.assets[0].uri;
+160:     else if (res?.uri) uri = res.uri;
+161:     if (!uri) return { ok: false, message: 'فایلی انتخاب نشد' };
+162:     if (!FS?.readAsStringAsync) return { ok: false, message: 'FileSystem خواندن ندارد' };
+163:     const content = await FS.readAsStringAsync(uri, { encoding: 'utf8' });
+164:     const data = JSON.parse(content) as BackupPayload;
+165:     if (!data || data.app !== 'mizan' || typeof data.keys !== 'object') {
+166:       return { ok: false, message: 'فایل بکاپ معتبر نیست' };
+167:     }
+168:     let count = 0;
+169:     for (const [k, v] of Object.entries(data.keys)) {
+170:       if (!k.startsWith('@mizan_')) continue;
+171:       await AsyncStorage.setItem(k, v);
+172:       count++;
+173:     }
+174:     return { ok: true, message: count + ' کلید بازیابی شد. برای اعمال، اپ را ببندید و باز کنید.' };
+175:   } catch (e: any) {
+176:     return { ok: false, message: e?.message || String(e) };
+177:   }
+178: }
+179: 
+
+─── lib.backup.ts — importBackup (خط 150) ───
+150: export async function importBackup(): Promise<{ ok: boolean; message: string }> {
+151:   try {
+152:     const res: any = await DocumentPicker.getDocumentAsync({
+153:       type: 'application/json',
+154:       copyToCacheDirectory: true,
+155:     });
+156:     if (res?.canceled) return { ok: false, message: 'لغو شد' };
+157:     if (res?.type === 'cancel') return { ok: false, message: 'لغو شد' };
+158:     let uri: string | undefined;
+159:     if (res?.assets && res.assets[0]) uri = res.assets[0].uri;
+160:     else if (res?.uri) uri = res.uri;
+161:     if (!uri) return { ok: false, message: 'فایلی انتخاب نشد' };
+162:     if (!FS?.readAsStringAsync) return { ok: false, message: 'FileSystem خواندن ندارد' };
+163:     const content = await FS.readAsStringAsync(uri, { encoding: 'utf8' });
+164:     const data = JSON.parse(content) as BackupPayload;
+165:     if (!data || data.app !== 'mizan' || typeof data.keys !== 'object') {
+166:       return { ok: false, message: 'فایل بکاپ معتبر نیست' };
+167:     }
+168:     let count = 0;
+169:     for (const [k, v] of Object.entries(data.keys)) {
+170:       if (!k.startsWith('@mizan_')) continue;
+171:       await AsyncStorage.setItem(k, v);
+172:       count++;
+173:     }
+174:     return { ok: true, message: count + ' کلید بازیابی شد. برای اعمال، اپ را ببندید و باز کنید.' };
+175:   } catch (e: any) {
+176:     return { ok: false, message: e?.message || String(e) };
+177:   }
+178: }
+179: 
+
+─── lib.backup.ts — autoBackup (خط 99) ───
+99: export async function autoBackup(): Promise<void> {
+100:   try {
+101:     const dir = await ensureDir();
+102:     if (!dir) return;
+103:     const today = new Date().toISOString().slice(0, 10);
+104:     const list = await listAutoBackups();
+105:     if (list.length > 0) {
+106:       const lastMatch = list[0].name.match(/auto-(\d{4}-\d{2}-\d{2})/);
+107:       if (lastMatch && lastMatch[1] === today) return;
+108:     }
+109:     const b = await createBackup();
+110:     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+111:     const filename = dir + 'auto-' + stamp + '.json';
+112:     await FS.writeAsStringAsync(filename, JSON.stringify(b), { encoding: 'utf8' });
+113:     const all = await listAutoBackups();
+114:     if (all.length > MAX_AUTO_BACKUPS) {
+115:       for (const f of all.slice(MAX_AUTO_BACKUPS)) {
+116:         try {
+117:           if (FS.deleteAsync) await FS.deleteAsync(f.uri);
+118:         } catch {}
+119:       }
+120:     }
+121:   } catch (e) {
+122:     console.log('[autoBackup] err:', e);
+123:   }
+124: }
+125: 
+126: export async function exportBackup(): Promise<{ ok: boolean; message: string }> {
+127:   try {
+128:     const dir = await ensureDir();
+129:     const b = await createBackup();
+130:     if (dir && FS.writeAsStringAsync) {
+131:       const stamp = new Date().toISOString().slice(0, 10);
+132:       const filename = dir + 'mizan-backup-' + stamp + '.json';
+133:       await FS.writeAsStringAsync(filename, JSON.stringify(b, null, 2), { encoding: 'utf8' });
+134:       if (await Sharing.isAvailableAsync()) {
+135:         await Sharing.shareAsync(filename, {
+136:           mimeType: 'application/json',
+137:           dialogTitle: 'ذخیره بکاپ میزان',
+138:           UTI: 'public.json',
+139:         });
+140:         return { ok: true, message: 'بکاپ ساخته و ارسال شد' };
+141:       }
+142:       return { ok: true, message: 'بکاپ ساخته شد' };
+143:     }
+144:     return { ok: false, message: 'FileSystem در دسترس نیست' };
+145:   } catch (e: any) {
+146:     return { ok: false, message: e?.message || String(e) };
+147:   }
+148: }
+149: 
+150: export async function importBackup(): Promise<{ ok: boolean; message: string }> {
+151:   try {
+152:     const res: any = await DocumentPicker.getDocumentAsync({
+153:       type: 'application/json',
+154:       copyToCacheDirectory: true,
+155:     });
+156:     if (res?.canceled) return { ok: false, message: 'لغو شد' };
+157:     if (res?.type === 'cancel') return { ok: false, message: 'لغو شد' };
+158:     let uri: string | undefined;
+
+─── lib.backup.ts — getLastAutoBackup (خط 91) ───
+91: export async function getLastAutoBackup(): Promise<string | null> {
+92:   const list = await listAutoBackups();
+93:   if (!list.length) return null;
+94:   const name = list[0].name;
+95:   const m = name.match(/auto-(\d{4}-\d{2}-\d{2})/);
+96:   return m ? m[1] : name;
+97: }
+98: 
+99: export async function autoBackup(): Promise<void> {
+100:   try {
+101:     const dir = await ensureDir();
+102:     if (!dir) return;
+103:     const today = new Date().toISOString().slice(0, 10);
+104:     const list = await listAutoBackups();
+105:     if (list.length > 0) {
+106:       const lastMatch = list[0].name.match(/auto-(\d{4}-\d{2}-\d{2})/);
+107:       if (lastMatch && lastMatch[1] === today) return;
+108:     }
+109:     const b = await createBackup();
+110:     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+111:     const filename = dir + 'auto-' + stamp + '.json';
+112:     await FS.writeAsStringAsync(filename, JSON.stringify(b), { encoding: 'utf8' });
+113:     const all = await listAutoBackups();
+114:     if (all.length > MAX_AUTO_BACKUPS) {
+115:       for (const f of all.slice(MAX_AUTO_BACKUPS)) {
+116:         try {
+117:           if (FS.deleteAsync) await FS.deleteAsync(f.uri);
+118:         } catch {}
+119:       }
+120:     }
+121:   } catch (e) {
+122:     console.log('[autoBackup] err:', e);
+123:   }
+124: }
+125: 
+126: export async function exportBackup(): Promise<{ ok: boolean; message: string }> {
+127:   try {
+128:     const dir = await ensureDir();
+129:     const b = await createBackup();
+130:     if (dir && FS.writeAsStringAsync) {
+131:       const stamp = new Date().toISOString().slice(0, 10);
+132:       const filename = dir + 'mizan-backup-' + stamp + '.json';
+133:       await FS.writeAsStringAsync(filename, JSON.stringify(b, null, 2), { encoding: 'utf8' });
+134:       if (await Sharing.isAvailableAsync()) {
+135:         await Sharing.shareAsync(filename, {
+136:           mimeType: 'application/json',
+137:           dialogTitle: 'ذخیره بکاپ میزان',
+138:           UTI: 'public.json',
+139:         });
+140:         return { ok: true, message: 'بکاپ ساخته و ارسال شد' };
+141:       }
+142:       return { ok: true, message: 'بکاپ ساخته شد' };
+143:     }
+144:     return { ok: false, message: 'FileSystem در دسترس نیست' };
+145:   } catch (e: any) {
+146:     return { ok: false, message: e?.message || String(e) };
+147:   }
+148: }
+149: 
+150: export async function importBackup(): Promise<{ ok: boolean; message: string }> {
+
+══════ آیا lib.backup.ts هست؟ ══════
+✅ وجود دارد — حجم: 6083 بایت
+
+══════ جستجوی autoBackup و زمان‌بندی در App.tsx ══════
+85: import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+8104: setAutoDelEnabled(!!settings.auto_delete_enabled);
+8106: setAutoDelHours(String(settings.auto_delete_hours || 1));
+8108: const sd = settings.sched_daily || {};
+8118: const sw = settings.sched_weekly || {};
+8140: const last = await getLastAutoBackup();
+8148: await autoBackup();
+8150: const last2 = await getLastAutoBackup();
+8172: auto_delete_enabled: autoDelEnabled,
+8174: auto_delete_hours: parseInt(autoDelHours, 10) || 1,
+8176: sched_daily: { enabled: schedDailyEnabled, hour: parseInt(schedDailyHour, 10), days: schedDailyDays, type: schedDailyType },
+8178: sched_weekly: { enabled: schedWeeklyEnabled, day: parseInt(schedWeeklyDay, 10), hour: parseInt(schedWeeklyHour, 10), type: schedWeeklyType },
+
+══════ همه کلیدهای getLocal/setLocal ══════
+all_purchases_for_lookup, all_sales_for_lookup, all_sales_full, attendance, banks, code_, cust_, employee_loans, employees, expenses, fx_customers, fx_partners, fx_trades, inventory, parties, partners, pba_, products, ptx_, purchases, purchases_grouped, salary_payments, sales, sales_grouped, settings, shippings, stats_, stock_adjustments, sup_, unpaid_invoices

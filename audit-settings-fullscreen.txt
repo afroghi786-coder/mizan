@@ -1,0 +1,86 @@
+=== تب‌های اصلی App ===
+1766: 
+1767:           <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 12 }}>
+1768: 
+1769:             <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8 }}>
+1770: 
+1771:               <Text style={{ fontSize: 24, color: '#f4d47a' }}>⚖️</Text>
+1772: 
+1773:               <Text style={s.hTitle}>{t('میزان')}</Text>
+1774: 
+1775:             </View>
+1776: 
+1777:             <Text style={s.hSub}>{t('حساب‌ها دقیق، معاملات امن، ذهن آسوده')} [v3]</Text>
+1778: 
+1779:           </View>
+1780: 
+1781:         </View>
+1782: 
+1783:       </View>
+1784: 
+1785:       {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && (
+1786: 
+1787:         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
+1788: 
+1789:         {tabs.map((t) => (
+1790: 
+1791:                    <TouchableOpacity key={t.key} accessibilityLabel={String(t.label)} accessibilityRole="button" onPress={() => requestTab(t.key)} activeOpacity={0.7} style={[s.tab, tab === t.key && { backgroundColor: C.isSimple ? '#64748b' : t.color, borderColor: '#d4af37' }]}>
+1792: 
+1793:             <Text style={s.tabIcon}>{t.icon}</Text>
+1794: 
+1795:             <Text style={[s.tabLbl, { color: C.textMut }, tab === t.key && s.tabLblActive]}>{t.label}</Text>
+1796: 
+1797:             {isLocked(t.key) && <Text style={s.lock}>🔒</Text>}
+1798: 
+1799:           </TouchableOpacity>
+1800: 
+1801:         ))}
+1802: 
+1803:       
+1804: 
+1805:             <TouchableOpacity 
+1806: 
+1807:               key="plus_tab" 
+1808: 
+1809:               accessibilityLabel="ایجاد سریع" 
+1810: 
+1811:               accessibilityRole="button" 
+1812: 
+1813:               onPress={() => setPlus(true)} 
+1814: 
+1815:               activeOpacity={0.7} 
+1816: 
+1817:               style={s.tab}
+1818: 
+1819:             >
+1820: 
+1821:               <Text style={s.tabIcon}>➕</Text>
+1822: 
+1823:               <Text style={[s.tabLbl, { color: '#fff' }]}>ایجاد</Text>
+1824: 
+1825:             </TouchableOpacity>
+1826: 
+1827:           </ScrollView>
+1828: 
+1829:       )}
+1830: 
+
+=== SettingsSection invocation ===
+1839:       {tab === 'print' && <PrintScreen showToast={showToast} />}
+1840: 
+1841:       {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />}
+1842: 
+1843:       {tab === 'settings' && (
+1844: 
+1845:         <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ paddingBottom: 120 }}>
+1846: 
+1847:           <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />
+1848: 
+1849:         </ScrollView>
+1850: 
+1851:       )}
+1852: 
+1853:       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
+1854: 
+1855:       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
+1856: 

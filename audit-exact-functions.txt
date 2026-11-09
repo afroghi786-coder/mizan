@@ -1,0 +1,529 @@
+
+─── lib.sheets.ts — pullBridgeTables و syncBridgeTables (خط 360 تا 460) ───
+360: export async function pullBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+361:   const cfg = await getBridgeConfig();
+362:   if (!cfg.url || !cfg.key) throw new Error('واسط امن تنظیم نشده است');
+363:   const data = await bridgePull();
+364:   const tables = data?.tables || {};
+365:   const total = PULL_TABLES.length;
+366:   let done = 0;
+367:   let added = 0, updated = 0, removed = 0;
+368: 
+369:   for (const tab of PULL_TABLES) {
+370:     const rows = tables[tab] || [];
+371:     let r = { added: 0, updated: 0, removed: 0 };
+372:     if (tab === '_deleted') r = await mergeTombstones(rows);
+373:     else if (tab === '_audit') r = await mergeAuditEvents(rows);
+374:     else if (tab === 'sales') r = await mergeGroupedInvoices('@mizan_local_sales_grouped', rows);
+375:     else if (tab === 'purchases') r = await mergeGroupedInvoices('@mizan_local_purchases_grouped', rows);
+376:     else if (tab === 'partner_transactions') r = await mergePartnerPrefixed('@mizan_local_ptx_', rows);
+377:     else if (tab === 'partner_bank_accounts') r = await mergePartnerPrefixed('@mizan_local_pba_', rows);
+378:     else if (PULL_LOCAL_KEYS[tab]) r = await mergeList(PULL_LOCAL_KEYS[tab], rows);
+379: 
+380:     added += r.added; updated += r.updated; removed += r.removed;
+381:     done++;
+382:     if (onProgress) onProgress(done, total, tab);
+383:   }
+384: 
+385:   return { ok: true, added, updated, removed, totalTables: total };
+386: }
+387: 
+388: export async function syncBridgeTables(onProgress?: (done: number, total: number, tab: string) => void) {
+389:   const cfg = await getBridgeConfig();
+390:   if (!cfg.url || !cfg.key) throw new Error('واسط امن تنظیم نشده است');
+391: 
+392:   const rawDirty = await AsyncStorage.getItem('@mizan_dirty_tables');
+393:   const hasDirtyKey = rawDirty !== null;
+394:   let dirty: string[] = [];
+395:   if (hasDirtyKey) { try { dirty = JSON.parse(rawDirty as string); } catch { dirty = []; } }
+396:   if (!Array.isArray(dirty)) dirty = [];
+397: 
+398:   const always = ['_deleted', '_audit'];
+399:   let tablesToSync: { tab: string; keys: string[] }[] = [];
+400:   if (!hasDirtyKey) {
+401:     tablesToSync = TAB_TASKS;
+402:   } else {
+403:     const set = new Set([...dirty.map(String), ...always]);
+404:     tablesToSync = TAB_TASKS.filter(t => set.has(t.tab));
+405:   }
+406: 
+407:   if (!tablesToSync.length) return [];
+408: 
+409:   const allKeys = await getAllMizanKeys();
+410:   const total = tablesToSync.length;
+411:   let done = 0;
+412:   const results: any[] = [];
+413: 
+414:   for (const t of tablesToSync) {
+415:     const rows: any[] = [];
+416:     for (const key of t.keys) {
+417:       if (key.endsWith('_')) {
+418:         for (const k of allKeys) {
+419:           if (k.startsWith(key)) {
+420:             const v = await AsyncStorage.getItem(k);
+421:             if (v) {
+422:               try {
+423:                 const arr = JSON.parse(v);
+424:                 if (Array.isArray(arr)) rows.push(...arr);
+425:               } catch {}
+426:             }
+427:           }
+428:         }
+429:       } else {
+430:         const v = await AsyncStorage.getItem(key);
+431:         if (v) {
+432:           try {
+433:             const arr = JSON.parse(v);
+434:             if (Array.isArray(arr)) rows.push(...arr);
+435:             else if (arr && typeof arr === 'object') rows.push(arr);
+436:           } catch {}
+437:         }
+438:       }
+439:     }
+440:     try {
+441:       const useSave = (t.tab === '_deleted' || t.tab === '_audit');
+442:       if (!hasDirtyKey || useSave) {
+443:         await bridgeSaveTable(t.tab, rows);
+444:       } else {
+445:         await bridgeUpsertTable(t.tab, rows);
+446:       }
+447:       results.push({ tab: t.tab, ok: true, rows: rows.length });
+448:     } catch (e: any) {
+449:       results.push({ tab: t.tab, ok: false, error: e?.message || String(e) });
+450:     }
+451:     done++;
+452:     if (onProgress) onProgress(done, total, t.tab);
+453:   }
+454: 
+455:   const successful = results.filter(r => r.ok).map(r => r.tab);
+456:   if (!hasDirtyKey) {
+457:     const failed = tablesToSync.filter(t => !successful.includes(t.tab)).map(t => t.tab);
+458:     await setDirtyTables(failed);
+459:   } else if (successful.length) {
+460:     await removeDirtyTables(successful);
+
+─── lib.sheets.ts — keyOfRow (خط 580 تا 620) ───
+580: };
+581: 
+582: function keyOfRow(r: any): string {
+583:   return String(r?.local_id || r?.id || r?.code || r?.name || '');
+584: }
+585: 
+586: function tsOf(v: any): number {
+587:   const t = Date.parse(String(v || ''));
+588:   return isNaN(t) ? 0 : t;
+589: }
+590: 
+591: async function getTombstones(): Promise<Record<string, string>> {
+592:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+593:   let arr: any[] = [];
+594:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+595:   const map: Record<string, string> = {};
+596:   if (Array.isArray(arr)) {
+597:     for (const t of arr) {
+598:       if (t && t.key) map[String(t.key)] = String(t.deleted_at || t.deletedAt || '');
+599:     }
+600:   }
+601:   return map;
+602: }
+603: 
+604: async function saveTombstones(map: Record<string, string>) {
+605:   const arr = Object.keys(map).map(k => ({ key: k, deleted_at: map[k] }));
+606:   await AsyncStorage.setItem('@mizan_tombstones', JSON.stringify(arr));
+607: }
+608: 
+609: async function getTombstonesForTable(table: string): Promise<Record<string, string>> {
+610:   const raw = await AsyncStorage.getItem('@mizan_tombstones');
+611:   let arr: any[] = [];
+612:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+613:   const map: Record<string, string> = {};
+614:   if (Array.isArray(arr)) {
+615:     for (const t of arr) {
+616:       if (t && t.table === table && t.key) {
+617:         map[String(t.key)] = String(t.deleted_at || t.deletedAt || '');
+618:       }
+619:     }
+620:   }
+
+─── lib.sheets.ts — mergeGroupedInvoices / mergeTable اگر اینجاست (خط 760 تا 880) ───
+760:     if (!Array.isArray(arr)) arr = [];
+761:     const filtered = arr.filter((x: any) => String(x.local_id || x.id || '') !== String(key));
+762:     if (mode === 'replace' && value) filtered.push(value);
+763:     await AsyncStorage.setItem(realKey, JSON.stringify(filtered));
+764:     return;
+765:   }
+766: 
+767:   if (table === 'partner_bank_accounts') {
+768:     const pc = String(value?.partner_code || '').trim();
+769:     if (!pc) return;
+770:     const realKey = localKey + pc;
+771:     const raw = await AsyncStorage.getItem(realKey);
+772:     let arr: any[] = [];
+773:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+774:     if (!Array.isArray(arr)) arr = [];
+775:     const filtered = arr.filter((x: any) => String(x.local_id || x.id || '') !== String(key));
+776:     if (mode === 'replace' && value) filtered.push(value);
+777:     await AsyncStorage.setItem(realKey, JSON.stringify(filtered));
+778:     return;
+779:   }
+780: 
+781:   if (table === 'settings') {
+782:     if (mode === 'replace' && value) await AsyncStorage.setItem(localKey, JSON.stringify(value));
+783:     return;
+784:   }
+785: 
+786:   const raw = await AsyncStorage.getItem(localKey);
+787:   let arr: any[] = [];
+788:   try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+789:   if (!Array.isArray(arr)) arr = [];
+790:   const filtered = arr.filter((x: any) => String(x.local_id || x.id || x.code || x.invoice || x.invoice_number || '') !== String(key));
+791:   if (mode === 'replace' && value) filtered.push(value);
+792:   await AsyncStorage.setItem(localKey, JSON.stringify(filtered));
+793: }
+794: 
+795: async function _markConflictResolved(index: number) {
+796:   try {
+797:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+798:     let arr: any[] = [];
+799:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+800:     if (!Array.isArray(arr)) arr = [];
+801:     if (index >= 0 && index < arr.length) {
+802:       arr[index] = { ...arr[index], resolved: true, resolved_at: new Date().toISOString() };
+803:     }
+804:     await AsyncStorage.setItem(CONFLICTS_KEY, JSON.stringify(arr));
+805:   } catch {}
+806: }
+807: 
+808: export async function applyConflictSheet(index: number): Promise<boolean> {
+809:   try {
+810:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+811:     let arr: any[] = [];
+812:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+813:     if (!Array.isArray(arr)) arr = [];
+814:     const c = arr[index];
+815:     if (!c || !c.table || !c.key || !c.sheet) return false;
+816: 
+817:     await _writeLocalRow(c.table, c.key, c.sheet, 'replace');
+818:     await _removeQueueFor(c.table, c.key);
+819:     await _markConflictResolved(index);
+820:     return true;
+821:   } catch { return false; }
+822: }
+823: 
+824: export async function keepLocalConflict(index: number): Promise<boolean> {
+825:   try {
+826:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+827:     let arr: any[] = [];
+828:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+829:     if (!Array.isArray(arr)) arr = [];
+830:     const c = arr[index];
+831:     if (!c) return false;
+832:     await _markConflictResolved(index);
+833:     return true;
+834:   } catch { return false; }
+835: }
+836: 
+837: export async function getConflicts(): Promise<any[]> {
+838:   try {
+839:     const raw = await AsyncStorage.getItem(CONFLICTS_KEY);
+840:     const arr = raw ? JSON.parse(raw) : [];
+841:     return Array.isArray(arr) ? arr : [];
+842:   } catch { return []; }
+843: }
+844: 
+845: export async function clearConflicts(): Promise<void> {
+846:   try { await AsyncStorage.setItem(CONFLICTS_KEY, '[]'); } catch {}
+847: }
+848: 
+849: async function mergeList(localKey: string, sheetRows: any[]) {
+850:   const table = localKey.replace('@mizan_local_', '');
+851: 
+852:   if (localKey === '@mizan_local_settings') {
+853:     const rawS = await AsyncStorage.getItem(localKey);
+854:     let existing: any = null;
+855:     try { existing = rawS ? JSON.parse(rawS) : null; } catch { existing = null; }
+856:     if (existing && typeof existing === 'object' && !Array.isArray(existing) && Object.keys(existing).length > 0) {
+857:       return { added: 0, updated: 0, removed: 0 };
+858:     }
+859:     const first = (sheetRows || [])[0];
+860:     if (!first) return { added: 0, updated: 0, removed: 0 };
+861:     await AsyncStorage.setItem(localKey, JSON.stringify(first));
+862:     return { added: 1, updated: 0, removed: 0 };
+863:   }
+864: 
+865:   const raw = await AsyncStorage.getItem(localKey);
+866:   let localArr: any[] = [];
+867:   try { localArr = raw ? JSON.parse(raw) : []; } catch { localArr = []; }
+868:   if (!Array.isArray(localArr)) localArr = [];
+869: 
+870:   const localMap = new Map<string, any>();
+871:   for (const r of localArr) {
+872:     const k = keyOfRow(r);
+873:     if (k) localMap.set(k, r);
+874:   }
+875: 
+876:   const tombstones = await getTombstonesForTable(table);
+877:   const pendingByTable = await getPendingKeysByTable();
+878:   const pending = pendingByTable[table] || new Set<string>();
+879:   let added = 0, updated = 0, removed = 0;
+880: 
+
+─── lib.offline.ts — generateInvoiceNumber (خط 987 تا 1045) ───
+987: export async function generateInvoiceNumber(): Promise<string> {
+988:   // BUSINESS_LOCAL_AND_SHEET_ONLY — شماره فاکتور فقط محلی
+989:   try {
+990:     const d = new Date();
+991:     const ds = String(d.getFullYear()).slice(-2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+992:     const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+993:     const rows = (await getLocal<any[]>('sales')) || [];
+994:     const q = await getQueue();
+995:     const allInvs = new Set<string>();
+996:     grouped.forEach((g: any) => { if (g.invoice) allInvs.add(String(g.invoice)); });
+997:     rows.forEach((r: any) => { if (r.invoice_number) allInvs.add(String(r.invoice_number)); });
+998:     q.forEach((item: any) => { if (item.op === 'createSale' && item.payload?.invoiceNumber) allInvs.add(String(item.payload.invoiceNumber)); });
+999:     let maxN = 1000;
+1000:     for (const inv of allInvs) {
+1001:       const m = String(inv).match(/^(\d{6})-(\d+)$/);
+1002:       if (m && m[1] === ds) {
+1003:         const n = parseInt(m[2], 10);
+1004:         if (n > maxN) maxN = n;
+1005:       }
+1006:     }
+1007:     return ds + '-' + String(maxN + 1).padStart(4, '0');
+1008:   } catch {
+1009:     const d = new Date();
+1010:     return String(d.getFullYear()).slice(-2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-1001';
+1011:   }
+1012: }
+1013: 
+1014: export async function generateCustomerCode(): Promise<string> {
+1015:   if (MODE === 'online') {
+1016:     try { return await lib.generateCustomerCode(); } catch {}
+1017:   }
+1018:   const salesGrouped = (await getLocal<any[]>('sales_grouped')) || [];
+1019:   const queue = await getQueue();
+1020:   let maxN = 1000;
+1021:   const all: string[] = [
+1022:     ...salesGrouped.map((g: any) => g.customerCode || ''),
+1023:     ...queue.filter((q: any) => q.op === 'createSale').map((q: any) => q.payload.customerCode || ''),
+1024:   ];
+1025:   for (const ccode of all) {
+1026:     const m = String(ccode).match(/^M_(\d+)$/);
+1027:     if (m) { const n = +m[1]; if (n > maxN) maxN = n; }
+1028:   }
+1029:   return 'M_' + (maxN + 1);
+1030: }
+1031: 
+1032: 
+1033: // ═══════════════════════════════════════════
+1034: //  getSalesGrouped — با ادغام صف
+1035: // ═══════════════════════════════════════════
+1036: function _groupSalesRows(rows: any[]) {
+1037:   const groups: Record<string, any> = {};
+1038:   for (const r of rows || []) {
+1039:     const inv = String(r.invoice_number || '').trim();
+1040:     if (!inv) continue;
+1041:     if (!groups[inv]) {
+1042:       groups[inv] = {
+1043:         invoice: inv,
+1044:         name: r.customer_name || '',
+1045:         phone: r.customer_phone || '',
+
+─── lib.offline.ts — genPurchaseInvoiceNumber (خط 1200 تا 1250) ───
+1200: async function genPurchaseInvoiceNumber() {
+1201:   const today = new Date();
+1202:   const ds = String(today.getFullYear()).slice(-2)
+1203:     + String(today.getMonth() + 1).padStart(2, '0')
+1204:     + String(today.getDate()).padStart(2, '0');
+1205:   const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+1206:   const queue = await getQueue();
+1207:   let maxN = 1000;
+1208:   for (const g of grouped) {
+1209:     const m = String(g.invoice || '').match(/^P-\d{6}-(\d+)$/);
+1210:     if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+1211:   }
+1212:   for (const q of queue) {
+1213:     if (q.op === 'createPurchase') {
+1214:       const inv = q.payload?._pendingInvNumber || q.payload?.invoiceNumber || '';
+1215:       const m = String(inv).match(/^P-\d{6}-(\d+)$/);
+1216:       if (m) { const n = +m[1]; if (n > maxN && n < 1000000) maxN = n; }
+1217:     }
+1218:   }
+1219:   return 'P-' + ds + '-' + (maxN + 1);
+1220: }
+1221: 
+1222: // ═══════════════════════════════════════════
+1223: //  createPurchase — با شماره P-
+1224: // ═══════════════════════════════════════════
+1225: export async function createPurchase(payload: any) {
+1226:   if (await serverBusinessAllowed()) {
+1227:     try {
+1228:       const r = await lib.createPurchase(payload);
+1229:       const inv = String(r || payload.invoiceNumber || '');
+1230:       if (inv) await _localUpsertPurchase({ ...payload, invoiceNumber: inv });
+1231:       try {
+1232:         await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1233:       } catch {}
+1234:       return r;
+1235:     } catch {}
+1236:   }
+1237: 
+1238:   const pInv = await genPurchaseInvoiceNumber();
+1239:   const newPayload = { ...payload, _pendingInvNumber: pInv, invoiceNumber: pInv };
+1240:   await _localUpsertPurchase(newPayload);
+1241:   await enqueue('createPurchase', newPayload);
+1242:   try {
+1243:     await _pushAudit({ type: 'purchase_create', table: 'purchases', key: String(pInv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور خرید' });
+1244:   } catch {}
+1245:   return pInv;
+1246: }
+1247: 
+1248: // ═══════════════════════════════════════════
+1249: //  getPurchasesGrouped — با شماره P-
+1250: // ═══════════════════════════════════════════
+
+─── lib.offline.ts — createParty و _nextCode (خط 3149 تا 3290) ───
+3149: export async function createParty(p: any) {
+3150:   const item = {
+3151:     ...p,
+3152:     local_id: p.local_id || ('party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+3153:     created_at: p.created_at || new Date().toISOString(),
+3154:     updated_at: new Date().toISOString(),
+3155:   };
+3156:   const list = (await getLocal<any[]>('parties')) || [];
+3157:   await setLocal('parties', [item, ...list]);
+3158:   try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3159:   if (await serverBusinessAllowed()) {
+3160:     try {
+3161:       await lib.createParty(item);
+3162:         try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3163:     }
+3164:     catch { await enqueue('createParty', item); }
+3165:   } else {
+3166:     await enqueue('createParty', item);
+3167:   }
+3168:   return item;
+3169: }
+3170: 
+3171: export async function updateParty(idOrPayload: any, pArg?: any) {
+3172:   const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
+3173:   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
+3174:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+3175:   await recordTombstone('parties', String(id));
+3176:   const list = (await getLocal<any[]>('parties')) || [];
+3177:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3178:   if (idx >= 0) {
+3179:     list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString() };
+3180:     await setLocal('parties', list);
+3181:   }
+3182:   try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
+3183:   const q = await getQueue();
+3184:   const pendingCreate = q.find((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3185:   if (pendingCreate) {
+3186:     pendingCreate.payload = { ...pendingCreate.payload, ...payload };
+3187:     await saveQueue(q);
+3188:     return pendingCreate.payload;
+3189:   }
+3190:   const item = { ...payload, local_id: payload.local_id || id };
+3191:   if (await serverBusinessAllowed()) {
+3192:     try { await lib.updateParty(id, item); }
+3193:     catch { await enqueue('updateParty', item); }
+3194:   } else {
+3195:     await enqueue('updateParty', item);
+3196:   }
+3197:   return item;
+3198: }
+3199: 
+3200: export async function deleteParty(idOrPayload: any) {
+3201:   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+3202:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+3203:   await recordTombstone('parties', String(id));
+3204:   const list = (await getLocal<any[]>('parties')) || [];
+3205:   await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3206:   try { await _pushAudit({ type: 'party_delete', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف طرف‌حساب' }); } catch {}
+3207:   const q = await getQueue();
+3208:   const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3209:   if (pendingCreate) {
+3210:     const newQ = q.filter((it: any) => !(it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id)));
+3211:     await saveQueue(newQ);
+3212:     return;
+3213:   }
+3214:   if (await serverBusinessAllowed()) {
+3215:     try { await lib.deleteParty(id); }
+3216:     catch { await enqueue('deleteParty', { local_id: id, id }); }
+3217:   } else {
+3218:     await enqueue('deleteParty', { local_id: id, id });
+3219:   }
+3220: }
+3221: 
+3222: export async function lookupPartyByPhone(phone: string) {
+3223:   if (MODE === 'online') {
+3224:     try { const r = await lib.lookupPartyByPhone(phone); if (r) return r; } catch {}
+3225:   }
+3226:   const list = await getParties();
+3227:   const p = String(phone || '').replace(/[^0-9]/g, '');
+3228:   return list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p) || null;
+3229: }
+3230: 
+3231: export async function lookupPartyByName(name: string) {
+3232:   if (MODE === 'online') {
+3233:     try { const r = await lib.lookupPartyByName(name); if (r) return r; } catch {}
+3234:   }
+3235:   const list = await getParties();
+3236:   const n = String(name || '').trim();
+3237:   return list.find((x: any) => String(x.name || '').trim() === n) || null;
+3238: }
+3239: // ═══════════════════════════════════════════
+3240: //  پیشنهاد کد خودکار طرف‌حساب و کالا
+3241: // ═══════════════════════════════════════════
+3242: function _normPhone(p: any) { return String(p || '').replace(/[^0-9]/g, ''); }
+3243: 
+3244: 
+3245: 
+3246: 
+3247: 
+3248: export async function suggestProductCode() {
+3249:   const list = await getProducts();
+3250:   if (!list.length) return '';
+3251:   const codes = list.map((x: any) => String(x.code || '')).filter(Boolean);
+3252:   let best: any = null;
+3253:   codes.forEach((c: string) => {
+3254:     const m = c.match(/^(.*?)(\d+)$/);
+3255:     if (m) {
+3256:       const n = parseInt(m[2], 10);
+3257:       if (!best || n > best.n) best = { prefix: m[1], n, width: m[2].length };
+3258:     }
+3259:   });
+3260:   if (best) {
+3261:     const next = best.n + 1;
+3262:     return best.prefix + String(next).padStart(best.width, '0');
+3263:   }
+3264:   const last = codes[codes.length - 1];
+3265:   return last ? last + '-2' : '';
+3266: }
+3267: 
+3268: // ═══════════════════════════════════════════
+3269: //  پیشنهاد کد خودکار طرف‌حساب (افزایشی + تلفن تکراری)
+3270: // ═══════════════════════════════════════════
+3271: function _nextCode(codes: any[], prefix: string, start: number) {
+3272:   let max = start - 1;
+3273:   let width = 3;
+3274:   (codes || []).forEach((c: any) => {
+3275:     const s = String(c || '');
+3276:     if (s.startsWith(prefix)) {
+3277:       const rest = s.slice(prefix.length);
+3278:       if (/^\d+$/.test(rest)) {
+3279:         const n = parseInt(rest, 10);
+3280:         if (n > max) { max = n; width = Math.max(width, rest.length); }
+3281:       }
+3282:     }
+3283:   });
+3284:   return prefix + String(max + 1).padStart(width, '0');
+3285: }
+3286: 
+3287: export async function suggestPartyCode(type: string, phone: string) {
+3288:   const p = _normPhone(phone);
+3289:   const list = await getParties();
+3290:   // ۱. اگر تلفن تکراری بود، کد قبلی برگردانده شود
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

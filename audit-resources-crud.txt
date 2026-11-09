@@ -1,0 +1,1334 @@
+══════════ ۱) PartiesSection و ProductsSection در App.tsx ══════════
+
+─── App.tsx — PartiesSection (خط 9084) ───
+9084: function PartiesSection({ showToast }: any) {
+9085:   const [list, setList] = useState<any[]>([]);
+9086:   const [q, setQ] = useState('');
+9087:   const [loading, setLoading] = useState(true);
+9088:   const [editing, setEditing] = useState<any>(null);
+9089:   const [drafts, setDrafts] = useState<any[]>([]);
+9090: 
+9091:   const load = async () => {
+9092:     setLoading(true);
+9093:     try {
+9094:       const data = await getParties();
+9095:       const sorted = [...(data || [])].sort((a: any, b: any) => {
+9096:         const ca = String(a.code || '');
+9097:         const cb = String(b.code || '');
+9098:         if (!ca && !cb) return 0;
+9099:         if (!ca) return 1;
+9100:         if (!cb) return -1;
+9101:         return ca.localeCompare(cb, undefined, { numeric: true, sensitivity: 'base' });
+9102:       });
+9103:       setList(sorted);
+9104:     } catch {}
+9105:     finally { setLoading(false); }
+9106:   };
+9107:   useEffect(() => { load(); }, []);
+9108: 
+9109:   const filtered = q
+9110:     ? list.filter((p: any) => (String(p.code || '') + ' ' + String(p.name || '') + ' ' + String(p.phone || '')).toLowerCase().includes(q.toLowerCase()))
+9111:     : list;
+9112: 
+9113:   const typeLabel = (t: string) => t === 'supplier' ? 'تأمین‌کننده' : t === 'customer' ? 'مشتری' : 'هر دو';
+9114:   const typeColor = (t: string) => t === 'supplier' ? '#ea580c' : t === 'customer' ? '#059669' : '#7c3aed';
+9115: 
+9116:   const getNextPartyCode = (listData: any[], draftData: any[], excludeIdx: number = -1) => {
+9117:     const codes = [
+9118:       ...listData.map(x => String(x.code || '')),
+9119:       ...draftData.filter((_, i) => i !== excludeIdx).map(x => String(x.code || ''))
+9120:     ].filter(Boolean);
+9121:     if (!codes.length) return '';
+9122:     let best: any = null;
+9123:     codes.forEach(c => {
+9124:       const m = c.match(/^(.*?)(\d+)$/);
+9125:       if (m) {
+9126:         const n = parseInt(m[2], 10);
+9127:         if (!best || n > best.n) best = { prefix: m[1], n, width: m[2].length };
+9128:       }
+9129:     });
+9130:     if (best) return best.prefix + String(best.n + 1).padStart(best.width, '0');
+9131:     return codes[codes.length - 1] + '-2';
+9132:   };
+9133: 
+9134:   const autoPartyCode = async (phoneArg?: string) => {
+9135:     if (!editing) return;
+9136:     const phone = phoneArg !== undefined ? phoneArg : (editing.phone || '');
+9137:     const p = String(phone).replace(/[^0-9]/g, '');
+9138:     if (!p) return;
+9139:     const existing = list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p);
+9140:     if (existing && existing.code) {
+9141:       setEditing((prev: any) => prev ? { ...prev, code: existing.code, phone } : prev);
+9142:       showToast('⚠️ شماره قبلاً برای «' + (existing.name || '') + '» ثبت شده؛ کد قبلی درج شد', true);
+9143:       return;
+9144:     }
+9145:     const next = getNextPartyCode(list, [], -1);
+9146:     if (next) setEditing((prev: any) => prev ? { ...prev, code: next, phone } : prev);
+9147:     else setEditing((prev: any) => prev ? { ...prev, phone } : prev);
+9148:   };
+9149: 
+9150:   const autoDraftCode = (idx: number, phoneArg?: string) => {
+9151:     const d = drafts[idx];
+9152:     if (!d) return;
+9153:     const phone = phoneArg !== undefined ? phoneArg : (d.phone || '');
+9154:     const p = String(phone).replace(/[^0-9]/g, '');
+9155:     if (!p) return;
+9156:     const existing = list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p);
+9157:     if (existing && existing.code) {
+9158:       updateDraft(idx, 'code', existing.code);
+9159:       showToast('⚠️ شماره قبلاً برای «' + (existing.name || '') + '» ثبت شده؛ کد قبلی درج شد', true);
+9160:       return;
+9161:     }
+9162:     const draftDup = drafts.find((x: any, i: number) => i !== idx && String(x.phone || '').replace(/[^0-9]/g, '') === p);
+9163:     if (draftDup && draftDup.code) {
+9164:       updateDraft(idx, 'code', draftDup.code);
+9165:       showToast('⚠️ این شماره در ردیف دیگری ثبت شده؛ همان کد درج شد', true);
+9166:       return;
+9167:     }
+9168:     const next = getNextPartyCode(list, drafts, idx);
+9169:     if (next) updateDraft(idx, 'code', next);
+9170:   };
+9171: 
+9172:   const save = async () => {
+9173:     if (!editing) return;
+9174:     if (!editing.name) { showToast('نام الزامی است', true); return; }
+9175:     const dupName = list.find((x: any) => (x.local_id !== editing.local_id) && (x.id !== editing.id) && String(x.name || '').trim() === String(editing.name || '').trim());
+9176:     if (dupName) { showToast('⚠️ این نام قبلاً ثبت شده', true); return; }
+9177:     const phoneNorm = String(editing.phone || '').replace(/[^0-9]/g, '');
+9178:     if (phoneNorm) {
+9179:       const dupPhone = list.find((x: any) => (x.local_id !== editing.local_id) && (x.id !== editing.id) && String(x.phone || '').replace(/[^0-9]/g, '') === phoneNorm);
+9180:       if (dupPhone) {
+9181:         setEditing({ ...editing, code: dupPhone.code || editing.code });
+9182:         showToast('⚠️ این شماره قبلاً ثبت شده؛ کد قبلی درج شد', true);
+9183:         return;
+9184:       }
+9185:     }
+9186:     try {
+9187:       const payload: any = { ...editing };
+9188:       delete payload.id;
+9189:       if (editing.id || editing.local_id) await updateParty(editing.local_id || editing.id, payload);
+9190:       else await createParty(payload);
+9191:       showToast('✅ طرف‌حساب ذخیره شد');
+9192:       setEditing(null);
+9193:       load();
+9194:     } catch (e: any) { showToast(e?.message || String(e), true); }
+9195:   };
+9196: 
+9197:   const remove = async (p: any) => {
+9198:     const ok = await confirmMsg('حذف طرف‌حساب', '«' + (p.name || '') + '» حذف شود؟');
+9199:     if (!ok) return;
+9200:     try { await deleteParty(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9201:     catch (e: any) { showToast(e?.message || String(e), true); }
+9202:   };
+9203: 
+9204:   const startNew = () => {
+9205:     setDrafts((prev: any[]) => [...prev, { local_id: '', code: '', name: '', type: 'supplier', phone: '', address: '', contact_name: '', note: '', status: 'active', opening_balance: 0 }]);
+9206:   };
+9207: 
+9208:   const updateDraft = (idx: number, field: string, value: any) => {
+9209:     setDrafts((prev: any[]) => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+9210:   };
+9211: 
+9212:   const removeDraft = (idx: number) => {
+9213:     setDrafts((prev: any[]) => prev.filter((_, i) => i !== idx));
+9214:   };
+9215: 
+9216:   const saveDrafts = async () => {
+9217:     if (!drafts.length) return;
+9218:     for (const d of drafts) if (!d.name) { showToast('نام در همه ردیف‌ها الزامی است', true); return; }
+9219: 
+9220:     // چک تلفن تکراری
+9221:     for (let i = 0; i < drafts.length; i++) {
+9222:       const p = String(drafts[i].phone || '').replace(/[^0-9]/g, '');
+9223:       if (!p) continue;
+9224:       const existing = list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p);
+9225:       if (existing) {
+9226:         showToast('⚠️ شماره «' + p + '» قبلاً برای «' + (existing.name || '') + '» ثبت شده است', true);
+9227:         return;
+9228:       }
+9229:       const otherDraft = drafts.find((x: any, j: number) => j !== i && String(x.phone || '').replace(/[^0-9]/g, '') === p);
+9230:       if (otherDraft) {
+9231:         showToast('⚠️ شماره «' + p + '» در ردیف‌های دیگر تکراری است', true);
+9232:         return;
+9233:       }
+9234:     }
+9235: 
+9236:     const newDrafts = [...drafts];
+9237:     for (let i = 0; i < newDrafts.length; i++) {
+9238:       let d = newDrafts[i];
+9239:       const p = String(d.phone || '').replace(/[^0-9]/g, '');
+9240:       if (p) {
+9241:         const existing = list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p);
+9242:         if (existing && existing.code) d.code = existing.code;
+9243:       }
+9244:       if (!d.code) d.code = getNextPartyCode(list, newDrafts, i);
+9245:     }
+9246: 
+9247:     let success = 0;
+9248:     for (const d of newDrafts) {
+9249:       try { await createParty(d); success++; }
+9250:       catch (e: any) { showToast('خطا: ' + (e?.message || String(e)), true); }
+9251:     }
+9252:     if (success) {
+9253:       showToast('✅ ' + success + ' طرف‌حساب ذخیره شد');
+9254:       setDrafts([]);
+9255:       load();
+9256:     }
+9257:   };
+9258: 
+9259:   return (
+9260:     <View>
+9261:       <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+9262:         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={startNew}>
+9263:           <Text style={s.btnTxt}>➕ افزودن ردیف</Text>
+9264:         </TouchableOpacity>
+9265:         {drafts.length > 0 && (
+9266:           <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={saveDrafts}>
+9267:             <Text style={s.btnTxt}>💾 ذخیره همه ({drafts.length})</Text>
+9268:           </TouchableOpacity>
+9269:         )}
+9270:       </View>
+9271: 
+9272:       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در طرف‌حساب‌ها..." placeholderTextColor={C.textMut} />
+9273:       <Text style={s.secT}>👥 طرف‌حساب‌ها ({toFaNum(filtered.length)})</Text>
+9274: 
+9275:       <ScrollView horizontal showsHorizontalScrollIndicator>
+9276:         <View>
+9277:           <View style={[s.tblHeader, { flexDirection: 'row-reverse', position: 'relative', zIndex: 10 }]}>
+9278:             <Text style={[s.thCell, { width: 40 }]}>#</Text>
+9279:             <Text style={[s.thCell, { width: 180 }]}>نام</Text>
+9280:             <Text style={[s.thCell, { width: 130 }]}>تلفن</Text>
+9281:             <Text style={[s.thCell, { width: 120 }]}>کد</Text>
+9282:             <Text style={[s.thCell, { width: 110 }]}>نوع</Text>
+9283:             <Text style={[s.thCell, { width: 90 }]}>وضعیت</Text>
+
+─── App.tsx — ProductsSection (خط 10124) ───
+10124: function ProductsSection({ showToast }: any) {
+10125:   const [list, setList] = useState<any[]>([]);
+10126:   const [q, setQ] = useState('');
+10127:   const [loading, setLoading] = useState(true);
+10128:   const [editing, setEditing] = useState<any>(null);
+10129:   const [drafts, setDrafts] = useState<any[]>([]);
+10130: 
+10131:   const load = async () => {
+10132:     setLoading(true);
+10133:     try {
+10134:       const data = await getProducts();
+10135:       const sorted = [...(data || [])].sort((a: any, b: any) => {
+10136:         const ca = String(a.code || '');
+10137:         const cb = String(b.code || '');
+10138:         if (!ca && !cb) return 0;
+10139:         if (!ca) return 1;
+10140:         if (!cb) return -1;
+10141:         return ca.localeCompare(cb, undefined, { numeric: true, sensitivity: 'base' });
+10142:       });
+10143:       setList(sorted);
+10144:     } catch {}
+10145:     finally { setLoading(false); }
+10146:   };
+10147:   useEffect(() => { load(); }, []);
+10148: 
+10149:   const filtered = q
+10150:     ? list.filter((p: any) => (String(p.code || '') + ' ' + String(p.name || '') + ' ' + String(p.shelf || '')).toLowerCase().includes(q.toLowerCase()))
+10151:     : list;
+10152: 
+10153:   const getNextProductCode = (listData: any[], draftData: any[], excludeIdx: number = -1) => {
+10154:     const codes = [
+10155:       ...listData.map(x => String(x.code || '')),
+10156:       ...draftData.filter((_, i) => i !== excludeIdx).map(x => String(x.code || ''))
+10157:     ].filter(Boolean);
+10158:     if (!codes.length) return '';
+10159:     let best: any = null;
+10160:     codes.forEach(c => {
+10161:       const m = c.match(/^(.*?)(\d+)$/);
+10162:       if (m) {
+10163:         const n = parseInt(m[2], 10);
+10164:         if (!best || n > best.n) best = { prefix: m[1], n, width: m[2].length };
+10165:       }
+10166:     });
+10167:     if (best) return best.prefix + String(best.n + 1).padStart(best.width, '0');
+10168:     return codes[codes.length - 1] + '-2';
+10169:   };
+10170: 
+10171:   const autoProductCode = () => {
+10172:     if (!editing || editing.id || editing.local_id) return;
+10173:     if (String(editing.code || '').trim()) return;
+10174:     const next = getNextProductCode(list, [], -1);
+10175:     if (next) setEditing({ ...editing, code: next });
+10176:   };
+10177: 
+10178:   const checkDuplicateName = (name: string, excludeLocalId?: string, excludeId?: string) => {
+10179:     const n = String(name || '').trim();
+10180:     if (!n) return null;
+10181:     return list.find((x: any) => (x.local_id !== excludeLocalId) && (x.id !== excludeId) && String(x.name || '').trim() === n) || null;
+10182:   };
+10183: 
+10184:   const save = async () => {
+10185:     if (!editing) return;
+10186:     if (!editing.name) { showToast('نام الزامی است', true); return; }
+10187:     const dupName = checkDuplicateName(editing.name, editing.local_id, editing.id);
+10188:     if (dupName) { showToast('⚠️ این نام کالا قبلاً ثبت شده', true); return; }
+10189:     const dupCode = list.find((x: any) => (x.local_id !== editing.local_id) && (x.id !== editing.id) && String(x.code || '').trim() === String(editing.code || '').trim());
+10190:     if (dupCode && editing.code) { showToast('⚠️ این کد کالا قبلاً ثبت شده', true); return; }
+10191:     let finalCode = editing.code;
+10192:     if (!finalCode) finalCode = getNextProductCode(list, [], -1);
+10193:     try {
+10194:       const payload: any = { ...editing, code: finalCode };
+10195:       delete payload.id;
+10196:       if (editing.id || editing.local_id) await updateProduct(editing.local_id || editing.id, payload);
+10197:       else await createProduct(payload);
+10198:       showToast('✅ کالا ذخیره شد');
+10199:       setEditing(null);
+10200:       load();
+10201:     } catch (e: any) { showToast(e?.message || String(e), true); }
+10202:   };
+10203: 
+10204:   const remove = async (p: any) => {
+10205:     const ok = await confirmMsg('حذف کالا', '«' + (p.name || '') + '» حذف شود؟');
+10206:     if (!ok) return;
+10207:     try { await deleteProduct(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+10208:     catch (e: any) { showToast(e?.message || String(e), true); }
+10209:   };
+10210: 
+10211:   const startNew = () => {
+10212:     const nextCode = getNextProductCode(list, drafts);
+10213:     setDrafts((prev: any[]) => [...prev, { id: null, code: nextCode, name: '', price: 0, shelf: '' }]);
+10214:   };
+10215: 
+10216:   const updateDraft = (idx: number, field: string, value: any) => {
+10217:     setDrafts((prev: any[]) => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+10218:   };
+10219: 
+10220:   const removeDraft = (idx: number) => {
+10221:     setDrafts((prev: any[]) => prev.filter((_, i) => i !== idx));
+10222:   };
+10223: 
+10224:   const saveDrafts = async () => {
+10225:     if (!drafts.length) return;
+10226:     for (const d of drafts) if (!d.name) { showToast('نام در همه ردیف‌ها الزامی است', true); return; }
+10227: 
+10228:     // چک نام تکراری
+10229:     for (let i = 0; i < drafts.length; i++) {
+10230:       const name = String(drafts[i].name || '').trim();
+10231:       const existing = list.find((x: any) => String(x.name || '').trim() === name);
+10232:       if (existing) {
+10233:         showToast('⚠️ نام «' + name + '» قبلاً ثبت شده است', true);
+10234:         return;
+10235:       }
+10236:       const otherDraft = drafts.find((x: any, j: number) => j !== i && String(x.name || '').trim() === name);
+10237:       if (otherDraft) {
+10238:         showToast('⚠️ نام «' + name + '» در ردیف‌های دیگر تکراری است', true);
+10239:         return;
+10240:       }
+10241:     }
+10242: 
+10243:     const newDrafts = [...drafts];
+10244:     for (let i = 0; i < newDrafts.length; i++) {
+10245:       let d = newDrafts[i];
+10246:       if (!d.code) d.code = getNextProductCode(list, newDrafts, i);
+10247:     }
+10248: 
+10249:     let success = 0;
+10250:     for (const d of newDrafts) {
+10251:       try { await createProduct(d); success++; }
+10252:       catch (e: any) { showToast('خطا: ' + (e?.message || String(e)), true); }
+10253:     }
+10254:     if (success) {
+10255:       showToast('✅ ' + success + ' کالا ذخیره شد');
+10256:       setDrafts([]);
+10257:       load();
+10258:     }
+10259:   };
+10260: 
+10261:   return (
+10262:     <View>
+10263:       <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+10264:         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={startNew}>
+10265:           <Text style={s.btnTxt}>➕ افزودن ردیف</Text>
+10266:         </TouchableOpacity>
+10267:         {drafts.length > 0 && (
+10268:           <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={saveDrafts}>
+10269:             <Text style={s.btnTxt}>💾 ذخیره همه ({drafts.length})</Text>
+10270:           </TouchableOpacity>
+10271:         )}
+10272:       </View>
+10273: 
+10274:       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در کالاها..." placeholderTextColor={C.textMut} />
+10275:       <Text style={s.secT}>📦 کالاها ({toFaNum(filtered.length)})</Text>
+10276: 
+10277:       <ScrollView horizontal showsHorizontalScrollIndicator>
+10278:         <View>
+10279:           <View style={[s.tblHeader, { flexDirection: 'row-reverse', position: 'relative', zIndex: 10 }]}>
+10280:             <Text style={[s.thCell, { width: 40 }]}>#</Text>
+10281:             <Text style={[s.thCell, { width: 200 }]}>نام</Text>
+10282:             <Text style={[s.thCell, { width: 130 }]}>قیمت</Text>
+10283:             <Text style={[s.thCell, { width: 120 }]}>قفسه</Text>
+10284:             <Text style={[s.thCell, { width: 140 }]}>کد</Text>
+10285:             <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
+10286:           </View>
+10287: 
+10288:           <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
+10289:             {drafts.map((d, idx) => (
+10290:               <View key={'draft-' + idx} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+10291:                 <Text style={[s.tdCell, { width: 40, textAlign: 'center', color: '#d4af37', fontWeight: 'bold' }]}>D{idx + 1}</Text>
+10292:                 <View style={{ width: 200, paddingHorizontal: 2 }}>
+10293:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v: string) => updateDraft(idx, 'name', v)} placeholder="نام *" placeholderTextColor={C.textMut} />
+10294:                 </View>
+10295:                 <View style={{ width: 130, paddingHorizontal: 2 }}>
+10296:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.price || '')} onChangeText={(v: string) => updateDraft(idx, 'price', parseFloat(v) || 0)} keyboardType="numeric" placeholder="قیمت" placeholderTextColor={C.textMut} />
+10297:                 </View>
+10298:                 <View style={{ width: 120, paddingHorizontal: 2 }}>
+10299:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.shelf || '')} onChangeText={(v: string) => updateDraft(idx, 'shelf', v)} placeholder="قفسه" placeholderTextColor={C.textMut} />
+10300:                 </View>
+10301:                 <View style={{ width: 140, paddingHorizontal: 2 }}>
+10302:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: string) => updateDraft(idx, 'code', v)} placeholder="کد" placeholderTextColor={C.textMut} />
+10303:                 </View>
+10304:                 <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
+10305:                   <TouchableOpacity onPress={() => removeDraft(idx)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>✕</Text></TouchableOpacity>
+10306:                 </View>
+10307:               </View>
+10308:             ))}
+10309: 
+10310:             {editing && (
+10311:               <View style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+10312:                 <Text style={[s.tdCell, { width: 40 }]}>✏️</Text>
+10313:                 <View style={{ width: 200, paddingHorizontal: 2 }}>
+10314:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.name || '')} onChangeText={(v: string) => setEditing({ ...editing, name: v })} onEndEditing={autoProductCode} placeholder="نام *" placeholderTextColor={C.textMut} />
+10315:                 </View>
+10316:                 <View style={{ width: 130, paddingHorizontal: 2 }}>
+10317:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.price || '')} onChangeText={(v: string) => setEditing({ ...editing, price: parseFloat(v) || 0 })} keyboardType="numeric" placeholder="قیمت" placeholderTextColor={C.textMut} />
+10318:                 </View>
+10319:                 <View style={{ width: 120, paddingHorizontal: 2 }}>
+10320:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.shelf || '')} onChangeText={(v: string) => setEditing({ ...editing, shelf: v })} placeholder="قفسه" placeholderTextColor={C.textMut} />
+10321:                 </View>
+10322:                 <View style={{ width: 140, paddingHorizontal: 2 }}>
+10323:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.code || '')} onChangeText={(v: string) => setEditing({ ...editing, code: v })} placeholder="کد" placeholderTextColor={C.textMut} />
+
+══════════ ۲) PartnersSection / BanksSection / ShippingsSection ══════════
+
+─── App.tsx — PartnersSection (خط 9398) ───
+9398: function PartnersSection({ showToast }: any) {
+9399:   const [banksList, setBanksList] = useState<any[]>([]);
+9400:   useEffect(() => { getBanks().then(setBanksList).catch(()=>{}); }, []);
+9401: 
+9402:   const [list, setList] = useState<any[]>([]);
+9403:   const [q, setQ] = useState('');
+9404:   const [loading, setLoading] = useState(true);
+9405:   const [editing, setEditing] = useState<any>(null);
+9406:   const [drafts, setDrafts] = useState<any[]>([]);
+9407:   const [bankPartner, setBankPartner] = useState<any>(null);
+9408:   const [bankList, setBankList] = useState<any[]>([]);
+9409:   const [bankDrafts, setBankDrafts] = useState<any[]>([]);
+9410:   const [bankLoading, setBankLoading] = useState(false);
+9411: 
+9412:   const [txnPartner, setTxnPartner] = useState<any>(null);
+9413:   const [txnList, setTxnList] = useState<any[]>([]);
+9414:   const [txnBanks, setTxnBanks] = useState<any[]>([]);
+9415:   const [txnLoading, setTxnLoading] = useState(false);
+9416:   const [txnForm, setTxnForm] = useState<any>({
+9417:     type: 'deposit', currency: 'AFN', amount: '', bank_account_local_id: '',
+9418:     box_effect: 'none', box_id: '', box_currency: '', exchange_rate: 1,
+9419:     to_partner_code: '', to_currency: 'AFN', to_amount: '', transaction_date: new Date().toISOString(), note: '',
+9420:     account_type: 'current', counterpart_type: 'none', counterpart_code: ''
+9421:   });
+9422: 
+9423:   const load = async () => {
+9424:     setLoading(true);
+9425:     try {
+9426:       const data = await getPartners();
+9427:       const sorted = [...(data || [])].sort((a: any, b: any) => String(a.code || '').localeCompare(String(b.code || ''), undefined, { numeric: true }));
+9428:       setList(sorted);
+9429:     } catch {}
+9430:     finally { setLoading(false); }
+9431:   };
+9432:   useEffect(() => { load(); }, []);
+9433: 
+9434:   const filtered = q ? list.filter((p: any) => (String(p.code || '') + ' ' + String(p.name || '')).toLowerCase().includes(q.toLowerCase())) : list;
+9435: 
+9436:   const getNextPartnerCode = (listData: any[], draftData: any[], excludeIdx: number = -1) => {
+9437:     const codes = [...listData.map(x => String(x.code || '')), ...draftData.filter((_, i) => i !== excludeIdx).map(x => String(x.code || ''))].filter(Boolean);
+9438:     if (!codes.length) return '';
+9439:     let best: any = null;
+9440:     codes.forEach(c => {
+9441:       const m = c.match(/^(.*?)(\d+)$/);
+9442:       if (m) { const n = parseInt(m[2], 10); if (!best || n > best.n) best = { prefix: m[1], n, width: m[2].length }; }
+9443:     });
+9444:     if (best) return best.prefix + String(best.n + 1).padStart(best.width, '0');
+9445:     return codes[codes.length - 1] + '-2';
+9446:   };
+9447: 
+9448:   const autoPartnerCode = () => {
+9449:     if (!editing || editing.id || editing.local_id) return;
+9450:     if (String(editing.code || '').trim()) return;
+9451:     const next = getNextPartnerCode(list, [], -1);
+9452:     if (next) setEditing({ ...editing, code: next });
+9453:   };
+9454: 
+9455:   const save = async () => {
+9456:     if (!editing) return;
+9457:     if (!editing.name) { showToast('نام الزامی است', true); return; }
+9458:     const dupName = list.find((x: any) => (x.local_id !== editing.local_id) && (x.id !== editing.id) && String(x.name || '').trim() === String(editing.name || '').trim());
+9459:     if (dupName) { showToast('⚠️ این نام قبلاً ثبت شده', true); return; }
+9460:     let finalCode = editing.code;
+9461:     if (!finalCode) finalCode = getNextPartnerCode(list, [], -1);
+9462:     try {
+9463:       const payload: any = { ...editing, code: finalCode };
+9464:       delete payload.id;
+9465:       if (editing.id || editing.local_id) await updatePartner(editing.local_id || editing.id, payload);
+9466:       else await createPartner(payload);
+9467:       showToast('✅ شریک ذخیره شد');
+9468:       setEditing(null);
+9469:       load();
+9470:     } catch (e: any) { showToast(e?.message || String(e), true); }
+9471:   };
+9472: 
+9473:   const remove = async (p: any) => {
+9474:     const ok = await confirmMsg('حذف شریک', '«' + (p.name || '') + '» حذف شود؟');
+9475:     if (!ok) return;
+9476:     try { await deletePartner(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9477:     catch (e: any) { showToast(e?.message || String(e), true); }
+9478:   };
+9479: 
+9480:   const startNew = () => {
+9481:     const nextCode = getNextPartnerCode(list, drafts);
+9482:     setDrafts((prev: any[]) => [...prev, { local_id: '', code: nextCode, name: '', phone: '', share_percent: 0, status: 'active', note: '' }]);
+9483:   };
+9484:   const updateDraft = (idx: number, field: string, value: any) => setDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+9485:   const removeDraft = (idx: number) => setDrafts(prev => prev.filter((_, i) => i !== idx));
+9486: 
+9487:   const saveDrafts = async () => {
+9488:     if (!drafts.length) return;
+9489:     for (const d of drafts) if (!d.name) { showToast('نام در همه ردیف‌ها الزامی است', true); return; }
+9490:     for (let i = 0; i < drafts.length; i++) {
+9491:       const name = String(drafts[i].name || '').trim();
+9492:       if (list.find((x: any) => String(x.name || '').trim() === name)) { showToast('⚠️ نام «' + name + '» قبلاً ثبت شده', true); return; }
+9493:       if (drafts.find((x: any, j: number) => j !== i && String(x.name || '').trim() === name)) { showToast('⚠️ نام «' + name + '» در ردیف‌های دیگر تکراری است', true); return; }
+9494:     }
+9495:     const newDrafts = [...drafts];
+9496:     for (let i = 0; i < newDrafts.length; i++) if (!newDrafts[i].code) newDrafts[i].code = getNextPartnerCode(list, newDrafts, i);
+9497:     let success = 0;
+9498:     for (const d of newDrafts) {
+9499:       try { await createPartner(d); success++; } catch (e: any) { showToast('خطا: ' + (e?.message || String(e)), true); }
+9500:     }
+9501:     if (success) { showToast('✅ ' + success + ' شریک ذخیره شد'); setDrafts([]); load(); }
+9502:   };
+9503: 
+9504:   const loadBanks = async (partner: any) => {
+9505:     setBankLoading(true);
+9506:     try { const data = await getPartnerBankAccounts(partner.code); setBankList(data || []); } catch {}
+9507:     finally { setBankLoading(false); }
+9508:   };
+9509:   const openBanks = async (partner: any) => { setBankPartner(partner); setBankDrafts([]); await loadBanks(partner); };
+9510:   const addBankDraft = () => setBankDrafts(prev => [...prev, { local_id: '', bank_name: '', currency: 'AFN', account_number: '', card_number: '', iban: '', holder_name: bankPartner?.name || '', is_default: false, status: 'active', note: '' }]);
+9511:   const updateBankDraft = (idx: number, field: string, value: any) => setBankDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+9512:   const removeBankDraft = (idx: number) => setBankDrafts(prev => prev.filter((_, i) => i !== idx));
+9513:   const saveBankDrafts = async () => {
+9514:     if (!bankPartner || !bankDrafts.length) return;
+9515:     let success = 0;
+9516:     for (const d of bankDrafts) {
+9517:       try { await createPartnerBankAccount({ ...d, partner_code: bankPartner.code, partner_name: bankPartner.name }); success++; } catch (e: any) { showToast('خطا: ' + (e?.message || String(e)), true); }
+9518:     }
+9519:     if (success) { showToast('✅ ' + success + ' کارت ذخیره شد'); setBankDrafts([]); await loadBanks(bankPartner); }
+9520:   };
+9521:   const removeBank = async (b: any) => {
+9522:     const ok = await confirmMsg('حذف کارت', 'حذف شود؟');
+9523:     if (!ok) return;
+9524:     try { await deletePartnerBankAccount(b.local_id || b.id, bankPartner.code); await loadBanks(bankPartner); showToast('✅ حذف شد'); } catch (e: any) { showToast(e?.message || String(e), true); }
+9525:   };
+9526: 
+9527:   const openTransactions = async (partner: any) => {
+9528:     setTxnPartner(partner);
+9529:     setTxnLoading(true);
+9530:     try {
+9531:       const txns = await getPartnerTransactions(partner.code);
+9532:       setTxnList(txns || []);
+9533:       const banks = await getPartnerBankAccounts(partner.code);
+9534:       setTxnBanks(banks || []);
+9535:       setTxnForm({ type: 'deposit', currency: 'AFN', amount: '', bank_account_local_id: banks?.[0]?.local_id || '', box_effect: 'none', box_id: '', box_currency: '', exchange_rate: 1, to_partner_code: '', to_currency: 'AFN', to_amount: '', transaction_date: new Date().toISOString(), note: '', account_type: 'current', counterpart_type: 'none', counterpart_code: '' });
+9536:     } catch {}
+9537:     finally { setTxnLoading(false); }
+
+─── App.tsx — BanksSection (خط 9882) ───
+9882: function BanksSection({ showToast }: any) {
+9883:   const [list, setList] = useState<any[]>([]);
+9884:   const [q, setQ] = useState('');
+9885:   const [loading, setLoading] = useState(true);
+9886:   const [editing, setEditing] = useState<any>(null);
+9887:   const [drafts, setDrafts] = useState<any[]>([]);
+9888: 
+9889:   const load = async () => {
+9890:     setLoading(true);
+9891:     try { setList(await getBanks()); } catch {}
+9892:     finally { setLoading(false); }
+9893:   };
+9894:   useEffect(() => { load(); }, []);
+9895: 
+9896:   const filtered = q ? list.filter((p: any) => (String(p.name || '') + ' ' + String(p.code || '')).toLowerCase().includes(q.toLowerCase())) : list;
+9897: 
+9898:   const save = async () => {
+9899:     if (!editing) return;
+9900:     if (!editing.name) { showToast('نام بانک الزامی است', true); return; }
+9901:     const dup = list.find((x: any) => (x.local_id !== editing.local_id) && (x.id !== editing.id) && String(x.name || '').trim() === String(editing.name || '').trim());
+9902:     if (dup) { showToast('⚠️ این نام بانک قبلاً ثبت شده', true); return; }
+9903:     try {
+9904:       const payload = { ...editing }; delete payload.id;
+9905:       if (editing.id || editing.local_id) await updateBank(editing.local_id || editing.id, payload);
+9906:       else await createBank(payload);
+9907:       showToast('✅ بانک ذخیره شد'); setEditing(null); load();
+9908:     } catch (e: any) { showToast(e?.message || String(e), true); }
+9909:   };
+9910: 
+9911:   const remove = async (p: any) => {
+9912:     const ok = await confirmMsg('حذف بانک', '«' + (p.name || '') + '» حذف شود؟');
+9913:     if (!ok) return;
+9914:     try { await deleteBank(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9915:     catch (e: any) { showToast(e?.message || String(e), true); }
+9916:   };
+9917: 
+9918:   const startNew = () => setDrafts(prev => [...prev, { local_id: '', name: '', code: '', note: '' }]);
+9919:   const updateDraft = (idx: number, field: string, value: any) => setDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+9920:   const removeDraft = (idx: number) => setDrafts(prev => prev.filter((_, i) => i !== idx));
+9921: 
+9922:   const saveDrafts = async () => {
+9923:     if (!drafts.length) return;
+9924:     for (const d of drafts) if (!d.name) { showToast('نام در همه ردیف‌ها الزامی است', true); return; }
+9925:     for (let i = 0; i < drafts.length; i++) {
+9926:       const name = String(drafts[i].name || '').trim();
+9927:       if (list.find((x: any) => String(x.name || '').trim() === name)) { showToast('⚠️ نام «' + name + '» قبلاً ثبت شده', true); return; }
+9928:       if (drafts.find((x: any, j: number) => j !== i && String(x.name || '').trim() === name)) { showToast('⚠️ نام «' + name + '» در ردیف‌ها تکراری است', true); return; }
+9929:     }
+9930:     let success = 0;
+9931:     for (const d of drafts) { try { await createBank(d); success++; } catch (e: any) { showToast(e?.message || String(e), true); } }
+9932:     if (success) { showToast('✅ ' + success + ' بانک ذخیره شد'); setDrafts([]); load(); }
+9933:   };
+9934: 
+9935:   return (
+9936:     <View>
+9937:       <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+9938:         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={startNew}><Text style={s.btnTxt}>➕ افزودن بانک</Text></TouchableOpacity>
+9939:         {drafts.length > 0 && <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={saveDrafts}><Text style={s.btnTxt}>💾 ذخیره ({drafts.length})</Text></TouchableOpacity>}
+9940:       </View>
+9941:       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در بانک‌ها..." placeholderTextColor={C.textMut} />
+9942:       <Text style={s.secT}>🏦 بانک‌ها ({toFaNum(filtered.length)})</Text>
+9943:       <ScrollView horizontal showsHorizontalScrollIndicator>
+9944:         <View>
+9945:           <View style={[s.tblHeader, { flexDirection: 'row-reverse', position: 'relative', zIndex: 10 }]}>
+9946:             <Text style={[s.thCell, { width: 40 }]}>#</Text>
+9947:             <Text style={[s.thCell, { width: 250 }]}>نام بانک</Text>
+9948:             <Text style={[s.thCell, { width: 120 }]}>کد</Text>
+9949:             <Text style={[s.thCell, { width: 200 }]}>یادداشت</Text>
+9950:             <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
+9951:           </View>
+9952:           <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
+9953:             {drafts.map((d, idx) => (
+9954:               <View key={'bd-' + idx} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+9955:                 <Text style={[s.tdCell, { width: 40, textAlign: 'center', color: '#d4af37', fontWeight: 'bold' }]}>D{idx + 1}</Text>
+9956:                 <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v) => updateDraft(idx, 'name', v)} placeholder="نام بانک *" /></View>
+9957:                 <View style={{ width: 120, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v) => updateDraft(idx, 'code', v)} placeholder="کد" /></View>
+9958:                 <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.note || '')} onChangeText={(v) => updateDraft(idx, 'note', v)} placeholder="یادداشت" /></View>
+9959:                 <View style={{ width: 100, alignItems: 'center' }}><TouchableOpacity onPress={() => removeDraft(idx)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text>✕</Text></TouchableOpacity></View>
+9960:               </View>
+9961:             ))}
+9962:             {editing && (
+9963:               <View style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+9964:                 <Text style={[s.tdCell, { width: 40 }]}>✏️</Text>
+9965:                 <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.name || '')} onChangeText={(v) => setEditing({ ...editing, name: v })} placeholder="نام بانک *" /></View>
+9966:                 <View style={{ width: 120, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.code || '')} onChangeText={(v) => setEditing({ ...editing, code: v })} placeholder="کد" /></View>
+9967:                 <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.note || '')} onChangeText={(v) => setEditing({ ...editing, note: v })} placeholder="یادداشت" /></View>
+9968:                 <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
+9969:                   <TouchableOpacity onPress={save} style={{ backgroundColor: '#059669', padding: 6, borderRadius: 6 }}><Text>💾</Text></TouchableOpacity>
+9970:                   <TouchableOpacity onPress={() => setEditing(null)} style={{ backgroundColor: '#64748b', padding: 6, borderRadius: 6 }}><Text>✕</Text></TouchableOpacity>
+9971:                 </View>
+9972:               </View>
+9973:             )}
+9974:             {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((p: any, i: number) => (
+9975:               <View key={p.local_id || p.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+9976:                 <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+9977:                 <Text style={[s.tdCell, { width: 250, fontSize: 12, color: C.text, fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{p.name || '—'}</Text>
+9978:                 <Text style={[s.tdCell, { width: 120, fontSize: 11, color: '#7c3aed' }]}>{p.code || '—'}</Text>
+9979:                 <Text style={[s.tdCell, { width: 200, fontSize: 10, color: C.textMut, textAlign: 'right' }]} numberOfLines={1}>{p.note || '—'}</Text>
+9980:                 <View style={[s.tdCell, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+9981:                   <TouchableOpacity onPress={() => setEditing({ ...p })} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text>✏️</Text></TouchableOpacity>
+9982:                   <TouchableOpacity onPress={() => remove(p)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text>🗑</Text></TouchableOpacity>
+9983:                 </View>
+9984:               </View>
+9985:             ))}
+9986:           </ScrollView>
+9987:         </View>
+9988:       </ScrollView>
+9989:     </View>
+9990:   );
+9991: }
+9992: 
+9993: function ShippingsSection({ showToast }: any) {
+9994:   const [list, setList] = useState<any[]>([]);
+9995:   const [q, setQ] = useState('');
+9996:   const [loading, setLoading] = useState(true);
+9997:   const [editing, setEditing] = useState<any>(null);
+9998:   const [drafts, setDrafts] = useState<any[]>([]);
+9999: 
+10000:   const load = async () => {
+10001:     setLoading(true);
+10002:     try { setList(await getShippings()); } catch {}
+10003:     finally { setLoading(false); }
+10004:   };
+10005:   useEffect(() => { load(); }, []);
+10006: 
+10007:   const filtered = q ? list.filter((p: any) => (String(p.name || '') + ' ' + String(p.phone || '')).toLowerCase().includes(q.toLowerCase())) : list;
+10008: 
+10009:   const save = async () => {
+10010:     if (!editing) return;
+10011:     if (!editing.name) { showToast('نام باربری الزامی است', true); return; }
+10012:     const dup = list.find((x: any) => (x.local_id !== editing.local_id) && (x.id !== editing.id) && String(x.name || '').trim() === String(editing.name || '').trim());
+10013:     if (dup) { showToast('⚠️ این نام باربری قبلاً ثبت شده', true); return; }
+10014:     try {
+10015:       const payload = { ...editing }; delete payload.id;
+10016:       if (editing.id || editing.local_id) await updateShipping(editing.local_id || editing.id, payload);
+10017:       else await createShipping(payload);
+10018:       showToast('✅ باربری ذخیره شد'); setEditing(null); load();
+10019:     } catch (e: any) { showToast(e?.message || String(e), true); }
+10020:   };
+10021: 
+
+─── App.tsx — ShippingsSection (خط 9993) ───
+9993: function ShippingsSection({ showToast }: any) {
+9994:   const [list, setList] = useState<any[]>([]);
+9995:   const [q, setQ] = useState('');
+9996:   const [loading, setLoading] = useState(true);
+9997:   const [editing, setEditing] = useState<any>(null);
+9998:   const [drafts, setDrafts] = useState<any[]>([]);
+9999: 
+10000:   const load = async () => {
+10001:     setLoading(true);
+10002:     try { setList(await getShippings()); } catch {}
+10003:     finally { setLoading(false); }
+10004:   };
+10005:   useEffect(() => { load(); }, []);
+10006: 
+10007:   const filtered = q ? list.filter((p: any) => (String(p.name || '') + ' ' + String(p.phone || '')).toLowerCase().includes(q.toLowerCase())) : list;
+10008: 
+10009:   const save = async () => {
+10010:     if (!editing) return;
+10011:     if (!editing.name) { showToast('نام باربری الزامی است', true); return; }
+10012:     const dup = list.find((x: any) => (x.local_id !== editing.local_id) && (x.id !== editing.id) && String(x.name || '').trim() === String(editing.name || '').trim());
+10013:     if (dup) { showToast('⚠️ این نام باربری قبلاً ثبت شده', true); return; }
+10014:     try {
+10015:       const payload = { ...editing }; delete payload.id;
+10016:       if (editing.id || editing.local_id) await updateShipping(editing.local_id || editing.id, payload);
+10017:       else await createShipping(payload);
+10018:       showToast('✅ باربری ذخیره شد'); setEditing(null); load();
+10019:     } catch (e: any) { showToast(e?.message || String(e), true); }
+10020:   };
+10021: 
+10022:   const remove = async (p: any) => {
+10023:     const ok = await confirmMsg('حذف باربری', '«' + (p.name || '') + '» حذف شود؟');
+10024:     if (!ok) return;
+10025:     try { await deleteShipping(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+10026:     catch (e: any) { showToast(e?.message || String(e), true); }
+10027:   };
+10028: 
+10029:   const startNew = () => setDrafts(prev => [...prev, { local_id: '', name: '', phone: '', note: '' }]);
+10030:   const updateDraft = (idx: number, field: string, value: any) => setDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+10031:   const removeDraft = (idx: number) => setDrafts(prev => prev.filter((_, i) => i !== idx));
+10032: 
+10033:   const saveDrafts = async () => {
+10034:     if (!drafts.length) return;
+10035:     for (const d of drafts) if (!d.name) { showToast('نام در همه ردیف‌ها الزامی است', true); return; }
+10036:     for (let i = 0; i < drafts.length; i++) {
+10037:       const name = String(drafts[i].name || '').trim();
+10038:       if (list.find((x: any) => String(x.name || '').trim() === name)) { showToast('⚠️ نام «' + name + '» قبلاً ثبت شده', true); return; }
+10039:       if (drafts.find((x: any, j: number) => j !== i && String(x.name || '').trim() === name)) { showToast('⚠️ نام «' + name + '» در ردیف‌ها تکراری است', true); return; }
+10040:     }
+10041:     let success = 0;
+10042:     for (const d of drafts) { try { await createShipping(d); success++; } catch (e: any) { showToast(e?.message || String(e), true); } }
+10043:     if (success) { showToast('✅ ' + success + ' باربری ذخیره شد'); setDrafts([]); load(); }
+10044:   };
+10045: 
+10046:   return (
+10047:     <View>
+10048:       <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 10 }}>
+10049:         <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={startNew}><Text style={s.btnTxt}>➕ افزودن باربری</Text></TouchableOpacity>
+10050:         {drafts.length > 0 && <TouchableOpacity style={[s.btn, { backgroundColor: '#059669' }]} onPress={saveDrafts}><Text style={s.btnTxt}>💾 ذخیره ({drafts.length})</Text></TouchableOpacity>}
+10051:       </View>
+10052:       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در باربری‌ها..." placeholderTextColor={C.textMut} />
+10053:       <Text style={s.secT}>🚚 باربری‌ها ({toFaNum(filtered.length)})</Text>
+10054:       <ScrollView horizontal showsHorizontalScrollIndicator>
+10055:         <View>
+10056:           <View style={[s.tblHeader, { flexDirection: 'row-reverse', position: 'relative', zIndex: 10 }]}>
+10057:             <Text style={[s.thCell, { width: 40 }]}>#</Text>
+10058:             <Text style={[s.thCell, { width: 250 }]}>نام باربری</Text>
+10059:             <Text style={[s.thCell, { width: 150 }]}>تلفن</Text>
+10060:             <Text style={[s.thCell, { width: 200 }]}>یادداشت</Text>
+10061:             <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
+10062:           </View>
+10063:           <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
+10064:             {drafts.map((d, idx) => (
+10065:               <View key={'sd-' + idx} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+10066:                 <Text style={[s.tdCell, { width: 40, textAlign: 'center', color: '#d4af37', fontWeight: 'bold' }]}>D{idx + 1}</Text>
+10067:                 <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v) => updateDraft(idx, 'name', v)} placeholder="نام باربری *" /></View>
+10068:                 <View style={{ width: 150, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.phone || '')} onChangeText={(v) => updateDraft(idx, 'phone', v)} keyboardType="phone-pad" placeholder="تلفن" /></View>
+10069:                 <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.note || '')} onChangeText={(v) => updateDraft(idx, 'note', v)} placeholder="یادداشت" /></View>
+10070:                 <View style={{ width: 100, alignItems: 'center' }}><TouchableOpacity onPress={() => removeDraft(idx)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text>✕</Text></TouchableOpacity></View>
+10071:               </View>
+10072:             ))}
+10073:             {editing && (
+10074:               <View style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+10075:                 <Text style={[s.tdCell, { width: 40 }]}>✏️</Text>
+10076:                 <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.name || '')} onChangeText={(v) => setEditing({ ...editing, name: v })} placeholder="نام باربری *" /></View>
+10077:                 <View style={{ width: 150, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.phone || '')} onChangeText={(v) => setEditing({ ...editing, phone: v })} keyboardType="phone-pad" placeholder="تلفن" /></View>
+10078:                 <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.note || '')} onChangeText={(v) => setEditing({ ...editing, note: v })} placeholder="یادداشت" /></View>
+10079:                 <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
+10080:                   <TouchableOpacity onPress={save} style={{ backgroundColor: '#059669', padding: 6, borderRadius: 6 }}><Text>💾</Text></TouchableOpacity>
+10081:                   <TouchableOpacity onPress={() => setEditing(null)} style={{ backgroundColor: '#64748b', padding: 6, borderRadius: 6 }}><Text>✕</Text></TouchableOpacity>
+10082:                 </View>
+10083:               </View>
+10084:             )}
+10085:             {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((p: any, i: number) => (
+10086:               <View key={p.local_id || p.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+10087:                 <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+10088:                 <Text style={[s.tdCell, { width: 250, fontSize: 12, color: C.text, fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{p.name || '—'}</Text>
+10089:                 <Text style={[s.tdCell, { width: 150, fontSize: 11, color: C.text }]}>{p.phone || '—'}</Text>
+10090:                 <Text style={[s.tdCell, { width: 200, fontSize: 10, color: C.textMut, textAlign: 'right' }]} numberOfLines={1}>{p.note || '—'}</Text>
+10091:                 <View style={[s.tdCell, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+10092:                   <TouchableOpacity onPress={() => setEditing({ ...p })} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text>✏️</Text></TouchableOpacity>
+10093:                   <TouchableOpacity onPress={() => remove(p)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text>🗑</Text></TouchableOpacity>
+10094:                 </View>
+10095:               </View>
+10096:             ))}
+10097:           </ScrollView>
+10098:         </View>
+10099:       </ScrollView>
+10100:     </View>
+10101:   );
+10102: }
+10103: 
+10104: function SourcesSection({ showToast }: any) {
+10105:   const [sub, setSub] = useState<'parties' | 'products' | 'partners' | 'banks' | 'shippings'>('parties');
+10106:   return (
+10107:     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+10108:     <View>
+10109:       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+10110:         <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+10111:           <TouchableOpacity onPress={() => setSub('parties')} style={[s.btn, { backgroundColor: sub === 'parties' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>👥 طرف‌حساب‌ها</Text></TouchableOpacity>
+10112:           <TouchableOpacity onPress={() => setSub('products')} style={[s.btn, { backgroundColor: sub === 'products' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>📦 کالاها</Text></TouchableOpacity>
+10113:           <TouchableOpacity onPress={() => setSub('partners')} style={[s.btn, { backgroundColor: sub === 'partners' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>👥 شرکا</Text></TouchableOpacity>
+10114:           <TouchableOpacity onPress={() => setSub('banks')} style={[s.btn, { backgroundColor: sub === 'banks' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>🏦 بانک‌ها</Text></TouchableOpacity>
+10115:           <TouchableOpacity onPress={() => setSub('shippings')} style={[s.btn, { backgroundColor: sub === 'shippings' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>🚚 باربری‌ها</Text></TouchableOpacity>
+10116:         </View>
+10117:       </ScrollView>
+10118:       {sub === 'parties' ? <PartiesSection showToast={showToast} /> : sub === 'products' ? <ProductsSection showToast={showToast} /> : sub === 'partners' ? <PartnersSection showToast={showToast} /> : sub === 'banks' ? <BanksSection showToast={showToast} /> : <ShippingsSection showToast={showToast} />}
+10119:     </View>
+10120:     </KeyboardAvoidingView>
+10121:   );
+10122: }
+10123: 
+10124: function ProductsSection({ showToast }: any) {
+10125:   const [list, setList] = useState<any[]>([]);
+10126:   const [q, setQ] = useState('');
+10127:   const [loading, setLoading] = useState(true);
+10128:   const [editing, setEditing] = useState<any>(null);
+10129:   const [drafts, setDrafts] = useState<any[]>([]);
+10130: 
+10131:   const load = async () => {
+10132:     setLoading(true);
+
+══════════ ۳) create/delete/get در lib.offline.ts ══════════
+
+─── lib.offline.ts — getParties (خط 3326) ───
+3326: export async function getParties(type?: string) {
+3327:   const base = (await cachedRead('parties', () => lib.getParties())) || [];
+3328:   let list = base.slice();
+3329:   const q = await getQueue();
+3330:   for (const item of q) {
+3331:     if (item.op === 'createParty') list.push(item.payload);
+3332:     else if (item.op === 'updateParty') {
+3333:       const id = item.payload.local_id || item.payload.id;
+3334:       const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3335:       if (idx >= 0) list[idx] = { ...list[idx], ...item.payload };
+3336:     } else if (item.op === 'deleteParty') {
+3337:       const id = item.payload.local_id || item.payload.id || item.payload;
+3338:       list = list.filter((x: any) => x.local_id !== id && x.id !== id);
+3339:     }
+3340:   }
+3341:   if (type) list = list.filter((x: any) => x.type === type || x.type === 'both');
+3342:   return list;
+3343: }
+3344: 
+3345: export async function createParty(p: any) {
+3346:   const item = {
+3347:     ...p,
+3348:     local_id: p.local_id || ('party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+3349:     created_at: p.created_at || new Date().toISOString(),
+3350:     updated_at: new Date().toISOString(),
+3351:     device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+3352:   };
+3353:   const list = (await getLocal<any[]>('parties')) || [];
+3354:   await setLocal('parties', [item, ...list]);
+3355:   try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3356:   if (await serverBusinessAllowed()) {
+3357:     try {
+3358:       await lib.createParty(item);
+3359:         try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3360:     }
+3361:     catch { await enqueue('createParty', item); }
+3362:   } else {
+3363:     await enqueue('createParty', item);
+3364:   }
+3365:   return item;
+
+─── lib.offline.ts — createParty (خط 3345) ───
+3345: export async function createParty(p: any) {
+3346:   const item = {
+3347:     ...p,
+3348:     local_id: p.local_id || ('party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+3349:     created_at: p.created_at || new Date().toISOString(),
+3350:     updated_at: new Date().toISOString(),
+3351:     device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+3352:   };
+3353:   const list = (await getLocal<any[]>('parties')) || [];
+3354:   await setLocal('parties', [item, ...list]);
+3355:   try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3356:   if (await serverBusinessAllowed()) {
+3357:     try {
+3358:       await lib.createParty(item);
+3359:         try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
+3360:     }
+3361:     catch { await enqueue('createParty', item); }
+3362:   } else {
+3363:     await enqueue('createParty', item);
+3364:   }
+3365:   return item;
+3366: }
+3367: 
+3368: export async function updateParty(idOrPayload: any, pArg?: any) {
+3369:   const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
+3370:   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
+3371:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+3372:   await recordTombstone('parties', String(id));
+3373:   const list = (await getLocal<any[]>('parties')) || [];
+3374:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3375:   if (idx >= 0) {
+3376:     list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
+3377:     await setLocal('parties', list);
+3378:   }
+3379:   try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
+3380:   const q = await getQueue();
+3381:   const pendingCreate = q.find((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3382:   if (pendingCreate) {
+3383:     pendingCreate.payload = { ...pendingCreate.payload, ...payload };
+3384:     await saveQueue(q);
+
+─── lib.offline.ts — deleteParty (خط 3397) ───
+3397: export async function deleteParty(idOrPayload: any) {
+3398:   const id = typeof idOrPayload === 'string' ? idOrPayload : (idOrPayload?.local_id || idOrPayload?.id);
+3399:   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
+3400:   await recordTombstone('parties', String(id));
+3401:   const list = (await getLocal<any[]>('parties')) || [];
+3402:   await setLocal('parties', list.filter((x: any) => x.local_id !== id && x.id !== id));
+3403:   try { await _pushAudit({ type: 'party_delete', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف طرف‌حساب' }); } catch {}
+3404:   const q = await getQueue();
+3405:   const pendingCreate = q.some((it: any) => it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id));
+3406:   if (pendingCreate) {
+3407:     const newQ = q.filter((it: any) => !(it.op === 'createParty' && (it.payload?.local_id === id || it.payload?.id === id)));
+3408:     await saveQueue(newQ);
+3409:     return;
+3410:   }
+3411:   if (await serverBusinessAllowed()) {
+3412:     try { await lib.deleteParty(id); }
+3413:     catch { await enqueue('deleteParty', { local_id: id, id }); }
+3414:   } else {
+3415:     await enqueue('deleteParty', { local_id: id, id });
+3416:   }
+3417: }
+3418: 
+3419: export async function lookupPartyByPhone(phone: string) {
+3420:   if (MODE === 'online') {
+3421:     try { const r = await lib.lookupPartyByPhone(phone); if (r) return r; } catch {}
+3422:   }
+3423:   const list = await getParties();
+3424:   const p = String(phone || '').replace(/[^0-9]/g, '');
+3425:   return list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p) || null;
+3426: }
+3427: 
+3428: export async function lookupPartyByName(name: string) {
+3429:   if (MODE === 'online') {
+3430:     try { const r = await lib.lookupPartyByName(name); if (r) return r; } catch {}
+3431:   }
+3432:   const list = await getParties();
+3433:   const n = String(name || '').trim();
+3434:   return list.find((x: any) => String(x.name || '').trim() === n) || null;
+3435: }
+3436: // ═══════════════════════════════════════════
+
+─── lib.offline.ts — getProducts (خط 314) ───
+314: export async function getProducts() {
+315:   // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
+316:   const local = await getLocal<any[]>('products');
+317:   return local || [];
+318: }
+319: export async function createProduct(p: any) {
+320:   const list: any[] = (await getLocal('products')) || [];
+321:   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+322:   const nowPr = new Date().toISOString();
+323:   const item = { ...p, _localId: Date.now(), local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)), updated_at: nowPr, device_id: devPr };
+324:   list.push(item);
+325:   await setLocal('products', list);
+326:   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+327:   if (await serverBusinessAllowed()) {
+328:     try {
+329:       await lib.createProduct(p);
+330:       await setLocal('products', await lib.getProducts());
+331:         try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+332:     }
+333:     catch { await enqueue('createProduct', p); }
+334:   } else {
+335:     await enqueue('createProduct', p);
+336:   }
+337: }
+338: export async function updateProduct(id: string, p: any) {
+339:   const list: any[] = (await getLocal('products')) || [];
+340:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+341:   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
+342:   if (idx >= 0) { list[idx] = { ...list[idx], ...p, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('products', list); }
+343:   try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+
+─── lib.offline.ts — createProduct (خط 319) ───
+319: export async function createProduct(p: any) {
+320:   const list: any[] = (await getLocal('products')) || [];
+321:   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+322:   const nowPr = new Date().toISOString();
+323:   const item = { ...p, _localId: Date.now(), local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2,6)), updated_at: nowPr, device_id: devPr };
+324:   list.push(item);
+325:   await setLocal('products', list);
+326:   try { await _pushAudit({ type: 'product_create', table: 'products', key: String(item.code || item._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+327:   if (await serverBusinessAllowed()) {
+328:     try {
+329:       await lib.createProduct(p);
+330:       await setLocal('products', await lib.getProducts());
+331:         try { await _pushAudit({ type: 'product_create', table: 'products', key: String(p.code || p._localId), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت کالا' }); } catch {}
+332:     }
+333:     catch { await enqueue('createProduct', p); }
+334:   } else {
+335:     await enqueue('createProduct', p);
+336:   }
+337: }
+338: export async function updateProduct(id: string, p: any) {
+339:   const list: any[] = (await getLocal('products')) || [];
+340:   const idx = list.findIndex((x: any) => x.id === id || x._localId === id || x.local_id === id);
+341:   const code = p?.code || (idx >= 0 ? list[idx]?.code : undefined);
+342:   if (idx >= 0) { list[idx] = { ...list[idx], ...p, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('products', list); }
+343:   try { await _pushAudit({ type: 'product_update', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش کالا' }); } catch {}
+344: 
+345:   // اگر این محصول هنوز در صف createProduct است → همان را آپدیت کن
+346:   const q = await getQueue();
+347:   const createIdx = q.findIndex((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+348:   if (createIdx >= 0) {
+349:     const newQ = q.slice();
+350:     newQ[createIdx] = { ...newQ[createIdx], payload: { ...newQ[createIdx].payload, ...p } };
+351:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+352:     console.log('[updateProduct] updated pending createProduct in queue');
+353:     return;
+354:   }
+355: 
+356:   const payload = { id, code, p };
+357:   if (await serverBusinessAllowed()) {
+358:     try { await lib.updateProduct(id, p); } catch { await enqueue('updateProduct', payload); }
+
+─── lib.offline.ts — deleteProduct (خط 363) ───
+363: export async function deleteProduct(id: string) {
+364:   const list: any[] = (await getLocal('products')) || [];
+365:   const found = list.find((x: any) => x.id === id || x._localId === id || x.local_id === id);
+366:   const code = found?.code;
+367:   await recordTombstone('products', String(code || id));
+368:   await setLocal('products', list.filter((x: any) => x.id !== id && x._localId !== id && x.local_id !== id));
+369:   try { await _pushAudit({ type: 'product_delete', table: 'products', key: String(code || id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف کالا' }); } catch {}
+370: 
+371:   // اگر این محصول هنوز در صف createProduct است → از صف حذف کن (چیزی برای حذف از سرور نیست)
+372:   const q = await getQueue();
+373:   const hasCreate = q.some((it: any) => it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code)));
+374:   if (hasCreate) {
+375:     const newQ = q.filter((it: any) => !(it.op === 'createProduct' && (it.payload?._localId === id || (code && it.payload?.code === code))));
+376:     await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
+377:     console.log('[deleteProduct] removed pending createProduct from queue');
+378:     return;
+379:   }
+380: 
+381:   const payload = { id, code };
+382:   if (await serverBusinessAllowed()) {
+383:     try { await lib.deleteProduct(payload); } catch { await enqueue('deleteProduct', payload); }
+384:   } else {
+385:     await enqueue('deleteProduct', payload);
+386:   }
+387: }
+388: 
+389: async function _localUpsertSale(payload: any) {
+390:   try {
+391:     const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+392:     if (!inv) return;
+393:     const items = payload.items || payload.rows || [];
+394:     const old = (await getLocal<any[]>('sales')) || [];
+395:     const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+396:     const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+397:     const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+398:     const now = new Date().toISOString();
+399:     const rows = items.map((it: any, idx: number) => ({
+400:       invoice_number: inv,
+401:       local_id: 'sale_' + inv + '_' + idx,
+402:       device_id: dev,
+
+─── lib.offline.ts — getPartners (خط 3511) ───
+3511: export async function getPartners() {
+3512:   // BUSINESS_LOCAL_AND_SHEET_ONLY — شرکا فقط محلی
+3513:   const list = (await getLocal<any[]>('partners')) || [];
+3514:   const q = await getQueue();
+3515:   const result = [...list];
+3516:   for (const item of q) {
+3517:     if (item.op === 'createPartner') { const lid = String(item.payload?.local_id || ''); if (!lid || !result.some((x: any) => String(x.local_id || '') === lid)) result.push(item.payload); }
+3518:     else if (item.op === 'updatePartner') {
+3519:       const idx = result.findIndex((x: any) => x.local_id === item.payload.local_id || x.id === item.payload.id);
+3520:       if (idx >= 0) result[idx] = { ...result[idx], ...item.payload };
+3521:     } else if (item.op === 'deletePartner') {
+3522:       const idx = result.findIndex((x: any) => x.local_id === item.payload || x.id === item.payload);
+3523:       if (idx >= 0) result.splice(idx, 1);
+3524:     }
+3525:   }
+3526:   return result.sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+3527: }
+3528: export async function createPartner(p: any) {
+3529:   const devPt = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3530:   const nowPt = new Date().toISOString();
+3531:   const item = { ...p, local_id: p.local_id || ('pt_' + Date.now()), created_at: nowPt, updated_at: nowPt, device_id: devPt };
+3532:   const list = (await getLocal<any[]>('partners')) || [];
+3533:   await setLocal('partners', [...list, item]);
+3534:   try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3535:   if (await serverBusinessAllowed()) {
+3536:     try {
+3537:       await lib.createPartner(item);
+3538:         try { await _pushAudit({ type: 'partner_create', table: 'partners', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت شریک' }); } catch {}
+3539:     } catch { await enqueue('createPartner', item); }
+3540:   }
+3541:   else { await enqueue('createPartner', item); }
+3542:   return item;
+3543: }
+3544: export async function updatePartner(id: string, p: any) {
+3545:   const item = { ...p, local_id: p.local_id || id };
+3546:   const list = (await getLocal<any[]>('partners')) || [];
+3547:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3548:   if (idx >= 0) { list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' }; await setLocal('partners', list); }
+3549:   try { await _pushAudit({ type: 'partner_update', table: 'partners', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش شریک' }); } catch {}
+3550:   if (await serverBusinessAllowed()) { try { await lib.updatePartner(id, item); } catch { await enqueue('updatePartner', item); } }
+
+─── lib.offline.ts — getBanks (خط 3637) ───
+3637: export async function getBanks() {
+3638:   // BUSINESS_LOCAL_AND_SHEET_ONLY — بانک‌ها فقط محلی
+3639:   const list = (await getLocal<any[]>('banks')) || [];
+3640:   const q = await getQueue();
+3641:   const result = [...list];
+3642:   for (const item of q) {
+3643:     if (item.op === 'createBank') { const lid = String(item.payload?.local_id || ''); if (!lid || !result.some((x: any) => String(x.local_id || '') === lid)) result.push(item.payload); }
+3644:     else if (item.op === 'deleteBank') {
+3645:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+3646:       if (idx >= 0) result.splice(idx, 1);
+3647:     }
+3648:   }
+3649:   return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+3650: }
+3651: export async function createBank(p: any) {
+3652:   const devB = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3653:   const nowB = new Date().toISOString();
+3654:   const item = { ...p, local_id: p.local_id || ('bank_' + Date.now()), created_at: nowB, updated_at: nowB, device_id: devB };
+3655:   const list = (await getLocal<any[]>('banks')) || [];
+3656:   await setLocal('banks', [...list, item]);
+3657:   try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+3658:   if (await serverBusinessAllowed()) {
+3659:     try {
+3660:       await lib.createBank(item);
+3661:         try { await _pushAudit({ type: 'bank_create', table: 'banks', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت بانک' }); } catch {}
+3662:     } catch { await enqueue('createBank', item); }
+3663:   }
+3664:   else { await enqueue('createBank', item); }
+3665:   return item;
+3666: }
+3667: export async function updateBank(id: string, p: any) {
+3668:   const item = { ...p, local_id: p.local_id || id };
+3669:   const list = (await getLocal<any[]>('banks')) || [];
+3670:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3671:   if (idx >= 0) {
+3672:     list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
+3673:     await setLocal('banks', list);
+3674:   }
+3675:   try { await _pushAudit({ type: 'bank_update', table: 'banks', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش بانک' }); } catch {}
+3676:   if (await serverBusinessAllowed()) {
+
+─── lib.offline.ts — getShippings (خط 3697) ───
+3697: export async function getShippings() {
+3698:   // BUSINESS_LOCAL_AND_SHEET_ONLY — باربری‌ها فقط محلی
+3699:   const list = (await getLocal<any[]>('shippings')) || [];
+3700:   const q = await getQueue();
+3701:   const result = [...list];
+3702:   for (const item of q) {
+3703:     if (item.op === 'createShipping') {
+3704:       const lid = String(item.payload?.local_id || '');
+3705:       if (lid && result.some((x: any) => String(x.local_id || '') === lid)) continue;
+3706:       result.push(item.payload);
+3707:     } else if (item.op === 'deleteShipping') {
+3708:       const idx = result.findIndex((x: any) => x.local_id === item.payload);
+3709:       if (idx >= 0) result.splice(idx, 1);
+3710:     }
+3711:   }
+3712:   return result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+3713: }
+3714: export async function createShipping(p: any) {
+3715:   const devS = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+3716:   const nowS = new Date().toISOString();
+3717:   const item = { ...p, local_id: p.local_id || ('ship_' + Date.now()), created_at: nowS, updated_at: nowS, device_id: devS };
+3718:   const list = (await getLocal<any[]>('shippings')) || [];
+3719:   await setLocal('shippings', [...list, item]);
+3720:   try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+3721:   if (await serverBusinessAllowed()) {
+3722:     try {
+3723:       await lib.createShipping(item);
+3724:         try { await _pushAudit({ type: 'shipping_create', table: 'shippings', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت باربری' }); } catch {}
+3725:     } catch { await enqueue('createShipping', item); }
+3726:   }
+3727:   else { await enqueue('createShipping', item); }
+3728:   return item;
+3729: }
+3730: export async function updateShipping(id: string, p: any) {
+3731:   const item = { ...p, local_id: p.local_id || id };
+3732:   const list = (await getLocal<any[]>('shippings')) || [];
+3733:   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
+3734:   if (idx >= 0) {
+3735:     list[idx] = { ...list[idx], ...item, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
+3736:     await setLocal('shippings', list);
+
+══════════ ۴) فراخوانی‌های create/delete در App.tsx ══════════
+
+─── App.tsx — فراخوانی‌ها ───
+6011: await createProduct({ code: editItem.code, name: editItem.name, price: editItem.lastPrice || 0, shelf: shelfVal });
+9190: else await createParty(payload);
+9200: try { await deleteParty(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9249: try { await createParty(d); success++; }
+9466: else await createPartner(payload);
+9476: try { await deletePartner(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9499: try { await createPartner(d); success++; } catch (e: any) { showToast('خطا: ' + (e?.message || String(e)), true); }
+9906: else await createBank(payload);
+9914: try { await deleteBank(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9931: for (const d of drafts) { try { await createBank(d); success++; } catch (e: any) { showToast(e?.message || String(e), true); } }
+10017: else await createShipping(payload);
+10025: try { await deleteShipping(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+10042: for (const d of drafts) { try { await createShipping(d); success++; } catch (e: any) { showToast(e?.message || String(e), true); } }
+10197: else await createProduct(payload);
+10207: try { await deleteProduct(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+10251: try { await createProduct(d); success++; }
+
+══════════ ۵) refresh/load بعد از ذخیره ══════════
+
+─── App.tsx — ریفرش ───
+1472: load();
+2081: if (pin === correctPin) { onSuccess(); showToast('✅ تأیید شد'); }
+2083: else { showToast('❌ رمز اشتباه', true); setPin(''); }
+2391: useEffect(() => { load(); const r = setInterval(load, 30000); return () => clearInterval(r); }, [load, refreshKey]);
+2650: const load = async () => { setLoading(true); try { setList(await getSalesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+2652: useEffect(() => { load(); loadProds(); }, []);
+2787: showToast('✅ فروش ثبت شد');
+2788: setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+2860: setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+2876: showToast('✅ از لیست پنهان شد');
+2922: if (view === 'invoice' && invoice) return <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView invoice={invoice} onBack={() => { setView('list'); setInvoice(null); load(); }} showToast={showToast} onNew={resetForm} /></View>;
+4036: const load = async () => { setLoading(true); try { setList(await getPurchasesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+4044: useEffect(() => { load(); loadProds(); }, []);
+4092: showToast('✅ از لیست پنهان شد');
+4165: setView('list'); load();
+4795: showToast('✅ اکسل آماده شد');
+5347: useEffect(() => { load(); }, [settings]);
+5452: showToast('✅ تصویر آماده شد');
+5937: showToast('✅ تعدیل ثبت شد');
+5945: load();
+5967: showToast('✅ حذف شد');
+5973: load();
+5985: try { const d = await getInventory(); setList(d.list); setStats(d.stats); setThresholdInput(String(d.threshold)); }
+5991: useEffect(() => { load(); }, []);
+6015: showToast('✅ ذخیره شد'); setEditItem(null); load();
+6027: try { const settings = await getSettings(); await updateSettings({ ...settings, inventory_threshold: v }); showToast('✅ ذخیره شد'); load(); }
+6761: const load = async () => { setLoading(true); try { setList(await getUnpaidInvoices()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+6763: useEffect(() => { load(); }, []);
+6783: try { for (const inv of Array.from(selected)) await deleteSale(inv); showToast('✅ حذف شد'); setSelected(new Set()); load(); }
+7163: const load = async () => { setLoading(true); try { setList(await searchAllInvoices('')); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+7167: useEffect(() => { load(); loadProds(); }, []);
+7318: setEditing(null); setEditRows([]); setDirty(false); load();
+7330: setEditing(null); setEditRows([]); setDirty(false); load();
+7349: setList((prev: any[]) => prev.map((x: any) => x.invoice === editing.invoice
+7359: setEditing(null); setEditRows([]); setDirty(false); load();
+7377: showToast('✅ حذف شد');
+7378: load();
+7473: showToast('✅ برگشت ثبت شد — ' + returnNumber);
+7479: else load();
+7494: onBack={() => { setShowInvoice(null); load(); }}
+7973: setList(Array.isArray(data) ? data : []);
+7981: useEffect(() => { load(); }, [type]);
+7990: load();
+8050: load();
+8371: useEffect(() => { load(); }, [type]);
+8395: showToast('✅ اکسل آماده شد');
+8591: showToast('✅ ' + (PRESETS as any)[k].name);
+8763: reload && reload();
+8911: showToast('✅ پین تب‌ها ذخیره شد');
+8912: reload && reload();
+9103: setList(sorted);
+9107: useEffect(() => { load(); }, []);
+9191: showToast('✅ طرف‌حساب ذخیره شد');
+9193: load();
+9200: try { await deleteParty(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9205: setDrafts((prev: any[]) => [...prev, { local_id: '', code: '', name: '', type: 'supplier', phone: '', address: '', contact_name: '', note: '', status: 'active', opening_balance: 0 }]);
+9209: setDrafts((prev: any[]) => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+9213: setDrafts((prev: any[]) => prev.filter((_, i) => i !== idx));
+9253: showToast('✅ ' + success + ' طرف‌حساب ذخیره شد');
+9254: setDrafts([]);
+9255: load();
+9428: setList(sorted);
+9432: useEffect(() => { load(); }, []);
+9467: showToast('✅ شریک ذخیره شد');
+9469: load();
+9476: try { await deletePartner(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9482: setDrafts((prev: any[]) => [...prev, { local_id: '', code: nextCode, name: '', phone: '', share_percent: 0, status: 'active', note: '' }]);
+9484: const updateDraft = (idx: number, field: string, value: any) => setDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+9485: const removeDraft = (idx: number) => setDrafts(prev => prev.filter((_, i) => i !== idx));
+9501: if (success) { showToast('✅ ' + success + ' شریک ذخیره شد'); setDrafts([]); load(); }
+9519: if (success) { showToast('✅ ' + success + ' کارت ذخیره شد'); setBankDrafts([]); await loadBanks(bankPartner); }
+9524: try { await deletePartnerBankAccount(b.local_id || b.id, bankPartner.code); await loadBanks(bankPartner); showToast('✅ حذف شد'); } catch (e: any) { showToast(e?.message || String(e), true); }
+9576: showToast('✅ انتقال ثبت شد');
+9583: load();
+9590: try { await deletePartnerTransaction(t.local_id || t.id, txnPartner.code); await reloadTransactions(); showToast('✅ حذف شد'); }
+9891: try { setList(await getBanks()); } catch {}
+9894: useEffect(() => { load(); }, []);
+9907: showToast('✅ بانک ذخیره شد'); setEditing(null); load();
+9914: try { await deleteBank(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+9918: const startNew = () => setDrafts(prev => [...prev, { local_id: '', name: '', code: '', note: '' }]);
+9919: const updateDraft = (idx: number, field: string, value: any) => setDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+9920: const removeDraft = (idx: number) => setDrafts(prev => prev.filter((_, i) => i !== idx));
+9932: if (success) { showToast('✅ ' + success + ' بانک ذخیره شد'); setDrafts([]); load(); }
+10002: try { setList(await getShippings()); } catch {}
+10005: useEffect(() => { load(); }, []);
+10018: showToast('✅ باربری ذخیره شد'); setEditing(null); load();
+10025: try { await deleteShipping(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+10029: const startNew = () => setDrafts(prev => [...prev, { local_id: '', name: '', phone: '', note: '' }]);
+10030: const updateDraft = (idx: number, field: string, value: any) => setDrafts(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+10031: const removeDraft = (idx: number) => setDrafts(prev => prev.filter((_, i) => i !== idx));
+10043: if (success) { showToast('✅ ' + success + ' باربری ذخیره شد'); setDrafts([]); load(); }
+10143: setList(sorted);
+10147: useEffect(() => { load(); }, []);
+10198: showToast('✅ کالا ذخیره شد');
+10200: load();
+10207: try { await deleteProduct(p.local_id || p.id); load(); showToast('✅ حذف شد'); }
+10213: setDrafts((prev: any[]) => [...prev, { id: null, code: nextCode, name: '', price: 0, shelf: '' }]);
+10217: setDrafts((prev: any[]) => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d));
+10221: setDrafts((prev: any[]) => prev.filter((_, i) => i !== idx));
+10255: showToast('✅ ' + success + ' کالا ذخیره شد');
+10256: setDrafts([]);
+10257: load();
+10388: showToast('✅ پنجره چاپ آماده شد');
+10393: else if (await Sharing.isAvailableAsync()) { await Sharing.shareAsync(uri); if (mode === 'save') showToast('✅ ذخیره شد'); }
+10723: return showToast('❌ کاربری با این شماره یافت نشد. لطفاً با ایمیل وارد شوید.', true);
+
+✅ audit تمام شد. هیچ کدی تغییر نکرد.

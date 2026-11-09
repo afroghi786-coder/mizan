@@ -1,0 +1,455 @@
+══════ lib.offline.ts — لایه سینک ══════
+
+─── lib.offline.ts — getQueue (خط 38) ───
+38: export async function getQueue(): Promise<any[]> {
+39:   const raw = await AsyncStorage.getItem(QUEUE);
+40:   return raw ? JSON.parse(raw) : [];
+41: }
+42: export async function enqueue(op: string, payload: any) {
+43:   const q = await getQueue();
+44:   q.push({ op, payload, ts: Date.now() });
+45:   await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+46: }
+47: export async function getQueueCount() { return (await getQueue()).length; }
+48: export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
+49: 
+50: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+51:   const q = await getQueue();
+52:   const remaining: any[] = [];
+53:   let ok = 0, fail = 0;
+54:   const total = q.length;
+55:   for (let i = 0; i < q.length; i++) {
+56:     const item = q[i];
+57:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+58:     try {
+59:       await (lib as any)[item.op](item.payload);
+60:       ok++;
+61:     } catch (e: any) {
+62:       const msg = String(e?.message || e || '');
+63:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+64:       if (isDup) { ok++; } else {
+65:         const attempts = (item.attempts || 0) + 1;
+66:         if (attempts >= 5) {
+67:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+68:         } else {
+69:           remaining.push({ ...item, attempts, lastError: msg });
+70:         }
+71:         fail++;
+72:       }
+73:     }
+74:     if (onProgress) onProgress(i + 1, total);
+75:     if ((i + 1) % 20 === 0) {
+76:       await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+77:       await new Promise(r => setTimeout(r, 10));
+78:     }
+79:   }
+80:   await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+81:   return { ok, fail };
+82: }
+83: 
+84: export async function pullFromServer() {
+85:   try {
+86:     const [products, salesGrouped, purchasesGrouped, sales, purchases, settings] = await Promise.all([
+87:       lib.getProducts(),
+
+─── lib.offline.ts — enqueue (خط 42) ───
+42: export async function enqueue(op: string, payload: any) {
+43:   const q = await getQueue();
+44:   q.push({ op, payload, ts: Date.now() });
+45:   await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+46: }
+47: export async function getQueueCount() { return (await getQueue()).length; }
+48: export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
+49: 
+50: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+51:   const q = await getQueue();
+52:   const remaining: any[] = [];
+53:   let ok = 0, fail = 0;
+54:   const total = q.length;
+55:   for (let i = 0; i < q.length; i++) {
+56:     const item = q[i];
+57:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+58:     try {
+59:       await (lib as any)[item.op](item.payload);
+60:       ok++;
+61:     } catch (e: any) {
+62:       const msg = String(e?.message || e || '');
+63:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+64:       if (isDup) { ok++; } else {
+65:         const attempts = (item.attempts || 0) + 1;
+66:         if (attempts >= 5) {
+67:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+68:         } else {
+69:           remaining.push({ ...item, attempts, lastError: msg });
+70:         }
+71:         fail++;
+72:       }
+73:     }
+74:     if (onProgress) onProgress(i + 1, total);
+75:     if ((i + 1) % 20 === 0) {
+76:       await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+77:       await new Promise(r => setTimeout(r, 10));
+78:     }
+79:   }
+80:   await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+81:   return { ok, fail };
+82: }
+83: 
+84: export async function pullFromServer() {
+85:   try {
+86:     const [products, salesGrouped, purchasesGrouped, sales, purchases, settings] = await Promise.all([
+87:       lib.getProducts(),
+88:       lib.getSalesGrouped(),
+89:       lib.getPurchasesGrouped(),
+90:       lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+91:       lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+
+─── lib.offline.ts — syncToServer (خط 50) ───
+50: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+51:   const q = await getQueue();
+52:   const remaining: any[] = [];
+53:   let ok = 0, fail = 0;
+54:   const total = q.length;
+55:   for (let i = 0; i < q.length; i++) {
+56:     const item = q[i];
+57:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+58:     try {
+59:       await (lib as any)[item.op](item.payload);
+60:       ok++;
+61:     } catch (e: any) {
+62:       const msg = String(e?.message || e || '');
+63:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+64:       if (isDup) { ok++; } else {
+65:         const attempts = (item.attempts || 0) + 1;
+66:         if (attempts >= 5) {
+67:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+68:         } else {
+69:           remaining.push({ ...item, attempts, lastError: msg });
+70:         }
+71:         fail++;
+72:       }
+73:     }
+74:     if (onProgress) onProgress(i + 1, total);
+75:     if ((i + 1) % 20 === 0) {
+76:       await AsyncStorage.setItem(QUEUE, JSON.stringify([...remaining, ...q.slice(i + 1)]));
+77:       await new Promise(r => setTimeout(r, 10));
+78:     }
+79:   }
+80:   await AsyncStorage.setItem(QUEUE, JSON.stringify(remaining));
+81:   return { ok, fail };
+82: }
+83: 
+84: export async function pullFromServer() {
+85:   try {
+86:     const [products, salesGrouped, purchasesGrouped, sales, purchases, settings] = await Promise.all([
+87:       lib.getProducts(),
+88:       lib.getSalesGrouped(),
+89:       lib.getPurchasesGrouped(),
+90:       lib.supabase.from('sales').select('*').order('created_at', { ascending: false }),
+91:       lib.supabase.from('purchases').select('*').order('created_at', { ascending: false }),
+92:       lib.getSettings(),
+93:     ]);
+94:     await setLocal('products', products);
+95:     await setLocal('sales_grouped', salesGrouped);
+96:     await setLocal('purchases_grouped', purchasesGrouped);
+97:     await setLocal('sales', sales.data || []);
+98:     await setLocal('purchases', purchases.data || []);
+99:     await setLocal('settings', settings);
+
+─── lib.offline.ts — getMode (خط 19) ───
+19: export function getMode() { return MODE; }
+20: export async function setMode(m: 'online' | 'offline') {
+21:   MODE = m;
+22:   await AsyncStorage.setItem(MODE_KEY, m);
+23:   listeners.forEach(fn => fn(m));
+24: }
+25: export function subscribeMode(fn: (m: 'online' | 'offline') => void) {
+26:   listeners.push(fn);
+27:   return () => { listeners = listeners.filter(f => f !== fn); };
+28: }
+29: 
+30: async function getLocal<T>(k: string): Promise<T | null> {
+31:   const raw = await AsyncStorage.getItem(LOCAL + k);
+32:   return raw ? JSON.parse(raw) : null;
+33: }
+34: async function setLocal(k: string, v: any) {
+35:   await AsyncStorage.setItem(LOCAL + k, JSON.stringify(v));
+36: }
+37: 
+38: export async function getQueue(): Promise<any[]> {
+39:   const raw = await AsyncStorage.getItem(QUEUE);
+40:   return raw ? JSON.parse(raw) : [];
+41: }
+42: export async function enqueue(op: string, payload: any) {
+43:   const q = await getQueue();
+44:   q.push({ op, payload, ts: Date.now() });
+45:   await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+46: }
+47: export async function getQueueCount() { return (await getQueue()).length; }
+48: export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
+49: 
+50: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+51:   const q = await getQueue();
+52:   const remaining: any[] = [];
+53:   let ok = 0, fail = 0;
+54:   const total = q.length;
+55:   for (let i = 0; i < q.length; i++) {
+56:     const item = q[i];
+57:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+58:     try {
+59:       await (lib as any)[item.op](item.payload);
+60:       ok++;
+61:     } catch (e: any) {
+62:       const msg = String(e?.message || e || '');
+63:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+64:       if (isDup) { ok++; } else {
+65:         const attempts = (item.attempts || 0) + 1;
+66:         if (attempts >= 5) {
+67:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+68:         } else {
+
+─── lib.offline.ts — setMode (خط 20) ───
+20: export async function setMode(m: 'online' | 'offline') {
+21:   MODE = m;
+22:   await AsyncStorage.setItem(MODE_KEY, m);
+23:   listeners.forEach(fn => fn(m));
+24: }
+25: export function subscribeMode(fn: (m: 'online' | 'offline') => void) {
+26:   listeners.push(fn);
+27:   return () => { listeners = listeners.filter(f => f !== fn); };
+28: }
+29: 
+30: async function getLocal<T>(k: string): Promise<T | null> {
+31:   const raw = await AsyncStorage.getItem(LOCAL + k);
+32:   return raw ? JSON.parse(raw) : null;
+33: }
+34: async function setLocal(k: string, v: any) {
+35:   await AsyncStorage.setItem(LOCAL + k, JSON.stringify(v));
+36: }
+37: 
+38: export async function getQueue(): Promise<any[]> {
+39:   const raw = await AsyncStorage.getItem(QUEUE);
+40:   return raw ? JSON.parse(raw) : [];
+41: }
+42: export async function enqueue(op: string, payload: any) {
+43:   const q = await getQueue();
+44:   q.push({ op, payload, ts: Date.now() });
+45:   await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+46: }
+47: export async function getQueueCount() { return (await getQueue()).length; }
+48: export async function clearQueue() { await AsyncStorage.setItem(QUEUE, '[]'); }
+49: 
+50: export async function syncToServer(onProgress?: (done: number, total: number) => void): Promise<{ ok: number; fail: number }> {
+51:   const q = await getQueue();
+52:   const remaining: any[] = [];
+53:   let ok = 0, fail = 0;
+54:   const total = q.length;
+55:   for (let i = 0; i < q.length; i++) {
+56:     const item = q[i];
+57:     if (item.failed) { remaining.push(item); if (onProgress) onProgress(i + 1, total); continue; }
+58:     try {
+59:       await (lib as any)[item.op](item.payload);
+60:       ok++;
+61:     } catch (e: any) {
+62:       const msg = String(e?.message || e || '');
+63:       const isDup = /duplicate|unique|already exists|23505/i.test(msg);
+64:       if (isDup) { ok++; } else {
+65:         const attempts = (item.attempts || 0) + 1;
+66:         if (attempts >= 5) {
+67:           remaining.push({ ...item, attempts, lastError: msg, failed: true });
+68:         } else {
+69:           remaining.push({ ...item, attempts, lastError: msg });
+
+══════ lib.storage.ts — لایه ذخیره‌سازی ══════
+
+─── lib.storage.ts — AsyncStorage (خط 62) ───
+62: const AsyncStorage = {
+63:   async getItem(key: string): Promise<string | null> {
+64:     const db = await getDb();
+65:     if (!db) return RealAS.getItem(key);
+66:     try {
+67:       const row: any = await db.getFirstAsync('SELECT value FROM kv WHERE key = ?', [key]);
+68:       if (row && row.value !== null && row.value !== undefined) return String(row.value);
+69: 
+70:       // Lazy migration از AsyncStorage
+71:       const v = await RealAS.getItem(key);
+72:       if (v !== null) {
+73:         await db.runAsync(
+74:           'INSERT OR REPLACE INTO kv (key, value, updated_at) VALUES (?, ?, ?)',
+75:           [key, v, Date.now()]
+76:         ).catch(() => {});
+77:       }
+78:       return v;
+79:     } catch (e) {
+80:       return RealAS.getItem(key);
+81:     }
+82:   },
+83: 
+84:   async setItem(key: string, value: string): Promise<void> {
+85:     const db = await getDb();
+86:     if (!db) return RealAS.setItem(key, value);
+87:     try {
+88:       await db.runAsync(
+89:         'INSERT OR REPLACE INTO kv (key, value, updated_at) VALUES (?, ?, ?)',
+90:         [key, value, Date.now()]
+91:       );
+92:       // بکاپ در AsyncStorage
+93:       try { await RealAS.setItem(key, value); } catch {}
+94:     } catch (e) {
+95:       await RealAS.setItem(key, value);
+96:     }
+97:   },
+98: 
+99:   async removeItem(key: string): Promise<void> {
+100:     const db = await getDb();
+101:     if (!db) return RealAS.removeItem(key);
+102:     try {
+103:       await db.runAsync('DELETE FROM kv WHERE key = ?', [key]);
+104:       try { await RealAS.removeItem(key); } catch {}
+105:     } catch (e) {
+106:       await RealAS.removeItem(key);
+107:     }
+108:   },
+109: 
+110:   async multiGet(keys: string[]): Promise<[string, string | null][]> {
+111:     const db = await getDb();
+112:     if (!db) return RealAS.multiGet(keys);
+113:     try {
+114:       if (keys.length === 0) return [];
+115:       const placeholders = keys.map(() => '?').join(',');
+116:       const rows: any[] = await db.getAllAsync(
+117:         'SELECT key, value FROM kv WHERE key IN (' + placeholders + ')',
+118:         keys
+119:       );
+120:       const map: Record<string, string> = {};
+121:       for (const r of rows) map[r.key] = r.value;
+122: 
+123:       const missing = keys.filter(k => map[k] === undefined);
+124:       if (missing.length > 0) {
+125:         const fallback = await RealAS.multiGet(missing);
+126:         for (const [k, v] of fallback) {
+127:           if (v !== null) {
+128:             map[k] = v;
+129:             await db.runAsync(
+130:               'INSERT OR REPLACE INTO kv (key, value, updated_at) VALUES (?, ?, ?)',
+131:               [k, v, Date.now()]
+132:             ).catch(() => {});
+133:           }
+134:         }
+135:       }
+136:       return keys.map(k => [k, map[k] !== undefined ? map[k] : null]);
+137:     } catch (e) {
+138:       return RealAS.multiGet(keys);
+139:     }
+140:   },
+141: 
+
+══════ lib.ts — کلاینت Supabase ══════
+⚠️ lib.ts: _sbClient پیدا نشد
+⚠️ lib.ts: supabase پیدا نشد
+
+══════ App.tsx — تنظیمات و سینک ══════
+69: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LA
+85: import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+91: import { hydrateFromSettings, getCurrencySync } from './lib.currency';let Notifications: any = null;
+1043: loadMode().then(() => loadCalType()).then(() => getSettings()).then((s: any) => {
+1081: getSettings().then((st: any) => {
+1083: updateSettings({ ...st, theme_mode: next }).catch(() => {});
+1149: purchase: '4242', print: '4242', mgr: '4242', profit: '4242', inventory: '4242', settings: '4242',
+1153: function getTabPins(settings: any): Record<string, string> {
+1155: const p = settings?.tab_pins;
+1297: const [settings, setSettings] = useState<Settings>({});
+1299: React.useEffect(function() { hydrateFromSettings(settings); }, [settings]);
+1302: const reloadSettings = useCallback(() => {
+1304: getSettings().then(setSettings).catch(() => {});
+1310: useEffect(() => { reloadSettings(); }, [reloadSettings]);
+1640: const tabPins = getTabPins(settings);
+1792: {tab === 'mgr' && <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />}
+1794: {tab === 'settings' && (
+1798: <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />
+1804: {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
+1822: {tab === 'employees' && <EmployeesScreen showToast={showToast} settings={settings} />}
+1884: if (name === 'employees') return <EmployeesScreen showToast={showToast} settings={settings} />;
+1886: if (name === 'profit') return <ProfitScreen showToast={showToast} settings={settings} />;
+2272: function DigitalDashboard({ refreshKey, settings }: any) {
+2288: try { setStats(await getDashboardStats(settings?.dashboard_range || 'month', settings?.dashboard_filter || 'both')); }
+2292: }, [settings]);
+2306: const filter = settings?.dashboard_filter || 'both';
+2491: const [settings, setSettings] = useState<Settings>({});
+2549: useEffect(() => { getSettings().then(setSettings).catch(() => {}); }, []);
+3904: const [settings, setSettings] = useState<Settings>({});
+3937: useEffect(() => { getSettings().then(setSettings).catch(() => {}); }, []);
+5229: function ProfitScreen({ showToast, settings }: any) {
+5244: try { const d = await getDashboardStats(settings?.dashboard_range || 'month', settings?.dashboard_filter || 'both'); setModels(d.models); setStats(d); }
+5250: useEffect(() => { load(); }, [settings]);
+5261: var _serial = 'PRF-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + (settings?.dashboard_range || 'month');
+5371: <DigitalDashboard refreshKey={0} settings={settings} />
+5930: try { const settings = await getSettings(); await updateSettings({ ...settings, inventory_threshold: v }); showToast('✅ ذخیره شد'); load(); }
+6544: function ManagementScreen({ showToast, settings, setSettings, reload, tabPins }: any) {
+6548: const [settingsUnlocked, setSettingsUnlocked] = useState(false);
+6550: const [pendingSettingsUnlock, setPendingSettingsUnlock] = useState(false);
+6554: if (k === 'settings' && tabPins?.settings && !settingsUnlocked) { setPendingSettingsUnlock(true); return; }
+6588: <Text style={[s.subTabTxt, sub === t.k && s.subTabTxtActive]}>{t.l}{t.k === 'settings' && tabPins?.settings && !settingsUnlocked ? ' 🔒' : ''}</Text>
+6604: {/* Settings moved to main tab */}
+6612: visible={pendingSettingsUnlock}
+6614: correctPin={tabPins?.settings || ''}
+6616: onClose={() => setPendingSettingsUnlock(false)}
+6620: setSettingsUnlocked(true);
+6622: setSub('settings');
+6624: setPendingSettingsUnlock(false);
+7936: //  SETTINGS SECTION
+8070: function SettingsSection({ showToast, settings, setSettings, reload }: any) {
+8074: const pins = settings.tab_pins || {};
+8102: if (!settings) return;
+8104: setAutoDelEnabled(!!settings.auto_delete_enabled);
+8106: setAutoDelHours(String(settings.auto_delete_hours || 1));
+8108: const sd = settings.sched_daily || {};
+8118: const sw = settings.sched_weekly || {};
+8128: }, [settings]);
+8132: const [lastBackupLabel, setLastBackupLabel] = useState<string | null>(null);
+8140: const last = await getLastAutoBackup();
+8142: setLastBackupLabel(last);
+8144: } catch (e) { console.log('[backup] read last err:', e); }
+8148: await autoBackup();
+8150: const last2 = await getLastAutoBackup();
+8152: setLastBackupLabel(last2);
+8154: } catch (e) { console.log('[backup] auto err:', e); }
+8168: await updateSettings({
+8170: ...settings,
+8196: const emails: string[] = settings.emails || [];
+8202: setSettings({ ...settings, emails: [...emails, emailInput] });
+8208: const removeEmail = (i: number) => setSettings({ ...settings, emails: emails.filter((_, idx) => idx !== i) });
+8232: <TouchableOpacity key={f.k} onPress={() => { setSettings({ ...settings, cal_type: f.k as CalType }); saveCalType(f.k as CalType); }} style={[s.chip, settings.cal_type === f.k && s.chipActive]}>
+8234: <Text style={[s.chipTxt, settings.cal_type === f.k && s.chipTxtActive]}>{f.l}</Text>
+8249: value={settings.currency_code || 'AFN'}
+8251: setSettings({
+8252: ...settings,
+8270: <Switch value={!!settings.payroll_deduct_absence} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_absence: v })} />
+8273: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_absence_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_absence_rate: pars
+8278: <Switch value={!!settings.payroll_deduct_unpaid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_unpaid_leave: v })} />
+8281: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_unpaid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_unpaid_leave_
+8286: <Switch value={!!settings.payroll_deduct_paid_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_paid_leave: v })} />
+8289: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_paid_leave_rate ?? 1)} onChangeText={(v) => setSettings({ ...settings, payroll_paid_leave_rate
+8294: <Switch value={!!settings.payroll_deduct_sick_leave} onValueChange={(v) => setSettings({ ...settings, payroll_deduct_sick_leave: v })} />
+8297: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_sick_leave_rate ?? 0.5)} onChangeText={(v) => setSettings({ ...settings, payroll_sick_leave_ra
+8301: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_insurance_rate ?? 7)} onChangeText={(v) => setSettings({ ...settings, payroll_insurance_rate: 
+8303: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_employer_insurance_rate ?? 23)} onChangeText={(v) => setSettings({ ...settings, payroll_employ
+8307: <Switch value={!!settings.payroll_auto_tax} onValueChange={(v) => setSettings({ ...settings, payroll_auto_tax: v })} />
+8313: <Switch value={!!settings.payroll_loan_deduction} onValueChange={(v) => setSettings({ ...settings, payroll_loan_deduction: v })} />
+8316: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_overtime_rate_multiplier ?? 1.4)} onChangeText={(v) => setSettings({ ...settings, payroll_over
+8319: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.payroll_work_days_per_month ?? 30)} onChangeText={(v) => setSettings({ ...settings, payroll_work_days_
+8327: <TouchableOpacity key={k} onPress={() => setSettings({ ...settings, dashboard_range: k })} style={[s.chip, settings.dashboard_range === k && s.chipActive]}>
+8329: <Text style={[s.chipTxt, settings.dashboard_range === k && s.chipTxtActive]}>{l}</Text>
+8345: <TouchableOpacity key={f.k} onPress={() => setSettings({ ...settings, dashboard_filter: f.k })} style={[s.chip, settings.dashboard_filter === f.k && s.chipActive]}>
+8347: <Text style={[s.chipTxt, settings.dashboard_filter === f.k && s.chipTxtActive]}>{f.l}</Text>
+8359: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(Math.round((settings.profit_margin || 0.1) * 100))} onChangeText={(v) => setSettings({ ...settings, profit_marg
+8365: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.inventory_threshold || 5)} onChangeText={(v) => setSettings({ ...settings, inventory_threshold: parseI
+8461: آخرین بکاپ خودکار: {lastBackupLabel || 'هنوز انجام نشده'}
+8475: const r = await exportBackup();
+8493: const r = await importBackup();
+8531: { k: 'settings', l: '⚙️ تنظیمات' },
+8547: setSettings({ ...settings, tab_pins: { ...pins, [t.k]: v.replace(/\D/g, '').slice(0, 10) } })
+8575: await updateSettings({ ...settings, tab_pins: pins });
+
+══════ همه عملیات‌های صف (op) ══════
+createAttendance, createBank, createEmployee, createExpense, createFxCustomer, createFxPartner, createFxTrade, createPBA, createPTX, createPartner, createParty, createProduct, createPurchase, createSale, createShipping, createStockAdjustment, deleteBank, deletePBA, deletePTX, deletePartner, deleteParty, deleteProduct, deletePurchase, deleteSale, deleteShipping, deleteStockAdjustment, updatePartner, updateParty, updateProduct, updatePurchase, updateSale, updateSettings

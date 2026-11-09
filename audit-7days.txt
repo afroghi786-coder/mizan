@@ -1,0 +1,64 @@
+
+===== App.tsx =====
+1536: fx_expired: `⌛ آگهی شما منقضی شد`,
+1538: hawala_expired: `⌛ حواله شما منقضی شد`,
+2411: const elapsed = `امروز: ${j[0]}/${pad2(j[1])}/${pad2(j[2])}`;
+5683: return { '#': i + 1, 'کد': m.code, 'نام': m.name, 'خرید': m.bought, 'فروش': m.sold, 'موجودی': m.currentQty, 'بهای واحد': m.unitCost || 0, 'ارزش کل': m.totalValue || 0, 'آخرین فروش': m.lastSaleDate || 
+5765: var d = r.date_factor || r.date_reg || r.created_at || '';
+5773: var d = r.date_factor || r.date_reg || r.created_at || '';
+5781: var d = r.date_factor || r.date_reg || r.created_at || '';
+5789: var d = r.date_factor || r.date_reg || r.created_at || '';
+5797: var d = r.adjustment_date || r.created_at || '';
+5857: return { 'نوع': 'تعدیل', '#': i + 1, 'تاریخ': r.adjustment_date || r.created_at || '', 'دلیل': r.reason || '', 'مقدار': _qty, 'بهای واحد': _uCost, 'ارزش کل': _qty * _uCost, 'یادداشت': r.note || '' };
+6101: { l: '⏸ راکد (۹۰+ روز)', v: (stats.agingBuckets && stats.agingBuckets.dead) || 0, c: '#94a3b8' },
+6203: <Text style={[HDR.cell, { width: 100 }]}>روز از فروش</Text>
+6414: <Text style={{ width: 130, fontSize: 10, textAlign: 'center' }}>{r.adjustment_date || r.created_at ? (displayDate ? displayDate(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.creat
+6518: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+6576: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+6684: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.created_at || '').slice(0, 10)}</Text>
+6923: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#334155' }]} onPress={load}><Text style={s.btnTxt}>{t('🔄 بروزرسانی')}</Text></TouchableOpacity>
+8197: _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.return_number || '—') + '</td><td>' + displayDateOnly(r.date || r.created_at || '') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="
+8225: 'تاریخ': displayDateOnly(r.date || r.created_at || ''),
+8286: <Text style={[s.tdCell, { width: 120, fontSize: 11 }]}>{displayDateOnly(r.date || r.created_at || '')}</Text>
+8677: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#059669' }]} onPress={load}><Text style={s.btnTxt}>{t('🔄 بروزرسانی')}</Text></TouchableOpacity>
+9121: <Text style={[s.lblS, { color: C.textMut }]}>تعداد روزهای کاری ماه (پیش‌فرض: ۳۰)</Text>
+9136: آخرین بکاپ خودکار: {lastBackupLabel || 'امروز گرفته نشده'}
+9165: <EL textKey="حذف قدیمی‌تر از (روز)" style={[s.lblS, { color: C.textMut }]} />
+9168: <EL text="{t('📨 گزارش روزانه')}" style={s.secT} />
+9172: <EL textKey="روزها" style={[s.lblS, { color: C.textMut }]} />
+9183: <EL textKey="روز ارسال" style={[s.lblS, { color: C.textMut }]} />
+
+===== license.ts =====
+9: status: 'active' | 'expired' | 'suspended' | 'unknown';
+11: expiresAt?: string;
+63: const expiresAt = online.expires_at ? new Date(online.expires_at).getTime() : 0;
+64: const isExpired = expiresAt > 0 && expiresAt < now;
+68: status: isSuspended ? 'suspended' : isExpired ? 'expired' : 'active',
+70: expiresAt: online.expires_at,
+73: isLocked: isSuspended || isExpired,
+74: reason: isSuspended ? 'حساب شما معلق است' : isExpired ? 'اشتراک شما به پایان رسیده' : undefined,
+80: const expiresAt = localData.expires_at ? new Date(localData.expires_at).getTime() : 0;
+81: const isExpired = expiresAt > 0 && expiresAt < now;
+84: const diffSec = Math.floor((expiresAt - now) / 1000);
+89: if (isExpired) reason = '⏰ اشتراک شما به پایان رسیده';
+90: else if (diffSec > 0 && diffSec < 3600) reason = `⏳ ${diffMin} دقیقه تا پایان trial`;
+91: else if (diffSec > 0 && diffSec < 86400) reason = `⏳ ${diffHours} ساعت تا پایان trial`;
+94: status: isSuspended ? 'suspended' : isExpired ? 'expired' : 'active',
+96: expiresAt: localData.expires_at,
+99: isLocked: isSuspended || isExpired,
+
+===== LicenseGate.tsx =====
+50: {info.expiresAt ? (
+52: 📅 تاریخ انقضا: {displayDateOnly(info.expiresAt)}
+
+===== LicenseNotification.tsx =====
+19: .select('notification_pending, notification_message, notification_plan, notification_at, expires_at')
+52: const expiresAt = notification.expires_at ? new Date(notification.expires_at) : null;
+55: if (p === '10d') return '۱۰ روز';
+60: if (p === 'trial') return 'تریال';
+87: {expiresAt ? displayDateOnly(expiresAt) : '—'}
+
+===== LicenseRequest.tsx =====
+72: ۷ روز تریال شما به پایان رسیده.{'\n'}
+
+===== lib.supabase.admin.ts =====

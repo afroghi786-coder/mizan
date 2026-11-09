@@ -1,5 +1,0 @@
-2467: {/* سود خالص */}
-2469: <View style={dash.profitBox}>
-2471: <EL text="💰 سود خالص" style={dash.profitLbl}>{rangeLabel}</EL>
-2473: <Text style={[dash.profitVal, { color: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88', textShadowColor: profit < 0 ? '#ff3355' : profit === 0 ? '#fbbf24' : '#00ff88' }]}>
-2479: <Text style={dash.profitUnit}>{typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : ''}</Text>

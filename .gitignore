@@ -54,3 +54,43 @@ assets/models-cache/
 # 🔧 Android prebuild (workflow regenerates)
 android/app/src/main/assets/model-fa-fa/
 android/app/src/main/assets/model-en-us/
+# ═══════════════════════════════════════════
+#  Audit / backups / temp dumps (new)
+# ═══════════════════════════════════════════
+/audit-*.txt
+/assistant-audit-*/
+/whole-app-audit-*/
+/backup-*/
+/dist.zip
+/local-check-result.txt
+/comparison-report.txt
+/app-imports.txt
+/edit-form-code.txt
+/ledger-modal-code.txt
+/ledger-screen-code.txt
+/settings-section.txt
+/settings-sheets-full.txt
+
+# ═══════════════════════════════════════════
+#  Junk files from shell redirection
+#  نکته: ! ابتدای نام در gitignore معنی negation دارد
+#  پس با \! escape شده
+# ═══════════════════════════════════════════
+/\!(x
+/\!deletedInvs.has(String(g.invoice
+/(f.endsWith('.ts')
+/String(a.code
+/k.includes('product'))
+/lib.getBanks()))
+/lib.getParties()))
+/lib.getPartners()))
+/lib.getShippings()))
+/null)
+/p.invoice_number
+/s
+/s.invoice_number
+/table.startsWith(p))
+/x.id
+/x.local_id
+/{const
+/npx

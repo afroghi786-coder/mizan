@@ -1,4 +1,0 @@
-=== جستجوی tabs ===
-1674: const tabs = [
-1676: { key: 'dashboard', icon: '🏠', label: t('داشبورد'), color: '#0e7490' },
-1678: { key: 'exchange', icon: '💱', label: t('صرافی'), color: '#065f46' },

@@ -1,7 +1,9 @@
 // lib.backup.ts — بکاپ و بازیابی JSON
 import AsyncStorage from './lib.storage';
-import * as Sharing from 'expo-sharing';
-import * as DocumentPicker from 'expo-document-picker';
+let Sharing: any = null;
+try { Sharing = require('expo-sharing'); } catch {}
+let DocumentPicker: any = null;
+try { DocumentPicker = require('expo-document-picker'); } catch {}
 
 let FS: any = null;
 try {
@@ -124,6 +126,7 @@ export async function autoBackup(): Promise<void> {
 }
 
 export async function exportBackup(): Promise<{ ok: boolean; message: string }> {
+  if (!Sharing) return { ok: false, message: 'کتابخانه اشتراک‌گذاری در این نسخه نصب نیست' };
   try {
     const dir = await ensureDir();
     const b = await createBackup();
@@ -148,6 +151,7 @@ export async function exportBackup(): Promise<{ ok: boolean; message: string }> 
 }
 
 export async function importBackup(): Promise<{ ok: boolean; message: string }> {
+  if (!DocumentPicker) return { ok: false, message: 'کتابخانه انتخاب فایل در این نسخه نصب نیست' };
   try {
     const res: any = await DocumentPicker.getDocumentAsync({
       type: 'application/json',

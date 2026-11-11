@@ -75,8 +75,10 @@ export async function checkLicense(): Promise<LicenseInfo> {
     await AsyncStorage.setItem(LICENSE_TS, String(now));
     await AsyncStorage.setItem(LICENSE_DATA, JSON.stringify(online));
     
-    const expiresAt = online.expires_at ? new Date(online.expires_at).getTime() : 0;
-    const isExpired = expiresAt > 0 && expiresAt < now;
+    let expiresAt = online.expires_at ? new Date(online.expires_at).getTime() : 0;
+    if (isNaN(expiresAt)) expiresAt = 0; // جلوگیری از خرابی تاریخ
+    // اگر تاریخ وجود نداشت یا صفر بود، یعنی منقضی شده (به جای اینکه معتبر باشد)
+    const isExpired = !online.expires_at || expiresAt === 0 || expiresAt < now;
     const isSuspended = online.status === 'suspended';
 
     return {
@@ -92,8 +94,9 @@ export async function checkLicense(): Promise<LicenseInfo> {
 
   // ۴. آفلاین — از داده محلی استفاده کن
   if (localData) {
-    const expiresAt = localData.expires_at ? new Date(localData.expires_at).getTime() : 0;
-    const isExpired = expiresAt > 0 && expiresAt < now;
+    let expiresAt = localData.expires_at ? new Date(localData.expires_at).getTime() : 0;
+    if (isNaN(expiresAt)) expiresAt = 0;
+    const isExpired = !localData.expires_at || expiresAt === 0 || expiresAt < now;
     const isSuspended = localData.status === 'suspended';
 
     const diffSec = Math.floor((expiresAt - now) / 1000);

@@ -1788,7 +1788,7 @@ function MainApp({ showToast, onCycleTheme, langTick }: any) {
     { key: 'assistant', icon: '🤝', label: t('دستیار میزان'), color: '#7c3aed' },
 
     { key: 'support', icon: '🎧', label: t('پشتیبانی') + (supportUnread > 0 ? ' (' + supportUnread + ')' : ''), color: '#0891b2' },
-    { key: 'recovery', icon: '??', label: t('بازیابی'), color: '#059669' },
+    { key: 'recovery', icon: '♻️', label: t('بازیابی'), color: '#059669' },
   ];
 
 

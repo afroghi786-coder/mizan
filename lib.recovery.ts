@@ -227,6 +227,27 @@ export async function getDeletedCount(): Promise<number> {
   return items.length;
 }
 
+
+export async function restoreAuditEdit(table: string, key: string, beforeData: any) {
+  try {
+    const storageKey = '@mizan_' + table;
+    const raw = await AsyncStorage.getItem(storageKey);
+    if (!raw) return { ok: false, error: 'داده‌ای یافت نشد' };
+    let list = JSON.parse(raw);
+    if (!Array.isArray(list)) list = [list];
+    
+    const idx = list.findIndex((x: any) => String(x.id || x.key || x.code) === String(key));
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...beforeData };
+      await AsyncStorage.setItem(storageKey, JSON.stringify(list));
+      return { ok: true };
+    }
+    return { ok: false, error: 'آیتم در جدول یافت نشد' };
+  } catch (e: any) {
+    return { ok: false, error: e.message };
+  }
+}
+
 export async function restoreItem(table: string, key: string): Promise<{ ok: boolean; error?: string }> {
   try {
     if (!isBusinessTable(table)) return { ok: false, error: 'جدول مجاز نیست' };

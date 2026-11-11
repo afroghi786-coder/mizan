@@ -2,7 +2,7 @@ import DeviceNameTopBar from './DeviceNameTopBar';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput, ActivityIndicator, RefreshControl, Platform, Modal } from 'react-native';
 import AuditPinGate from './AuditPinGate';
-import { getDeletedItems, restoreItem, permanentlyDeleteItem, restoreMany, permanentlyDeleteMany, enrichMissingSnapshots, setDeviceName, TABLE_LABELS, DeletedItem , cleanupAllLocalTombstones , fetchSnapshotsFromSheetForAll } from './lib.recovery';
+import { getDeletedItems, restoreItem, permanentlyDeleteItem, restoreMany, permanentlyDeleteMany, enrichMissingSnapshots, setDeviceName, TABLE_LABELS, DeletedItem , cleanupAllLocalTombstones , fetchSnapshotsFromSheetForAll , restoreAuditEdit } from './lib.recovery';
 import { clearSnapshotCache } from './lib.snapshot';
 import AsyncStorage from './lib.storage';
 import { displayDate } from './lib.offline';
@@ -336,6 +336,9 @@ function confirmAsync(title: string, msg: string): Promise<boolean> {
 
 export default function RecoveryPanel({ showToast, onBack }: any) {
   const [items, setItems] = useState<DeletedItem[]>([]);
+  const [auditEvents, setAuditEvents] = useState<any[]>([]);
+  const [recoveryTab, setRecoveryTab] = useState<'deleted' | 'edited'>('deleted');
+  const visibleItems = recoveryTab === 'deleted' ? items : [];
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filterTable, setFilterTable] = useState<string>('all');
@@ -352,10 +355,28 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
       try { const lb = await AsyncStorage.getItem('@mizan_device_label'); if (lb) setMyDeviceLabel(String(lb)); } catch {}
     })();
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('@mizan_audit_events');
+        let arr: any[] = [];
+        try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+        if (!Array.isArray(arr)) arr = [];
+        const edits = arr.filter((e: any) => e && (e.action === 'update' || e.action === 'create' || e.action === 'delete'));
+        setAuditEvents(edits.slice(-60).reverse());
+      } catch {}
+    })();
+  }, []);
+
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [namingId, setNamingId] = useState('');
   const [namingText, setNamingText] = useState('');
   const [tombstoneStats, setTombstoneStats] = useState<any>({ total: 0, oldest: '', newest: '', byTable: {} });
+  const [mainTab, setMainTab] = useState<'deleted'|'edited'|'settings'>('deleted');
+  const [editDetailItem, setEditDetailItem] = useState<any>(null);
+  const [editSearch, setEditSearch] = useState('');
+  const [editSelected, setEditSelected] = useState<Set<string>>(new Set());
   const [enrichStatus, setEnrichStatus] = useState<'idle'|'loading'|'ok'|'error'>('idle');
   const [enrichMsg, setEnrichMsg] = useState('');
 
@@ -515,8 +536,152 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
     else if (showToast) showToast(r.error || 'خطا', true);
   };
 
+
+  const doDeleteAudit = async (ev: any) => {
+    if (!(await confirmAsync('حذف اطلاع ویرایش', 'آیا از حذف این اطلاع مطمئن هستید؟ (داده اصلی فاکتور دست‌نخورده می‌ماند)'))) return;
+    try {
+      const key = '@mizan_audit_events';
+      const raw = await AsyncStorage.getItem(key);
+      let events = raw ? JSON.parse(raw) : [];
+      
+      // پیدا کردن و حذف دقیق همان رویداد
+      events = events.filter((e: any) => {
+        const isSame = (e.key === ev.key && e.table === ev.table && e.at === ev.at && e.action === ev.action);
+        return !isSame;
+      });
+      
+      await AsyncStorage.setItem(key, JSON.stringify(events));
+      
+      // تلاش برای پوش کردن تغییرات به شیت (اگر تابع سینک سراسری وجود داشته باشد)
+      try {
+        if (typeof (globalThis as any).__mizan_sync === 'function') {
+          await (globalThis as any).__mizan_sync();
+        }
+      } catch (err) {}
+      
+      if (showToast) showToast('🗑️ اطلاع ویرایش از حافظه و شیت حذف شد', false);
+      await load(); 
+    } catch (e) {
+      if (showToast) showToast('خطا در حذف اطلاع', true);
+    }
+  };
+
+
+  const doRestoreAudit = async (ev: any) => {
+    if (!(await confirmAsync('♻️ بازیابی ویرایش', 'آیا از بازگرداندن این مورد به حالت قبل مطمئن هستید؟'))) return;
+    try {
+      let before = ev.before || {};
+      if (typeof before === 'string') { try { before = JSON.parse(before); } catch {} }
+      
+      const r = await restoreAuditEdit(ev.table, ev.key, before);
+      
+      if (r.ok) {
+        // حذف اطلاع از audit events
+        const key = '@mizan_audit_events';
+        const raw = await AsyncStorage.getItem(key);
+        let events = raw ? JSON.parse(raw) : [];
+        events = events.filter((e: any) => !(e.key === ev.key && e.table === ev.table && e.at === ev.at && e.action === ev.action));
+        await AsyncStorage.setItem(key, JSON.stringify(events));
+        
+        try {
+          if (typeof (globalThis as any).__mizan_sync === 'function') {
+            await (globalThis as any).__mizan_sync();
+          }
+        } catch (err) {}
+        
+        if (showToast) showToast('✅ ویرایش بازیابی شد و داده به حالت قبل برگشت', false);
+        await load();
+      } else {
+        if (showToast) showToast(r.error || 'خطا در بازیابی', true);
+      }
+    } catch (e) {
+      if (showToast) showToast('خطا در بازیابی', true);
+    }
+  };
+
+
+  const getEditId = (ev: any) => `${ev.table}|${ev.key}|${ev.at || ev.timestamp || ''}`;
+
+  const toggleEditOne = (id: string) => {
+    const next = new Set(editSelected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setEditSelected(next);
+  };
+
+  const toggleEditAll = () => {
+    if (editSelected.size === filteredEdits.length) setEditSelected(new Set());
+    else setEditSelected(new Set(filteredEdits.map((e: any) => getEditId(e))));
+  };
+
+  const doDeleteEditSelected = async () => {
+    if (!(await confirmAsync('حذف اطلاع ویرایش', `آیا از حذف ${editSelected.size} اطلاع مطمئن هستید؟`))) return;
+    try {
+      const key = '@mizan_audit_events';
+      const raw = await AsyncStorage.getItem(key);
+      let events = raw ? JSON.parse(raw) : [];
+      events = events.filter((e: any) => !editSelected.has(getEditId(e)));
+      await AsyncStorage.setItem(key, JSON.stringify(events));
+      setEditSelected(new Set());
+      if (showToast) showToast('🗑️ اطلاع‌ها حذف شدند', false);
+      await load();
+    } catch (err) {
+      if (showToast) showToast('خطا در حذف', true);
+    }
+  };
+
+  const doRestoreEditSelected = async () => {
+    if (!(await confirmAsync('♻️ بازیابی ویرایش‌ها', `آیا از بازیابی ${editSelected.size} مورد مطمئن هستید؟`))) return;
+    try {
+      for (const ev of editedItems) {
+        if (editSelected.has(getEditId(ev))) {
+          let before = ev.before || {};
+          if (typeof before === 'string') { try { before = JSON.parse(before); } catch {} }
+          await restoreAuditEdit(ev.table, ev.key, before);
+        }
+      }
+      const key = '@mizan_audit_events';
+      const raw = await AsyncStorage.getItem(key);
+      let events = raw ? JSON.parse(raw) : [];
+      events = events.filter((e: any) => !editSelected.has(getEditId(e)));
+      await AsyncStorage.setItem(key, JSON.stringify(events));
+      
+      setEditSelected(new Set());
+      if (showToast) showToast('✅ موارد بازیابی شدند', false);
+      await load();
+    } catch (err) {
+      if (showToast) showToast('خطا در بازیابی', true);
+    }
+  };
+
+  const doDeleteAuditFixed = async (ev: any) => {
+    if (!(await confirmAsync('حذف اطلاع ویرایش', 'آیا از حذف این اطلاع مطمئن هستید؟'))) return;
+    try {
+      const key = '@mizan_audit_events';
+      const raw = await AsyncStorage.getItem(key);
+      let events = raw ? JSON.parse(raw) : [];
+      const idToRemove = getEditId(ev);
+      events = events.filter((e: any) => getEditId(e) !== idToRemove);
+      await AsyncStorage.setItem(key, JSON.stringify(events));
+      if (showToast) showToast('🗑️ اطلاع حذف شد', false);
+      await load();
+    } catch (e) {
+      if (showToast) showToast('خطا در حذف', true);
+    }
+  };
+
   const currentCols = filterTable !== 'all' ? (COLS[filterTable] || []) : [];
   const isSingleTable = filterTable !== 'all' && currentCols.length > 0;
+  const editedItems = auditEvents.filter((e: any) => e.action === 'update' && !((e.before?.items?.length || 0) > (e.after?.items?.length || 0)));
+  const filteredEdits = (filterTable === 'all' ? editedItems : editedItems.filter((e: any) => e.table === filterTable || (filterTable === 'purchases' && e.table === 'purchases_grouped')))
+    .filter((e: any) => {
+      if (!editSearch) return true;
+      const q = editSearch.toLowerCase();
+      if (e.key && String(e.key).toLowerCase().includes(q)) return true;
+      if (JSON.stringify(e.before || {}).toLowerCase().includes(q)) return true;
+      if (JSON.stringify(e.after || {}).toLowerCase().includes(q)) return true;
+      return false;
+    });
   const unknownDevices = useMemo(() => Array.from(new Set(items.map(x => x.device_id).filter(Boolean))), [items]);
 
   return (
@@ -533,203 +698,410 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
             <Text style={st.sub}>{items.length} مورد حذف‌شده</Text>
           </View>
           <TouchableOpacity style={st.iconBtn} onPress={() => load(true)}><Text style={st.iconTxt}>🔄</Text></TouchableOpacity>
-          <TouchableOpacity style={st.iconBtn} onPress={handleCleanupAll}><Text style={st.iconTxt}>🧹</Text></TouchableOpacity>
-          <TouchableOpacity style={st.iconBtn} onPress={() => setShowDeviceModal(true)}><Text style={st.iconTxt}>📱</Text></TouchableOpacity>
-          <TouchableOpacity style={st.iconBtn} onPress={handleCleanupTombstones}><Text style={st.iconTxt}>🧹</Text></TouchableOpacity>
-          <TouchableOpacity style={st.iconBtn} onPress={() => { try { (globalThis as any).__auditPinOpenSettings?.(); } catch {} }}><Text style={st.iconTxt}>⚙️</Text></TouchableOpacity>
-          <DeviceNameTopBar />
+          
 
         </View>
 
-        {enrichStatus !== 'idle' ? (
-          <View style={{
-            marginHorizontal: 10, marginTop: 6, padding: 8, borderRadius: 8, borderWidth: 1,
-            backgroundColor: enrichStatus === 'error' ? '#7f1d1d' : enrichStatus === 'ok' ? '#14532d' : '#1e3a5f',
-            borderColor: enrichStatus === 'error' ? '#dc2626' : enrichStatus === 'ok' ? '#059669' : '#0891b2',
-          }}>
-            <Text style={{ color: '#fff', fontSize: 11, textAlign: 'right', fontWeight: 'bold' }}>
-              {enrichStatus === 'loading' ? '⏳ ' : ''}{enrichMsg}
-            </Text>
-          </View>
-        ) : null}
-        <View style={{ marginHorizontal: 10, marginTop: 6, padding: 8, backgroundColor: '#0c1729', borderRadius: 8, borderWidth: 1, borderColor: '#1f3a5f' }}>
-          <Text style={{ color: '#7dd3fc', fontSize: 10, fontWeight: 'bold', textAlign: 'right', marginBottom: 4 }}>
-            📊 منبع داده: حافظه محلی — اتصال شیت: غیرفعال
-          </Text>
-          <Text style={{ color: '#cbd5e1', fontSize: 9, textAlign: 'right', marginBottom: 2 }}>
-            تعداد کل: {tombstoneStats.total} — قدیمی‌ترین: {tombstoneStats.oldest ? formatFullDate(tombstoneStats.oldest) : '—'}
-          </Text>
-          <Text style={{ color: '#cbd5e1', fontSize: 9, textAlign: 'right', marginBottom: 6 }}>
-            جدیدترین: {tombstoneStats.newest ? formatFullDate(tombstoneStats.newest) : '—'}
-          </Text>
-          <TouchableOpacity
-            style={{ backgroundColor: '#7f1d1d', padding: 8, borderRadius: 6, alignItems: 'center' }}
-            onPress={async () => {
-              const msg = 'همه tombstoneهای قدیمی‌تر از ۳۰ روز از حافظه محلی پاک شوند؟ شیت دست نمی‌خورد.';
-              const ok = Platform.OS === 'web' ? (typeof window !== 'undefined' && window.confirm ? window.confirm(msg) : true) : true;
-              if (!ok) return;
-              const r = await cleanupOldTombstones(30);
-              if (r.ok) {
-                if (showToast) showToast('🗑️ ' + r.removed + ' مورد قدیمی پاک شد — ' + r.remaining + ' باقی ماند', false);
-                await load();
-              } else if (showToast) showToast(r.error || 'خطا', true);
-            }}
-          >
-            <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>🧹 پاک‌سازی tombstoneهای قدیمی‌تر از ۳۰ روز</Text>
+                {/* ================= تب‌های اصلی ================= */}
+        <View style={{ flexDirection: 'row-reverse', marginHorizontal: 10, marginTop: 10, backgroundColor: '#0f172a', borderRadius: 12, padding: 6, borderWidth: 1, borderColor: '#1f3a5f' }}>
+          <TouchableOpacity onPress={() => setMainTab('deleted')} style={{ flex: 1, paddingVertical: 12, backgroundColor: mainTab === 'deleted' ? '#dc2626' : 'transparent', borderRadius: 8, alignItems: 'center' }}>
+            <Text style={{ color: mainTab === 'deleted' ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 'bold' }}>🗑️ حذف شده‌ها</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMainTab('edited')} style={{ flex: 1, paddingVertical: 12, backgroundColor: mainTab === 'edited' ? '#2563eb' : 'transparent', borderRadius: 8, alignItems: 'center' }}>
+            <Text style={{ color: mainTab === 'edited' ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 'bold' }}>✏️ ویرایش شده‌ها</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMainTab('settings')} style={{ flex: 1, paddingVertical: 12, backgroundColor: mainTab === 'settings' ? '#0891b2' : 'transparent', borderRadius: 8, alignItems: 'center' }}>
+            <Text style={{ color: mainTab === 'settings' ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 'bold' }}>⚙️ تنظیمات</Text>
           </TouchableOpacity>
         </View>
 
-        
-        <View style={st.searchWrap}>
-          <TextInput value={search} onChangeText={setSearch} placeholder="جستجو در همه فیلدها..." placeholderTextColor="#64748b" style={st.searchInp} />
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.filterScroll} contentContainerStyle={st.filterRow}>
-      
-
-          <TouchableOpacity onPress={() => setFilterTable('all')} style={[st.chip, filterTable === 'all' && st.chipActive]}>
-            <Text style={[st.chipTxt, filterTable === 'all' && st.chipTxtActive]}>همه ({items.length})</Text>
-          </TouchableOpacity>
-          {ALL_TABLES.map((t) => {
-            const c = counts[t] || 0;
-            return (
-              <TouchableOpacity key={t} onPress={() => setFilterTable(t)} style={[st.chip, filterTable === t && st.chipActive, c === 0 && st.chipEmpty]}>
-                <Text style={[st.chipTxt, filterTable === t && st.chipTxtActive, c === 0 && st.chipTxtEmpty]}>{TABLE_LABELS[t]} ({c})</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {filtered.length > 0 ? (
-          <View style={st.selectAllBar}>
-            <TouchableOpacity onPress={toggleAll} style={st.selectAllBtn}>
-              <View style={[st.checkbox, allSelected && st.checkboxOn]}>{allSelected ? <Text style={st.checkTxt}>✓</Text> : null}</View>
-              <Text style={st.selectAllTxt}>انتخاب همه ({filtered.length})</Text>
-            </TouchableOpacity>
-            {selected.size > 0 ? (
-              <TouchableOpacity onPress={() => setSelected(new Set())} style={st.clearSelBtn}><Text style={st.clearSelTxt}>✕ {selected.size}</Text></TouchableOpacity>
+        {/* ================= تب ۱: حذف شده‌ها ================= */}
+        {mainTab === 'deleted' && (
+          <View style={{ flex: 1 }}>
+            
+            {enrichStatus !== 'idle' ? (
+              <View style={{
+                marginHorizontal: 10, marginTop: 6, padding: 8, borderRadius: 8, borderWidth: 1,
+                backgroundColor: enrichStatus === 'error' ? '#7f1d1d' : enrichStatus === 'ok' ? '#14532d' : '#1e3a5f',
+                borderColor: enrichStatus === 'error' ? '#dc2626' : enrichStatus === 'ok' ? '#059669' : '#0891b2',
+              }}>
+                <Text style={{ color: '#fff', fontSize: 11, textAlign: 'right', fontWeight: 'bold' }}>
+                  {enrichStatus === 'loading' ? '⏳ ' : ''}{enrichMsg}
+                </Text>
+              </View>
             ) : null}
-          </View>
-        ) : null}
 
-        <ScrollView style={st.list} contentContainerStyle={{ padding: 6, paddingBottom: 100 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor="#0891b2" />}>
-          {loading ? <ActivityIndicator color="#0891b2" style={{ marginTop: 30 }} /> : null}
-          {!loading && filtered.length === 0 ? (
-            <View style={st.emptyWrap}>
-              <Text style={st.emptyIcon}>📭</Text>
-              <Text style={st.emptyTxt}>{items.length === 0 ? 'هیچ موردی حذف نشده' : 'موردی پیدا نشد'}</Text>
+            
+
+            <View style={st.searchWrap}>
+              <TextInput value={search} onChangeText={setSearch} placeholder="جستجو در همه فیلدها..." placeholderTextColor="#64748b" style={st.searchInp} />
             </View>
-          ) : null}
 
-          {!loading && filtered.length > 0 ? (
-            isSingleTable ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator>
-                <View>
-                  <View style={st.thead}>
-                    <View style={st.tcellChk} />
-                    <View style={[st.tcell, { width: 50 }]}><Text style={st.thTxt}>#</Text></View>
-                    {currentCols.map(c => (
-                      <View key={c.k} style={[st.tcell, { width: c.w || 100 }]}>
-                        <Text style={st.thTxt} numberOfLines={1}>{c.l}</Text>
+            {/* زیرتب‌ها (فیلترها) */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.filterScroll} contentContainerStyle={st.filterRow}>
+              <TouchableOpacity onPress={() => setFilterTable('all')} style={[st.chip, filterTable === 'all' && st.chipActive, items.length > 0 && { backgroundColor: '#7f1d1d', borderColor: '#dc2626' }]}>
+                <Text style={[st.chipTxt, filterTable === 'all' && st.chipTxtActive, items.length > 0 && { color: '#fca5a5' }]}>همه ({items.length})</Text>
+              </TouchableOpacity>
+              {Object.keys(COLS).map(k => {
+                const count = items.filter((x: any) => x.table === k).length;
+                const isDanger = count > 0;
+                return (
+                  <TouchableOpacity key={k} onPress={() => setFilterTable(k)} style={[st.chip, filterTable === k && st.chipActive, isDanger && { backgroundColor: '#7f1d1d', borderColor: '#dc2626' }]}>
+                    <Text style={[st.chipTxt, filterTable === k && st.chipTxtActive, isDanger && { color: '#fca5a5' }]}>
+                      {TABLE_LABELS[k] || k} {isDanger ? `(${count})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {filtered.length > 0 ? (
+              <View style={st.selectAllBar}>
+                <TouchableOpacity onPress={toggleAll} style={st.selectAllBtn}>
+                  <View style={[st.checkbox, allSelected && st.checkboxOn]}>{allSelected ? <Text style={st.checkTxt}>✓</Text> : null}</View>
+                  <Text style={st.selectAllTxt}>انتخاب همه ({filtered.length})</Text>
+                </TouchableOpacity>
+                {selected.size > 0 ? (
+                  <TouchableOpacity onPress={() => setSelected(new Set())} style={st.clearSelBtn}><Text style={st.clearSelTxt}>✕ {selected.size}</Text></TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
+
+            <ScrollView style={st.list} contentContainerStyle={{ padding: 6, paddingBottom: 100 }}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor="#0891b2" />}>
+              {loading ? <ActivityIndicator color="#0891b2" style={{ marginTop: 30 }} /> : null}
+              {!loading && filtered.length === 0 ? (
+                <View style={st.emptyWrap}>
+                  <Text style={st.emptyIcon}>📭</Text>
+                  <Text style={st.emptyTxt}>{items.length === 0 ? 'هیچ موردی حذف نشده' : 'موردی پیدا نشد'}</Text>
+                </View>
+              ) : null}
+
+              {!loading && filtered.length > 0 ? (
+                isSingleTable ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator>
+                    <View>
+                      <View style={st.thead}>
+                        <View style={st.tcellChk} />
+                        <View style={[st.tcell, { width: 50 }]}><Text style={st.thTxt}>#</Text></View>
+                        {currentCols.map(c => (
+                          <View key={c.k} style={[st.tcell, { width: c.w || 100 }]}>
+                            <Text style={st.thTxt} numberOfLines={1}>{c.l}</Text>
+                          </View>
+                        ))}
+                        <View style={[st.tcell, { width: 130 }]}><Text style={st.thTxt}>تاریخ حذف</Text></View>
+                        <View style={[st.tcell, { width: 170 }]}><Text style={st.thTxt}>عملیات</Text></View>
                       </View>
-                    ))}
-                    <View style={[st.tcell, { width: 130 }]}><Text style={st.thTxt}>تاریخ حذف</Text></View>
-                    <View style={[st.tcell, { width: 170 }]}><Text style={st.thTxt}>عملیات</Text></View>
-                  </View>
-                  {filtered.map((item, idx) => {
+                      {filtered.map((item, idx) => {
+                        const k = item.table + '|' + item.key;
+                        const raw = getRaw(item);
+                        const isSel = selected.has(k);
+                        const isBusy = busyKey === k;
+                        const devLabel = item.device_label || (item.device_id ? 'دستگاه ' + shortId(item.device_id) : 'نامشخص');
+                        return (
+                          <View key={k}>
+                            <TouchableOpacity onPress={() => setDetailItem(item)} style={[st.trow, isSel && st.trowSel, idx % 2 === 1 && st.trowAlt]}>
+                              <TouchableOpacity onPress={() => toggleOne(k)} style={st.tcellChk}>
+                                <View style={[st.checkboxSm, isSel && st.checkboxOn]}>{isSel ? <Text style={st.checkTxt}>✓</Text> : null}</View>
+                              </TouchableOpacity>
+                              <View style={[st.tcell, { width: 50 }]}>
+                                <Text style={st.tdTxt} numberOfLines={1}>{idx + 1}</Text>
+                              </View>
+                              {currentCols.map(c => (
+                                <View key={c.k} style={[st.tcell, { width: c.w || 100 }]}>
+                                  <Text style={[st.tdTxt, c.money && st.tdMoney]} numberOfLines={1}>
+                                    {val(raw, c.k, c.money) || '—'}
+                                  </Text>
+                                </View>
+                              ))}
+                              <View style={[st.tcell, { width: 140, alignItems: 'flex-end' }]}>
+                                <Text style={[st.tdTxt, { fontSize: 9 }]} numberOfLines={1}>{formatFullDate(item.deleted_at)}</Text>
+                                <Text style={[st.tdTxt, { fontSize: 8, color: '#64748b' }]} numberOfLines={1}>{timeAgo(item.deleted_at)}</Text>
+                              </View>
+                              <View style={[st.tcell, { width: 170, flexDirection: 'row-reverse', gap: 4 }]}>
+                                <TouchableOpacity onPress={() => doRestore(item)} disabled={isBusy} style={[st.btnMini, { backgroundColor: '#166534' }]}><Text style={st.btnMiniTxt}>♻️</Text></TouchableOpacity>
+                                <TouchableOpacity onPress={() => doDelete(item)} disabled={isBusy} style={[st.btnMini, { backgroundColor: '#7f1d1d' }]}><Text style={st.btnMiniTxt}>🗑️</Text></TouchableOpacity>
+                                <TouchableOpacity onPress={() => setDetailItem(item)} style={[st.btnMini, { backgroundColor: '#334155' }]}><Text style={st.btnMiniTxt}>👁️</Text></TouchableOpacity>
+                              </View>
+                            </TouchableOpacity>
+                            <View style={st.devRow}>
+                              <Text style={st.devRowTxt} numberOfLines={1}>🗑️ {devLabel} {item.device_id && item.device_label ? '• ' + shortId(item.device_id) : ''}</Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                ) : (
+                  filtered.map((item) => {
                     const k = item.table + '|' + item.key;
                     const raw = getRaw(item);
                     const isSel = selected.has(k);
                     const isBusy = busyKey === k;
                     const devLabel = item.device_label || (item.device_id ? 'دستگاه ' + shortId(item.device_id) : 'نامشخص');
                     return (
-                      <View key={k}>
-                        <TouchableOpacity
-                          onPress={() => setDetailItem(item)}
-                          style={[st.trow, isSel && st.trowSel, idx % 2 === 1 && st.trowAlt]}
-                        >
-                          <TouchableOpacity onPress={() => toggleOne(k)} style={st.tcellChk}>
-                            <View style={[st.checkboxSm, isSel && st.checkboxOn]}>{isSel ? <Text style={st.checkTxt}>✓</Text> : null}</View>
-                          </TouchableOpacity>
-                          <View style={[st.tcell, { width: 50 }]}>
-                            <Text style={st.tdTxt} numberOfLines={1}>{idx + 1}</Text>
-                          </View>
-                          {currentCols.map(c => (
-                            <View key={c.k} style={[st.tcell, { width: c.w || 100 }]}>
-                              <Text style={[st.tdTxt, c.money && st.tdMoney]} numberOfLines={1}>
-                                {val(raw, c.k, c.money) || '—'}
-                              </Text>
-                            </View>
-                          ))}
-                          <View style={[st.tcell, { width: 140, alignItems: 'flex-end' }]}>
-                            <Text style={[st.tdTxt, { fontSize: 9 }]} numberOfLines={1}>{formatFullDate(item.deleted_at)}</Text>
-                            <Text style={[st.tdTxt, { fontSize: 8, color: '#64748b' }]} numberOfLines={1}>{timeAgo(item.deleted_at)}</Text>
-                          </View>
-                          <View style={[st.tcell, { width: 170, flexDirection: 'row-reverse', gap: 4 }]}>
-                            <TouchableOpacity onPress={() => doRestore(item)} disabled={isBusy} style={[st.btnMini, { backgroundColor: '#166534' }]}>
-                              <Text style={st.btnMiniTxt}>♻️</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => doDelete(item)} disabled={isBusy} style={[st.btnMini, { backgroundColor: '#7f1d1d' }]}>
-                              <Text style={st.btnMiniTxt}>🗑️</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setDetailItem(item)} style={[st.btnMini, { backgroundColor: '#334155' }]}>
-                              <Text style={st.btnMiniTxt}>👁️</Text>
-                            </TouchableOpacity>
-                          </View>
+                      <TouchableOpacity key={k} onPress={() => setDetailItem(item)} style={[st.mixedRow, isSel && st.trowSel]}>
+                        <TouchableOpacity onPress={() => toggleOne(k)} style={st.tcellChk}>
+                          <View style={[st.checkboxSm, isSel && st.checkboxOn]}>{isSel ? <Text style={st.checkTxt}>✓</Text> : null}</View>
                         </TouchableOpacity>
-                        <View style={st.devRow}>
-                          <Text style={st.devRowTxt} numberOfLines={1}>🗑️ {devLabel} {item.device_id && item.device_label ? '• ' + shortId(item.device_id) : ''}</Text>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <View style={st.badge}><Text style={st.badgeTxt}>{item.tableLabel}</Text></View>
+                            <Text style={st.agoTxt}>{formatFullDate(item.deleted_at)}</Text>
+                          </View>
+                          <Text style={st.mixedTitle} numberOfLines={1}>
+                            {raw ? (raw.invoice_number || raw.invoice || raw.name || raw.code || item.key) : item.key}
+                          </Text>
+                          <Text style={st.mixedSub} numberOfLines={1}>
+                            {raw ? [raw.customer_name || raw.supplier_name || raw.name, raw.total || raw.amount, raw.date_factor || raw.date].filter(Boolean).join(' • ') : '—'}
+                          </Text>
+                          <Text style={st.mixedDev} numberOfLines={1}>🗑️ {devLabel}</Text>
                         </View>
-                      </View>
+                        <View style={{ flexDirection: 'row-reverse', gap: 4, marginRight: 4 }}>
+                          <TouchableOpacity onPress={() => doRestore(item)} disabled={isBusy} style={[st.btnMini, { backgroundColor: '#166534' }]}><Text style={st.btnMiniTxt}>♻️</Text></TouchableOpacity>
+                          <TouchableOpacity onPress={() => doDelete(item)} disabled={isBusy} style={[st.btnMini, { backgroundColor: '#7f1d1d' }]}><Text style={st.btnMiniTxt}>🗑️</Text></TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
                     );
-                  })}
-                </View>
-              </ScrollView>
-            ) : (
-              filtered.map((item) => {
-                const k = item.table + '|' + item.key;
-                const raw = getRaw(item);
-                const isSel = selected.has(k);
-                const isBusy = busyKey === k;
-                const devLabel = item.device_label || (item.device_id ? 'دستگاه ' + shortId(item.device_id) : 'نامشخص');
+                  })
+                )
+              ) : null}
+            </ScrollView>
+
+            {selected.size > 0 ? (
+              <View style={st.batchBar}>
+                <Text style={st.batchTxt}>{selected.size} انتخاب</Text>
+                <TouchableOpacity style={st.batchBtnRestore} onPress={doRestoreSelected}><Text style={st.batchBtnTxt}>♻️ بازیابی</Text></TouchableOpacity>
+                <TouchableOpacity style={st.batchBtnDelete} onPress={doDeleteSelected}><Text style={st.batchBtnTxt}>🗑️ حذف</Text></TouchableOpacity>
+                <TouchableOpacity style={st.batchBtnCancel} onPress={() => setSelected(new Set())}><Text style={st.batchBtnTxt}>✕</Text></TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {/* ================= تب ۲: ویرایش شده‌ها ================= */}
+        {mainTab === 'edited' && (
+          <View style={{ flex: 1 }}>
+            
+            <View style={st.searchWrap}>
+              <TextInput value={editSearch} onChangeText={setEditSearch} placeholder="جستجو در ویرایش‌ها (اسم، شماره، ...)" placeholderTextColor="#64748b" style={st.searchInp} />
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={st.filterScroll} contentContainerStyle={st.filterRow}>
+              <TouchableOpacity onPress={() => setFilterTable('all')} style={[st.chip, filterTable === 'all' && st.chipActive, editedItems.length > 0 && { backgroundColor: '#7f1d1d', borderColor: '#dc2626' }]}>
+                <Text style={[st.chipTxt, filterTable === 'all' && st.chipTxtActive, editedItems.length > 0 && { color: '#fca5a5' }]}>همه ({editedItems.length})</Text>
+              </TouchableOpacity>
+              {Object.keys(COLS).map(k => {
+                const count = editedItems.filter((x: any) => x.table === k || (k === 'purchases' && x.table === 'purchases_grouped')).length;
+                const isDanger = count > 0;
                 return (
-                  <TouchableOpacity key={k} onPress={() => setDetailItem(item)} style={[st.mixedRow, isSel && st.trowSel]}>
-                    <TouchableOpacity onPress={() => toggleOne(k)} style={st.tcellChk}>
-                      <View style={[st.checkboxSm, isSel && st.checkboxOn]}>{isSel ? <Text style={st.checkTxt}>✓</Text> : null}</View>
-                    </TouchableOpacity>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 2 }}>
-                        <View style={st.badge}><Text style={st.badgeTxt}>{item.tableLabel}</Text></View>
-                        <Text style={st.agoTxt}>{formatFullDate(item.deleted_at)}</Text>
-                      </View>
-                      <Text style={st.mixedTitle} numberOfLines={1}>
-                        {raw ? (raw.invoice_number || raw.invoice || raw.name || raw.code || item.key) : item.key}
-                      </Text>
-                      <Text style={st.mixedSub} numberOfLines={1}>
-                        {raw ? [raw.customer_name || raw.supplier_name || raw.name, raw.total || raw.amount, raw.date_factor || raw.date].filter(Boolean).join(' • ') : '—'}
-                      </Text>
-                      <Text style={st.mixedDev} numberOfLines={1}>🗑️ {devLabel}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row-reverse', gap: 4, marginRight: 4 }}>
-                      <TouchableOpacity onPress={() => doRestore(item)} disabled={isBusy} style={[st.btnMini, { backgroundColor: '#166534' }]}><Text style={st.btnMiniTxt}>♻️</Text></TouchableOpacity>
-                      <TouchableOpacity onPress={() => doDelete(item)} disabled={isBusy} style={[st.btnMini, { backgroundColor: '#7f1d1d' }]}><Text style={st.btnMiniTxt}>🗑️</Text></TouchableOpacity>
-                    </View>
+                  <TouchableOpacity key={k} onPress={() => setFilterTable(k)} style={[st.chip, filterTable === k && st.chipActive, isDanger && { backgroundColor: '#7f1d1d', borderColor: '#dc2626' }]}>
+                    <Text style={[st.chipTxt, filterTable === k && st.chipTxtActive, isDanger && { color: '#fca5a5' }]}>
+                      {TABLE_LABELS[k] || k} {isDanger ? `(${count})` : ''}
+                    </Text>
                   </TouchableOpacity>
                 );
-              })
-            )
-          ) : null}
-        </ScrollView>
+              })}
+            </ScrollView>
 
-        {selected.size > 0 ? (
-          <View style={st.batchBar}>
-            <Text style={st.batchTxt}>{selected.size} انتخاب</Text>
-            <TouchableOpacity style={st.batchBtnRestore} onPress={doRestoreSelected}><Text style={st.batchBtnTxt}>♻️ بازیابی</Text></TouchableOpacity>
-            <TouchableOpacity style={st.batchBtnDelete} onPress={doDeleteSelected}><Text style={st.batchBtnTxt}>🗑️ حذف</Text></TouchableOpacity>
-            <TouchableOpacity style={st.batchBtnCancel} onPress={() => setSelected(new Set())}><Text style={st.batchBtnTxt}>✕</Text></TouchableOpacity>
+            {filteredEdits.length > 0 ? (
+              <View style={st.selectAllBar}>
+                <TouchableOpacity onPress={toggleEditAll} style={st.selectAllBtn}>
+                  <View style={[st.checkbox, editSelected.size === filteredEdits.length && filteredEdits.length > 0 && st.checkboxOn]}>
+                    {editSelected.size === filteredEdits.length && filteredEdits.length > 0 ? <Text style={st.checkTxt}>✓</Text> : null}
+                  </View>
+                  <Text style={st.selectAllTxt}>انتخاب همه ({filteredEdits.length})</Text>
+                </TouchableOpacity>
+                {editSelected.size > 0 ? (
+                  <TouchableOpacity onPress={() => setEditSelected(new Set())} style={st.clearSelBtn}><Text style={st.clearSelTxt}>✕ {editSelected.size}</Text></TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
+
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 15, paddingBottom: 100 }}>
+              {filteredEdits.length === 0 ? (
+                <Text style={{ color: '#64748b', textAlign: 'center', marginTop: 20, fontSize: 13 }}>موردی یافت نشد.</Text>
+              ) : filteredEdits.map((ev: any, i: number) => {
+                let before = ev.before || {};
+                if (typeof before === 'string') { try { before = JSON.parse(before); } catch {} }
+                let after = ev.after || {};
+                if (typeof after === 'string') { try { after = JSON.parse(after); } catch {} }
+                
+                const name = before.name || before.product_name || before.customer_name || before.title || before.invoice_number ||
+                             after.name || after.product_name || after.customer_name || after.title || after.invoice_number || '';
+                const model = before.model || before.model_name || after.model || after.model_name || '';
+                const displayName = [name, model].filter(Boolean).join(' - ') || ev.key;
+                const evId = getEditId(ev);
+                const isSel = editSelected.has(evId);
+
+                return (
+                  <View key={evId} style={{ backgroundColor: '#0f172a', padding: 15, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: '#334155', flexDirection: 'row-reverse', alignItems: 'center' }}>
+                    
+                    <TouchableOpacity onPress={() => toggleEditOne(evId)} style={{ marginLeft: 10 }}>
+                      <View style={[st.checkboxSm, isSel && st.checkboxOn]}>{isSel ? <Text style={st.checkTxt}>✓</Text> : null}</View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditDetailItem(ev)}>
+                      <Text style={{ color: '#60a5fa', fontSize: 13, fontWeight: 'bold', textAlign: 'right' }}>✏️ ویرایش در {TABLE_LABELS[ev.table] || ev.table}</Text>
+                      <Text style={{ color: '#fff', fontSize: 14, textAlign: 'right', marginTop: 4 }}>{displayName}</Text>
+                      <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                        <Text style={{ color: '#64748b', fontSize: 10, textAlign: 'right' }}>تاریخ: {formatFullDate(ev.at || ev.timestamp || '')}</Text>
+                        <Text style={{ color: '#93c5fd', fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>
+                          📱 {ev.device_label || (ev.device_id ? 'دستگاه ' + shortId(ev.device_id) : 'نامشخص')}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row-reverse', gap: 6, marginRight: 10 }}>
+                      <TouchableOpacity onPress={() => doRestoreAudit(ev)} style={{ backgroundColor: '#166534', padding: 8, borderRadius: 6 }}>
+                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>♻️</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => doDeleteAuditFixed(ev)} style={{ backgroundColor: '#7f1d1d', padding: 8, borderRadius: 6 }}>
+                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>✓</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            {editSelected.size > 0 ? (
+              <View style={st.batchBar}>
+                <Text style={st.batchTxt}>{editSelected.size} انتخاب</Text>
+                <TouchableOpacity style={st.batchBtnRestore} onPress={doRestoreEditSelected}><Text style={st.batchBtnTxt}>♻️ بازیابی</Text></TouchableOpacity>
+                <TouchableOpacity style={st.batchBtnDelete} onPress={doDeleteEditSelected}><Text style={st.batchBtnTxt}>🗑️ حذف اطلاع</Text></TouchableOpacity>
+                <TouchableOpacity style={st.batchBtnCancel} onPress={() => setEditSelected(new Set())}><Text style={st.batchBtnTxt}>✕</Text></TouchableOpacity>
+              </View>
+            ) : null}
           </View>
-        ) : null}
+        )}
+
+        {/* ================= تب ۳: تنظیمات ================= */}
+        {mainTab === 'settings' && (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 15 }}>
+            <View style={{ backgroundColor: '#1e293b', padding: 15, borderRadius: 12, marginBottom: 15 }}>
+              <Text style={{ color: '#67e8f9', fontSize: 16, fontWeight: 'bold', textAlign: 'right', marginBottom: 8 }}>⚙️ تنظیمات بازیابی</Text>
+              <Text style={{ color: '#cbd5e1', fontSize: 12, textAlign: 'right', lineHeight: 20 }}>
+                مدیریت دستگاه‌ها، رمز عبور و پاک‌سازی حافظه محلی.
+              </Text>
+            </View>
+
+            {/* باکس آمار */}
+            <View style={{ marginBottom: 15, padding: 12, backgroundColor: '#0c1729', borderRadius: 8, borderWidth: 1, borderColor: '#1f3a5f' }}>
+              <Text style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>📊 وضعیت حافظه محلی</Text>
+              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginBottom: 4 }}>تعداد کل: {tombstoneStats.total}</Text>
+              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginBottom: 4 }}>قدیمی‌ترین: {tombstoneStats.oldest ? formatFullDate(tombstoneStats.oldest) : '—'}</Text>
+              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right' }}>جدیدترین: {tombstoneStats.newest ? formatFullDate(tombstoneStats.newest) : '—'}</Text>
+            </View>
+
+            <View style={{ marginBottom: 15 }}>
+              <DeviceNameTopBar />
+            </View>
+
+            <TouchableOpacity onPress={() => setShowDeviceModal(true)} style={{ backgroundColor: '#334155', padding: 15, borderRadius: 10, marginBottom: 10, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>📱 مدیریت دستگاه‌ها</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => { try { (globalThis as any).__auditPinOpenSettings?.(); } catch {} }} style={{ backgroundColor: '#334155', padding: 15, borderRadius: 10, marginBottom: 10, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>🔐 تنظیمات رمز عبور بازیابی</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleCleanupAll} style={{ backgroundColor: '#7f1d1d', padding: 15, borderRadius: 10, marginBottom: 10, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>🧹 پاک‌سازی کامل حافظه محلی</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={handleCleanupTombstones} style={{ backgroundColor: '#7f1d1d', padding: 15, borderRadius: 10, marginBottom: 10, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>🧹 حذف Tombstone ها</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={async () => {
+                const msg = 'همه tombstone‌های قدیمی‌تر از ۳۰ روز از حافظه محلی پاک شوند؟ شیت دست نمی‌خورد.';
+                const ok = Platform.OS === 'web' ? (typeof window !== 'undefined' && window.confirm ? window.confirm(msg) : true) : true;
+                if (!ok) return;
+                const r = await cleanupOldTombstones(30);
+                if (r.ok) {
+                  if (showToast) showToast('🗑️ ' + r.removed + ' مورد قدیمی پاک شد — ' + r.remaining + ' باقی ماند', false);
+                  await load();
+                } else if (showToast) showToast(r.error || 'خطا', true);
+              }} style={{ backgroundColor: '#7f1d1d', padding: 15, borderRadius: 10, marginBottom: 10, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>🧹 پاک‌سازی موارد قدیمی‌تر از ۳۰ روز</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+
+<Modal visible={!!editDetailItem} transparent animationType="slide" onRequestClose={() => setEditDetailItem(null)}>
+          <View style={st.modalBackdrop}>
+            <View style={st.modalCard}>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={st.modalTitle}>✏️ جزئیات ویرایش ({TABLE_LABELS[editDetailItem?.table] || editDetailItem?.table})</Text>
+                <TouchableOpacity onPress={() => setEditDetailItem(null)}><Text style={{ color: '#f87171', fontSize: 22, fontWeight: 'bold', paddingHorizontal: 8 }}>✕</Text></TouchableOpacity>
+              </View>
+              
+              {editDetailItem ? (
+                <ScrollView style={{ maxHeight: 480 }}>
+                  <View style={st.devBox}>
+                    {(() => {
+                      let before = editDetailItem.before || {};
+                      let after = editDetailItem.after || {};
+                      if (typeof before === 'string') { try { before = JSON.parse(before); } catch {} }
+                      if (typeof after === 'string') { try { after = JSON.parse(after); } catch {} }
+                      const name = before.name || before.product_name || before.customer_name || before.title || before.invoice_number || after.name || after.product_name || after.customer_name || after.title || after.invoice_number || '';
+                      const model = before.model || before.model_name || before.modelName || after.model || after.model_name || after.modelName || '';
+                      const displayName = [name, model].filter(Boolean).join(' - ');
+                      return <Text style={st.devBoxTxt}>🔑 {displayName ? `${displayName} (${editDetailItem.key})` : editDetailItem.key}</Text>
+                    })()}
+                    <Text style={[st.devBoxId, { color: '#fecaca', fontWeight: 'bold', marginTop: 4 }]}>📅 تاریخ: {formatFullDate(editDetailItem.at || editDetailItem.timestamp || '')}</Text>
+                    <Text style={[st.devBoxId, { color: '#93c5fd', fontWeight: 'bold', marginTop: 4 }]}>📱 دستگاه: {editDetailItem.device_label || (editDetailItem.device_id ? 'دستگاه ' + shortId(editDetailItem.device_id) : 'نامشخص')}</Text>
+                  </View>
+                  
+                  {(() => {
+                    let fields = editDetailItem.fields || [];
+                    if (typeof fields === 'string') { try { fields = JSON.parse(fields); } catch { fields = []; } }
+                    let before = editDetailItem.before || {};
+                    if (typeof before === 'string') { try { before = JSON.parse(before); } catch { before = {}; } }
+                    let after = editDetailItem.after || {};
+                    if (typeof after === 'string') { try { after = JSON.parse(after); } catch { after = {}; } }
+
+                    if (fields.length === 0) {
+                      fields = Object.keys(after).filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k]));
+                    }
+
+                    const isDateField = (key: string) => key.endsWith('_at') || key.includes('date') || key.includes('تاریخ') || MODAL_DATE_KEYS.has(key);
+
+                    return fields.map((f: string) => {
+                      const oldV = before[f];
+                      const newV = after[f];
+                      let label = FA_EXTRA[f] || FIELD_LABELS_FA[f];
+                      if (!label) {
+                        if (f === 'updated_at') label = 'تاریخ بروزرسانی';
+                        else if (f === 'created_at') label = 'تاریخ ایجاد';
+                        else if (f === 'items') label = 'اقلام / لیست';
+                        else label = f;
+                      }
+                      
+                      return (
+                        <View key={f} style={{ backgroundColor: '#0a2038', borderRadius: 6, padding: 10, borderWidth: 1, borderColor: '#1f3a5f', marginBottom: 8 }}>
+                          <Text style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>{label}</Text>
+                          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                            <View style={{ flex: 1, backgroundColor: '#7f1d1d', padding: 6, borderRadius: 4, marginLeft: 4 }}>
+                              <Text style={{ color: '#fca5a5', fontSize: 9, textAlign: 'right' }}>قبلی:</Text>
+                              <Text style={{ color: '#fff', fontSize: 11, textAlign: 'right' }}>{isDateField(f) ? formatFullDate(String(oldV || '')) : formatValueForField(f, oldV)}</Text>
+                            </View>
+                            <View style={{ flex: 1, backgroundColor: '#14532d', padding: 6, borderRadius: 4, marginRight: 4 }}>
+                              <Text style={{ color: '#86efac', fontSize: 9, textAlign: 'right' }}>جدید:</Text>
+                              <Text style={{ color: '#fff', fontSize: 11, textAlign: 'right' }}>{isDateField(f) ? formatFullDate(String(newV || '')) : formatValueForField(f, newV)}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    });
+                  })()}
+                </ScrollView>
+              ) : null}
+            </View>
+          </View>
+        </Modal>
 
         <Modal visible={!!detailItem} transparent animationType="slide" onRequestClose={() => setDetailItem(null)}>
   <View style={st.modalBackdrop}>
@@ -753,7 +1125,11 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
             </Text>
             <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', marginTop: 4 }}>
               {detailItem.device_id ? <Text style={[st.devBoxId, { marginLeft: 12 }]}>📱 {String(detailItem.device_id).slice(-6)}</Text> : null}
-              <Text style={[st.devBoxId, { marginLeft: 12 }]}>🔑 {detailItem.key}</Text>
+              {(() => {
+                        const raw = getRaw(detailItem) || {};
+                        const name = raw.name || raw.product_name || raw.customer_name || raw.title || raw.invoice_number;
+                        return <Text style={[st.devBoxId, { marginLeft: 12 }]}>🔑 {name ? `${name} (${detailItem.key})` : detailItem.key}</Text>;
+                      })()}
               <Text style={[st.devBoxId, { marginLeft: 12, color: '#fecaca', fontWeight: 'bold' }]}>📅 {formatFullDate(detailItem.deleted_at)} ({timeAgo(detailItem.deleted_at)})</Text>
             </View>
           </View>
@@ -805,7 +1181,7 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
                   <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', marginBottom: 10 }}>
                     {_headerFields.map((k) => (
                       <View key={k} style={{ backgroundColor: '#0a2038', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5, borderWidth: 1, borderColor: '#1f3a5f', marginLeft: 6, marginBottom: 6, minWidth: 85, maxWidth: 180 }}>
-                        <Text style={{ color: '#7dd3fc', fontSize: 9, fontWeight: 'bold', textAlign: 'right', marginBottom: 2 }}>{FA_EXTRA[k] || FIELD_LABELS_FA[k] || k}</Text>
+                        <Text style={{ color: '#7dd3fc', fontSize: 9, fontWeight: 'bold', textAlign: 'right', marginBottom: 2 }}>{FA_EXTRA[k] || FIELD_LABELS_FA[k] || EXTRA_LABELS[k] || k}</Text>
                         <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600', textAlign: 'right' }} numberOfLines={2}>{MODAL_DATE_KEYS.has(k) ? formatFullDate(String(_raw[k])) : formatValueForField(k, _raw[k])}</Text>
                       </View>
                     ))}
@@ -915,6 +1291,32 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
   );
 }
 
+
+const EXTRA_LABELS: Record<string, string> = {
+  father_name: 'نام پدر',
+  national_id: 'کد ملی',
+  emergency_phone: 'تلفن اضطراری',
+  department: 'دپارتمان / بخش',
+  role: 'نقش / سمت',
+  contract_type: 'نوع قرارداد',
+  start_date: 'تاریخ شروع',
+  hire_date: 'تاریخ استخدام',
+  marital_status: 'وضعیت تاهل',
+  dependents: 'تعداد افراد تحت تکفل',
+  base_salary: 'حقوق پایه',
+  housing_allowance: 'حق مسکن',
+  food_allowance: 'حق غذا',
+  transport_allowance: 'حق ایاب و ذهاب',
+  other_allowance: 'سایر مزایا',
+  overtime_rate: 'نرخ اضافه کاری',
+  bank_name: 'نام بانک',
+  account_number: 'شماره حساب',
+  education: 'تحصیلات',
+  insurance_number: 'شماره بیمه',
+  status: 'وضعیت',
+  note: 'یادداشت'
+};
+
 const FA_EXTRA: Record<string, string> = {
   customerCode: 'کد مشتری',
   supplierCode: 'کد تأمین‌کننده',
@@ -950,6 +1352,21 @@ const MODAL_DATE_KEYS = new Set<string>([
   'date','date_factor','date_reg','depositDate','deposit_date',
   'created_at','updated_at','deleted_at','at',
 ]);
+
+
+function classifyAuditEntry(ev: any): 'deleted' | 'edited' | null {
+  if (!ev) return null;
+  const action = String(ev.action || '');
+  if (action === 'delete') return 'deleted';
+  if (action === 'create') return null;
+  if (action !== 'update') return null;
+  try {
+    const b = Array.isArray(ev.before?.items) ? ev.before.items.length : 0;
+    const a = Array.isArray(ev.after?.items) ? ev.after.items.length : 0;
+    if (a < b) return 'deleted';
+  } catch {}
+  return 'edited';
+}
 
 const st = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#0a1628' },

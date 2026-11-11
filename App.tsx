@@ -3188,7 +3188,7 @@ function SalesScreen({ showToast }: any) {
 
               onChange={setShipping}
 
-              options={[...new Set([...shippingsList.map((s:any)=>s.name), ...prods.map(p => p.shipping_name || '').filter(Boolean)])]}
+              options={[...new Set([...shippingsList.filter(Boolean).filter(Boolean).map((s:any)=>s.name), ...prods.map(p => p.shipping_name || '').filter(Boolean)])]}
 
               placeholder="تایپ یا انتخاب..."
 
@@ -3399,15 +3399,15 @@ function SalesScreen({ showToast }: any) {
             onChange={setReceiverName}
             onSelect={onReceiverPick}
             options={Array.from(new Set([
-              ...partiesList.map((p: any) => p.name || '').filter(Boolean),
-              ...partnersList.map((p: any) => p.name || '').filter(Boolean),
+              ...partiesList.filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean),
+              ...partnersList.filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean),
             ]))}
             placeholder="تایپ یا انتخاب..."
           />
           <EL text="{t('🆔 کد دریافت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={receiverCode} editable={false} placeholder="خودکار" placeholderTextColor={C.textMut} />
           <EL text="🏦 حساب دریافت‌کننده (بانک)" style={[s.lbl, { color: C.textMut }]} />
-          <Autocomplete value={receiverBank} onChange={setReceiverBank} options={banksList.map((b: any) => b.name)} placeholder="انتخاب بانک..." />
+          <Autocomplete value={receiverBank} onChange={setReceiverBank} options={banksList.filter(Boolean).filter(Boolean).map((b: any) => b.name)} placeholder="انتخاب بانک..." />
           <EL text="{t('🏦 شماره حساب دریافت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAccount} onChangeText={setReceiverAccount} placeholder="اختیاری" placeholderTextColor={C.textMut} />
         </View>
@@ -4290,7 +4290,7 @@ function PurchaseScreen({ showToast }: any) {
 
           <EL textKey="🏭 اطلاعات تأمین‌کننده" style={[s.customerCardTitle, { color: C.text }]} />
 
-          <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...partySuppliers.map((p: any) => p.name || '').filter(Boolean), ...prods.map(p => p.supplier_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
+          <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...partySuppliers.filter(Boolean).filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean), ...prods.map(p => p.supplier_name || '').filter(Boolean)])]} placeholder="تایپ یا انتخاب..." />
 
           <EL text="{t('🆔 کد تأمین‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
 
@@ -4461,8 +4461,8 @@ function PurchaseScreen({ showToast }: any) {
             }
           }}
           options={Array.from(new Set([
-            ...partySuppliers.map((p: any) => p.name || '').filter(Boolean),
-            ...partnersList.map((p: any) => p.name || '').filter(Boolean),
+            ...partySuppliers.filter(Boolean).filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean),
+            ...partnersList.filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean),
             ...prods.map((p: any) => p.payer_name || '').filter(Boolean),
             ...prods.map((p: any) => p.supplier_name || '').filter(Boolean),
           ]))}
@@ -4475,7 +4475,7 @@ function PurchaseScreen({ showToast }: any) {
 
         <EL text="🏦 حساب پرداخت‌کننده (بانک)" style={[s.lbl, { color: C.textMut }]} />
 
-        <Autocomplete value={bankAcc} onChange={setBankAcc} options={banksList.map((b: any) => b.name)} placeholder="انتخاب بانک..." />
+        <Autocomplete value={bankAcc} onChange={setBankAcc} options={banksList.filter(Boolean).filter(Boolean).map((b: any) => b.name)} placeholder="انتخاب بانک..." />
 
         <EL text="{t('🏦 حساب دریافت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
 
@@ -7853,7 +7853,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
                     <CellAutocomplete
                       value={r.bankName}
                       onChange={(v: string) => updRow(i, 'bankName', v)}
-                      options={banksList.map((b: any) => b.name)}
+                      options={banksList.filter(Boolean).filter(Boolean).map((b: any) => b.name)}
                       placeholder="بانک"
                     />
                   </View>
@@ -7875,8 +7875,8 @@ function SearchSection({ showToast, onReturnSaved }: any) {
                         } catch {}
                       }}
                       options={Array.from(new Set([
-                        ...partiesList.map((p:any)=>p.name).filter(Boolean),
-                        ...partnersList.map((p:any)=>p.name).filter(Boolean),
+                        ...partiesList.filter(Boolean).filter(Boolean).map((p:any)=>p.name).filter(Boolean),
+                        ...partnersList.filter(Boolean).filter(Boolean).map((p:any)=>p.name).filter(Boolean),
                         ...prods.map((p: any) => p.supplier_name || '').filter(Boolean)
                       ]))}
                       placeholder="صاحب حساب"
@@ -7900,7 +7900,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
                     <CellAutocomplete
                       value={r.shipping}
                       onChange={(v: string) => updRow(i, 'shipping', v)}
-                      options={shippingsList.map((s: any) => s.name)}
+                      options={shippingsList.filter(Boolean).filter(Boolean).map((s: any) => s.name)}
                       placeholder="باربری"
                     />
                   </View>

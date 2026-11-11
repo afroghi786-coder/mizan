@@ -2,6 +2,91 @@
 import AsyncStorage from './lib.storage';
 import * as lib from './lib';
 
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = new Set<string>([
+  'sales_grouped','purchases_grouped',
+  'sales_returns','purchase_returns',
+  'partners','parties','products','banks','shippings',
+  'expenses','employees','salary_payments','employee_loans',
+  'attendance','employee_leaves','payroll_batches',
+  'stock_adjustments','partner_transactions','partner_bank_accounts',
+  'settings'
+]);
+
+const _AUDIT_START = Date.now();
+
+function _rowKeyFor(row: any): string {
+  if (!row || typeof row !== 'object') return '';
+  for (const f of ['local_id','id','code','invoice','invoice_number','batch_number','employee_code','partner_code','source_id','phone','name']) {
+    const v = row[f];
+    if (v !== undefined && v !== null && String(v).trim()) return String(v).trim();
+  }
+  return '';
+}
+
+async function _logEditToAudit(table: string, before: any, after: any) {
+  try {
+    if (Date.now() - _AUDIT_START < 5000) return;
+    const beforeArr = Array.isArray(before) ? before : (before ? [before] : []);
+    const afterArr = Array.isArray(after) ? after : (after ? [after] : []);
+    const beforeMap = new Map<string, any>();
+    const afterMap = new Map<string, any>();
+    for (const r of beforeArr) { const k = _rowKeyFor(r); if (k) beforeMap.set(k, r); }
+    for (const r of afterArr) { const k = _rowKeyFor(r); if (k) afterMap.set(k, r); }
+    const allKeys = new Set<string>([...beforeMap.keys(), ...afterMap.keys()]);
+    const entries: any[] = [];
+    for (const k of allKeys) {
+      const b = beforeMap.get(k);
+      const a = afterMap.get(k);
+      let action = '';
+      let changedFields: string[] = [];
+      if (!b && a) action = 'create';
+      else if (b && !a) action = 'delete';
+      else if (b && a) {
+        const allF = new Set<string>([...Object.keys(b), ...Object.keys(a)]);
+        for (const f of allF) {
+          if (String(f).startsWith('_')) continue;
+          if (JSON.stringify(b[f]) !== JSON.stringify(a[f])) changedFields.push(f);
+        }
+        if (changedFields.length === 0) continue;
+        action = 'update';
+      }
+      if (!action) continue;
+      const summary = action === 'create' ? 'ایجاد' : action === 'update' ? ('ویرایش: ' + changedFields.slice(0, 4).join('، ')) : 'حذف';
+      entries.push({
+        id: 'edit_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        type: table + '_' + action,
+        table: table, key: k,
+        at: new Date().toISOString(),
+        device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
+        summary, action, fields: changedFields,
+        before: b || null, after: a || null,
+      });
+    }
+    if (entries.length === 0 || entries.length > 6) return;
+    const raw = await AsyncStorage.getItem('@mizan_audit_events');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (!Array.isArray(arr)) arr = [];
+    arr.push(...entries);
+    if (arr.length > 800) arr = arr.slice(arr.length - 800);
+    await AsyncStorage.setItem('@mizan_audit_events', JSON.stringify(arr));
+  } catch {}
+}
+
+const setLocal = async (key: string, value: any): Promise<void> => {
+  const origKey = String(key || '');
+  let table = origKey.replace(/^@mizan_local_/, '').replace(/^@mizan_/, '');
+  if (table.startsWith('ptx_')) table = 'partner_transactions';
+  else if (table.startsWith('pba_')) table = 'partner_bank_accounts';
+  const tracked = _EDIT_TRACKED.has(table);
+  let before: any = null;
+  if (tracked) { try { before = await getLocal(origKey); } catch {} }
+  await _origSetLocal(origKey, value);
+  if (tracked) { try { await _logEditToAudit(table, before, value); } catch {} }
+};
+
 export * from './lib';
 
 const MODE_KEY = '@mizan_mode';
@@ -77,7 +162,7 @@ async function getLocal<T>(k: string): Promise<T | null> {
   const raw = await AsyncStorage.getItem(LOCAL + k);
   return raw ? JSON.parse(raw) : null;
 }
-async function setLocal(k: string, v: any) {
+async function _origSetLocal(k: string, v: any) {
   await AsyncStorage.setItem(LOCAL + k, JSON.stringify(v));
 }
 
@@ -4586,6 +4671,45 @@ export async function updatePurchase(payload: { invoiceNumber: string; rows: any
   const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
   await recordInvoiceAudit('purchases', payload.invoiceNumber, oldRows, newRows);
   await setLocal('purchases', [...filtered, ...newRows]);
+
+  // UPDATE_GROUPED_PURCHASES — همگام‌سازی purchases_grouped با ویرایش جدید
+  try {
+    const groupedList = (await getLocal<any[]>('purchases_grouped')) || [];
+    const groupedFiltered = groupedList.filter((g: any) => String(g.invoice || '') !== payload.invoiceNumber);
+    const total = newRows.reduce((sum: number, r: any) => sum + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0);
+    const paid = newRows.reduce((sum: number, r: any) => sum + (Number(r.payment) || 0), 0);
+    const groupedObj: any = {
+      invoice: payload.invoiceNumber,
+      date: meta.date || template.date_factor || now,
+      name: meta.name || template.supplier_name || '',
+      phone: meta.phone || template.supplier_phone || '',
+      supplierCode: meta.code || template.supplier_code || '',
+      total,
+      paid,
+      manual: meta.manualInv || template.manual_invoice || '',
+      bank: meta.bank || template.bank_name || '',
+      holder: meta.holder || template.account_holder || '',
+      holderCode: meta.holderCode || template.account_holder_code || '',
+      depositDate: meta.depositDate || template.deposit_date || '',
+      shipping: meta.shipping || template.shipping || '',
+      local_id: 'grp_purchase_' + payload.invoiceNumber,
+      updated_at: now,
+      deleted_at: '',
+      device_id: dev,
+      items: newRows.map((r: any) => ({
+        modelCode: r.model_code,
+        modelName: r.model_name,
+        quantity: Number(r.quantity) || 0,
+        priceUnit: Number(r.price_unit) || 0,
+        payment: Number(r.payment) || 0,
+        description: r.description || '',
+        shelf: r.shelf || '',
+      })),
+    };
+    await setLocal('purchases_grouped', [...groupedFiltered, groupedObj]);
+  } catch (e: any) {
+    console.log('[updatePurchase] grouped update failed:', e?.message);
+  }
 }
 
 // ═══════════════════════════════════════════

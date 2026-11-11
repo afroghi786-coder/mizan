@@ -99,6 +99,10 @@ export async function getLastAutoBackup(): Promise<string | null> {
 }
 
 export async function autoBackup(): Promise<void> {
+  if ((globalThis as any).__mizanAutoBackupRan) return;
+  (globalThis as any).__mizanAutoBackupRan = true;
+  if ((globalThis as any).__mizanAutoBackupRan) return;
+  (globalThis as any).__mizanAutoBackupRan = true;
   try {
     const dir = await ensureDir();
     if (!dir) return;

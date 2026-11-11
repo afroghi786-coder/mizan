@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ActivityIndicator } from 'react-native';
 import { supabase } from './lib';
+import AsyncStorage from './lib.storage';
 import { displayDateOnly } from './lib';
 
 export default function LicenseNotification({ showToast }: any) {
@@ -21,13 +22,21 @@ export default function LicenseNotification({ showToast }: any) {
           .limit(1);
 
         if (data && data[0] && data[0].notification_pending) {
+          const notifAt = data[0].notification_at || '';
+          const lastDismissed = await AsyncStorage.getItem('@mizan_dismissed_notif_at').catch(() => null);
+          
+          // اگر این پیام قبلاً بسته شده، دوباره نشان نده
+          if (lastDismissed && lastDismissed === notifAt) {
+            return;
+          }
           setNotification(data[0]);
+        } else {
+          setNotification(null);
         }
       } catch (e) { console.log(e); }
       finally { setLoading(false); }
     };
     check();
-    // هر ۱۰ ثانیه چک کن
     const timer = setInterval(check, 10000);
     return () => clearInterval(timer);
   }, []);
@@ -36,6 +45,9 @@ export default function LicenseNotification({ showToast }: any) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
+        if (notification?.notification_at) {
+          await AsyncStorage.setItem('@mizan_dismissed_notif_at', notification.notification_at).catch(() => {});
+        }
         await supabase
           .from('licenses')
           .update({ notification_pending: false })

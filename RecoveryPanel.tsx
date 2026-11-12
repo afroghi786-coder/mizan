@@ -470,7 +470,7 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
   }, [items]);
 
   const filtered = useMemo(() => {
-    let list = items;
+    let list = Array.isArray(items) ? items : [];
     if (filterTable !== 'all') list = list.filter((x) => x.table === filterTable);
     const q = search.trim().toLowerCase();
     if (q) {
@@ -672,7 +672,7 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
 
   const currentCols = filterTable !== 'all' ? (COLS[filterTable] || []) : [];
   const isSingleTable = filterTable !== 'all' && currentCols.length > 0;
-  const editedItems = auditEvents.filter((e: any) => e.action === 'update' && !((e.before?.items?.length || 0) > (e.after?.items?.length || 0)));
+  const editedItems = (Array.isArray(auditEvents) ? auditEvents : []).filter((e: any) => e.action === 'update' && !((e.before?.items?.length || 0) > (e.after?.items?.length || 0)));
   const filteredEdits = (filterTable === 'all' ? editedItems : editedItems.filter((e: any) => e.table === filterTable || (filterTable === 'purchases' && e.table === 'purchases_grouped')))
     .filter((e: any) => {
       if (!editSearch) return true;
@@ -682,7 +682,10 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
       if (JSON.stringify(e.after || {}).toLowerCase().includes(q)) return true;
       return false;
     });
-  const unknownDevices = useMemo(() => Array.from(new Set(items.map(x => x.device_id).filter(Boolean))), [items]);
+  const unknownDevices = useMemo(() => {
+  if (!Array.isArray(items)) return [];
+  return Array.from(new Set(items.map(x => x.device_id).filter(Boolean)));
+}, [items]);
 
   return (
     <AuditPinGate>
@@ -990,9 +993,9 @@ export default function RecoveryPanel({ showToast, onBack }: any) {
             {/* باکس آمار */}
             <View style={{ marginBottom: 15, padding: 12, backgroundColor: '#0c1729', borderRadius: 8, borderWidth: 1, borderColor: '#1f3a5f' }}>
               <Text style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6 }}>📊 وضعیت حافظه محلی</Text>
-              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginBottom: 4 }}>تعداد کل: {tombstoneStats.total}</Text>
-              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginBottom: 4 }}>قدیمی‌ترین: {tombstoneStats.oldest ? formatFullDate(tombstoneStats.oldest) : '—'}</Text>
-              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right' }}>جدیدترین: {tombstoneStats.newest ? formatFullDate(tombstoneStats.newest) : '—'}</Text>
+              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginBottom: 4 }}>تعداد کل: {tombstoneStats?.total || 0}</Text>
+              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right', marginBottom: 4 }}>قدیمی‌ترین: {tombstoneStats?.oldest ? formatFullDate(tombstoneStats.oldest) : '—'}</Text>
+              <Text style={{ color: '#cbd5e1', fontSize: 11, textAlign: 'right' }}>جدیدترین: {tombstoneStats?.newest ? formatFullDate(tombstoneStats.newest) : '—'}</Text>
             </View>
 
             <View style={{ marginBottom: 15 }}>

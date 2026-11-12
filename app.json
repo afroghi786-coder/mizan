@@ -64,7 +64,7 @@
           "android": {
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "./proguard-rules.pro"
+            "extraProguardRules": "-keep class com.sun.jna.** { *; }\n-keep class * implements com.sun.jna.** { *; }\n-dontwarn java.awt.Component\n-dontwarn java.awt.GraphicsEnvironment\n-dontwarn java.awt.HeadlessException\n-dontwarn java.awt.Window"
           }
         }
       ]

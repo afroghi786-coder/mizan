@@ -57,7 +57,16 @@
       "react-native-vosk",
       "./plugins/withVoskNoCompress",
       "expo-asset",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ]
     ],
     "newArchEnabled": true,
     "splash": {

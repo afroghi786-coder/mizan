@@ -70,10 +70,15 @@ export async function checkLicense(): Promise<LicenseInfo> {
   // ۳. تلاش برای چک آنلاین
   const online = await fetchLicenseFromServer();
 
-  if (online) {
-    // آنلاین بود — آپدیت کن
+    if (online) {
+    // آنلاین بود — آپدیت کن + ذخیره اثر انگشت
     await AsyncStorage.setItem(LICENSE_TS, String(now));
-    await AsyncStorage.setItem(LICENSE_DATA, JSON.stringify(online));
+    const _fpData = { ...online };
+    let _hash = 0;
+    const _str = String(_fpData.user_id || '') + '|' + String(_fpData.expires_at || '') + '|' + String(_fpData.status || '') + '|mizan-secret-2026';
+    for (let i = 0; i < _str.length; i++) { const c = _str.charCodeAt(i); _hash = ((_hash << 5) - _hash) + c; _hash = _hash & _hash; }
+    _fpData._sig = String(Math.abs(_hash));
+    await AsyncStorage.setItem(LICENSE_DATA, JSON.stringify(_fpData));
     
     let expiresAt = online.expires_at ? new Date(online.expires_at).getTime() : 0;
     if (isNaN(expiresAt)) expiresAt = 0; // جلوگیری از خرابی تاریخ

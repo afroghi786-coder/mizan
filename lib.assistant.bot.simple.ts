@@ -245,21 +245,26 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
           const map = await getAdminInv(replyTo);
           if (map && map.invoice_number) {
             const inv = await getInv(map.invoice_number);
-            const amount = Number(String(msgText).replace(/[^0-9]/g, '')) || 0;
-            if (inv && amount > 0) {
-              inv.paid = Number(inv.paid || 0) + amount;
-              const remaining = Number(inv.total || 0) - inv.paid;
-              await setInv(map.invoice_number, inv);
-              await botSend(t, chatId, '✅ تایید واریز\n🔢 ' + inv.invoice_number + '\n💳 ' + fmt(amount) + '\n📥 جمع: ' + fmt(inv.paid) + '\n⏳ باقی: ' + fmt(remaining));
-              await botSend(t, inv.customer_chat_id, '✅ واریز تایید شد\n🔢 ' + inv.invoice_number + '\n💳 ' + fmt(amount) + '\n⏳ باقی: ' + fmt(remaining));
-              try { await clearState(inv.customer_chat_id); } catch {}
-              totalProcessed++;
-              continue;
+            if (inv) {
+              let amount = Number(String(msgText).replace(/[^0-9]/g, '')) || 0;
+              if (!amount && (msgText === 'تایید' || msgText === 'تأیید')) {
+                amount = Number(inv.total || 0) - Number(inv.paid || 0);
+              }
+              if (amount > 0) {
+                inv.paid = Number(inv.paid || 0) + amount;
+                const remaining = Number(inv.total || 0) - inv.paid;
+                await setInv(map.invoice_number, inv);
+                await botSend(t, chatId, '✅ پرداخت ثبت شد\n🧾 ' + inv.invoice_number + '\n💰 ' + fmt(amount) + '\n💳 کل پرداخت: ' + fmt(inv.paid) + '\n📌 مانده: ' + fmt(remaining));
+                await botSend(t, inv.customer_chat_id, '✅ پرداخت شما ثبت شد\n🧾 ' + inv.invoice_number + '\n💰 ' + fmt(amount) + '\n📌 مانده: ' + fmt(remaining));
+                try { await clearState(inv.customer_chat_id); } catch {}
+                totalProcessed++;
+                continue;
+              }
             }
           }
         }
 
-        const action = cbData || msgText;
+const action = cbData || msgText;
 
         if (action === 'menu' || action === 'menu_back' || msgText === '/start' || msgText === '🔙 بازگشت به منو' || msgText === '🔙 بازگشت' || msgText === 'منو') {
           await clearState(chatId);
@@ -318,29 +323,88 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
           }
           totalProcessed++; continue;
         }
-        if (action === 'confirm_yes' || msgText === '✅ تایید نهایی' || msgText === '✅ تایید') {
+        if (action === 'confirm_yes' || msgText === '✅ تأیید سفارش' || msgText === '✅ تأیید') {
           const state = await getState(chatId);
           const cart = await getCart(chatId);
           if (!state || state.step !== 'confirm' || !cart.length) { await showMainMenu(t, chatId); totalProcessed++; continue; }
+
+          const phone = String(state.phone || '');
+          let customerCode = '';
+          try {
+            const offlineMod: any = await import('./lib.offline');
+            const found = await offlineMod.findCustomerByPhoneOffline(phone);
+            if (found) customerCode = String(found.customer_code || found.code || '');
+            if (!customerCode) {
+              customerCode = await offlineMod.generateCustomerCode();
+            }
+          } catch { customerCode = 'M_' + Date.now(); }
+
+          let prevSales = 0, prevPaid = 0, prevCount = 0;
+          try {
+            const offlineMod: any = await import('./lib.offline');
+            const grouped = await offlineMod.getSalesGrouped();
+            const prev = (grouped || []).filter((g: any) => String(g.phone || '') === phone || (state.name && String(g.name || '') === String(state.name)));
+            prev.forEach((g: any) => { prevSales += Number(g.total || 0); prevPaid += Number(g.paid || 0); });
+            prevCount = prev.length;
+          } catch {}
+
           let invNum = '';
           try { invNum = await generateInvoiceNumber(); } catch { invNum = 'INV-' + Date.now(); }
+
           let total = 0;
           cart.forEach((it: any) => { total += Number(it.price || 0) * Number(it.qty || 0); });
-          let invText = '🧾 فاکتور میزان\n🔢 ' + invNum + '\n👤 ' + (state.name || '') + '\n📱 ' + (state.phone || '') + '\n📍 ' + (state.address || '') + '\n🚚 ' + (state.shipping || '') + '\n\n';
+
+          let invText = '🧾 پیش‌فاکتور سفارش\n';
+          invText += '🧾 شماره: ' + invNum + '\n';
+          invText += '👤 نام: ' + (state.name || '') + '\n';
+          invText += '📞 تلفن: ' + phone + '\n';
+          invText += '🆔 کد مشتری: ' + customerCode + '\n';
+          invText += '📍 آدرس: ' + (state.address || '') + '\n';
+          invText += '🚚 باربری: ' + (state.shipping || '') + '\n\n';
           cart.forEach((it: any, i: number) => { invText += (i + 1) + '. ' + it.code + ' × ' + it.qty + ' = ' + fmt(Number(it.price || 0) * Number(it.qty || 0)) + '\n'; });
-          invText += '\n💰 جمع: ' + fmt(total) + ' تومان';
-          await botSend(t, chatId, invText + '\n\n📌 برای واریز، روی همین فاکتور ریپلای بزنید.');
-          await setInv(invNum, { invoice_number: invNum, customer_chat_id: chatId, customer_name: state.name || '', total, paid: 0, items: cart });
+          invText += '\n💰 جمع این سفارش: ' + fmt(total) + ' افغانی\n';
+          if (prevCount > 0) {
+            const prevBalance = prevSales - prevPaid;
+            invText += '\n📊 خلاصه حساب قبلی:\n';
+            invText += '🧾 تعداد فاکتورهای قبلی: ' + prevCount + '\n';
+            invText += '💵 جمع خریدهای قبلی: ' + fmt(prevSales) + '\n';
+            invText += '💳 جمع پرداخت‌های قبلی: ' + fmt(prevPaid) + '\n';
+            invText += '📌 مانده قبلی: ' + fmt(prevBalance) + '\n';
+            invText += '💰 مانده کل با این سفارش: ' + fmt(prevBalance + total) + '\n';
+          }
+
+          await botSend(t, chatId, invText + '\n📌 سفارش شما ثبت شد. برای هماهنگی پرداخت منتظر تماس ما باشید.');
+
+          await setInv(invNum, { invoice_number: invNum, customer_chat_id: chatId, customer_name: state.name || '', customer_code: customerCode, total, paid: 0, items: cart });
+
           if (adminChat) {
-            const mid = await botSend(t, adminChat, '🔔 فاکتور جدید:\n\n' + invText);
+            const mid = await botSend(t, adminChat, '📥 سفارش جدید:\n\n' + invText);
             if (mid) await setAdminInv(String(mid), { invoice_number: invNum });
           }
-          try { await issueAssistantInvoice({ id: 'inv_' + Date.now(), invoice_number: invNum, customer_name: state.name || '', customer_phone: state.phone || '', customer_address: state.address || '', customer_shipping: state.shipping || '', items: cart.map((it: any) => ({ code: it.code, name: it.name, qty: it.qty, priceUnit: it.price, total: Number(it.price || 0) * Number(it.qty || 0) })), total_amount: total, status: 'issued', created_at: new Date().toISOString(), source: 'rubika' }); } catch {}
+
+          try {
+            await issueAssistantInvoice({
+              id: 'inv_' + Date.now(),
+              invoice_number: invNum,
+              customer_name: state.name || '',
+              customer_phone: phone,
+              customer_address: state.address || '',
+              customer_shipping: state.shipping || '',
+              customer_code: customerCode,
+              items: cart.map((it: any) => ({ code: it.code, name: it.name, qty: it.qty, priceUnit: it.price, total: Number(it.price || 0) * Number(it.qty || 0) })),
+              total_amount: total,
+              status: 'issued',
+              created_at: new Date().toISOString(),
+              source: 'rubika',
+            });
+          } catch {}
+
           await setCart(chatId, []);
           await setState(chatId, { step: 'waiting_payment', invoice_number: invNum });
           totalProcessed++; continue;
         }
-        if (action === 'confirm_no' || msgText === '❌ انصراف' || msgText === '❌ لغو') {
+
+if (action === 'confirm_no' || msgText === '❌ انصراف' || msgText === '❌ لغو') {
           await setCart(chatId, []);
           await clearState(chatId);
           await botSend(t, chatId, '❌ سفارش لغو شد.');
@@ -385,7 +449,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
         }
 
         console.log('[FALLBACK] chat=' + chatId + ' text=' + JSON.stringify(msgText));
-      const _codeMatch = msgText.match(/^[sS][_-]?(\d{1,6})$/);
+      const _codeMatch = msgText.match(/^(?:[sS][_-]?)?(\d{1,6})$/);
       if (_codeMatch) {
         const _code = 's_' + String(_codeMatch[1]).padStart(3, '0');
         await showQuantity(t, chatId, _code);

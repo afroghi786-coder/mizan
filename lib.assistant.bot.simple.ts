@@ -221,7 +221,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
       }
 
       for (const u of recentUpdates) {
-        if (u.type !== 'NewMessage') continue;
+        if (u.type !== 'NewMessage' && !u.callback_query && !u.data) continue;
         const chatId = String(u.chat_id || u.new_message?.chat_id || '');
         if (!chatId || chatId.startsWith('c0')) continue;
 
@@ -389,7 +389,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
       if (_codeMatch) {
         const _code = 's_' + String(_codeMatch[1]).padStart(3, '0');
         await showQuantity(t, chatId, _code);
-        processed++; continue;
+        totalProcessed++; continue;
       }
       await botSend(t, chatId, '🤖 دستور نامشخص. لطفاً /start را بزنید.');
         totalProcessed++;

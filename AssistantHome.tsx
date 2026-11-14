@@ -14,6 +14,41 @@ import {
 const AUDIT_KEY = '@mizan_audit_events';
 
 export default function AssistantHome({ showToast }: any) {
+
+  // [WEB_AUTO_POLLING] شروع خودکار ربات در وب
+  useEffect(() => {
+    let timer: any = null;
+    let stopped = false;
+    (async () => {
+      try {
+        const { getBotConfig } = await import('./lib.assistant');
+        const { processRubikaUpdatesSimple } = await import('./lib.assistant.bot.simple');
+        const cfg = await getBotConfig();
+        const token = String(cfg?.rubika_token || '').trim();
+        if (!token) { console.log('[WEB_AUTO_POLLING] no token'); return; }
+        console.log('[WEB_AUTO_POLLING] started');
+        const tick = async () => {
+          if (stopped) return;
+          try {
+            const r = await processRubikaUpdatesSimple(token);
+            console.log('[WEB_AUTO_POLLING_RESULT]', r);
+          } catch (e: any) {
+            console.log('[WEB_AUTO_POLLING_ERR]', e?.message || e);
+          }
+        };
+        await tick();
+        timer = setInterval(tick, 3000);
+      } catch (e: any) {
+        console.log('[WEB_AUTO_POLLING_INIT_ERR]', e?.message || e);
+      }
+    })();
+    return () => {
+      stopped = true;
+      if (timer) clearInterval(timer);
+      console.log('[WEB_AUTO_POLLING] stopped');
+    };
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState('dashboard');
 

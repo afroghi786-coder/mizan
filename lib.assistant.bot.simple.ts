@@ -1,8 +1,11 @@
+import { Platform } from 'react-native';
 import AsyncStorage from './lib.storage';
 import { getBotConfig } from './lib.assistant';
 import { generateInvoiceNumber, getSalesGrouped, findCustomerByPhoneOffline, generateCustomerCode } from './lib.offline';
 
-const RUBIKA_BASE = 'https://botapi.rubika.ir/v3';
+const RUBIKA_BASE = Platform.OS === 'web' 
+  ? 'https://mizan-rubika-proxy.mizan1740.workers.dev' 
+  : 'https://botapi.rubika.ir/v3';
 
 function normText(s: string) { return String(s || '').trim(); }
 function fmt(n: number): string { return Number(n || 0).toLocaleString('en-US'); }

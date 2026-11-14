@@ -19,7 +19,7 @@ let _db: any = null;
 let _initPromise: Promise<any> | null = null;
 let _failed = false;
 
-async function getDb(): Promise<any> {
+export async function getDb(): Promise<any> {
   if (isWeb) return null;  // ← وب: هیچی
   if (_failed) return null;
   if (_db) return _db;

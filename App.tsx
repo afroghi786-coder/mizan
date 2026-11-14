@@ -6306,7 +6306,15 @@ function InventoryScreen({ showToast }: any) {
 
           </View>
 
-          {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((m: any, i: number) => {
+          {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(m: any) => String(m.code || m.id || Math.random())}
+              initialNumToRender={15}
+              maxToRenderPerBatch={15}
+              windowSize={5}
+              removeClippedSubviews={true}
+              renderItem={({ item: m, index: i }) => {
 
             const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
 
@@ -6808,7 +6816,10 @@ function InventoryScreen({ showToast }: any) {
 
     </>);
 
-          })}
+          
+              }}
+            />
+          )}
 
         </View>
 

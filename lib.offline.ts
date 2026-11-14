@@ -89,6 +89,74 @@ const setLocal = async (key: string, value: any): Promise<void> => {
 
 export * from './lib';
 
+// 🚀 CACHE SYSTEM FOR INVENTORY (Phase 2)
+let _invCache: any = null;
+let _invCacheTime = 0;
+let _invDirty = true; // 🚀 پرچم کثیفی: فقط با تغییر داده، محاسبه دوباره انجام می‌شود
+const INV_CACHE_TTL = 30000; // 30 seconds (fallback safety)
+
+function _clearInvCache() {
+  _invCache = null;
+  _invCacheTime = 0;
+  _invDirty = true; // 🚀 هر تغییری، پرچم را کثیف می‌کند
+}
+
+
+// 🚀 تابع مهاجرت یکپارچه به SQLite (فقط یکبار اجرا می‌شود)
+async function _runInventoryMigration() {
+  try {
+    const isMigrated = await AsyncStorage.getItem('@mizan_sql_migrated_v1');
+    if (isMigrated === 'true') return; // اگر قبلاً مهاجرت شده، کاری نکن
+
+    console.log('[Migration] شروع مهاجرت داده‌های انبار به SQLite...');
+    const storageModule = require('./lib.storage').default || require('./lib.storage');
+    const db = await storageModule.getDb();
+    if (!db) { console.log('[Migration] دیتابیس SQLite در دسترس نیست.'); return; }
+
+    // ۱. مهاجرت فروش‌ها
+    const salesRaw = await AsyncStorage.getItem('@mizan_local_sales');
+    const salesArr = salesRaw ? JSON.parse(salesRaw) : [];
+    for (const s of salesArr) {
+      if (!s.invoice_number || !s.model_code) continue;
+      await db.runAsync(
+        'INSERT OR IGNORE INTO sales_db (invoice_number, model_code, quantity, price_unit, date, customer_name, data_json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [s.invoice_number, s.model_code, Number(s.quantity)||0, Number(s.price_unit)||0, s.date_factor||s.date_reg||'', s.customer_name||'', JSON.stringify(s)]
+      );
+    }
+    console.log('[Migration] ' + salesArr.length + ' ردیف فروش منتقل شد.');
+
+    // ۲. مهاجرت خریدها
+    const purchasesRaw = await AsyncStorage.getItem('@mizan_local_purchases');
+    const purchasesArr = purchasesRaw ? JSON.parse(purchasesRaw) : [];
+    for (const p of purchasesArr) {
+      if (!p.invoice_number || !p.model_code) continue;
+      await db.runAsync(
+        'INSERT OR IGNORE INTO purchases_db (invoice_number, model_code, quantity, price_unit, date, supplier_name, data_json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [p.invoice_number, p.model_code, Number(p.quantity)||0, Number(p.price_unit)||0, p.date_factor||p.date_reg||'', p.supplier_name||'', JSON.stringify(p)]
+      );
+    }
+    console.log('[Migration] ' + purchasesArr.length + ' ردیف خرید منتقل شد.');
+
+    // ۳. مهاجرت تعدیلات
+    const adjRaw = await AsyncStorage.getItem('@mizan_local_stock_adjustments');
+    const adjArr = adjRaw ? JSON.parse(adjRaw) : [];
+    for (const a of adjArr) {
+      if (!a.model_code) continue;
+      await db.runAsync(
+        'INSERT OR IGNORE INTO adjustments_db (model_code, adjustment, unit_cost, date, reason, data_json) VALUES (?, ?, ?, ?, ?, ?)',
+        [a.model_code, Number(a.adjustment)||0, Number(a.unit_cost)||0, a.adjustment_date||'', a.reason||'', JSON.stringify(a)]
+      );
+    }
+    console.log('[Migration] ' + adjArr.length + ' ردیف تعدیل منتقل شد.');
+
+    await AsyncStorage.setItem('@mizan_sql_migrated_v1', 'true');
+    console.log('✅ مهاجرت با موفقیت انجام شد.');
+  } catch (e) {
+    console.log('[Migration] خطا در مهاجرت:', e);
+  }
+}
+
+
 const MODE_KEY = '@mizan_mode';
 const LOCAL = '@mizan_local_';
 const QUEUE = '@mizan_queue';
@@ -703,6 +771,7 @@ async function _localUpsertPurchase(payload: any) {
 }
 
 export async function createSale(payload: any) {
+  _clearInvCache();
   await _localUpsertSale(payload);
   if (await serverBusinessAllowed()) {
     try {
@@ -759,6 +828,7 @@ async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase
 }
 
 export async function deleteSale(inv: string) {
+  _clearInvCache();
   if (await hasActiveReturns(inv, 'sales')) {
     throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
   }
@@ -774,6 +844,7 @@ export async function deleteSale(inv: string) {
 }
 
 export async function deletePurchase(inv: string) {
+  _clearInvCache();
   if (await hasActiveReturns(inv, 'purchase')) {
     throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
   }
@@ -1157,9 +1228,24 @@ async function computeLocalInventory() {
 }
 
 export async function getInventory() {
-  // BUSINESS_LOCAL_AND_SHEET_ONLY — انبار فقط محلی + صف
   try {
-    return await computeLocalInventory();
+    const now = Date.now();
+    
+    // 🚀 اگر داده تغییر نکرده و کش معتبر است، فوراً از کش بخوان
+    if (!_invDirty && _invCache) {
+      return _invCache;
+    }
+    // 🚀 Fallback: اگر بیش از ۳۰ ثانیه گذشته و پرچم dirty نشده، باز هم از کش استفاده کن
+    if (_invCache && (now - _invCacheTime < INV_CACHE_TTL) && !_invDirty) {
+      return _invCache;
+    }
+
+    const result = await computeLocalInventory();
+    
+    _invCache = result;
+    _invCacheTime = now;
+    _invDirty = false; // 🚀 پرچم را پاک کن تا تا تغییر بعدی از کش استفاده شود
+    return result;
   } catch (e) {
     console.log('[getInventory] error:', e);
     return { list: [], stats: {}, threshold: 5 };
@@ -1602,6 +1688,7 @@ async function genPurchaseInvoiceNumber() {
 //  createPurchase — با شماره P-
 // ═══════════════════════════════════════════
 export async function createPurchase(payload: any) {
+  _clearInvCache();
   if (await serverBusinessAllowed()) {
     try {
       const r = await lib.createPurchase(payload);
@@ -2845,175 +2932,38 @@ async function computeLocalDashboardStats(range, filter) {
 //  getInventoryByModel — کاردکس مدل (آفلاین + آنلاین + صف)
 // ═══════════════════════════════════════════
 export async function getInventoryByModel(code: string) {
-  const c = String(code || '').trim();
-  if (!c) return { purchases: [], sales: [] };
-  // BUSINESS_LOCAL_AND_SHEET_ONLY — کاردکس فقط محلی
-
-  const localPurchases = (await getLocal<any[]>('purchases')) || [];
-  const localSales = (await getLocal<any[]>('sales')) || [];
-  const grpPurchases = (await getLocal<any[]>('purchases_grouped')) || [];
-  const grpSales = (await getLocal<any[]>('sales_grouped')) || [];
-
-  // BUSINESS_LOCAL_AND_SHEET_ONLY — merge grouped for device 2
-  const _allP: any[] = [...localPurchases];
-  const _allS: any[] = [...localSales];
+  await _runInventoryMigration(); // چک کردن مهاجرت
   try {
-    const _haveP = new Set(localPurchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
-    const _haveS = new Set(localSales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
-    for (const g of grpPurchases) {
-      const inv = String(g.invoice || '').trim();
-      if (!inv || _haveP.has(inv)) continue;
-      for (const it of (g.items || [])) {
-        _allP.push({
-          invoice_number: inv,
-          supplier_code: g.supplierCode || '',
-          supplier_name: g.name || '',
-          model_code: it.modelCode || it.model_code || '',
-          model_name: it.modelName || it.model_name || '',
-          quantity: Number(it.quantity) || 0,
-          price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
-          payment: Number(it.payment) || 0,
-          date_factor: g.date || '',
-          date_reg: g.date || '',
-        });
+    const storageModule = require('./lib.storage').default || require('./lib.storage');
+    const db = await storageModule.getDb();
+    if (db) {
+      const p = await db.getAllAsync('SELECT data_json FROM purchases_db WHERE model_code = ?', [code]);
+      const s = await db.getAllAsync('SELECT data_json FROM sales_db WHERE model_code = ?', [code]);
+      const a = await db.getAllAsync('SELECT data_json FROM adjustments_db WHERE model_code = ?', [code]);
+      
+      if (p.length > 0 || s.length > 0 || a.length > 0) {
+        return {
+          purchases: p.map((r: any) => JSON.parse(r.data_json)),
+          sales: s.map((r: any) => JSON.parse(r.data_json)),
+          salesReturns: [], 
+          purchaseReturns: [],
+          adjustments: a.map((r: any) => JSON.parse(r.data_json))
+        };
       }
     }
-    for (const g of grpSales) {
-      const inv = String(g.invoice || '').trim();
-      if (!inv || _haveS.has(inv)) continue;
-      for (const it of (g.items || [])) {
-        _allS.push({
-          invoice_number: inv,
-          customer_code: g.customerCode || '',
-          customer_name: g.name || '',
-          model_code: it.modelCode || it.model_code || '',
-          model_name: it.modelName || it.model_name || '',
-          quantity: Number(it.quantity) || 0,
-          price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
-          payment: Number(it.payment) || 0,
-          date_factor: g.date || '',
-          date_reg: g.date || '',
-        });
-      }
-    }
-  } catch {}
-  try {
-    const _tomb = await getTombstones();
-    const _deadS = new Set<string>();
-    const _deadP = new Set<string>();
-    for (const _t of _tomb) {
-      if (String(_t.table || '') === 'sales') _deadS.add(String(_t.key || '').trim());
-      if (String(_t.table || '') === 'purchases') _deadP.add(String(_t.key || '').trim());
-    }
-    if (_deadP.size) { for (let _i = _allP.length - 1; _i >= 0; _i--) { if (_deadP.has(String(_allP[_i].invoice_number || '').trim())) _allP.splice(_i, 1); } }
-    if (_deadS.size) { for (let _i = _allS.length - 1; _i >= 0; _i--) { if (_deadS.has(String(_allS[_i].invoice_number || '').trim())) _allS.splice(_i, 1); } }
-  } catch {}
-
-  var pAll = _allP.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
-  var sAll = _allS.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
-
-  const q = await getQueue();
-  for (const item of q) {
-    if (item.op !== 'createPurchase' && item.op !== 'createSale') continue;
-    const rows = (item.payload && (item.payload.items || item.payload.rows)) || [];
-    for (const r of rows) {
-      const rCode = String(r.model_code || r.modelCode || '').trim();
-      if (rCode !== c) continue;
-      const normalized = {
-        invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
-        customer_name: item.payload.customerName || '',
-        customer_phone: item.payload.customerPhone || '',
-        customer_code: item.payload.customerCode || '',
-        supplier_name: item.payload.supplierName || '',
-        supplier_phone: item.payload.supplierPhone || '',
-        supplier_code: item.payload.supplierCode || '',
-        model_code: rCode,
-        model_name: r.model_name || r.modelName || '',
-        quantity: Number(r.quantity) || 0,
-        price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
-        payment: Number(r.payment) || 0,
-        balance: 0,
-        date_factor: r.date_factor || r.dateFactor || item.payload.date || new Date(item.ts || Date.now()).toISOString(),
-        date_reg: r.date_reg || r.dateReg || item.payload.date || new Date(item.ts || Date.now()).toISOString(),
-        description: r.description || '',
-        _pending: true,
-      };
-      if (item.op === 'createPurchase') {
-        if (!pAll.some((x: any) => String(x.invoice_number || '') === String(normalized.invoice_number || ''))) pAll = pAll.concat([normalized]);
-      } else {
-        if (!sAll.some((x: any) => String(x.invoice_number || '') === String(normalized.invoice_number || ''))) sAll = sAll.concat([normalized]);
-      }
-    }
-  }
-
-  pAll.sort(function(a: any, b: any) {
-    const da = new Date(a.date_factor || a.date_reg || a.created_at || 0).getTime();
-    const db = new Date(b.date_factor || b.date_reg || b.created_at || 0).getTime();
-    return da - db;
-  });
-  sAll.sort(function(a: any, b: any) {
-    const da = new Date(a.date_factor || a.date_reg || a.created_at || 0).getTime();
-    const db = new Date(b.date_factor || b.date_reg || b.created_at || 0).getTime();
-    return da - db;
-  });
-
-  const adjs = (await getLocal<any[]>('stock_adjustments')) || [];
-  const myAdjs = adjs.filter(function(r: any) { return String(r.model_code || '').trim() === c; });
-
-  // برگشت‌ها (getSalesReturns / getPurchaseReturns خودشان tombstone را اعمال می‌کنند)
-  var sRet: any[] = [];
-  var pRet: any[] = [];
-  try {
-    const allSR = await getSalesReturns();
-    for (const sr of allSR || []) {
-      for (const it of (sr.items || [])) {
-        const itCode = String(it.modelCode || it.model_code || '').trim();
-        if (itCode !== c) continue;
-        sRet.push({
-          return_number: sr.return_number || sr.local_id || '',
-          original_invoice_number: sr.original_invoice_number || '',
-          customer_code: sr.party_code || '',
-          customer_name: sr.party_name || '',
-          model_code: itCode,
-          model_name: it.modelName || it.model_name || '',
-          quantity: Number(it.returnQty || it.quantity) || 0,
-          price_unit: Number(it.priceUnit || it.price_unit) || 0,
-          date_factor: sr.date || sr.created_at || '',
-          date_reg: sr.date || sr.created_at || '',
-          description: it.description || '',
-          _return: 'sales_return',
-        });
-      }
-    }
-  } catch {}
-  try {
-    const allPR = await getPurchaseReturns();
-    for (const pr of allPR || []) {
-      for (const it of (pr.items || [])) {
-        const itCode = String(it.modelCode || it.model_code || '').trim();
-        if (itCode !== c) continue;
-        pRet.push({
-          return_number: pr.return_number || pr.local_id || '',
-          original_invoice_number: pr.original_invoice_number || '',
-          supplier_code: pr.party_code || '',
-          supplier_name: pr.party_name || '',
-          model_code: itCode,
-          model_name: it.modelName || it.model_name || '',
-          quantity: Number(it.returnQty || it.quantity) || 0,
-          price_unit: Number(it.priceUnit || it.price_unit) || 0,
-          date_factor: pr.date || pr.created_at || '',
-          date_reg: pr.date || pr.created_at || '',
-          description: it.description || '',
-          _return: 'purchase_return',
-        });
-      }
-    }
-  } catch {}
-
-  sRet.sort(function(a: any, b: any) { return new Date(a.date_factor || 0).getTime() - new Date(b.date_factor || 0).getTime(); });
-  pRet.sort(function(a: any, b: any) { return new Date(a.date_factor || 0).getTime() - new Date(b.date_factor || 0).getTime(); });
-
-  return { purchases: pAll, sales: sAll, salesReturns: sRet, purchaseReturns: pRet, adjustments: myAdjs };
+  } catch (e) { console.log('Kardex SQLite err:', e); }
+  
+  // اگر دیتابیس آماده نبود، به روش قبلی (فیلتر کردن) برمی‌گردیم
+  const allPurchases = (await getLocal<any[]>('purchases')) || [];
+  const allSales = (await getLocal<any[]>('sales')) || [];
+  const allAdj = (await getLocal<any[]>('stock_adjustments')) || [];
+  return {
+    purchases: allPurchases.filter((x: any) => String(x.model_code) === String(code)),
+    sales: allSales.filter((x: any) => String(x.model_code) === String(code)),
+    salesReturns: [],
+    purchaseReturns: [],
+    adjustments: allAdj.filter((x: any) => String(x.model_code) === String(code))
+  };
 }
 // ═══════════════════════════════════════════
 //  Stock Adjustments (offline + queue)
@@ -3086,6 +3036,7 @@ export async function createStockAdjustment(p: any) {
   return item;
 }
 export async function deleteStockAdjustment(id: string) {
+  _clearInvCache();
   await recordTombstone('stock_adjustments', String(id));
   const list = (await getLocal<any[]>('stock_adjustments')) || [];
   await setLocal('stock_adjustments', list.filter(function(x: any) { return x.local_id !== id && x.id !== id; }));

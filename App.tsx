@@ -5832,35 +5832,24 @@ function InventoryScreen({ showToast }: any) {
 
 
   const openModelKardex = async (m: any) => {
-
     setModelKardexCode(m.code);
-
     setModelKardexModal(true);
-
     setModelKardexLoading(true);
-
     setModelKardexData(null);
-
-    try {
-
-      const d = await getInventoryByModel(m.code);
-
-      // enrich with display
-
-      const name = m.name || (d.purchases[0] && d.purchases[0].model_name) || (d.sales[0] && d.sales[0].model_name) || m.code;
-
-      setModelKardexData({ ...d, name, model: m });
-
-    } catch (e: any) {
-
-      showToast('خطا: ' + (e?.message || ''), true);
-
-    } finally {
-
-      setModelKardexLoading(false);
-
-    }
-
+    
+    // 🔥 تاخیر ۵۰ میلی‌ثانیه‌ای: مودال فوراً باز می‌شود تا UI هنگ نکند، سپس دیتابیس لود می‌شود
+    setTimeout(async () => {
+      try {
+        const d = await getInventoryByModel(m.code);
+        // enrich with display
+        const name = m.name || (d.purchases?.[0] && d.purchases[0].model_name) || (d.sales?.[0] && d.sales[0].model_name) || m.code;
+        setModelKardexData({ ...d, name, model: m });
+      } catch (e: any) {
+        showToast('خطا: ' + (e?.message || ''), true);
+      } finally {
+        setModelKardexLoading(false);
+      }
+    }, 50);
   };
 
 

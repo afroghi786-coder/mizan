@@ -26,7 +26,7 @@ async function botSend(t: string, chatId: string, text: string, keypad?: any): P
             .map((btn: any, bi: number) => {
               const label = String(btn.button_text || btn.text || '').trim();
               if (!label) return null;
-              return { id: String(btn.id || ('btn_' + ri + '_' + bi)), type: 'Simple', button_text: label.slice(0, 30) };
+              return { id: String(btn.id || ('btn_' + ri + '_' + bi)), type: 'Simple', text: label.slice(0, 30) };
             })
             .filter(Boolean),
         }))
@@ -231,6 +231,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
 
           const msgText = normText(msg?.text || '').trim();
           let cbData = '';
+          console.log('[CB_RAW]', JSON.stringify(u));
           const rawCb = u.data || cb?.data || u.button_id || null;
           if (typeof rawCb === 'string') cbData = rawCb;
           else if (rawCb && typeof rawCb === 'object') {
@@ -414,6 +415,22 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
           // State Machine
           const state = await getState(chatId);
           if (state && state.step) {
+            if (state.step === 'waiting_qty') {
+              const n = parseInt(String(msgText).replace(/[^0-9]/g, ''), 10);
+              if (!n || n <= 0) { await botSend(t, chatId, '⚠️ لطفاً یک عدد معتبر وارد کنید.'); totalProcessed++; continue; }
+              const cart = await getCart(chatId);
+              const existing = cart.find((x: any) => String(x.code) === String(state.code));
+              if (existing) existing.qty += n;
+              else cart.push({ code: state.code, name: state.name, price: state.price, qty: n });
+              await setCart(chatId, cart);
+              await clearState(chatId);
+              await botSend(t, chatId, '✅ به سبد خرید اضافه شد. یک محصول دیگر اضافه می‌کنید یا سفارش را نهایی می‌کنید؟', { rows: [
+                { buttons: [{ id: 'menu_products', button_text: '➕ سفارش بعدی' }, { id: 'menu_cart', button_text: '🛒 سبد خرید' }] },
+                { buttons: [{ id: 'cart_checkout', button_text: '✅ نهایی سازی سفارش' }] }
+              ] });
+              totalProcessed++; continue;
+            }
+
             if (state.step === 'waiting_qty_other') {
               const n = parseInt(String(msgText).replace(/[^0-9]/g, ''), 10);
               if (!n || n <= 0) { await botSend(t, chatId, '⚠️ لطفاً یک عدد معتبر وارد کنید.'); totalProcessed++; continue; }
@@ -462,7 +479,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
           
           if (p) {
             await setState(chatId, { step: 'waiting_qty', code: p.code, name: p.name, price: p.price || 0 });
-            await botSend(t, chatId, '📦 ' + p.name + '\n💰 قیمت: ' + fmt(p.price || 0) + '\n📦 قفسه: ' + (p.shelf || '—') + '\n\n🔢 تعداد کارتن مورد نظر را وارد کنید:', { rows: [
+            await botSend(t, chatId, '📦 ' + p.name + '\n💰 قیمت: ' + fmt(p.price || 0) + '\n📦 قفسه: ' + (p.shelf || '—') + '\n\n🔢 تعداد مورد نظر را انتخاب یا وارد کنید:', { rows: [
               { buttons: [{ id: 'qty_1', button_text: '۱' }, { id: 'qty_2', button_text: '۲' }, { id: 'qty_3', button_text: '۳' }] },
               { buttons: [{ id: 'qty_5', button_text: '۵' }, { id: 'qty_10', button_text: '۱۰' }, { id: 'qty_other', button_text: 'سایر' }] },
               { buttons: [{ id: 'menu', button_text: '🏠 منوی اصلی' }] }

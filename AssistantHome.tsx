@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, TextInput, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { getProducts } from './lib.offline';
-import { processRubikaUpdatesSimple } from './lib.assistant.bot.simple';
+import { processRubikaUpdatesSimple, startBotPolling } from './lib.assistant.bot.simple';
 import { rubikaSendMessage, buildChannelPostText, rubikaSendPhoto, resetBotOffset, rubikaRemoveWebhook, forceFixBot, getBotLastError } from './lib.assistant.rubika';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from './lib.storage';
@@ -242,7 +242,7 @@ export default function AssistantHome({ showToast }: any) {
 
   const checkMessages = async () => {
     showToast?.('⏳ در حال بررسی پیام‌های جدید چت خصوصی...');
-    const r = await processRubikaUpdatesSimple(bot.rubika_token);
+    startBotPolling(bot.rubika_token);
     if (r.ok) {
       showToast?.('✅ ' + r.processed + ' پیام پردازش شد');
     } else {

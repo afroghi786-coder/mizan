@@ -1,20 +1,11 @@
 import AsyncStorage from './lib.storage';
-import { getBotConfig, issueAssistantInvoice } from './lib.assistant';
-import { generateInvoiceNumber } from './lib.offline';
-import { buildCatalogIndex, findProduct } from './lib.assistant.catalog';
+import { getBotConfig } from './lib.assistant';
+import { generateInvoiceNumber, getSalesGrouped, findCustomerByPhoneOffline, generateCustomerCode } from './lib.offline';
 
 const RUBIKA_BASE = 'https://botapi.rubika.ir/v3';
 
-let __catalogCache: any = null;
-let __catalogCacheAt = 0;
-async function getCatalogCached() {
-  const now = Date.now();
-  if (!__catalogCache || now - __catalogCacheAt > 30000) {
-    __catalogCache = await buildCatalogIndex();
-    __catalogCacheAt = now;
-  }
-  return __catalogCache;
-}
+function normText(s: string) { return String(s || '').trim(); }
+function fmt(n: number): string { return Number(n || 0).toLocaleString('en-US'); }
 
 async function botSend(t: string, chatId: string, text: string, keypad?: any): Promise<string> {
   const buildBody = () => {
@@ -26,7 +17,7 @@ async function botSend(t: string, chatId: string, text: string, keypad?: any): P
             .map((btn: any, bi: number) => {
               const label = String(btn.button_text || btn.text || '').trim();
               if (!label) return null;
-              return { id: String(btn.id || ('btn_' + ri + '_' + bi)), type: 'Simple', text: label.slice(0, 30) };
+              return { id: String(btn.id || ('btn_' + ri + '_' + bi)), type: 'Simple', button_text: label.slice(0, 30) };
             })
             .filter(Boolean),
         }))
@@ -44,11 +35,15 @@ async function botSend(t: string, chatId: string, text: string, keypad?: any): P
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data: any = await res.json().catch(() => null);
-      if (data && data.status === 'TOO_REQUESTS') {
-        throw new Error('TOO_REQUESTS');
+      const txt = await res.text();
+      let data: any = null;
+      try { data = JSON.parse(txt); } catch {}
+      if (!res.ok) {
+        console.log('[botSend HTTP] ' + res.status + ' — ' + txt.slice(0, 200));
+        if (attempt === 0) { await new Promise(r => setTimeout(r, 1500)); continue; }
+        return '';
       }
-      if (!res.ok) console.log('[botSend HTTP] ' + res.status);
+      if (data && data.status === 'TOO_REQUESTS') throw new Error('TOO_REQUESTS');
       return String(data?.result?.message_id || data?.message_id || '');
     } catch (e: any) {
       console.log('[botSend Error]', e?.message || e);
@@ -87,35 +82,25 @@ async function setInv(n: string, inv: any): Promise<void> {
   try { await AsyncStorage.setItem('@mizan_bot_inv_' + n, JSON.stringify(inv)); } catch {}
 }
 
-function fmt(n: number): string { return Number(n || 0).toLocaleString('en-US'); }
-
 async function showMainMenu(t: string, chatId: string) {
-  await botSend(t, chatId, '🏠 منوی اصلی میزان:', { rows: [{ buttons: [
-    { id: 'menu_products', button_text: '📦 لیست محصولات' },
-    { id: 'menu_cart', button_text: '🛒 سبد خرید' },
+  await botSend(t, chatId, '🏠 منوی اصلی:', { rows: [{ buttons: [
+    { id: 'menu_products', button_text: '🛍️ مشاهده محصولات' },
+    { id: 'menu_cart', button_text: '🛒 سبد خرید من' },
   ] }] });
 }
 
 async function showProducts(t: string, chatId: string) {
   try {
-    const catalog = await getCatalogCached();
-    const arr = Array.isArray(catalog.products) ? catalog.products : [];
-    const valid = arr.filter((p: any) => String(p.code || '').trim());
-    if (!valid.length) { await botSend(t, chatId, '⚠️ هیچ محصولی ثبت نشده است.', { rows: [{ buttons: [{ id: 'menu', button_text: '🏠 منوی اصلی' }] }] }); return; }
+    const offlineMod: any = await import('./lib.offline');
+    const prods = await offlineMod.getProducts() || [];
+    if (!prods.length) { await botSend(t, chatId, '⚠️ هیچ محصولی ثبت نشده است.'); return; }
     const rows: any[] = [];
-    for (const p of valid.slice(0, 20)) rows.push({ buttons: [{ id: String(p.code), button_text: String(p.code).slice(0, 30) }] });
+    for (const p of prods.slice(0, 20)) {
+      rows.push({ buttons: [{ id: String(p.code), button_text: String(p.code).slice(0, 30) }] });
+    }
     rows.push({ buttons: [{ id: 'menu', button_text: '🏠 منوی اصلی' }] });
     await botSend(t, chatId, '🛍️ لیست کدهای محصولات:', { rows });
   } catch (e: any) { await botSend(t, chatId, '❌ خطا: ' + (e?.message || '')); }
-}
-
-async function showQuantity(t: string, chatId: string, code: string) {
-  await setState(chatId, { step: 'waiting_qty', code });
-  await botSend(t, chatId, '📦 مدل ' + code + '\nچند کارتن؟', { rows: [
-    { buttons: [{ id: 'qty_1', button_text: '۱' }, { id: 'qty_2', button_text: '۲' }, { id: 'qty_3', button_text: '۳' }] },
-    { buttons: [{ id: 'qty_5', button_text: '۵' }, { id: 'qty_10', button_text: '۱۰' }, { id: 'qty_other', button_text: 'سایر' }] },
-    { buttons: [{ id: 'menu', button_text: '🔙 بازگشت' }] },
-  ] });
 }
 
 async function showCart(t: string, chatId: string) {
@@ -131,47 +116,31 @@ async function showCart(t: string, chatId: string) {
   await botSend(t, chatId, text, { rows });
 }
 
-async function addToCart(chatId: string, code: string, cartons: number): Promise<boolean> {
-  const catalog = await getCatalogCached();
-  const p = findProduct(catalog, code);
-  if (!p) return false;
-  const cart = await getCart(chatId);
-  const qtyPairs = Number(p.raw?.qty_pairs) || 0;
-  const totalQty = qtyPairs > 0 ? cartons * qtyPairs : cartons;
-  const idx = cart.findIndex((x: any) => String(x.code) === String(code));
-  if (idx >= 0) { cart[idx].qty += totalQty; cart[idx].cartons = (cart[idx].cartons || 0) + cartons; }
-  else cart.push({ code: String(code), name: p.name || code, price: Number(p.price || 0), qty: totalQty, cartons, qty_pairs: qtyPairs });
-  await setCart(chatId, cart);
-  return true;
+let _pollingTimer: any = null;
+export function startBotPolling(token: string) {
+  stopBotPolling();
+  if (!token) return;
+  console.log('[BOT_POLLING_STARTED]');
+  _pollingTimer = setInterval(async () => {
+    try { await processRubikaUpdatesSimple(token); } catch {}
+  }, 3000);
+}
+export function stopBotPolling() {
+  if (_pollingTimer) { clearInterval(_pollingTimer); _pollingTimer = null; console.log('[BOT_POLLING_STOPPED]'); }
 }
 
-const SEEN_KEY = '@mizan_bot_seen_msgs_v2';
-
-async function loadSeen(): Promise<Set<string>> {
-  try { const r = await AsyncStorage.getItem(SEEN_KEY); const a = r ? JSON.parse(r) : []; return new Set(Array.isArray(a) ? a.map(String) : []); } catch { return new Set(); }
-}
-async function saveSeen(set: Set<string>) {
-  try { const arr = Array.from(set).slice(-500); await AsyncStorage.setItem(SEEN_KEY, JSON.stringify(arr)); } catch {}
-}
-
+export let __mizanOffset = '';
 async function getBotOffset(): Promise<string> {
   try { return (await AsyncStorage.getItem('@mizan_rubika_offset')) || ''; } catch { return ''; }
 }
 async function setBotOffset(v: string): Promise<void> {
   try { await AsyncStorage.setItem('@mizan_rubika_offset', String(v || '')); } catch {}
 }
-
-let _offsetMemory = '';
-
-export let __mizanOffset = '';
-
-function normText(s: any): string {
-  try {
-    return String(s || '')
-      .replace(/[\u200c\u200d\u200e\u200f\u202a-\u202e]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  } catch { return ''; }
+async function loadSeen(): Promise<Set<string>> {
+  try { const r = await AsyncStorage.getItem('@mizan_bot_seen'); return new Set(r ? JSON.parse(r) : []); } catch { return new Set(); }
+}
+async function saveSeen(seen: Set<string>): Promise<void> {
+  try { await AsyncStorage.setItem('@mizan_bot_seen', JSON.stringify(Array.from(seen))); } catch {}
 }
 
 export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: boolean; processed: number; error?: string }> {
@@ -179,6 +148,14 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
   if (!t) return { ok: false, processed: 0, error: 'توکن ربات خالی است' };
 
   try {
+    if (!(globalThis as any).__mizanWebhookRemoved) {
+      try {
+        await fetch(RUBIKA_BASE + '/' + t + '/updateBotEndpoints', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: '' }) });
+        (globalThis as any).__mizanWebhookRemoved = true;
+        console.log('[WEBHOOK_REMOVED]');
+      } catch {}
+    }
+
     const cfg = await getBotConfig();
     const adminChat = String(cfg?.rubika_admin_chat_id || '').trim();
     const offlineMod: any = await import('./lib.offline');
@@ -190,7 +167,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
     
     const seen = await loadSeen();
     let totalProcessed = 0;
-    const MAX_ITER = 25;
+    const MAX_ITER = 5; // کاهش تعداد حلقه‌ها برای جلوگیری از بلاک شدن
 
     for (let iter = 0; iter < MAX_ITER; iter++) {
       const body: any = { limit: 50 };
@@ -201,12 +178,14 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data: any = await res.json().catch(() => null);
+      const txt = await res.text();
+      let data: any = null;
+      try { data = JSON.parse(txt); } catch {}
       
       if (!data || (data.status !== 'OK' && data.ok !== true)) {
         const st = String(data?.status || '');
         if (st === 'TOO_REQUESTS') return { ok: false, processed: totalProcessed, error: 'TOO_REQUESTS' };
-        console.log('[GET_UPDATES_ERR] ' + st);
+        console.log('[GET_UPDATES_ERR] ' + st + ' — ' + txt.slice(0, 100));
         break;
       }
 
@@ -215,23 +194,52 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
 
       for (const u of updates) {
         try {
-          const isChannel = /channel/i.test(String(u.type || '')) || !!u.channel_post || (u.chat_id && String(u.chat_id).startsWith('c'));
-          if (isChannel) continue;
-
           const msg = u.new_message || u.message || null;
           const cb = u.callback_query || null;
           const chatId = String(u.chat_id || msg?.chat_id || cb?.chat_id || cb?.message?.chat_id || '');
           
           if (!chatId) continue;
-          if (chatId.startsWith('c')) continue;
 
+          // Channel Posts
+          if (chatId.startsWith('c')) {
+            const postText = normText(msg?.text || msg?.caption || '').trim();
+            if (!postText) continue;
+            const msgId = String(msg?.message_id || '');
+            if (msgId && seen.has('ch_' + msgId)) continue;
+            if (msgId) seen.add('ch_' + msgId);
+
+            const lines = postText.split('\n').map((l: string) => l.trim()).filter(Boolean);
+            if (!lines.length) continue;
+            const name = lines[0].substring(0, 50);
+            const numbers = postText.match(/\d{3,}/g);
+            const price = numbers ? Math.max(...numbers.map(Number)) : 0;
+
+            if (name && price > 0) {
+              try {
+                const products = await offlineMod.getProducts() || [];
+                const existing = products.find((p: any) => p.name === name);
+                if (existing) {
+                  existing.price = price;
+                  existing.updated_at = new Date().toISOString();
+                } else {
+                  products.push({ code: 'P_' + Date.now(), name, price, shelf: 'نامشخص', created_at: new Date().toISOString() });
+                }
+                await offlineMod.setLocal('products', products);
+              } catch (err) { console.log('[CHANNEL_SAVE_ERR]', err); }
+            }
+            totalProcessed++;
+            continue;
+          }
+
+          if (chatId.startsWith('c0')) continue;
+
+          // Private Chats
           const msgId = String(msg?.message_id || cb?.message?.message_id || '');
           if (msgId && seen.has(msgId)) continue;
           if (msgId) seen.add(msgId);
 
-          const msgText = normText(msg?.text || '').trim();
+          const msgText = normText(msg?.text || msg?.caption || '').trim();
           let cbData = '';
-          console.log('[CB_RAW]', JSON.stringify(u));
           const rawCb = u.data || cb?.data || u.button_id || null;
           if (typeof rawCb === 'string') cbData = rawCb;
           else if (rawCb && typeof rawCb === 'object') {
@@ -241,7 +249,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
           const replyTo = String(msg?.reply_to_message_id || u.reply_to_message_id || '');
           const action = cbData || msgText;
 
-          // Admin Payment Handling
+          // Admin Payment
           if (adminChat && chatId === adminChat && replyTo) {
             const map = await getAdminInv(replyTo);
             if (map && map.invoice_number) {
@@ -255,7 +263,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
                   inv.paid = Number(inv.paid || 0) + amount;
                   const remaining = Number(inv.total || 0) - inv.paid;
                   await setInv(map.invoice_number, inv);
-                  
                   const debtStatus = remaining < 0 ? 'بستانکاری: ' + fmt(Math.abs(remaining)) : 'بدهی: ' + fmt(remaining);
                   await botSend(t, chatId, '✅ تسویه حساب انجام شد!\n👤 کاربر: ' + inv.customer_name + '\n💰 مبلغ واریز: ' + fmt(amount) + '\n💳 وضعیت حساب: ' + debtStatus);
                   if (inv.customer_chat_id) {
@@ -268,28 +275,22 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             }
           }
 
-          // Main Menu
+          // Menu
           if (action === 'menu' || action === 'menu_back' || msgText === '/start' || msgText === '🏠 منوی اصلی' || msgText === 'منو') {
             await clearState(chatId);
             await showMainMenu(t, chatId);
             totalProcessed++; continue;
           }
-
-          // Products
           if (action === 'menu_products' || msgText === '🛍️ مشاهده محصولات' || msgText.includes('مشاهده محصولات')) {
             await clearState(chatId);
             await showProducts(t, chatId);
             totalProcessed++; continue;
           }
-
-          // Cart
           if (action === 'menu_cart' || msgText === '🛒 سبد خرید من' || msgText.includes('سبد خرید')) {
             await clearState(chatId);
             await showCart(t, chatId);
             totalProcessed++; continue;
           }
-
-          // Clear Cart
           if (action === 'cart_clear' || msgText === '🗑️ خالی کردن سبد' || msgText === '🗑️ خالی کردن') {
             await setCart(chatId, []);
             await clearState(chatId);
@@ -297,8 +298,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             await showMainMenu(t, chatId);
             totalProcessed++; continue;
           }
-
-          // Checkout
           if (action === 'cart_checkout' || msgText === '✅ پایان انتخاب محصولات' || msgText === '✅ نهایی سازی سفارش') {
             const c = await getCart(chatId);
             if (!c.length) { await botSend(t, chatId, '⚠️ سبد خرید شما خالی است.'); totalProcessed++; continue; }
@@ -306,8 +305,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             await botSend(t, chatId, '👤 لطفاً نام و نام خانوادگی خود را وارد کنید:');
             totalProcessed++; continue;
           }
-
-          // Remove from Cart
           if (action.startsWith('cart_remove_')) {
             const code = action.slice('cart_remove_'.length);
             const c = await getCart(chatId);
@@ -315,8 +312,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             await showCart(t, chatId);
             totalProcessed++; continue;
           }
-
-          // Quantity Selection
           if (action.startsWith('qty_')) {
             const state = await getState(chatId);
             if (!state || state.step !== 'waiting_qty') { await showMainMenu(t, chatId); totalProcessed++; continue; }
@@ -340,8 +335,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             }
             totalProcessed++; continue;
           }
-
-          // Confirm Order
           if (action === 'confirm_yes' || msgText === '✅ تأیید سفارش' || msgText === '✅ تأیید') {
             const state = await getState(chatId);
             const cart = await getCart(chatId);
@@ -350,14 +343,14 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             const phone = String(state.phone || '');
             let customerCode = '';
             try {
-              const found = await offlineMod.findCustomerByPhoneOffline(phone);
+              const found = await findCustomerByPhoneOffline(phone);
               if (found) customerCode = String(found.customer_code || found.code || '');
-              if (!customerCode) customerCode = await offlineMod.generateCustomerCode();
+              if (!customerCode) customerCode = await generateCustomerCode();
             } catch { customerCode = 'M_' + Date.now(); }
 
             let prevSales = 0, prevPaid = 0, prevCount = 0;
             try {
-              const grouped = await offlineMod.getSalesGrouped();
+              const grouped = await getSalesGrouped();
               const prev = (grouped || []).filter((g: any) => String(g.phone || '') === phone || (state.name && String(g.name || '') === String(state.name)));
               prev.forEach((g: any) => { prevSales += Number(g.total || 0); prevPaid += Number(g.paid || 0); });
               prevCount = prev.length;
@@ -365,7 +358,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
 
             let invNum = '';
             try { 
-              const baseInv = await offlineMod.generateInvoiceNumber(); 
+              const baseInv = await generateInvoiceNumber(); 
               invNum = 'BOT-' + baseInv;
             } catch { invNum = 'BOT-INV-' + Date.now(); }
 
@@ -402,8 +395,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             await setState(chatId, { step: 'waiting_payment', invoice_number: invNum });
             totalProcessed++; continue;
           }
-
-          // Cancel
           if (action === 'confirm_no' || msgText === '❌ انصراف' || msgText === '❌ لغو') {
             await setCart(chatId, []);
             await clearState(chatId);
@@ -412,7 +403,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             totalProcessed++; continue;
           }
 
-          // State Machine
           const state = await getState(chatId);
           if (state && state.step) {
             if (state.step === 'waiting_qty') {
@@ -424,13 +414,12 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
               else cart.push({ code: state.code, name: state.name, price: state.price, qty: n });
               await setCart(chatId, cart);
               await clearState(chatId);
-              await botSend(t, chatId, '✅ به سبد خرید اضافه شد. یک محصول دیگر اضافه می‌کنید یا سفارش را نهایی می‌کنید؟', { rows: [
+              await botSend(t, chatId, '✅ به سبد خرید اضافه شد.', { rows: [
                 { buttons: [{ id: 'menu_products', button_text: '➕ سفارش بعدی' }, { id: 'menu_cart', button_text: '🛒 سبد خرید' }] },
                 { buttons: [{ id: 'cart_checkout', button_text: '✅ نهایی سازی سفارش' }] }
               ] });
               totalProcessed++; continue;
             }
-
             if (state.step === 'waiting_qty_other') {
               const n = parseInt(String(msgText).replace(/[^0-9]/g, ''), 10);
               if (!n || n <= 0) { await botSend(t, chatId, '⚠️ لطفاً یک عدد معتبر وارد کنید.'); totalProcessed++; continue; }
@@ -472,9 +461,7 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             }
           }
 
-          // ================= EXACT CODE MATCHING (Button or Text) =================
-          // چک می‌کنیم که آیا پیام یا دکمه کلیک شده دقیقاً برابر با یکی از کدهای محصول است یا نه
-          const catalog = await getCatalogCached();
+          const catalog = await offlineMod.getCatalogCached ? await offlineMod.getCatalogCached() : { products: await offlineMod.getProducts() };
           const p = (catalog.products || []).find((x: any) => String(x.code).trim() === action.trim() || String(x.code).trim() === msgText.trim());
           
           if (p) {

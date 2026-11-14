@@ -6,7 +6,9 @@ import { Platform } from 'react-native';
 // lib.assistant.rubika.ts — اتصال امن به Rubika Bot API
 // فعلاً فقط تست اتصال (getMe) و دریافت پیام (getUpdates). هیچ پیامی ارسال نمی‌شود.
 
-const RUBIKA_BASE = 'https://botapi.rubika.ir/v3';
+const RUBIKA_BASE = Platform.OS === 'web' 
+  ? 'https://mizan-rubika-proxy.mizan1740.workers.dev' 
+  : 'https://botapi.rubika.ir/v3';
 
 export async function rubikaPing(token: string): Promise<{ ok: boolean; name?: string; username?: string; error?: string; raw?: string }> {
   const t = String(token || '').trim();

@@ -40,7 +40,7 @@ import LicenseNotification from './LicenseNotification';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Switch } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, Switch, FlatList  } from 'react-native';
 
 import { useFonts, Orbitron_900Black, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
 

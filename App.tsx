@@ -4,7 +4,7 @@ import DashboardScreen from './components/DashboardScreen';
 
 import PlusMenu from './components/PlusMenu';
 
-import React from 'react';
+import React, { useDeferredValue } from 'react';
 
 
 
@@ -68,7 +68,7 @@ import DateField from './lib.datefield';
 
 
 
-import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn } from './lib.offline';
+import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
 
 import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 
@@ -5697,6 +5697,21 @@ const HDR = StyleSheet.create({
   },
 });
 
+
+function LocalInput({ value, onChange, ...props }: any) {
+  const [text, setText] = useState(String(value || ''));
+  useEffect(() => { setText(String(value || '')); }, [value]);
+  return (
+    <TextInput
+      {...props}
+      value={text}
+      onChangeText={setText}
+      onEndEditing={() => onChange(text)}
+      onBlur={() => onChange(text)}
+    />
+  );
+}
+
 function InventoryScreen({ showToast }: any) {
 
   const [list, setList] = useState<any[]>([]);
@@ -5831,7 +5846,7 @@ function InventoryScreen({ showToast }: any) {
 
 
 
-  const openModelKardex = async (m: any) => {
+  const openModelKardex = useCallback(async (m: any) => {
     setModelKardexCode(m.code);
     setModelKardexModal(true);
     setModelKardexLoading(true);
@@ -5850,7 +5865,7 @@ function InventoryScreen({ showToast }: any) {
         setModelKardexLoading(false);
       }
     }, 50);
-  };
+  }, []);;
 
 
 
@@ -5980,6 +5995,7 @@ function InventoryScreen({ showToast }: any) {
   // ═══ تعدیل موجودی ═══
 
   const [adjModal, setAdjModal] = useState(false);
+  const [editingAdjId, setEditingAdjId] = useState<string | null>(null);
 
   const [adjModel, setAdjModel] = useState<any>(null);
 
@@ -5991,7 +6007,8 @@ function InventoryScreen({ showToast }: any) {
 
 
 
-  const openAdjustment = async (m: any) => {
+  const openAdjustment = useCallback(async (m: any) => {
+  setEditingAdjId(null);
   setAdjModel(m);
   const _defCost = Number(m.unitCost) || Number(m.lastPrice) || 0;
   setAdjForm({ type: 'in', amount: '', unit_cost: String(_defCost), reason: 'تصحیح موجودی', adjustment_date: toStorageDateFull(new Date()), note: '' });
@@ -6002,9 +6019,32 @@ function InventoryScreen({ showToast }: any) {
     setAdjList(list || []);
   } catch (e) { console.log('adj load err:', e); }
   finally { setAdjLoading(false); }
-};
+}, []);;
 
 
+
+  
+  const editAdj = (r: any) => {
+    setEditingAdjId(r.local_id || r.id);
+    setAdjForm({
+      type: (Number(r.adjustment) || 0) > 0 ? 'in' : 'out',
+      amount: String(Math.abs(Number(r.adjustment) || 0)),
+      unit_cost: String(r.unit_cost || ''),
+      reason: r.reason || 'سایر',
+      adjustment_date: r.adjustment_date || toStorageDateFull(new Date()),
+      note: r.note || '',
+    });
+  };
+
+  const deleteAdj = async (id: string) => {
+    if (!(await confirmMsg('حذف تعدیل', 'آیا از حذف این تعدیل مطمئن هستید؟'))) return;
+    try {
+      await deleteStockAdjustment(id);
+      showToast('✅ تعدیل حذف شد', false);
+      const list = await getStockAdjustments(adjModel.code);
+      setAdjList(list || []);
+    } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+  };
 
   const submitAdjustment = async () => {
 
@@ -6015,6 +6055,7 @@ function InventoryScreen({ showToast }: any) {
     if (!amt || amt <= 0) { showToast('مقدار معتبر وارد کن', true); return; }
 
     const signed = adjForm.type === 'out' ? -amt : amt;
+    if (editingAdjId) { await deleteStockAdjustment(editingAdjId); setEditingAdjId(null); }
 
     try {
 
@@ -6036,7 +6077,8 @@ function InventoryScreen({ showToast }: any) {
       });
 
       showToast('✅ تعدیل ثبت شد');
-
+      setAdjModal(false);
+      setTimeout(() => load(), 200);
       setAdjForm({ type: 'in', amount: '', reason: adjForm.reason, adjustment_date: toStorageDateFull(new Date()), note: '' });
 
       const list = await getStockAdjustments(adjModel.code);
@@ -6140,7 +6182,8 @@ function InventoryScreen({ showToast }: any) {
 
 
 
-  const filtered = list.filter((m) => {
+  const deferredQ = useDeferredValue(q);
+  const filtered = useMemo(() => list.filter((m) => {
 
     if (filter !== 'all' && m.status !== filter) return false;
 
@@ -6158,11 +6201,11 @@ function InventoryScreen({ showToast }: any) {
 
     }
 
-    if (q) { const h = `${m.code} ${m.name} ${m.shelf || ''}`.toLowerCase(); if (!h.includes(q.toLowerCase())) return false; }
+    if (deferredQ) { const h = `${m.code} ${m.name} ${m.shelf || ''}`.toLowerCase(); if (!h.includes(deferredQ.toLowerCase())) return false; }
 
     return true;
 
-  });
+  }), [list, deferredQ, filter, agingFilter]);
 
 
 
@@ -6172,151 +6215,8 @@ function InventoryScreen({ showToast }: any) {
 
 
 
-  return (
-
-    <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-
-      {/* آمار */}
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
-
-        {[
-
-          { l: '📊 مدل‌ها', v: stats.totalModels || 0, c: '#60a5fa' },
-
-          { l: '📦 جمع موجودی', v: stats.totalQty || 0, c: '#34d399' },
-
-          { l: '💰 ارزش کل', v: stats.totalValue || 0, c: '#d4af37', money: true },
-
-          { l: '💵 درآمد بالقوه', v: stats.potentialRevenue || 0, c: '#a78bfa', money: true },
-
-          { l: '⚠️ کمبود', v: stats.lowStock || 0, c: '#fb923c' },
-
-          { l: '🔴 ناموجود', v: stats.outOfStock || 0, c: '#f87171' },
-
-          { l: '⏸ راکد (۹۰+ روز)', v: (stats.agingBuckets && stats.agingBuckets.dead) || 0, c: '#94a3b8' },
-
-        ].map((b, i) => (
-
-          <View key={i} style={[s.sBox, { backgroundColor: C.card }]}><Text style={s.sBoxL}>{b.l}</Text><Text style={[s.sBoxV, { color: b.c }]}>{fmt(b.v)}</Text></View>
-
-        ))}
-
-      </View>
-
-
-
-      {stats.agingBuckets && (
-
-        <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 8, padding: 8, backgroundColor: C.card, borderRadius: 6 }}>
-
-          <Text style={{ color: C.textMut, fontSize: 10, fontWeight: 'bold', marginLeft: 'auto' }}>🌡 کهنگی موجودی:</Text>
-
-          {agingFilter ? (<TouchableOpacity onPress={() => setAgingFilter('')} style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#334155' }}><Text style={{ color: '#fff', fontSize: 9, fontWeight: 'bold' }}>✕ پاک فیلتر</Text></TouchableOpacity>) : null}
-
-          <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'healthy' ? '' : 'healthy')} style={{ backgroundColor: agingFilter === 'healthy' ? '#059669' : '#d1fae5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'healthy' ? '#fff' : '#065f46', fontSize: 10, fontWeight: 'bold' }}>🟢 سالم {toFaNum(stats.agingBuckets.healthy || 0)}</Text></TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'slow' ? '' : 'slow')} style={{ backgroundColor: agingFilter === 'slow' ? '#f59e0b' : '#fef3c7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'slow' ? '#fff' : '#78350f', fontSize: 10, fontWeight: 'bold' }}>🟡 کند {toFaNum(stats.agingBuckets.slow || 0)}</Text></TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'verySlow' ? '' : 'verySlow')} style={{ backgroundColor: agingFilter === 'verySlow' ? '#ea580c' : '#fed7aa', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'verySlow' ? '#fff' : '#7c2d12', fontSize: 10, fontWeight: 'bold' }}>🟠 خیلی کند {toFaNum(stats.agingBuckets.verySlow || 0)}</Text></TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'dead' ? '' : 'dead')} style={{ backgroundColor: agingFilter === 'dead' ? '#dc2626' : '#fee2e2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'dead' ? '#fff' : '#991b1b', fontSize: 10, fontWeight: 'bold' }}>🔴 راکد {toFaNum(stats.agingBuckets.dead || 0)}</Text></TouchableOpacity>
-
-        </View>
-
-      )}
-
-
-
-      {/* آستانه */}
-
-      <View style={[s.thresholdBox, { backgroundColor: C.card, borderColor: C.border }]}>
-
-        <EL text="{t('⚙️ آستانه کمبود')}" style={[s.lbl, { color: C.textMut }]} />
-
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-
-          <TextInput style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={thresholdInput} onChangeText={setThresholdInput} keyboardType="numeric" />
-
-          <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#059669' }]} onPress={saveThreshold}><Text style={s.btnTxt}>💾</Text></TouchableOpacity>
-
-          <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#8e44ad' }]} onPress={invExportMenu}><Text style={s.btnTxt}>📤</Text></TouchableOpacity>
-
-        </View>
-
-      </View>
-
-
-
-      {/* جستجو و فیلتر */}
-
-      <TextInput accessibilityLabel="🔍 جستجو: کد، نام، قفسه..." style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو: کد، نام، قفسه..." placeholderTextColor={C.textMut} />
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
-
-        {[{ k: 'all', l: '📋 همه' }, { k: 'negative', l: '⚫ منفی' }, { k: 'out', l: '🔴 ناموجود' }, { k: 'low', l: '⚠️ کمبود' }, { k: 'ok', l: '✅ سالم' }].map((f) => (
-
-          <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
-
-        ))}
-
-      </ScrollView>
-
-
-
-      <EL text="📦 موجودی ({toFaNum(filtered.length)})" style={s.secT} />
-
-
-
-      {/* ⭐ جدول ردیفی */}
-
-      <ScrollView horizontal showsHorizontalScrollIndicator>
-
-        <View>
-
-          <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
-
-            <Text style={[s.thCell, { width: 40, fontSize: 12, fontWeight: 'bold' }]}>#</Text>
-
-            <Text style={[HDR.cell, { width: 100 }]}>کد</Text>
-
-            <EL textKey="نام مدل" style={[s.thCell, { width: 180 }]} />
-
-            <Text style={[HDR.cell, { width: 80 }]}>خرید</Text>
-
-            <Text style={[HDR.cell, { width: 80 }]}>فروش</Text>
-
-            <Text style={[HDR.cell, { width: 90 }]}>موجودی</Text>
-
-            <Text style={[HDR.cell, { width: 110 }]}>بهای واحد</Text>
-
-            <Text style={[HDR.cell, { width: 130 }]}>ارزش کل</Text>
-
-            <View style={[s.thCell, { width: 110, alignItems: 'center' }]}><Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>⚖️ تعدیل</Text></View>
-
-            <Text style={[HDR.cell, { width: 110 }]}>آخرین فروش</Text>
-
-            <Text style={[HDR.cell, { width: 100 }]}>روز از فروش</Text>
-
-            <Text style={[HDR.cell, { width: 120 }]}>قفسه</Text>
-
-            <Text style={[HDR.cell, { width: 110 }]}>وضعیت</Text>
-
-            <Text style={[HDR.cell, { width: 140 }]}>عملیات</Text>
-
-          </View>
-
-          {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : (
-            <FlatList
-              style={{ height: 600 }}
-              nestedScrollEnabled={true}
-              data={filtered}
-              keyExtractor={(m: any) => String(m.code || m.id || Math.random())}
-              initialNumToRender={15}
-              maxToRenderPerBatch={15}
-              windowSize={5}
-              removeClippedSubviews={true}
-              renderItem={({ item: m, index: i }) => {
+  
+  const renderItem = useCallback(({ item: m, index: i }: { item: any, index: number }) => {
 
             const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
 
@@ -6374,7 +6274,7 @@ function InventoryScreen({ showToast }: any) {
 
                 </View>
 
-                <TouchableOpacity onPress={() => openAdjustment(m)} style={[s.tdCell, { width: 40, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>⚖️</Text></TouchableOpacity>
+                
 
                 <TouchableOpacity onPress={() => { setEditItem(m); setShelfVal(m.shelf || ''); }} style={[s.tdCell, { width: 100, alignItems: 'center' }]}>
 
@@ -6390,157 +6290,7 @@ function InventoryScreen({ showToast }: any) {
 
             
 
-      <Modal visible={adjModal} transparent animationType="slide" onRequestClose={() => setAdjModal(false)}>
-
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 12 }}>
-
-          <View style={{ backgroundColor: '#ffffff', borderRadius: 12, maxHeight: '92%', overflow: 'hidden' }}>
-
-            <View style={{ backgroundColor: '#0f2438', padding: 12, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
-
-              <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' }}>⚖️ تعدیل موجودی — {adjModel?.name || adjModel?.code || ''}</Text>
-
-              <TouchableOpacity onPress={() => setAdjModal(false)}><Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>×</Text></TouchableOpacity>
-
-            </View>
-
-            <ScrollView style={{ padding: 12 }}>
-
-              {/* Info */}
-
-              <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginBottom: 10 }}>
-
-                <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی فعلی: {fmt(adjModel?.currentQty || 0)}</Text>
-
-                <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>📊 مجموع تعدیلات: {(() => { const _s = (adjList || []).reduce((a: number, r: any) => a + (Number(r.adjustment) || 0), 0); return (_s > 0 ? '+' : '') + fmt(_s); })()}</Text>
-
-              </View>
-
-              {/* Form */}
-
-              <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>نوع تعدیل</Text>
-
-              <View style={{ flexDirection: 'row-reverse', gap: 8, marginBottom: 8 }}>
-
-                <TouchableOpacity onPress={() => setAdjForm({ ...adjForm, type: 'in' })} style={{ flex: 1, padding: 10, borderRadius: 6, backgroundColor: adjForm.type === 'in' ? '#059669' : '#e2e8f0', alignItems: 'center' }}>
-
-                  <Text style={{ color: adjForm.type === 'in' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>➕ افزایشی</Text>
-
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => setAdjForm({ ...adjForm, type: 'out' })} style={{ flex: 1, padding: 10, borderRadius: 6, backgroundColor: adjForm.type === 'out' ? '#dc2626' : '#e2e8f0', alignItems: 'center' }}>
-
-                  <Text style={{ color: adjForm.type === 'out' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>➖ کاهشی</Text>
-
-                </TouchableOpacity>
-
-              </View>
-
-              <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>مقدار تعدیل</Text>
-
-              <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 10, fontSize: 13, textAlign: 'right', marginBottom: 8 }} value={String(adjForm.amount)} onChangeText={(v: string) => setAdjForm({ ...adjForm, amount: v.replace(/[^\d.]/g, '') })} keyboardType="numeric" placeholder="مثلاً 5" placeholderTextColor="#94a3b8" />
-<View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 8 }}>
-  <Text style={{ width: 90, fontSize: 11, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }}>بهای واحد:</Text>
-  <TextInput
-    value={String(adjForm.unit_cost || '')}
-    onChangeText={(v) => setAdjForm({ ...adjForm, unit_cost: v })}
-    placeholder="بهای واحد"
-    keyboardType="numeric"
-    style={{ flex: 1, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, padding: 8, textAlign: 'center', backgroundColor: '#fff' }}
-  />
-</View>
-
-              <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>دلیل</Text>
-
-              <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-
-                {['شمارش فیزیکی', 'شکستگی', 'گم شدن', 'خرابی', 'برگشت از مشتری', 'سایر'].map((r: string) => (
-
-                  <TouchableOpacity key={r} onPress={() => setAdjForm({ ...adjForm, reason: r })} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 15, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: adjForm.reason === r ? '#7c3aed' : '#ffffff' }}>
-
-                    <Text style={{ color: adjForm.reason === r ? '#fff' : '#475569', fontSize: 11, fontWeight: 'bold' }}>{r}</Text>
-
-                  </TouchableOpacity>
-
-                ))}
-
-              </View>
-
-              <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 4 }}>تاریخ</Text>
-
-              <DateField value={adjForm.adjustment_date || ''} onChange={(v: string) => setAdjForm({ ...adjForm, adjustment_date: v })} compact />
-
-              <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginTop: 8, marginBottom: 4 }}>یادداشت</Text>
-
-              <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 10, fontSize: 12, textAlign: 'right', minHeight: 50, marginBottom: 10 }} value={adjForm.note || ''} onChangeText={(v: string) => setAdjForm({ ...adjForm, note: v })} multiline placeholder="اختیاری" placeholderTextColor="#94a3b8" />
-
-              <TouchableOpacity onPress={submitAdjustment} style={{ backgroundColor: '#059669', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12 }}>
-
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>💾 ثبت تعدیل</Text>
-
-              </TouchableOpacity>
-
-              {/* Recent adjustments */}
-
-              <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 12, textAlign: 'right', marginBottom: 6 }}>📋 تعدیلات اخیر ({adjList.length})</Text>
-
-              {adjLoading ? (
-
-                <ActivityIndicator color="#d4af37" style={{ marginVertical: 20 }} />
-
-              ) : adjList.length === 0 ? (
-
-                <Text style={{ color: '#64748b', textAlign: 'center', padding: 20 }}>تعدیلی ثبت نشده</Text>
-
-              ) : (
-
-                <View>
-
-                  <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
-
-                    <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
-
-                    <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
-
-                    <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
-                    <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>بهای واحد</Text>
-
-                    <Text style={{ flex: 1, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'right', paddingRight: 4 }}>دلیل</Text>
-
-                    <Text style={{ width: 50, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>حذف</Text>
-
-                  </View>
-
-                  {adjList.map((r: any, i: number) => (
-
-                    <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', alignItems: 'center' }}>
-
-                      <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
-
-                      <Text style={{ width: 130, fontSize: 10, textAlign: 'center' }}>{r.adjustment_date || r.created_at ? (displayDate ? displayDate(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.created_at).slice(0, 19)) : '—'}</Text>
-
-                      <Text style={{ width: 70, fontSize: 11, textAlign: 'center', fontWeight: 'bold', color: (Number(r.adjustment) || 0) > 0 ? '#059669' : '#dc2626' }}>{(Number(r.adjustment) || 0) > 0 ? '+' : ''}{fmt(Number(r.adjustment) || 0)}</Text>
-                      <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0)}</Text>
-
-                      <Text style={{ flex: 1, fontSize: 10, textAlign: 'right', paddingRight: 4, color: '#475569' }} numberOfLines={1}>{r.reason || '—'}{r.note ? ' — ' + r.note : ''}</Text>
-
-                      <TouchableOpacity onPress={() => removeAdjustment(r.local_id || r.id)} style={{ width: 50, alignItems: 'center' }}><Text style={{ fontSize: 14 }}>🗑️</Text></TouchableOpacity>
-
-                    </View>
-
-                  ))}
-
-                </View>
-
-              )}
-
-            </ScrollView>
-
-          </View>
-
-        </View>
-
-      </Modal>
+      
 
       <Modal visible={modelKardexModal} transparent animationType="slide" onRequestClose={() => setModelKardexModal(false)}>
 
@@ -6819,49 +6569,295 @@ function InventoryScreen({ showToast }: any) {
     </>);
 
           
-              }}
+              
+  }, [C]);
+
+return (
+
+    <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+
+      {/* آمار */}
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
+
+        {[
+
+          { l: '📊 مدل‌ها', v: stats.totalModels || 0, c: '#60a5fa' },
+
+          { l: '📦 جمع موجودی', v: stats.totalQty || 0, c: '#34d399' },
+
+          { l: '💰 ارزش کل', v: stats.totalValue || 0, c: '#d4af37', money: true },
+
+          { l: '💵 درآمد بالقوه', v: stats.potentialRevenue || 0, c: '#a78bfa', money: true },
+
+          { l: '⚠️ کمبود', v: stats.lowStock || 0, c: '#fb923c' },
+
+          { l: '🔴 ناموجود', v: stats.outOfStock || 0, c: '#f87171' },
+
+          { l: '⏸ راکد (۹۰+ روز)', v: (stats.agingBuckets && stats.agingBuckets.dead) || 0, c: '#94a3b8' },
+
+        ].map((b, i) => (
+
+          <View key={i} style={[s.sBox, { backgroundColor: C.card }]}><Text style={s.sBoxL}>{b.l}</Text><Text style={[s.sBoxV, { color: b.c }]}>{fmt(b.v)}</Text></View>
+
+        ))}
+
+      </View>
+
+
+
+      {stats.agingBuckets && (
+
+        <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 8, padding: 8, backgroundColor: C.card, borderRadius: 6 }}>
+
+          <Text style={{ color: C.textMut, fontSize: 10, fontWeight: 'bold', marginLeft: 'auto' }}>🌡 کهنگی موجودی:</Text>
+
+          {agingFilter ? (<TouchableOpacity onPress={() => setAgingFilter('')} style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#334155' }}><Text style={{ color: '#fff', fontSize: 9, fontWeight: 'bold' }}>✕ پاک فیلتر</Text></TouchableOpacity>) : null}
+
+          <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'healthy' ? '' : 'healthy')} style={{ backgroundColor: agingFilter === 'healthy' ? '#059669' : '#d1fae5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'healthy' ? '#fff' : '#065f46', fontSize: 10, fontWeight: 'bold' }}>🟢 سالم {toFaNum(stats.agingBuckets.healthy || 0)}</Text></TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'slow' ? '' : 'slow')} style={{ backgroundColor: agingFilter === 'slow' ? '#f59e0b' : '#fef3c7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'slow' ? '#fff' : '#78350f', fontSize: 10, fontWeight: 'bold' }}>🟡 کند {toFaNum(stats.agingBuckets.slow || 0)}</Text></TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'verySlow' ? '' : 'verySlow')} style={{ backgroundColor: agingFilter === 'verySlow' ? '#ea580c' : '#fed7aa', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'verySlow' ? '#fff' : '#7c2d12', fontSize: 10, fontWeight: 'bold' }}>🟠 خیلی کند {toFaNum(stats.agingBuckets.verySlow || 0)}</Text></TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'dead' ? '' : 'dead')} style={{ backgroundColor: agingFilter === 'dead' ? '#dc2626' : '#fee2e2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'dead' ? '#fff' : '#991b1b', fontSize: 10, fontWeight: 'bold' }}>🔴 راکد {toFaNum(stats.agingBuckets.dead || 0)}</Text></TouchableOpacity>
+
+        </View>
+
+      )}
+
+
+
+      {/* آستانه */}
+
+      <View style={[s.thresholdBox, { backgroundColor: C.card, borderColor: C.border }]}>
+
+        <EL text="{t('⚙️ آستانه کمبود')}" style={[s.lbl, { color: C.textMut }]} />
+
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+
+          <LocalInput value={thresholdInput} onChange={(v: string) => setThresholdInput(v)} style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, textAlign: 'right' }]} keyboardType="numeric" />
+
+          <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#059669' }]} onPress={saveThreshold}><Text style={s.btnTxt}>💾</Text></TouchableOpacity>
+
+          <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#8e44ad' }]} onPress={invExportMenu}><Text style={s.btnTxt}>📤</Text></TouchableOpacity>
+
+        </View>
+
+      </View>
+
+
+
+      {/* جستجو و فیلتر */}
+
+      <TextInput accessibilityLabel="🔍 جستجو: کد، نام، قفسه..." style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو: کد، نام، قفسه..." placeholderTextColor={C.textMut} />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
+
+        {[{ k: 'all', l: '📋 همه' }, { k: 'negative', l: '⚫ منفی' }, { k: 'out', l: '🔴 ناموجود' }, { k: 'low', l: '⚠️ کمبود' }, { k: 'ok', l: '✅ سالم' }].map((f) => (
+
+          <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
+
+        ))}
+
+      </ScrollView>
+
+
+
+      <EL text="📦 موجودی ({toFaNum(filtered.length)})" style={s.secT} />
+
+
+
+      {/* ⭐ جدول ردیفی */}
+
+      <ScrollView horizontal showsHorizontalScrollIndicator>
+
+        <View>
+
+          <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+
+            <Text style={[s.thCell, { width: 40, fontSize: 12, fontWeight: 'bold' }]}>#</Text>
+
+            <Text style={[HDR.cell, { width: 100 }]}>کد</Text>
+
+            <EL textKey="نام مدل" style={[s.thCell, { width: 180 }]} />
+
+            <Text style={[HDR.cell, { width: 80 }]}>خرید</Text>
+
+            <Text style={[HDR.cell, { width: 80 }]}>فروش</Text>
+
+            <Text style={[HDR.cell, { width: 90 }]}>موجودی</Text>
+
+            <Text style={[HDR.cell, { width: 110 }]}>بهای واحد</Text>
+
+            <Text style={[HDR.cell, { width: 130 }]}>ارزش کل</Text>
+
+            <View style={[s.thCell, { width: 110, alignItems: 'center' }]}><Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>⚖️ تعدیل</Text></View>
+
+            <Text style={[HDR.cell, { width: 110 }]}>آخرین فروش</Text>
+
+            <Text style={[HDR.cell, { width: 100 }]}>روز از فروش</Text>
+
+            <Text style={[HDR.cell, { width: 120 }]}>قفسه</Text>
+
+            <Text style={[HDR.cell, { width: 110 }]}>وضعیت</Text>
+
+            <Text style={[HDR.cell, { width: 140 }]}>عملیات</Text>
+
+          </View>
+
+          {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : (
+            <FlatList
+              style={{ height: 600 }}
+              nestedScrollEnabled={true}
+              data={filtered}
+              keyExtractor={(m: any, idx: number) => String(m.code || m.id || idx)}
+              initialNumToRender={15}
+              maxToRenderPerBatch={15}
+              windowSize={5}
+              removeClippedSubviews={false}
+              renderItem={renderItem}
             />
           )}
 
         </View>
 
       </ScrollView>
+<Modal visible={adjModal} transparent animationType="fade" onRequestClose={() => { setAdjModal(false); load(); }}>
+  <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+    <View style={{ backgroundColor: '#ffffff', borderRadius: 16, width: '100%', maxWidth: 400, overflow: 'hidden', elevation: 5 }}>
+      
+      {/* Header */}
+      <View style={{ backgroundColor: '#0f2438', padding: 16, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 16, flex: 1, textAlign: 'right' }}>⚖️ تعدیل موجودی — {adjModel?.name || adjModel?.code || ''}</Text>
+        <TouchableOpacity onPress={() => { setAdjModal(false); load(); }} style={{ padding: 4 }}><Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>×</Text></TouchableOpacity>
+      </View>
+
+      <ScrollView style={{ padding: 16, maxHeight: 500 }}>
+        {/* Info */}
+        <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: 8, marginBottom: 16 }}>
+          <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13 }}>📦 موجودی فعلی: {fmt(adjModel?.currentQty || 0)}</Text>
+          <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 13 }}>📊 مجموع تعدیلات: {(() => { const _s = (adjList || []).reduce((a: number, r: any) => a + (Number(r.adjustment) || 0), 0); return (_s > 0 ? '+' : '') + fmt(_s); })()}</Text>
+        </View>
+
+        {/* Form */}
+        <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', marginBottom: 8 }}>نوع تعدیل</Text>
+        <View style={{ flexDirection: 'row-reverse', gap: 8, marginBottom: 16 }}>
+          <TouchableOpacity onPress={() => setAdjForm({ ...adjForm, type: 'in' })} style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: adjForm.type === 'in' ? '#059669' : '#e2e8f0', alignItems: 'center' }}>
+            <Text style={{ color: adjForm.type === 'in' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 13 }}>➕ افزایشی</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setAdjForm({ ...adjForm, type: 'out' })} style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: adjForm.type === 'out' ? '#dc2626' : '#e2e8f0', alignItems: 'center' }}>
+            <Text style={{ color: adjForm.type === 'out' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 13 }}>➖ کاهشی</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', marginBottom: 8 }}>مقدار تعدیل</Text>
+        <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 12, fontSize: 14, textAlign: 'right', marginBottom: 12 }} value={String(adjForm.amount)} onChangeText={(v: string) => setAdjForm({ ...adjForm, amount: v.replace(/[^0-9.]/g, '') })} keyboardType="numeric" placeholder="مثلاً 5" placeholderTextColor="#94a3b8" />
+        
+        <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', marginBottom: 8 }}>تاریخ تعدیل</Text>
+        <View style={{ marginBottom: 12 }}>
+          <DateField 
+            value={adjForm.adjustment_date || ''} 
+            onChange={(v: string) => setAdjForm({ ...adjForm, adjustment_date: v })} 
+            compact 
+            defaultToToday 
+          />
+        </View>
+
+        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={{ width: 90, fontSize: 13, color: '#0f2438', fontWeight: 'bold', textAlign: 'right' }}>بهای واحد:</Text>
+          <TextInput value={String(adjForm.unit_cost || '')} onChangeText={(v) => setAdjForm({ ...adjForm, unit_cost: v })} placeholder="بهای واحد" keyboardType="numeric" style={{ flex: 1, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 12, textAlign: 'center', backgroundColor: '#fff' }} />
+        </View>
+
+        <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', marginBottom: 8 }}>دلیل</Text>
+        <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {['شمارش فیزیکی', 'شکستگی', 'گم شدن', 'خرابی', 'برگشت از مشتری', 'سایر'].map((r: string) => (
+            <TouchableOpacity key={r} onPress={() => setAdjForm({ ...adjForm, reason: r })} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: adjForm.reason === r ? '#7c3aed' : '#ffffff' }}>
+              <Text style={{ color: adjForm.reason === r ? '#fff' : '#475569', fontSize: 12, fontWeight: 'bold' }}>{r}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Save Button */}
+        <TouchableOpacity onPress={submitAdjustment} style={{ backgroundColor: '#059669', padding: 14, borderRadius: 10, alignItems: 'center', marginBottom: 10 }}>
+          <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold' }}>💾 ثبت تعدیل</Text>
+        </TouchableOpacity>
+
+        {/* ═══════════════ تاریخچه تعدیلات ═══════════════ */}
+        <View style={{ marginTop: 10, marginBottom: 20 }}>
+          <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', marginBottom: 8 }}>📋 تاریخچه تعدیلات این کالا</Text>
+          
+          {(adjList || []).length === 0 ? (
+            <Text style={{ color: '#94a3b8', textAlign: 'center', fontSize: 12 }}>هنوز تعدیلی ثبت نشده است.</Text>
+          ) : (
+            <View style={{ backgroundColor: '#f8fafc', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' }}>
+              {/* Header */}
+              <View style={{ flexDirection: 'row-reverse', backgroundColor: '#e2e8f0', padding: 8 }}>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#475569', textAlign: 'center' }}>تاریخ</Text>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#475569', textAlign: 'center' }}>دلیل</Text>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#475569', textAlign: 'center' }}>مقدار</Text>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#475569', textAlign: 'center' }}>بهای واحد</Text>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#475569', textAlign: 'center' }}>ارزش</Text>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#475569', textAlign: 'center' }}>عملیات</Text>
+              </View>
+              
+              {/* Rows (فقط ۵۰ ردیف آخر برای سرعت) */}
+              <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true}>
+                {(adjList || []).slice(0, 50).map((r: any, i: number) => {
+                  const _qty = Number(r.adjustment) || 0;
+                  const _cost = Number(r.unit_cost) || 0;
+                  const _val = _qty * _cost;
+                  return (
+                    <View key={i} style={{ flexDirection: 'row-reverse', paddingVertical: 6, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+                      <Text style={{ flex: 1, fontSize: 10, color: '#64748b', textAlign: 'center' }}>{r.adjustment_date ? displayDateOnly(r.adjustment_date) : '—'}</Text>
+                      <Text style={{ flex: 1, fontSize: 10, color: '#475569', textAlign: 'center' }}>{r.reason || '—'}</Text>
+                      <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: _qty > 0 ? '#059669' : '#dc2626', textAlign: 'center' }}>{(_qty > 0 ? '+' : '') + fmt(_qty)}</Text>
+                      <Text style={{ flex: 1, fontSize: 10, color: '#475569', textAlign: 'center' }}>{fmt(_cost)}</Text>
+                      <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#7c3aed', textAlign: 'center' }}>{fmt(_val)}</Text>
+                      <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
+                        <TouchableOpacity onPress={() => editAdj(r)}><Text style={{ fontSize: 12 }}>✏️</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={() => deleteAdj(r.local_id || r.id)}><Text style={{ fontSize: 12 }}>🗑️</Text></TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+
+              {/* جمع کل */}
+              <View style={{ flexDirection: 'row-reverse', backgroundColor: '#e2e8f0', padding: 8, borderTopWidth: 1, borderTopColor: '#cbd5e1' }}>
+                <Text style={{ flex: 1, fontSize: 11, fontWeight: 'bold', color: '#0f2438', textAlign: 'center' }}>جمع کل</Text>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#0f2438', textAlign: 'center' }}>—</Text>
+                <Text style={{ flex: 1, fontSize: 11, fontWeight: 'bold', color: '#0f2438', textAlign: 'center' }}>
+                  {(() => {
+                    const _tq = (adjList || []).reduce((a: number, r: any) => a + (Number(r.adjustment) || 0), 0);
+                    return (_tq > 0 ? '+' : '') + fmt(_tq);
+                  })()}
+                </Text>
+                <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#0f2438', textAlign: 'center' }}>—</Text>
+                <Text style={{ flex: 1, fontSize: 11, fontWeight: 'bold', color: '#0f2438', textAlign: 'center' }}>
+                  {(() => {
+                    const _tv = (adjList || []).reduce((a: number, r: any) => a + ((Number(r.adjustment) || 0) * (Number(r.unit_cost) || 0)), 0);
+                    return fmt(_tv);
+                  })()}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  </View>
+</Modal>
 
 
 
       {/* Modal قفسه */}
 
-      <Modal visible={!!editItem} transparent animationType="fade" onRequestClose={() => setEditItem(null)}>
+      
 
-        <View style={s.modalBg}><View style={[s.modalBox, { backgroundColor: C.card }]}>
-
-          <View style={[s.modalHead, { backgroundColor: '#7c3aed' }]}><EL text="📍 قفسه —" style={s.modalHeadTxt}>{editItem?.name}</EL><TouchableOpacity onPress={() => setEditItem(null)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity></View>
-
-          <View style={{ padding: 16 }}>
-
-            <Text style={[s.modalLbl, { color: C.textMut }]}>{t('کد:')} <Text style={[s.modalVal, { color: C.text }]}>{editItem?.code}</Text></Text>
-
-            <Text style={[s.modalLbl, { color: C.textMut }]}>{t('موجودی:')} <Text style={[s.modalVal, { color: C.text }]}>{fmt(editItem?.currentQty || 0)} عدد</Text></Text>
-
-            <EL textKey="موقعیت قفسه:" style={[s.modalLbl, { color: C.textMut }]} />
-
-            <TextInput accessibilityLabel="مثلاً A-12" style={[s.modalInp, { color: C.text, borderColor: '#a78bfa' }]} value={shelfVal} onChangeText={setShelfVal} placeholder="مثلاً A-12" placeholderTextColor={C.textMut} />
-
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-
-              <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => setEditItem(null)}><Text style={s.btnTxt}>{t('انصراف')}</Text></TouchableOpacity>
-
-              <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={saveShelf}><Text style={s.btnTxt}>{t('💾 ذخیره')}</Text></TouchableOpacity>
-
-            </View>
-
-          </View>
-
-        </View></View>
-
-      </Modal>
-
-    </ScrollView>
+    
+      
+      </ScrollView>
 
   );
 
@@ -10360,7 +10356,9 @@ function SourcesSection({ showToast }: any) {
       {sub === 'parties' ? <PartiesSection showToast={showToast} /> : sub === 'products' ? <ProductsSection showToast={showToast} /> : sub === 'partners' ? <PartnersSection showToast={showToast} /> : sub === 'banks' ? <BanksSection showToast={showToast} /> : <ShippingsSection showToast={showToast} />}
     </View>
     </ScrollView>
-    </KeyboardAvoidingView>
+    
+
+</KeyboardAvoidingView>
   );
 }
 
@@ -10438,6 +10436,7 @@ function ProductsSection({ showToast }: any) {
       delete payload.id;
       if (editing.id || editing.local_id) await updateProduct(editing.local_id || editing.id, payload);
       else await createProduct(payload);
+      clearInventoryCache();
       showToast('✅ کالا ذخیره شد');
       setEditing(null);
       load();
@@ -10447,7 +10446,7 @@ function ProductsSection({ showToast }: any) {
   const remove = async (p: any) => {
     const ok = await confirmMsg('حذف کالا', '«' + (p.name || '') + '» حذف شود؟');
     if (!ok) return;
-    try { await deleteProduct(p.local_id || p.id || p._localId || p.code); load(); showToast('✅ حذف شد'); }
+    try { await deleteProduct(p.local_id || p.id || p._localId || p.code); clearInventoryCache(); load(); showToast('✅ حذف شد'); }
     catch (e: any) { showToast(e?.message || String(e), true); }
   };
 

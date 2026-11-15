@@ -20,7 +20,7 @@ let _initPromise: Promise<any> | null = null;
 let _failed = false;
 
 export async function getDb(): Promise<any> {
-  if (isWeb) return null;  // ← وب: هیچی
+  // Web SQLite enabled  // ← وب: هیچی
   if (_failed) return null;
   if (_db) return _db;
   if (_initPromise) return _initPromise;

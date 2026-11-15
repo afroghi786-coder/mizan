@@ -91,11 +91,18 @@ export * from './lib';
 
 // 🚀 CACHE SYSTEM FOR INVENTORY (Phase 2)
 let _invCache: any = null;
+const _kardexCache: Record<string, any> = {};
 let _invCacheTime = 0;
 let _invDirty = true; // 🚀 پرچم کثیفی: فقط با تغییر داده، محاسبه دوباره انجام می‌شود
 const INV_CACHE_TTL = 30000; // 30 seconds (fallback safety)
 
+function _clearKardexCache() {
+  for (const k in _kardexCache) delete _kardexCache[k];
+}
+
+export function clearInventoryCache() { _clearInvCache(); }
 function _clearInvCache() {
+  _clearKardexCache();
   _invCache = null;
   _invCacheTime = 0;
   _invDirty = true; // 🚀 هر تغییری، پرچم را کثیف می‌کند
@@ -2932,37 +2939,67 @@ async function computeLocalDashboardStats(range, filter) {
 //  getInventoryByModel — کاردکس مدل (آفلاین + آنلاین + صف)
 // ═══════════════════════════════════════════
 export async function getInventoryByModel(code: string) {
-  await _runInventoryMigration(); // چک کردن مهاجرت
+  const _c = String(code).trim();
+  if (_kardexCache[_c]) return _kardexCache[_c];
+
+    const c = String(code).trim();
   try {
     const storageModule = require('./lib.storage').default || require('./lib.storage');
     const db = await storageModule.getDb();
     if (db) {
-      const p = await db.getAllAsync('SELECT data_json FROM purchases_db WHERE model_code = ?', [code]);
-      const s = await db.getAllAsync('SELECT data_json FROM sales_db WHERE model_code = ?', [code]);
-      const a = await db.getAllAsync('SELECT data_json FROM adjustments_db WHERE model_code = ?', [code]);
-      
+      const p = await db.getAllAsync('SELECT data_json FROM purchases_db WHERE model_code = ?', [c]);
+      const s = await db.getAllAsync('SELECT data_json FROM sales_db WHERE model_code = ?', [c]);
+      const a = await db.getAllAsync('SELECT data_json FROM adjustments_db WHERE model_code = ?', [c]);
+
       if (p.length > 0 || s.length > 0 || a.length > 0) {
+        const allSR = (await getLocal<any[]>('sales_returns')) || [];
+        const allPR = (await getLocal<any[]>('purchase_returns')) || [];
         return {
           purchases: p.map((r: any) => JSON.parse(r.data_json)),
           sales: s.map((r: any) => JSON.parse(r.data_json)),
-          salesReturns: [], 
-          purchaseReturns: [],
-          adjustments: a.map((r: any) => JSON.parse(r.data_json))
+          adjustments: a.map((r: any) => JSON.parse(r.data_json)),
+          salesReturns: allSR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c)),
+          purchaseReturns: allPR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c))
         };
       }
     }
   } catch (e) { console.log('Kardex SQLite err:', e); }
-  
-  // اگر دیتابیس آماده نبود، به روش قبلی (فیلتر کردن) برمی‌گردیم
-  const allPurchases = (await getLocal<any[]>('purchases')) || [];
-  const allSales = (await getLocal<any[]>('sales')) || [];
+
+  // روش جایگزین (اگر SQLite آماده نبود)
+  let allPurchases = (await getLocal<any[]>('purchases')) || [];
+  let allSales = (await getLocal<any[]>('sales')) || [];
   const allAdj = (await getLocal<any[]>('stock_adjustments')) || [];
+  const allSR = (await getLocal<any[]>('sales_returns')) || [];
+  const allPR = (await getLocal<any[]>('purchase_returns')) || [];
+
+  try {
+    const _grpS = (await getLocal<any[]>('sales_grouped')) || [];
+    const _grpP = (await getLocal<any[]>('purchases_grouped')) || [];
+    const _haveS = new Set(allSales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+    const _haveP = new Set(allPurchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+    for (const _g of _grpS) {
+      const _inv = String(_g.invoice || '').trim();
+      if (!_inv || _haveS.has(_inv)) continue;
+      for (const _it of (_g.items || [])) {
+        allSales.push({ invoice_number: _inv, customer_name: _g.name || '', model_code: _it.modelCode || _it.model_code || '', model_name: _it.modelName || _it.model_name || '', quantity: Number(_it.quantity) || 0, price_unit: Number(_it.priceUnit) || 0, date_factor: _g.date || '' });
+      }
+    }
+    for (const _g of _grpP) {
+      const _inv = String(_g.invoice || '').trim();
+      if (!_inv || _haveP.has(_inv)) continue;
+      for (const _it of (_g.items || [])) {
+        allPurchases.push({ invoice_number: _inv, supplier_name: _g.name || '', model_code: _it.modelCode || _it.model_code || '', model_name: _it.modelName || _it.model_name || '', quantity: Number(_it.quantity) || 0, price_unit: Number(_it.priceUnit) || 0, date_factor: _g.date || '' });
+      }
+    }
+  } catch(e) { console.log('Kardex merge error:', e); }
+
+  const filterByCode = (arr: any[]) => arr.filter((x: any) => String(x.model_code || x.modelCode || '').trim() === c);
   return {
-    purchases: allPurchases.filter((x: any) => String(x.model_code) === String(code)),
-    sales: allSales.filter((x: any) => String(x.model_code) === String(code)),
-    salesReturns: [],
-    purchaseReturns: [],
-    adjustments: allAdj.filter((x: any) => String(x.model_code) === String(code))
+    purchases: filterByCode(allPurchases),
+    sales: filterByCode(allSales),
+    adjustments: filterByCode(allAdj),
+    salesReturns: allSR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c)),
+    purchaseReturns: allPR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c))
   };
 }
 // ═══════════════════════════════════════════
@@ -3019,6 +3056,7 @@ export async function getStockAdjustments(code?: string) {
   return all;
 }
 export async function createStockAdjustment(p: any) {
+  _clearInvCache();
   const devA = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   const nowA = new Date().toISOString();
   const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || nowA, updated_at: nowA, device_id: devA };
@@ -4541,6 +4579,7 @@ export async function clearAuditEvents(): Promise<void> {
 }
 
 export async function updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  _clearInvCache();
   if (await hasActiveReturns(payload.invoiceNumber, 'sales')) {
     throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
   }
@@ -4582,6 +4621,7 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
 }
 
 export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  _clearInvCache();
   if (await hasActiveReturns(payload.invoiceNumber, 'purchase')) {
     throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
   }
@@ -4781,6 +4821,7 @@ export async function getLoans(): Promise<any[]> {
 //  برگشت از فروش (Sales Returns)
 // ═══════════════════════════════════════════
 export async function createSalesReturn(payload: any) {
+  _clearInvCache();
   const now = new Date().toISOString();
   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   const local = (await getLocal<any[]>('sales_returns')) || [];
@@ -4854,6 +4895,7 @@ export async function getSalesReturns() {
 }
 
 export async function updateSalesReturn(localId: string, payload: any) {
+  _clearInvCache();
   const now = new Date().toISOString();
   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   const local = (await getLocal<any[]>('sales_returns')) || [];
@@ -4884,6 +4926,7 @@ export async function updateSalesReturn(localId: string, payload: any) {
 }
 
 export async function deleteSalesReturn(localId: string) {
+  _clearInvCache();
   await recordTombstone('sales_returns', String(localId));
   const local = (await getLocal<any[]>('sales_returns')) || [];
   await setLocal('sales_returns', local.filter((x: any) => x.local_id !== localId && x.id !== localId));
@@ -4904,6 +4947,7 @@ export async function deleteSalesReturn(localId: string) {
 //  برگشت از خرید (Purchase Returns)
 // ═══════════════════════════════════════════
 export async function createPurchaseReturn(payload: any) {
+  _clearInvCache();
   const now = new Date().toISOString();
   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   const local = (await getLocal<any[]>('purchase_returns')) || [];
@@ -4977,6 +5021,7 @@ export async function getPurchaseReturns() {
 }
 
 export async function updatePurchaseReturn(localId: string, payload: any) {
+  _clearInvCache();
   const now = new Date().toISOString();
   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   const local = (await getLocal<any[]>('purchase_returns')) || [];
@@ -5007,6 +5052,7 @@ export async function updatePurchaseReturn(localId: string, payload: any) {
 }
 
 export async function deletePurchaseReturn(localId: string) {
+  _clearInvCache();
   await recordTombstone('purchase_returns', String(localId));
   const local = (await getLocal<any[]>('purchase_returns')) || [];
   await setLocal('purchase_returns', local.filter((x: any) => x.local_id !== localId && x.id !== localId));

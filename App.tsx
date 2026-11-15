@@ -6308,6 +6308,8 @@ function InventoryScreen({ showToast }: any) {
 
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : (
             <FlatList
+              style={{ height: 600 }}
+              nestedScrollEnabled={true}
               data={filtered}
               keyExtractor={(m: any) => String(m.code || m.id || Math.random())}
               initialNumToRender={15}

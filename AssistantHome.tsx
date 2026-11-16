@@ -15,6 +15,26 @@ const AUDIT_KEY = '@mizan_audit_events';
 
 export default function AssistantHome({ showToast }: any) {
 
+  // [AUTO_POLLING_ADDED]
+  useEffect(() => {
+    let timer: any = null;
+    let stopped = false;
+    (async () => {
+      try {
+        const { getBotConfig } = await import('./lib.assistant');
+        const { startBotPolling } = await import('./lib.assistant.bot.simple');
+        const cfg = await getBotConfig();
+        const token = String(cfg?.rubika_token || '').trim();
+        if (!token) { console.log('[AUTO_POLLING] no token'); return; }
+        startBotPolling(token);
+      } catch (e: any) {
+        console.log('[AUTO_POLLING_ERR]', e?.message || e);
+      }
+    })();
+    return () => { stopped = true; if (timer) clearInterval(timer); };
+  }, []);
+
+
   // [WEB_AUTO_POLLING] شروع خودکار ربات در وب
   useEffect(() => {
     let timer: any = null;

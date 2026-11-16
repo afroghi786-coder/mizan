@@ -5712,6 +5712,9 @@ function LocalInput({ value, onChange, ...props }: any) {
   );
 }
 
+const INV_FLATLIST_STYLE = { height: 600 };
+const invKeyExtractor = (m: any, idx: number) => String(m.code || m.id || idx);
+
 function InventoryScreen({ showToast }: any) {
 
   const [list, setList] = useState<any[]>([]);
@@ -6433,10 +6436,10 @@ return (
 
           {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : (
             <FlatList
-              style={{ height: 600 }}
+              style={INV_FLATLIST_STYLE}
               nestedScrollEnabled={true}
               data={filtered}
-              keyExtractor={(m: any, idx: number) => String(m.code || m.id || idx)}
+              keyExtractor={invKeyExtractor}
               initialNumToRender={15}
               maxToRenderPerBatch={15}
               windowSize={5}

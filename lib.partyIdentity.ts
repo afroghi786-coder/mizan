@@ -1,0 +1,66 @@
+import { getParties, createParty, suggestPartyCode, generateCustomerCode } from './lib.offline';
+
+function _asCodeString(v: any): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number') return String(v);
+  if (typeof v === 'object' && typeof (v as any).code === 'string') return (v as any).code;
+  return '';
+}
+
+export function normPhone(v: any) {
+  let s = String(v || '').replace(/[^0-9]/g, '');
+  if (s.length === 10 && s[0] !== '0') s = '0' + s;
+  return s;
+}
+
+export async function resolvePartyForInvoice(input: {
+  name: string;
+  phone: string;
+  address?: string;
+  type?: 'customer' | 'supplier';
+}) {
+  const phone = normPhone(input.phone);
+  const parties = await getParties();
+
+  const found = (parties || []).find((p: any) => {
+    const samePhone = phone && normPhone(p.phone) === phone;
+    const sameName = input.name && String(p.name || '').trim() === String(input.name || '').trim();
+    const t = String(p.type || '').toLowerCase();
+    const typeOk = !input.type || t === input.type || t === 'both' || !t;
+    return typeOk && (samePhone || (!phone && sameName));
+  });
+
+  if (found) {
+    return {
+      code: _asCodeString(found.code),
+      localId: found.local_id || found.id || '',
+      party: found,
+      isNew: false,
+    };
+  }
+
+  let codeRaw: any = await suggestPartyCode();
+  let code = typeof codeRaw === 'string' ? codeRaw : (codeRaw && codeRaw.code ? String(codeRaw.code) : '');
+  if (!code) {
+    const genRaw: any = await generateCustomerCode();
+    code = typeof genRaw === 'string' ? genRaw : (genRaw && genRaw.code ? String(genRaw.code) : '');
+  }
+
+  const newParty = {
+    local_id: 'party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+    code,
+    name: input.name || '',
+    phone: input.phone || '',
+    address: input.address || '',
+    type: input.type || 'customer',
+  };
+
+  try {
+    await createParty(newParty);
+  } catch (e) {
+    console.log('createParty from resolvePartyForInvoice err:', e);
+  }
+
+  return { code, localId: newParty.local_id, party: newParty, isNew: true };
+}

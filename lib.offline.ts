@@ -87,6 +87,23 @@ const setLocal = async (key: string, value: any): Promise<void> => {
   if (tracked) { try { await _logEditToAudit(table, before, value); } catch {} }
 };
 
+function _normCode(v: any): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number') return String(v);
+  if (typeof v === 'object' && typeof (v as any).code === 'string') return (v as any).code;
+  return '';
+}
+function _normParty(p: any) {
+  if (!p || typeof p !== 'object') return p;
+  return {
+    ...p,
+    code: _normCode(p.code),
+    name: p.name === null || p.name === undefined ? '' : String(p.name),
+    phone: p.phone === null || p.phone === undefined ? '' : String(p.phone),
+  };
+}
+
 export * from './lib';
 
 // 🚀 CACHE SYSTEM FOR INVENTORY (Phase 2)
@@ -705,7 +722,8 @@ async function _localUpsertSale(payload: any) {
       device_id: dev,
       updated_at: now,
       manual_invoice: payload.manualInvoice || '',
-      customer_code: payload.customerCode || payload.customer_code || '',
+      customer_code: _normCode(payload.customerCode || payload.customer_code || ''),
+      customer_local_id: payload.customerLocalId || payload.customer_local_id || payload.partyLocalId || payload.party_local_id || '',
       customer_name: payload.customerName || payload.customer_name || '',
       customer_phone: payload.customerPhone || payload.customer_phone || '',
       account_holder: payload.holderName || payload.accountHolder || payload.receiverName || it.accountHolder || it.holderName || '',
@@ -908,7 +926,7 @@ async function computeLocalInventory() {
       for (const _it of (_g.items || [])) {
         sales.push({
           invoice_number: _inv,
-          customer_code: _g.customerCode || '',
+          customer_code: _normCode(_g.customerCode),
           customer_name: _g.name || '',
           model_code: _it.modelCode || _it.model_code || '',
           model_name: _it.modelName || _it.model_name || '',
@@ -1018,7 +1036,7 @@ async function computeLocalInventory() {
       if (inv && sales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
       for (const r of rows) {
         sales.push({
-          customer_code: item.payload.customerCode || item.payload.customer_code || '',
+          customer_code: _normCode(item.payload.customerCode || item.payload.customer_code),
           customer_name: item.payload.customerName || item.payload.customer_name || '',
           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
           model_code: r.model_code || r.modelCode || '',
@@ -1823,7 +1841,7 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
       return (p.items || []).map((it: any, idx: number) => ({
         id: 'queued_' + idx,
         invoice_number: p.invoiceNumber,
-        customer_code: p.customerCode,
+        customer_code: _normCode(p.customerCode),
         customer_name: p.customerName,
         customer_phone: p.customerPhone,
         customer_address: p.customerAddress,
@@ -2093,7 +2111,7 @@ export async function findCustomerByPhoneOffline(phone: string) {
       return {
         customer_name: s.customer_name,
         customer_address: s.customer_address || '',
-        customer_code: s.customer_code,
+        customer_code: _normCode(s.customer_code),
         found_as: 'customer',
       };
     }
@@ -2108,7 +2126,7 @@ export async function findCustomerByPhoneOffline(phone: string) {
         return {
           customer_name: item.payload?.customerName || '',
           customer_address: item.payload?.customerAddress || '',
-          customer_code: item.payload?.customerCode || '',
+          customer_code: _normCode(item.payload?.customerCode),
           found_as: 'customer',
         };
       }
@@ -2120,7 +2138,7 @@ export async function findCustomerByPhoneOffline(phone: string) {
         return {
           customer_name: item.payload?.supplierName || '',
           customer_address: '',
-          customer_code: item.payload?.supplierCode || '',
+          customer_code: _normCode(item.payload?.supplierCode),
           found_as: 'supplier',
         };
       }
@@ -2133,26 +2151,44 @@ export async function findCustomerByPhoneOffline(phone: string) {
 // ═══════════════════════════════════════════
 //  lookupCustomerByPhone — با چک صف
 // ═══════════════════════════════════════════
-export async function lookupCustomerByPhone(phone: string) {
-  // BUSINESS_LOCAL_ONLY — اول محلی، بعد اگر خالی بود Supabase
+export async function lookupCustomerByPhone(phone: string, filterType?: 'customer' | 'supplier') {
   const _p = String(phone || '').replace(/[^0-9]/g, '');
   if (_p) {
     const _dp = await _getDeletedParties();
     if (_dp.phones.has(_p)) return null;
   }
+
+  // ۱. اول از طرف‌حساب‌ها (parties) بگرد
+  try {
+    const parties = await getParties();
+    const found = parties.find((x: any) => {
+      const matchPhone = String(x.phone || '').replace(/[^0-9]/g, '') === _p;
+      if (!matchPhone) return false;
+      if (!filterType) return true;
+      const t = String(x.type || '').toLowerCase();
+      return t === filterType || t === 'both' || !t;
+    });
+    if (found) {
+      return {
+        customer_name: found.name || '',
+        customer_address: found.address || '',
+        customer_code: found.code || '',
+        customer_local_id: found.local_id || found.id || '',
+        customer_phone: found.phone || '',
+        found_as: 'party',
+      };
+    }
+  } catch {}
+
+  // ۲. بعد از کش
   const cached = await getLocal<any>('cust_' + phone);
   if (cached) return cached;
+
+  // ۳. بعد از فروش‌ها و صف
   const local = await findCustomerByPhoneOffline(phone);
   if (local) return local;
-  if (MODE === 'online') {
-    try {
-      const fresh = await lib.lookupCustomerByPhone(phone);
-      if (fresh) {
-        await setLocal('cust_' + phone, fresh);
-        return fresh;
-      }
-    } catch {}
-  }
+
+  // ۴. دیگر از Supabase نمی‌خوانیم
   return null;
 }
 
@@ -2190,7 +2226,7 @@ async function getCustomerList(): Promise<any[]> {
         customer_phone: g.phone,
         customer_name: g.name,
         customer_address: g.address || '',
-        customer_code: g.customerCode || g.code || '',
+        customer_code: _normCode(g.customerCode || g.code),
       });
     }
   }
@@ -3061,7 +3097,7 @@ export async function createStockAdjustment(p: any) {
   const nowA = new Date().toISOString();
   const item = { ...p, local_id: p.local_id || ('adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)), created_at: p.created_at || nowA, updated_at: nowA, device_id: devA };
   const list = (await getLocal<any[]>('stock_adjustments')) || [];
-  await setLocal('stock_adjustments', [item, ...list]);
+  await setLocal('stock_adjustments', [_normParty(item), ...list]);
   if (await serverBusinessAllowed()) {
     try {
       await lib.createStockAdjustment(item);
@@ -3164,7 +3200,7 @@ export async function getLedgerData(): Promise<any[]> {
       for (const _it of (_g.items || [])) {
         allSales.push({
           invoice_number: _inv,
-          customer_code: _g.customerCode || _g.code || '',
+          customer_code: _normCode(_g.customerCode || _g.code),
           customer_name: _g.name || '',
           customer_phone: _g.phone || '',
           account_holder: _g.holder || _g.account_holder || '',
@@ -3259,7 +3295,7 @@ export async function getLedgerData(): Promise<any[]> {
         const qty = Number(r.quantity) || 0;
         const price = Number(r.priceUnit != null ? r.priceUnit : r.price_unit) || 0;
         allSales.push({
-          customer_code: meta.code || '',
+          customer_code: _normCode(meta.code),
           customer_name: meta.name || '',
           customer_phone: meta.phone || '',
           account_holder_code: r.accountHolderCode || '',
@@ -3326,7 +3362,7 @@ export async function getLedgerData(): Promise<any[]> {
       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
       for (const r of rows) {
         allSales.push({
-          customer_code: item.payload.customerCode || item.payload.customer_code || '',
+          customer_code: _normCode(item.payload.customerCode || item.payload.customer_code),
           customer_name: item.payload.customerName || item.payload.customer_name || '',
           customer_phone: item.payload.customerPhone || item.payload.customer_phone || '',
           account_holder_code: item.payload.holderCode || item.payload.account_holder_code || item.payload.receiverCode || r.accountHolderCode || r.account_holder_code || '',
@@ -3907,7 +3943,8 @@ export async function getLedgerData(): Promise<any[]> {
 // ═══════════════════════════════════════════
 export async function getParties(type?: string) {
   // BUSINESS_LOCAL_AND_SHEET_ONLY — طرف‌حساب‌ها فقط محلی + صف
-  const list = (await getLocal<any[]>('parties')) || [];
+  const listRaw = (await getLocal<any[]>('parties')) || [];
+  const list = (listRaw || []).map(_normParty);
   const q = await getQueue();
   const result = [...list];
   for (const item of q) {
@@ -3939,8 +3976,9 @@ export async function createParty(p: any) {
     updated_at: new Date().toISOString(),
     device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '',
   };
-  const list = (await getLocal<any[]>('parties')) || [];
-  await setLocal('parties', [item, ...list]);
+  const listRaw = (await getLocal<any[]>('parties')) || [];
+  const list = (listRaw || []).map(_normParty);
+  await setLocal('parties', [_normParty(item), ...list]);
   try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
   if (await serverBusinessAllowed()) {
     try {
@@ -3958,8 +3996,8 @@ export async function updateParty(idOrPayload: any, pArg?: any) {
   const payload: any = pArg ? { ...pArg } : { ...idOrPayload };
   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
-  await recordTombstone('parties', String(id));
-  const list = (await getLocal<any[]>('parties')) || [];
+  const listRaw = (await getLocal<any[]>('parties')) || [];
+  const list = (listRaw || []).map(_normParty);
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
   if (idx >= 0) {
     list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
@@ -4598,7 +4636,7 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
     ...template,
     invoice_number: payload.invoiceNumber,
     customer_name: meta.name || template.customer_name || '',
-    customer_code: meta.code || template.customer_code || '',
+    customer_code: _normCode(meta.code || template.customer_code),
     customer_phone: meta.phone || template.customer_phone || '',
     shipping: meta.shipping || template.shipping || '',
     model_code: r.modelCode || '',

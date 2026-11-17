@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Share, Modal, TextInput } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
-import { getLedgerData, getInvoiceDetail } from './lib.offline';
+import { getLedgerData, getInvoiceDetail, getParties } from './lib.offline';
 import { getCurrencySync } from './lib.currency';
 import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
 import { displayDate } from './lib-date';
@@ -112,7 +112,48 @@ export default function LedgerScreen({ onBack, showToast }) {
     setLoading(true);
     try {
       const result = await getLedgerData();
-      setData(result);
+      let _displayData: any = result;
+      try {
+        const _parties = await getParties();
+        const _normPhoneL = (v: any) => {
+          let s = String(v || '').replace(/[^0-9]/g, '');
+          if (s.length === 10 && s[0] !== '0') s = '0' + s;
+          return s;
+        };
+        const _byLocal: any = {};
+        const _byCode: any = {};
+        const _byPhone: any = {};
+        for (const p of (_parties || [])) {
+          const lid = String((p as any).local_id || (p as any).id || '');
+          if (lid) _byLocal[lid] = p;
+          const c = String((p as any).code || '');
+          if (c) _byCode[c] = p;
+          const ph = _normPhoneL((p as any).phone);
+          if (ph) _byPhone[ph] = p;
+        }
+        _displayData = (result || []).map((r: any) => {
+          const codes = r.allCodes || [];
+          let p: any = _byLocal[String(r.customer_local_id || r.local_id || '')];
+          if (!p) {
+            for (const c of codes) {
+              if (_byCode[String(c)]) { p = _byCode[String(c)]; break; }
+            }
+          }
+          if (!p && r.code) p = _byCode[String(r.code)];
+          if (!p && r.phone) p = _byPhone[_normPhoneL(r.phone)];
+          if (!p) return r;
+          return {
+            ...r,
+            displayName: (p as any).name || r.name,
+            displayPhone: (p as any).phone || r.phone,
+            displayCode: (p as any).code || r.code,
+            displayCodes: (p as any).code ? String((p as any).code) : (r.allCodes || []).join(', '),
+          };
+        });
+      } catch (e) {
+        console.log('ledger display enrich err:', e);
+      }
+      setData(_displayData);
     } catch (e) { if (showToast) showToast('خطا در بارگذاری', true); console.log(e); }
     finally { setLoading(false); }
   };
@@ -604,9 +645,9 @@ export default function LedgerScreen({ onBack, showToast }) {
                   <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
                     <Text style={[s.td, { flex: 1.5, fontSize: 10, fontWeight: 'bold', color: r.type === 'مشتری' ? '#059669' : r.type === 'تأمین‌کننده' ? '#ea580c' : '#7c3aed' }]}>{r.type || '—'}</Text>
-                    <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.name}</Text>
-                    <Text style={[s.td, { flex: 2, fontSize: 9 }]} numberOfLines={1}>{(r.allCodes || []).join(', ')}</Text>
-                    <Text style={[s.td, { flex: 2, fontSize: 10 }]} numberOfLines={1}>{r.phone}</Text>
+                    <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.displayName || r.name}</Text>
+                    <Text style={[s.td, { flex: 2, fontSize: 9 }]} numberOfLines={1}>{r.displayCodes || (r.allCodes || []).join(', ')}</Text>
+                    <Text style={[s.td, { flex: 2, fontSize: 10 }]} numberOfLines={1}>{r.displayPhone || r.phone}</Text>
                     <Text style={[s.td, { flex: 1.5, color: '#1e40af', fontWeight: 'bold' }]}>{fmt(r.totalDebit)}</Text>
                     <Text style={[s.td, { flex: 1.5, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.totalCredit)}</Text>
                     <Text style={[s.td, { flex: 1.5, fontWeight: 'bold' }]}>{fmt(Math.abs(r.balance))}</Text>
@@ -630,9 +671,9 @@ export default function LedgerScreen({ onBack, showToast }) {
                 {getDisplayData().map((r: any, i: number) => (
                   <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
-                    <Text style={[s.td, { flex: 2.5, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.name}</Text>
-                    <Text style={[s.td, { flex: 1.2, fontSize: 9, color: '#7c3aed' }]}>{r.code}</Text>
-                    <Text style={[s.td, { flex: 1.5, fontSize: 10 }]}>{r.phone}</Text>
+                    <Text style={[s.td, { flex: 2.5, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.displayName || r.name}</Text>
+                    <Text style={[s.td, { flex: 1.2, fontSize: 9, color: '#7c3aed' }]}>{r.displayCode || r.code}</Text>
+                    <Text style={[s.td, { flex: 1.5, fontSize: 10 }]}>{r.displayPhone || r.phone}</Text>
                     <Text style={[s.td, { flex: 1.3, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.capital || 0)}</Text>
                     <Text style={[s.td, { flex: 1.3, color: (r.current || 0) >= 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }]}>{fmt(r.current || 0)}</Text>
                     <Text style={[s.td, { flex: 1.3, color: '#dc2626', fontWeight: 'bold' }]}>{fmt(r.drawings || 0)}</Text>
@@ -655,8 +696,8 @@ export default function LedgerScreen({ onBack, showToast }) {
                 {getDisplayData().map((r: any, i: number) => (
                   <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
-                    <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.name}</Text>
-                    <Text style={[s.td, { flex: 1.5, fontSize: 10, color: '#7c3aed' }]}>{r.code}</Text>
+                    <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.displayName || r.name}</Text>
+                    <Text style={[s.td, { flex: 1.5, fontSize: 10, color: '#7c3aed' }]}>{r.displayCode || r.code}</Text>
                     <Text style={[s.td, { flex: 1.8, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.totalCredit || 0)}</Text>
                     <Text style={[s.td, { flex: 1.8, color: '#1e40af', fontWeight: 'bold' }]}>{fmt(r.totalDebit || 0)}</Text>
                     <Text style={[s.td, { flex: 1.5, fontWeight: 'bold' }]}>{fmt(Math.abs(r.balance || 0))}</Text>
@@ -678,8 +719,8 @@ export default function LedgerScreen({ onBack, showToast }) {
                 {getDisplayData().map((r: any, i: number) => (
                   <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
-                    <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.name}</Text>
-                    <Text style={[s.td, { flex: 1.5, fontSize: 10, color: '#7c3aed' }]}>{r.code}</Text>
+                    <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.displayName || r.name}</Text>
+                    <Text style={[s.td, { flex: 1.5, fontSize: 10, color: '#7c3aed' }]}>{r.displayCode || r.code}</Text>
                     <Text style={[s.td, { flex: 1.8, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.totalCredit || 0)}</Text>
                     <Text style={[s.td, { flex: 1.8, color: '#1e40af', fontWeight: 'bold' }]}>{fmt(r.totalDebit || 0)}</Text>
                     <Text style={[s.td, { flex: 1.5, fontWeight: 'bold' }]}>{fmt(Math.abs(r.balance || 0))}</Text>

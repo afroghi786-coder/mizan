@@ -69,6 +69,7 @@ import DateField from './lib.datefield';
 
 
 import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
 
 import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
 
@@ -2772,7 +2773,7 @@ function SalesScreen({ showToast }: any) {
 
       try {
 
-        const f = await lookupCustomerByPhone(d);
+        const f = await lookupCustomerByPhone(d, 'customer');
 
         if (f) { setCustomerStatus('✅ قبلی'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); }
 
@@ -2846,15 +2847,15 @@ function SalesScreen({ showToast }: any) {
 
     setSaving(true);
     try {
-      let customerCode = '';
-      const found = await lookupCustomerByPhone(phone);
-      if (found?.customer_code && /^M_\d+$/.test(found.customer_code)) customerCode = found.customer_code;
-      else customerCode = await generateCustomerCode();
+      const pr = await resolvePartyForInvoice({ name: name, phone: phone, address, type: 'customer' });
+      const customerCode = pr.code;
+      const customerLocalId = pr.localId;
       const inv = await generateInvoiceNumber();
       
       await createSale({ 
         invoiceNumber: inv, 
-        customerCode, 
+        customerCode,
+        customerLocalId, 
         customerName: name, 
         customerPhone: phone, 
         customerAddress: address, 
@@ -2903,10 +2904,9 @@ function SalesScreen({ showToast }: any) {
     setPendingConfirm(null);
     setSaving(true);
     try {
-      let customerCode = '';
-      const found = await lookupCustomerByPhone(p);
-      if (found?.customer_code && /^M_\d+$/.test(found.customer_code)) customerCode = found.customer_code;
-      else customerCode = await generateCustomerCode();
+      const pr = await resolvePartyForInvoice({ name: n, phone: p, address, type: 'customer' });
+      const customerCode = pr.code;
+      const customerLocalId = pr.localId;
       const inv = await generateInvoiceNumber();
 
       let finalItems = valid;
@@ -2915,7 +2915,7 @@ function SalesScreen({ showToast }: any) {
       }
 
       await createSale({
-        invoiceNumber: inv, customerCode, customerName: n, customerPhone: p,
+        invoiceNumber: inv, customerCode, customerLocalId, customerName: n, customerPhone: p,
         customerAddress: address, shipping, items: finalItems,
         paymentAmount: payAmt, invoiceDate, payDate, note: n2,
         receiverName, receiverCode, receiverBank, receiverAccount
@@ -7207,16 +7207,38 @@ function NewOrderSection({ showToast }: any) {
     try {
 
       let code = '';
+let partyLocalId = '';
 
-      const f = await lookupCustomerByPhone(phone);
+const f = await lookupCustomerByPhone(phone, 'customer');
 
-      if (f?.customer_code && /^M_\d+$/.test(f.customer_code)) code = f.customer_code;
+if (f && f.found_as === 'party' && (f.customer_local_id || f.customer_code)) {
+  code = f.customer_code || '';
+  partyLocalId = f.customer_local_id || '';
+} else {
+  code = await suggestPartyCode('customer');
+  if (!code) code = await generateCustomerCode();
 
-      else code = await generateCustomerCode();
+  const newParty = {
+    local_id: 'party_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+    code,
+    name,
+    phone,
+    address,
+    type: 'customer',
+  };
 
-      const inv = await generateInvoiceNumber();
+  try {
+    await createParty(newParty);
+    partyLocalId = newParty.local_id;
+  } catch (e) {
+    console.log('createParty from sale err:', e);
+    partyLocalId = '';
+  }
+}
 
-      await createSale({ invoiceNumber: inv, customerCode: code, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid, receiverName, receiverCode, receiverBank, receiverAccount });
+const inv = await generateInvoiceNumber();
+
+      await createSale({ invoiceNumber: inv, customerCode: code, customerLocalId: partyLocalId, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid, receiverName, receiverCode, receiverBank, receiverAccount });
 
       alertMsg('✅ موفق', 'ثبت شد: ' + inv);
 
@@ -7398,11 +7420,24 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
   const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
 
+  const enrichedList = useMemo(() => {
+    if (!partiesList || !partiesList.length) return list;
+    return list.map((r: any) => {
+      const code = r.customer_code || r.supplier_code || r.customerCode || r.supplierCode || '';
+      const p = partiesList.find((x: any) => String(x.code) === String(code));
+      if (p) {
+        return { ...r, name: p.name || r.name, phone: p.phone || r.phone };
+      }
+      return r;
+    });
+  }, [list, partiesList]);
+
+
   useEffect(() => { load(); loadProds(); }, []);
 
 
 
-  const filtered = list.filter((r) => {
+  const filtered = enrichedList.filter((r) => {
 
     if (filter !== 'all' && r.type !== filter) return false;
 
@@ -7462,12 +7497,18 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
       })));
 
+      const _code = isSales ? rows[0].customer_code : rows[0].supplier_code;
+      const _oldPhone = isSales ? rows[0].customer_phone : rows[0].supplier_phone;
+      const _p = (partiesList || []).find((x: any) =>
+        String(x.code || '') === String(_code || '') ||
+        (String(x.phone || '').replace(/[^0-9]/g, '') && String(x.phone || '').replace(/[^0-9]/g, '') === String(_oldPhone || '').replace(/[^0-9]/g, ''))
+      );
       setEditing({
         invoice: inv,
         type,
-        name: isSales ? rows[0].customer_name : rows[0].supplier_name,
-        code: isSales ? rows[0].customer_code : rows[0].supplier_code,
-        phone: isSales ? (rows[0].customer_phone || '') : (rows[0].supplier_phone || ''),
+        name: _p?.name || (isSales ? rows[0].customer_name : rows[0].supplier_name),
+        code: _code,
+        phone: _p?.phone || (isSales ? (rows[0].customer_phone || '') : (rows[0].supplier_phone || '')),
         manualInv: isSales ? '' : (rows[0].manual_invoice || ''),
       });
 
@@ -10610,33 +10651,128 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
 
   const captureAndShare = async (mode: 'share' | 'save' | 'print') => {
     try {
-      const uri = await captureRef(ref, { format: 'jpg', quality: 0.92 });
-      
-      if (Platform.OS === 'web') {
-        const w = window.open('', '_blank');
-        if (!w) {
-          showToast('پنجره چاپ باز نشد. لطفاً پاپ‌آپ را اجازه دهید.', true);
-          return;
-        }
-        w.document.open();
-        w.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>چاپ فاکتور</title><style>body{margin:0;padding:0;background:#fff} img{width:100%;max-width:100%;height:auto;display:block} @page{size:A4;margin:8mm}</style></head><body><img id="inv" src="' + uri + '" /></body></html>');
-        w.document.close();
-        const img = w.document.getElementById('inv');
-        if (img) {
-          img.onload = () => {
-            w.focus();
-            w.print();
-          };
-        } else {
-          setTimeout(() => { w.focus(); w.print(); }, 800);
-        }
-        showToast('✅ پنجره چاپ آماده شد');
+      // پرینت: همیشه HTML/PDF استاندارد، نه تصویر
+      if (mode === 'print') {
+        const esc = (v: any) => String(v == null ? '' : v).replace(/[&<>"']/g, (m: string) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m));
+        const curLabel = (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '');
+        const itemsRows = (invoice.current?.items || []).map((it: any, i: number) =>
+          '<tr>' +
+          '<td style="text-align:center">' + (i + 1) + '</td>' +
+          '<td style="text-align:center;font-size:11px">' + esc(it.modelCode || '—') + '</td>' +
+          '<td style="text-align:right;font-weight:bold">' + esc(it.modelName || '') + '</td>' +
+          '<td style="text-align:center">' + esc(it.quantity || 0) + '</td>' +
+          '<td style="text-align:center">' + fmt(it.priceUnit || 0) + '</td>' +
+          '<td style="text-align:center;font-weight:bold">' + fmt(it.total || 0) + '</td>' +
+          '</tr>').join('');
+
+        const html = '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="UTF-8"><title>فاکتور ' + esc(invoice.current?.invoiceNumber || '') + '</title>' +
+          '<style>' +
+          '@page { size: A4; margin: 12mm; }' +
+          '* { box-sizing: border-box; }' +
+          'body { font-family: Tahoma, Arial, sans-serif; font-size: 12px; color: #0f172a; margin:0; padding:0; }' +
+          '.header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #d4af37; padding-bottom:8px; margin-bottom:12px; }' +
+          '.brand { font-size:22px; font-weight:bold; color:#0f2438; }' +
+          '.slogan { font-size:11px; color:#64748b; margin-top:2px; }' +
+          '.meta { text-align:left; font-size:11px; color:#475569; }' +
+          '.title { text-align:center; font-size:20px; font-weight:bold; margin:8px 0 12px; color:#0f2438; }' +
+          '.info-grid { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }' +
+          '.info-item { border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px; font-size:11px; background:#f8fafc; }' +
+          '.info-item b { color:#0f2438; }' +
+          'table { width:100%; border-collapse:collapse; margin-top:6px; }' +
+          'thead th { background:#0f2438; color:#fff; font-size:11px; padding:8px 6px; border:1px solid #0f2438; }' +
+          'tbody td { border:1px solid #e2e8f0; padding:6px; font-size:11px; }' +
+          'tbody tr:nth-child(even) { background:#f8fafc; }' +
+          '.sum-box { margin-top:12px; border:1px solid #cbd5e1; border-radius:6px; padding:8px 12px; background:#f8fafc; }' +
+          '.sum-row { display:flex; justify-content:space-between; padding:4px 0; font-size:12px; }' +
+          '.sum-row b { color:#0f2438; }' +
+          '.footer { margin-top:16px; text-align:center; font-size:10px; color:#94a3b8; }' +
+          '</style></head><body>' +
+          '<div class="header">' +
+          '<div><div class="brand">⚖️ میزان</div><div class="slogan">حساب‌ها دقیق، معاملات امن، ذهن آسوده</div></div>' +
+          '<div class="meta"><div>📅 ' + esc(invoice.timeString || '') + '</div><div>🧾 شماره فاکتور: ' + esc(invoice.current?.invoiceNumber || '') + '</div></div>' +
+          '</div>' +
+          '<div class="title">فاکتور فروش</div>' +
+          '<div class="info-grid">' +
+          '<div class="info-item"><b>👤 نام:</b> ' + esc(invoice.customer?.name || '') + '</div>' +
+          '<div class="info-item"><b>📞 تلفن:</b> ' + esc(invoice.customer?.phone || '') + '</div>' +
+          '<div class="info-item"><b>کد:</b> ' + esc(invoice.customer?.code || '') + '</div>' +
+          (invoice.customer?.address ? '<div class="info-item"><b>آدرس:</b> ' + esc(invoice.customer.address) + '</div>' : '') +
+          (invoice.customer?.shipping ? '<div class="info-item"><b>باربری:</b> ' + esc(invoice.customer.shipping) + '</div>' : '') +
+          '</div>' +
+          '<table><thead><tr>' +
+          '<th style="width:5%">#</th><th style="width:15%">کد مدل</th><th style="width:35%">نام مدل</th><th style="width:10%">تعداد</th><th style="width:17%">قیمت واحد</th><th style="width:18%">جمع</th>' +
+          '</tr></thead><tbody>' + itemsRows + '</tbody></table>' +
+          '<div class="sum-box">' +
+          '<div class="sum-row"><span>جمع فروش:</span><b>' + fmt(invoice.current?.sales || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '<div class="sum-row"><span>پرداخت:</span><b>' + fmt(invoice.current?.payments || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '<div class="sum-row"><span>مانده این فاکتور:</span><b>' + fmt(invoice.current?.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          (invoice.previous ? '<div class="sum-row"><span>مانده قبلی:</span><b>' + fmt(invoice.previous.balance || 0) + ' ' + esc(curLabel) + '</b></div>' : '') +
+          '</div>' +
+          '<div class="footer">میزان — سند رسمی فاکتور</div>' +
+          '</body></html>';
+
+        const r = await printHtml(html);
+        showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
         return;
       }
-      
-      if (mode === 'print') await Print.printAsync({ uri });
-      else if (await Sharing.isAvailableAsync()) { await Sharing.shareAsync(uri); if (mode === 'save') showToast('✅ ذخیره شد'); }
-      else showToast('اشتراک پشتیبانی نمی‌شود', true);
+
+      // برای اشتراک/ذخیره: کیفیت بالاتر در وب (PNG)
+      const uri = await captureRef(ref, Platform.OS === 'web'
+        ? { format: 'png', quality: 1 }
+        : { format: 'jpg', quality: 0.95 });
+
+      if (Platform.OS === 'web') {
+        const safeName = String(invoice.customer?.name || 'customer').replace(/[^\w\u0600-\u06FF\- ]/g, '').trim() || 'customer';
+        const invNum = String(invoice.current?.invoiceNumber || '').replace(/[^\w\-]/g, '');
+        const fileName = safeName + '_' + invNum + '.png';
+
+        const dataUriToFile = (dataUri: string) => {
+          const arr = dataUri.split(',');
+          const mimeMatch = arr[0].match(/:(.*?);/);
+          const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8 = new Uint8Array(n);
+          while (n--) { u8[n] = bstr.charCodeAt(n); }
+          return new File([u8], fileName, { type: mime });
+        };
+
+        if (mode === 'share' && typeof navigator !== 'undefined' && (navigator as any).share && (navigator as any).canShare) {
+          try {
+            const f = dataUriToFile(uri);
+            if ((navigator as any).canShare({ files: [f] })) {
+              await (navigator as any).share({ files: [f], title: 'فاکتور ' + invNum, text: 'فاکتور ' + safeName });
+              showToast('✅ به اشتراک گذاشته شد', false);
+              return;
+            }
+          } catch (e: any) { if (e?.name !== 'AbortError') console.log('Web Share failed:', e); }
+        }
+
+        if (mode === 'share' && typeof navigator !== 'undefined' && (navigator as any).clipboard && (navigator as any).clipboard.write && typeof ClipboardItem !== 'undefined') {
+          try {
+            const f = dataUriToFile(uri);
+            await (navigator as any).clipboard.write([new ClipboardItem({ [f.type]: f })]);
+            showToast('✅ تصویر در کلیپ‌بورد کپی شد. در واتساپ وب Ctrl+V بزنید.', false);
+            return;
+          } catch (e: any) { console.log('Clipboard write failed:', e); }
+        }
+
+        const a = document.createElement('a');
+        a.href = uri;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('✅ تصویر ذخیره شد: ' + fileName, false);
+        return;
+      }
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri);
+        if (mode === 'save') showToast('✅ ذخیره شد');
+      } else {
+        showToast('اشتراک پشتیبانی نمی‌شود', true);
+      }
     } catch (e: any) { showToast(e.message, true); }
   };
 
@@ -11393,7 +11529,7 @@ const s = StyleSheet.create({
 
   // Invoice A5
 
-  invoiceContainer: { backgroundColor: '#fff', borderRadius: 12, padding: 12 },
+  invoiceContainer: { backgroundColor: '#fff', borderRadius: 12, padding: 12, ...(Platform.OS === 'web' ? { width: 559, alignSelf: 'center', maxWidth: '100%' } : {}) },
 
   invHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: '#d4af37' },
 

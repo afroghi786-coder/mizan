@@ -2787,13 +2787,13 @@ function SalesScreen({ showToast }: any) {
 
 
 
-  const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '' }]);
+  const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '', pack_size: 0, uom_label: '' }]);
 
   const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
 
   const delItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
 
-  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].shelf = p.shelf || ''; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
+  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack_unit || ''; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].shelf = p.shelf || ''; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
 
 
 
@@ -4166,7 +4166,7 @@ function PurchaseScreen({ showToast }: any) {
 
     if (p) {
 
-      n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0;
+      n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack_unit || ''; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || '';
 
       if (!sName && p.supplier_name) setSName(p.supplier_name);
 
@@ -4354,7 +4354,9 @@ function PurchaseScreen({ showToast }: any) {
 
                     <EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} />
 
-                    <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+                    <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))} onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updItem(i, 'quantity', (u === 'pack' && Number(it.pack_size) > 0) ? Math.round(raw * Number(it.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+{Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>پایه</Text></TouchableOpacity><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'pack'); updItem(i, 'entered_qty', Number(it.pack_size) > 0 ? it.quantity / Number(it.pack_size) : 0); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>بسته</Text></TouchableOpacity></View>)}
+{it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} پایه</Text>)}
 
                   </View>
 
@@ -7148,7 +7150,7 @@ function NewOrderSection({ showToast }: any) {
 
     generateInvoiceNumber().then(setInvoice);
 
-    setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '' }]);
+    setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pack_size: 0, uom_label: '' }]);
 
   }, []);
 
@@ -7170,13 +7172,13 @@ function NewOrderSection({ showToast }: any) {
 
   };
 
-  const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '' }]);
+  const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pack_size: 0, uom_label: '' }]);
 
   const upd = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
 
   const del = (i: number) => setItems(items.filter((_, idx) => idx !== i));
 
-  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; } setItems(n); };
+  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack_unit || ''; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; } setItems(n); };
 
 
 
@@ -7244,7 +7246,7 @@ const inv = await generateInvoiceNumber();
 
       setPhone(''); setName(''); setAddress(''); setShipping('');
 
-      setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '' }]);
+      setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pack_size: 0, uom_label: '' }]);
 
       setInvoice(await generateInvoiceNumber());
 
@@ -7310,7 +7312,9 @@ const inv = await generateInvoiceNumber();
 
                 <View style={{ flex: 1 }}><EL textKey="کد" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: C.border }]}><Text style={[s.miniValueTxt, { color: C.text }]}>{it.modelCode || '—'}</Text></View></View>
 
-                <View style={{ flex: 1 }}><EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.quantity || '')} onChangeText={(v) => upd(i, 'quantity', parseInt(v) || 0)} keyboardType="numeric" /></View>
+                <View style={{ flex: 1 }}><EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))} onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; upd(i, 'entered_unit', u); upd(i, 'entered_qty', raw); upd(i, 'quantity', (u === 'pack' && Number(it.pack_size) > 0) ? Math.round(raw * Number(it.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" />
+{Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { upd(i, 'entered_unit', 'base'); upd(i, 'entered_qty', it.quantity); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>پایه</Text></TouchableOpacity><TouchableOpacity onPress={() => { upd(i, 'entered_unit', 'pack'); upd(i, 'entered_qty', Number(it.pack_size) > 0 ? it.quantity / Number(it.pack_size) : 0); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>بسته</Text></TouchableOpacity></View>)}
+{it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} پایه</Text>)}</View>
 
                 <View style={{ flex: 1 }}><EL textKey="قیمت" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={(v) => upd(i, 'priceUnit', parseNum(v))} keyboardType="numeric" /></View>
 
@@ -10496,7 +10500,7 @@ function ProductsSection({ showToast }: any) {
 
   const startNew = () => {
     const nextCode = getNextProductCode(list, drafts);
-    setDrafts((prev: any[]) => [...prev, { id: null, code: nextCode, name: '', price: 0, shelf: '' }]);
+    setDrafts((prev: any[]) => [...prev, { id: null, code: nextCode, name: '', price: 0, shelf: '', uom_label: 'عدد', pack_size: 0, base_unit: 'عدد', pack_unit: 'بسته' }]);
   };
 
   const updateDraft = (idx: number, field: string, value: any) => {
@@ -10567,6 +10571,10 @@ function ProductsSection({ showToast }: any) {
             <Text style={[s.thCell, { width: 200 }]}>نام</Text>
             <Text style={[s.thCell, { width: 130 }]}>قیمت</Text>
             <Text style={[s.thCell, { width: 120 }]}>قفسه</Text>
+            <Text style={[s.thCell, { width: 110 }]}>واحد</Text>
+            <Text style={[s.thCell, { width: 90 }]}>تعداد در بسته</Text>
+            <Text style={[s.thCell, { width: 90 }]}>واحد پایه</Text>
+            <Text style={[s.thCell, { width: 90 }]}>واحد بسته</Text>
             <Text style={[s.thCell, { width: 140 }]}>کد</Text>
             <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
           </View>
@@ -10583,6 +10591,18 @@ function ProductsSection({ showToast }: any) {
                 </View>
                 <View style={{ width: 120, paddingHorizontal: 2 }}>
                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.shelf || '')} onChangeText={(v: string) => updateDraft(idx, 'shelf', v)} placeholder="قفسه" placeholderTextColor={C.textMut} />
+                </View>
+                <View style={{ width: 110, paddingHorizontal: 2 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.uom_label || '')} onChangeText={(v: string) => updateDraft(idx, 'uom_label', v)} placeholder="واحد" placeholderTextColor={C.textMut} />
+                </View>
+                <View style={{ width: 90, paddingHorizontal: 2 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_size || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_size', parseFloat(v) || 0)} keyboardType="numeric" placeholder="در بسته" placeholderTextColor={C.textMut} />
+                </View>
+                <View style={{ width: 90, paddingHorizontal: 2 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'base_unit', v)} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
+                </View>
+                <View style={{ width: 90, paddingHorizontal: 2 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_unit', v)} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
                 </View>
                 <View style={{ width: 140, paddingHorizontal: 2 }}>
                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: string) => updateDraft(idx, 'code', v)} placeholder="کد" placeholderTextColor={C.textMut} />
@@ -10605,6 +10625,18 @@ function ProductsSection({ showToast }: any) {
                 <View style={{ width: 120, paddingHorizontal: 2 }}>
                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.shelf || '')} onChangeText={(v: string) => setEditing({ ...editing, shelf: v })} placeholder="قفسه" placeholderTextColor={C.textMut} />
                 </View>
+                <View style={{ width: 110, paddingHorizontal: 2 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.uom_label || '')} onChangeText={(v: string) => setEditing({ ...editing, uom_label: v })} placeholder="واحد" placeholderTextColor={C.textMut} />
+                </View>
+                <View style={{ width: 90, paddingHorizontal: 2 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_size || '')} onChangeText={(v: string) => setEditing({ ...editing, pack_size: parseFloat(v) || 0 })} keyboardType="numeric" placeholder="در بسته" placeholderTextColor={C.textMut} />
+                </View>
+                <View style={{ width: 90, paddingHorizontal: 2 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.base_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, base_unit: v })} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
+                </View>
+                <View style={{ width: 90, paddingHorizontal: 2 }}>
+                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, pack_unit: v })} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
+                </View>
                 <View style={{ width: 140, paddingHorizontal: 2 }}>
                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.code || '')} onChangeText={(v: string) => setEditing({ ...editing, code: v })} placeholder="کد" placeholderTextColor={C.textMut} />
                 </View>
@@ -10621,6 +10653,10 @@ function ProductsSection({ showToast }: any) {
                 <Text style={[s.tdCell, { width: 200, fontSize: 12, color: C.text, fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{p.name || '—'}</Text>
                 <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(p.price || 0)}</Text>
                 <Text style={[s.tdCell, { width: 120, fontSize: 12, color: C.text }]}>{p.shelf || '—'}</Text>
+                <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0ea5e9', fontWeight: 'bold' }]}>{p.uom_label || p.base_unit || p.unit_label || 'عدد'}</Text>
+                <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_size ? toFaNum(p.pack_size) : '—'}</Text>
+                <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.base_unit || 'عدد'}</Text>
+                <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_unit || '—'}</Text>
                 <Text style={[s.tdCell, { width: 140, fontSize: 11, color: '#7c3aed' }]}>{p.code || '—'}</Text>
                 <View style={[s.tdCell, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
                   <TouchableOpacity onPress={() => setEditing({ ...p })} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>✏️</Text></TouchableOpacity>
@@ -10652,7 +10688,7 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
   const captureAndShare = async (mode: 'share' | 'save' | 'print') => {
     try {
       // پرینت: همیشه HTML/PDF استاندارد، نه تصویر
-      if (mode === 'print') {
+            if (mode === 'print') {
         const esc = (v: any) => String(v == null ? '' : v).replace(/[&<>"']/g, (m: string) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m));
         const curLabel = (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '');
         const itemsRows = (invoice.current?.items || []).map((it: any, i: number) =>
@@ -10660,31 +10696,34 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
           '<td style="text-align:center">' + (i + 1) + '</td>' +
           '<td style="text-align:center;font-size:11px">' + esc(it.modelCode || '—') + '</td>' +
           '<td style="text-align:right;font-weight:bold">' + esc(it.modelName || '') + '</td>' +
-          '<td style="text-align:center">' + esc(it.quantity || 0) + '</td>' +
+          '<td style="text-align:center">' + esc(it.shelf || '—') + '</td>' +
+          '<td style="text-align:center">' + esc(it.quantity || 0) + ' ' + esc(it.base_unit || '') + (it.pack_size && Number(it.pack_size) > 0 ? '<br/><span style="font-size:9px;color:#64748b">' + ((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\.00$/, '') + ' ' + esc(it.pack_unit || 'بسته') + '</span>' : '') + '</td>' +
           '<td style="text-align:center">' + fmt(it.priceUnit || 0) + '</td>' +
           '<td style="text-align:center;font-weight:bold">' + fmt(it.total || 0) + '</td>' +
           '</tr>').join('');
-
+        let words = '';
+        try { if (typeof numToWords === 'function') words = String(numToWords(Number(tot.balance || 0)) || ''); } catch {}
         const html = '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="UTF-8"><title>فاکتور ' + esc(invoice.current?.invoiceNumber || '') + '</title>' +
           '<style>' +
-          '@page { size: A4; margin: 12mm; }' +
+          '@page { size: A4; margin: 10mm; }' +
           '* { box-sizing: border-box; }' +
           'body { font-family: Tahoma, Arial, sans-serif; font-size: 12px; color: #0f172a; margin:0; padding:0; }' +
-          '.header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #d4af37; padding-bottom:8px; margin-bottom:12px; }' +
-          '.brand { font-size:22px; font-weight:bold; color:#0f2438; }' +
+          '.header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #d4af37; padding-bottom:8px; margin-bottom:10px; }' +
+          '.brand { font-size:24px; font-weight:bold; color:#0f2438; }' +
           '.slogan { font-size:11px; color:#64748b; margin-top:2px; }' +
-          '.meta { text-align:left; font-size:11px; color:#475569; }' +
+          '.meta { text-align:left; font-size:11px; color:#475569; line-height:1.7; }' +
           '.title { text-align:center; font-size:20px; font-weight:bold; margin:8px 0 12px; color:#0f2438; }' +
           '.info-grid { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }' +
           '.info-item { border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px; font-size:11px; background:#f8fafc; }' +
           '.info-item b { color:#0f2438; }' +
           'table { width:100%; border-collapse:collapse; margin-top:6px; }' +
           'thead th { background:#0f2438; color:#fff; font-size:11px; padding:8px 6px; border:1px solid #0f2438; }' +
-          'tbody td { border:1px solid #e2e8f0; padding:6px; font-size:11px; }' +
+          'tbody td { border:1px solid #e2e8f0; padding:7px 6px; font-size:11px; }' +
           'tbody tr:nth-child(even) { background:#f8fafc; }' +
           '.sum-box { margin-top:12px; border:1px solid #cbd5e1; border-radius:6px; padding:8px 12px; background:#f8fafc; }' +
           '.sum-row { display:flex; justify-content:space-between; padding:4px 0; font-size:12px; }' +
           '.sum-row b { color:#0f2438; }' +
+          '.words { margin-top:8px; border:1px dashed #059669; background:#f0fdf4; padding:6px; text-align:center; font-size:11px; font-weight:bold; }' +
           '.footer { margin-top:16px; text-align:center; font-size:10px; color:#94a3b8; }' +
           '</style></head><body>' +
           '<div class="header">' +
@@ -10696,21 +10735,22 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
           '<div class="info-item"><b>👤 نام:</b> ' + esc(invoice.customer?.name || '') + '</div>' +
           '<div class="info-item"><b>📞 تلفن:</b> ' + esc(invoice.customer?.phone || '') + '</div>' +
           '<div class="info-item"><b>کد:</b> ' + esc(invoice.customer?.code || '') + '</div>' +
-          (invoice.customer?.address ? '<div class="info-item"><b>آدرس:</b> ' + esc(invoice.customer.address) + '</div>' : '') +
-          (invoice.customer?.shipping ? '<div class="info-item"><b>باربری:</b> ' + esc(invoice.customer.shipping) + '</div>' : '') +
+          '<div class="info-item"><b>📍 آدرس:</b> ' + esc(invoice.customer?.address || '—') + '</div>' +
+          '<div class="info-item"><b>🚚 باربری:</b> ' + esc(invoice.customer?.shipping || '—') + '</div>' +
           '</div>' +
           '<table><thead><tr>' +
-          '<th style="width:5%">#</th><th style="width:15%">کد مدل</th><th style="width:35%">نام مدل</th><th style="width:10%">تعداد</th><th style="width:17%">قیمت واحد</th><th style="width:18%">جمع</th>' +
+          '<th style="width:5%">#</th><th style="width:15%">کد مدل</th><th style="width:30%">نام مدل</th><th style="width:8%">قفسه</th><th style="width:8%">تعداد</th><th style="width:16%">قیمت واحد</th><th style="width:18%">جمع</th>' +
           '</tr></thead><tbody>' + itemsRows + '</tbody></table>' +
           '<div class="sum-box">' +
           '<div class="sum-row"><span>جمع فروش:</span><b>' + fmt(invoice.current?.sales || 0) + ' ' + esc(curLabel) + '</b></div>' +
           '<div class="sum-row"><span>پرداخت:</span><b>' + fmt(invoice.current?.payments || 0) + ' ' + esc(curLabel) + '</b></div>' +
           '<div class="sum-row"><span>مانده این فاکتور:</span><b>' + fmt(invoice.current?.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
           (invoice.previous ? '<div class="sum-row"><span>مانده قبلی:</span><b>' + fmt(invoice.previous.balance || 0) + ' ' + esc(curLabel) + '</b></div>' : '') +
+          '<div class="sum-row"><span>مانده نهایی قابل پرداخت:</span><b>' + fmt(tot.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
           '</div>' +
+          (words ? '<div class="words">مبلغ به حروف: ' + esc(words) + ' ' + esc(curLabel) + '</div>' : '') +
           '<div class="footer">میزان — سند رسمی فاکتور</div>' +
           '</body></html>';
-
         const r = await printHtml(html);
         showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
         return;
@@ -10862,7 +10902,10 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
               <Text style={[s.invTd, { flex: 1.2, textAlign: 'center', fontSize: 11 }]}>{it.modelCode || '—'}</Text>
               <Text style={[s.invTd, { flex: 2, textAlign: 'right', fontWeight: 'bold' }]}>{it.modelName}</Text>
               <Text style={[s.invTd, { flex: 0.8, textAlign: 'center' }]}>{it.shelf || '—'}</Text>
-              <Text style={[s.invTd, { flex: 0.6, textAlign: 'center' }]}>{it.quantity}</Text>
+              <View style={{ flex: 0.6, alignItems: 'center' }}>
+                <Text style={[s.invTd, { textAlign: 'center' }]}>{it.quantity} {it.base_unit || ''}</Text>
+                {it.pack_size && Number(it.pack_size) > 0 ? <Text style={{ fontSize: 9, color: '#64748b', textAlign: 'center' }}>{((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\.00$/, '')} {it.pack_unit || 'بسته'}</Text> : null}
+              </View>
               <Text style={[s.invTd, { flex: 1, textAlign: 'center' }]}>{fmt(it.priceUnit)}</Text>
               <Text style={[s.invTd, { flex: 1.2, textAlign: 'center', fontWeight: 'bold' }]}>{fmt(it.total)}</Text>
             </View>

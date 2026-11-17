@@ -1,17 +1,17 @@
 import { getParties, createParty, suggestPartyCode, generateCustomerCode } from './lib.offline';
 
+export function normPhone(v: any) {
+  let s = String(v || '').replace(/[^0-9]/g, '');
+  if (s.length === 10 && s[0] !== '0') s = '0' + s;
+  return s;
+}
+
 function _asCodeString(v: any): string {
   if (v === null || v === undefined) return '';
   if (typeof v === 'string') return v;
   if (typeof v === 'number') return String(v);
   if (typeof v === 'object' && typeof (v as any).code === 'string') return (v as any).code;
   return '';
-}
-
-export function normPhone(v: any) {
-  let s = String(v || '').replace(/[^0-9]/g, '');
-  if (s.length === 10 && s[0] !== '0') s = '0' + s;
-  return s;
 }
 
 export async function resolvePartyForInvoice(input: {
@@ -21,30 +21,38 @@ export async function resolvePartyForInvoice(input: {
   type?: 'customer' | 'supplier';
 }) {
   const phone = normPhone(input.phone);
+  const name = String(input.name || '').trim();
   const parties = await getParties();
 
-  const found = (parties || []).find((p: any) => {
-    const samePhone = phone && normPhone(p.phone) === phone;
-    const sameName = input.name && String(p.name || '').trim() === String(input.name || '').trim();
-    const t = String(p.type || '').toLowerCase();
-    const typeOk = !input.type || t === input.type || t === 'both' || !t;
-    return typeOk && (samePhone || (!phone && sameName));
-  });
+  const byActivePhone = new Map<string, any>();
+  for (const p of (parties || [])) {
+    const ph = normPhone((p as any).phone);
+    if (ph) byActivePhone.set(ph, p);
+  }
+
+  let found: any = null;
+  if (phone && byActivePhone.has(phone)) {
+    found = byActivePhone.get(phone);
+  } else if (!phone && name) {
+    for (const p of (parties || [])) {
+      if (String((p as any).name || '').trim() === name) { found = p; break; }
+    }
+  }
 
   if (found) {
     return {
-      code: _asCodeString(found.code),
-      localId: found.local_id || found.id || '',
+      code: _asCodeString((found as any).code),
+      localId: String((found as any).local_id || (found as any).id || ''),
       party: found,
       isNew: false,
     };
   }
 
   let codeRaw: any = await suggestPartyCode();
-  let code = typeof codeRaw === 'string' ? codeRaw : (codeRaw && codeRaw.code ? String(codeRaw.code) : '');
+  let code = _asCodeString(codeRaw);
   if (!code) {
     const genRaw: any = await generateCustomerCode();
-    code = typeof genRaw === 'string' ? genRaw : (genRaw && genRaw.code ? String(genRaw.code) : '');
+    code = _asCodeString(genRaw);
   }
 
   const newParty = {
@@ -54,6 +62,7 @@ export async function resolvePartyForInvoice(input: {
     phone: input.phone || '',
     address: input.address || '',
     type: input.type || 'customer',
+    phone_history: phone ? [{ phone, status: 'active', from: new Date().toISOString() }] : [],
   };
 
   try {

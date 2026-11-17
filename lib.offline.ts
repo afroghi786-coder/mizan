@@ -104,6 +104,28 @@ function _normParty(p: any) {
   };
 }
 
+function _hash32(str: string) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function _legacyPartyLocalId(p: any) {
+  const basis = String((p && (p.code || p.phone || p.name)) || '').trim();
+  if (!basis) return '';
+  return 'party_legacy_' + _hash32(basis);
+}
+function _ensurePartyLocalIds(list: any[]) {
+  let changed = false;
+  const out = (list || []).map((p: any) => {
+    if (p && !p.local_id && !p.id) {
+      const lid = _legacyPartyLocalId(p);
+      if (lid) { changed = true; return { ...p, local_id: lid }; }
+    }
+    return p;
+  });
+  return { list: out, changed };
+}
+
 export * from './lib';
 
 // 🚀 CACHE SYSTEM FOR INVENTORY (Phase 2)
@@ -3944,6 +3966,12 @@ export async function getLedgerData(): Promise<any[]> {
 export async function getParties(type?: string) {
   // BUSINESS_LOCAL_AND_SHEET_ONLY — طرف‌حساب‌ها فقط محلی + صف
   const listRaw = (await getLocal<any[]>('parties')) || [];
+    const _ens = _ensurePartyLocalIds(listRaw);
+    if (_ens.changed) {
+      listRaw.splice(0, listRaw.length, ..._ens.list);
+      try { await setLocal('parties', listRaw); } catch {}
+    }
+
   const list = (listRaw || []).map(_normParty);
   const q = await getQueue();
   const result = [...list];
@@ -3978,7 +4006,8 @@ export async function createParty(p: any) {
   };
   const listRaw = (await getLocal<any[]>('parties')) || [];
   const list = (listRaw || []).map(_normParty);
-  await setLocal('parties', [_normParty(item), ...list]);
+if (!item.local_id && !item.id) { const _lid = _legacyPartyLocalId(item); if (_lid) item.local_id = _lid; }
+      await setLocal('parties', [_normParty(item), ...list]);
   try { await _pushAudit({ type: 'party_create', table: 'parties', key: String(item.local_id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت طرف‌حساب' }); } catch {}
   if (await serverBusinessAllowed()) {
     try {
@@ -3997,11 +4026,25 @@ export async function updateParty(idOrPayload: any, pArg?: any) {
   const id = typeof idOrPayload === 'string' ? idOrPayload : (payload.local_id || payload.id);
   if (!id) throw new Error('شناسه طرف‌حساب لازم است');
   const listRaw = (await getLocal<any[]>('parties')) || [];
+    const _oldPartiesForPhone = listRaw.map((x: any) => ({ ...x }));
+
   const list = (listRaw || []).map(_normParty);
   const idx = list.findIndex((x: any) => x.local_id === id || x.id === id);
   if (idx >= 0) {
     list[idx] = { ...list[idx], ...payload, updated_at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '' };
-    await setLocal('parties', list);
+listRaw.forEach((x: any) => {
+      const _old = _oldPartiesForPhone.find((o: any) => String(o.local_id || o.id) === String(x.local_id || x.id));
+      if (_old) {
+        const _oldPh = String(_old.phone || '');
+        const _newPh = String(x.phone || '');
+        if (_oldPh && _oldPh !== _newPh) {
+          const _h = Array.isArray(x.phone_history) ? x.phone_history.slice() : [];
+          _h.push({ phone: _oldPh, status: 'released', released_at: new Date().toISOString() });
+          x.phone_history = _h;
+        }
+      }
+    });
+        await setLocal('parties', list);
   }
   try { await _pushAudit({ type: 'party_update', table: 'parties', key: String(id), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش طرف‌حساب' }); } catch {}
   const q = await getQueue();

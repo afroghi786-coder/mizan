@@ -1,0 +1,229 @@
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 A5 invoice container + items rows
+╚══════════════════════════════════════════════════════════════════════╝
+10936:   return (
+10937: 
+10938:     <View style={{ flex: 1, overflow: 'hidden' }}>
+10939:     <ScrollView style={[s.content, { backgroundColor: C.bg, flex: 1 }]} contentContainerStyle={{ padding: 10, paddingBottom: 60 }}>
+10940: 
+10941:       <View ref={ref} collapsable={false} style={s.invoiceContainer}>
+10942: 
+10943:         <View style={s.invHeader}>
+10944: 
+10945:           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+10946: 
+10947:             <Text style={{ fontSize: 20 }}>⚖️</Text>
+10948: 
+10949:             <View>
+10950: 
+10951:               <EL textKey="میزان" style={s.invBrand} />
+10952: 
+10953:                        <EL textKey="حساب‌ها دقیق، معاملات امن، ذهن آسوده." style={s.invSlogan} />
+10954: 
+10955:             </View>
+10956: 
+10957:           </View>
+10958: 
+10959:           <View style={{ alignItems: 'flex-end' }}>
+10960: 
+10961:             <Text style={s.invSmall}>📞 ________________</Text>
+10962: 
+10963:             <Text style={s.invSmall}>📧 ________________</Text>
+10964: 
+10965:           </View>
+10966: 
+10967:         </View>
+10968: 
+10969: 
+10970: 
+10971:         <EL textKey="پیش فروش کفش تاج" style={s.invTitle} />
+10972: 
+10973:         <Text style={s.invDateTxt}>📅 {invoice.timeString}</Text>
+10974: 
+10975: 
+10976: 
+10977:         <View style={s.invSection}>
+10978: 
+10979:           <EL textKey="👤 اطلاعات مشتری" style={s.invSectionTitle} />
+10980: 
+10981:           <View style={s.invCGrid}>
+10982: 
+10983:             <View style={s.invCell}><EL textKey="نام" style={s.invCellL} /><Text style={s.invCellV}>{c.name}</Text></View>
+10984: 
+10985:             <View style={s.invCell}><EL textKey="تلفن" style={s.invCellL} /><Text style={s.invCellV}>{c.phone}</Text></View>
+10986: 
+10987:             <View style={s.invCell}><EL textKey="کد مشتری" style={s.invCellL} /><Text style={s.invCellV}>{c.code}</Text></View>
+10988: 
+10989:             <View style={s.invCell}><EL textKey="شماره فاکتور" style={s.invCellL} /><Text style={s.invCellV}>{cur.invoiceNumber}</Text></View>
+10990: 
+10991:             {c.address ? <View style={[s.invCell, { width: '100%' }]}><EL textKey="📍 آدرس" style={s.invCellL} /><Text style={s.invCellV}>{c.address}</Text></View> : null}
+10992: 
+10993:             {c.shipping ? <View style={s.invCell}><EL textKey="🚚 باربری" style={s.invCellL} /><Text style={s.invCellV}>{c.shipping}</Text></View> : null}
+10994: 
+10995:           </View>
+10996: 
+10997:         </View>
+10998: 
+10999: 
+11000: 
+11001:         <View style={s.invSection}>
+11002: 
+11003:           <EL textKey="📦 اقلام" style={s.invSectionTitle} />
+11004: 
+11005:           <View style={s.invTableHead}>
+11006:             <Text style={[s.invTh, { flex: 0.4, textAlign: 'center' }]}>#</Text>
+11007:             <Text style={[s.invTh, { flex: 1.2, textAlign: 'center' }]}>کد مدل</Text>
+11008:             <Text style={[s.invTh, { flex: 2, textAlign: 'right' }]}>نام مدل</Text>
+11009:             <Text style={[s.invTh, { flex: 0.8, textAlign: 'center' }]}>قفسه</Text>
+11010:             <Text style={[s.invTh, { flex: 0.5, textAlign: 'center' }]}>تعداد (واحد پایه)</Text>
+11011:               <Text style={[s.invTh, { flex: 0.5, textAlign: 'center' }]}>واحد بسته</Text>
+11012:             <Text style={[s.invTh, { flex: 1, textAlign: 'center' }]}>قیمت</Text>
+11013:             <Text style={[s.invTh, { flex: 1.2, textAlign: 'center' }]}>مبلغ</Text>
+11014:           </View>
+11015:           {cur.items.map((it: any, i: number) => (
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 Form edit — cur.items.map
+╚══════════════════════════════════════════════════════════════════════╝
+11011:               <Text style={[s.invTh, { flex: 0.5, textAlign: 'center' }]}>واحد بسته</Text>
+11012:             <Text style={[s.invTh, { flex: 1, textAlign: 'center' }]}>قیمت</Text>
+11013:             <Text style={[s.invTh, { flex: 1.2, textAlign: 'center' }]}>مبلغ</Text>
+11014:           </View>
+11015:           {cur.items.map((it: any, i: number) => (
+11016:             <View key={i} style={[s.invRow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+11017:               <Text style={[s.invTd, { flex: 0.4, textAlign: 'center' }]}>{i + 1}</Text>
+11018:               <Text style={[s.invTd, { flex: 1.2, textAlign: 'center', fontSize: 11 }]}>{it.modelCode || '—'}</Text>
+11019:               <Text style={[s.invTd, { flex: 2, textAlign: 'right', fontWeight: 'bold' }]}>{it.modelName}</Text>
+11020:               <Text style={[s.invTd, { flex: 0.8, textAlign: 'center' }]}>{it.shelf || '—'}</Text>
+11021:               <View style={{ flex: 0.5, alignItems: 'center' }}>
+11022:                 <Text style={[s.invTd, { textAlign: 'center', fontSize: 11 }]}>{Number(it.quantity) || 0} {it.base_unit || 'عدد'}</Text>
+11023:               </View>
+11024:               <View style={{ flex: 0.5, alignItems: 'center' }}>
+11025:                 <Text style={[s.invTd, { textAlign: 'center', fontSize: 11, color: '#0891b2' }]}>{(() => { if (it.pack_size && Number(it.pack_size) > 0) { const packs = (Number(it.quantity) || 0) / Number(it.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (it.pack_unit || 'بسته'); } return '—'; })()}</Text>
+11026:               </View>
+11027:               <Text style={[s.invTd, { flex: 1, textAlign: 'center' }]}>{fmt(it.priceUnit)}</Text>
+11028:               <Text style={[s.invTd, { flex: 1.2, textAlign: 'center', fontWeight: 'bold' }]}>{fmt(it.total)}</Text>
+11029:             </View>
+11030:           ))}
+11031: 
+11032:         </View>
+11033: 
+11034: 
+11035: 
+11036:               <View style={s.invSection}>
+11037: 
+11038:           <EL textKey="💰 خلاصه مالی" style={s.invSectionTitle} />
+11039: 
+11040: 
+11041: 
+11042:           {/* این سفارش */}
+11043: 
+11044:           <SumRow l="🛍️ مبلغ این سفارش" v={fmt(cur.sales) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} />
+11045: 
+11046:           <SumRow l="💳 پرداخت این سفارش" v={fmt(cur.payments) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} green />
+11047: 
+11048: 
+11049: 
+11050:           {/* فاکتورهای قبلی */}
+11051: 
+11052:           {invoice.previous && invoice.previous.invoiceCount > 0 && (
+11053: 
+11054:             <>
+11055: 
+11056:               <SumRow l="📁 تعداد فاکتورهای قبلی" v={toFaNum(invoice.previous.invoiceCount) + ' فاکتور'} />
+11057: 
+11058:               <SumRow l="💰 جمع خریدهای قبلی" v={fmt(invoice.previous.sales) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} />
+11059: 
+11060:               <SumRow l="💳 جمع پرداخت‌های قبلی" v={fmt(invoice.previous.payments) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} green />
+11061: 
+11062:               <SumRow
+11063: 
+11064:                 l={invoice.previous.balance > 0 ? '⚖️ بدهی از قبل' : invoice.previous.balance < 0 ? '💰 بستانکاری از قبل' : '✅ تسویه شده از قبل'}
+11065: 
+11066:                 v={invoice.previous.balance !== 0 ? fmt(Math.abs(invoice.previous.balance)) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '') : 'بدون بدهی'}
+11067: 
+11068:                 prev
+11069: 
+11070:               />
+11071: 
+11072:             </>
+11073: 
+11074:           )}
+11075: 
+11076: 
+11077: 
+11078:           {/* مانده نهایی */}
+11079: 
+11080:           <SumRow
+11081: 
+11082:             l={tot.balance > 0 ? '⚖️ مانده نهایی قابل پرداخت' : tot.balance < 0 ? '💰 بستانکاری نهایی' : '✅ تسویه کامل'}
+11083: 
+11084:             v={tot.balance !== 0 ? fmt(Math.abs(tot.balance)) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '') : 'بدون بدهی'}
+11085: 
+11086:             highlight
+11087: 
+11088:           />
+11089: 
+11090:         </View>
+11091: 
+11092: 
+11093: 
+11094:         <View style={s.invFooter}>
+11095: 
+11096:           <EL textKey="📞 کفش تاج: ________________" style={s.invFooterTxt} />
+11097: 
+11098:           <EL textKey="با تشکر از اعتماد شما 🙏" style={s.invFooterThanks} />
+11099: 
+11100:         </View>
+11101: 
+11102:       </View>
+11103: 
+11104: 
+11105: 
+11106:       {/* دکمه‌های عملیات */}
+11107: 
+11108:       <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+11109: 
+11110:         <TouchableOpacity style={[s.btn, { flex: 1, minWidth: 90, backgroundColor: '#fff', borderWidth: 2, borderColor: '#1e3a5f' }]} onPress={() => captureAndShare('print')}>
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 جستجوی ستون‌های لجر یکپارچه
+╚══════════════════════════════════════════════════════════════════════╝
+
+🔍 "باربری" (در Text یا th):
+  خط 3214: <EL text="{t('باربری')}" style={S.label}><Text style={S.required}>*</Text></EL>
+  خط 8217: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>هزینه باربری برگشت</Text>
+  خط 8450: _p.push('<tr><th>#</th><th>شماره برگشت</th><th>تاریخ</th><th>فاکتور اصلی</th><th>طرف‌حساب</th><th>دلیل</th><th>جمع کالا</th><th>باربری</th><th>جمع کل</th><th>تسویه</th></tr>');
+  خط 8581: <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'right', marginBottom: 4 }}>هزینه باربری</Text>
+  خط 10404: if (!editing.name) { showToast('نام باربری الزامی است', true); return; }
+  خط 10406: if (dup) { showToast('⚠️ این نام باربری قبلاً ثبت شده', true); return; }
+  خط 10411: showToast('✅ باربری ذخیره شد'); setEditing(null); load();
+  خط 10436: if (success) { showToast('✅ ' + success + ' باربری ذخیره شد'); setDrafts([]); load(); }
+  خط 10442: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={startNew}><Text style={s.btnTxt}>➕ افزودن باربری</Text></TouchableOpacity>
+  خط 10445: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در باربری‌ها..." placeholderTextColor={C.textMut} />
+  خط 10446: <Text style={s.secT}>🚚 باربری‌ها ({toFaNum(filtered.length)})</Text>
+  خط 10451: <Text style={[s.thCell, { width: 250 }]}>نام باربری</Text>
+  خط 10460: <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v) => 
+  خط 10469: <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.name || '')} onChangeText={(
+  خط 10515: <TouchableOpacity onPress={() => setSub('shippings')} style={[s.btn, { backgroundColor: sub === 'shippings' ? '#7c3aed' : '#334155', paddingHorizontal: 12 }]}><Text style={s.btnTxt}>🚚 باربری‌ها</Text
+  خط 10993: {c.shipping ? <View style={s.invCell}><EL textKey="🚚 باربری" style={s.invCellL} /><Text style={s.invCellV}>{c.shipping}</Text></View> : null}
+
+🔍 "دریافت وجه":
+
+🔍 "جمع ردیف":
+
+🔍 "عملیات" (به عنوان هدر):
+  خط 6511: <Text style={[HDR.cell, { width: 140 }]}>عملیات</Text>
+  خط 6608: <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: '#475569', textAlign: 'center' }}>عملیات</Text>
+  خط 9680: <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
+  خط 10014: <Text style={[s.thCell, { width: 150 }]}>عملیات</Text>
+  خط 10343: <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
+  خط 10454: <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
+  خط 10693: <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
+
+
+✅ تمام. لطفاً کل این خروجی را بفرستید.

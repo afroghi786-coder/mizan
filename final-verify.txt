@@ -1,0 +1,13 @@
+=== 1. بررسی export در lib.ts ===
+✅ packMapRef export شده (خط 1392)
+✅ refreshPackMap export شده (خط 1394)
+✅ getPackForCodeGlobal export شده (خط 1412)
+
+=== 2. بررسی App.tsx (تعاریف محلی حذف شده؟) ===
+❌ تعریف محلی packMapRef هنوز در App.tsx است!
+❌ تعریف محلی refreshPackMap هنوز در App.tsx است!
+❌ تعریف محلی getPackForCodeGlobal هنوز در App.tsx است!
+
+=== 3. بررسی LedgerScreen ===
+✅ LedgerScreen getPackForCodeGlobal را import کرده
+⚠️ هنوز prodMap.get در LedgerScreen وجود دارد (باید حذف شود)

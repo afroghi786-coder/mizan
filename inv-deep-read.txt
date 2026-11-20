@@ -1,0 +1,43 @@
+=== هدر انبار (خطوط 6498-6508) - با نشانگر فاصله ===
+L6498: []
+L6499: [············<Text·style={[HDR.cell,·{·width:·80·}]}>فروش</Text>]
+L6500: []
+L6501: [············<Text·style={[HDR.cell,·{·width:·90·}]}>موجودی</Text>]
+L6502: []
+L6503: [············<Text·style={[HDR.cell,·{·width:·110·}]}>بهای·واحد</Text>]
+L6504: []
+L6505: [············<Text·style={[HDR.cell,·{·width:·130·}]}>ارزش·کل</Text>]
+L6506: []
+L6507: [············<View·style={[s.thCell,·{·width:·110,·alignItems:·'center'·}]}><Text·style={{·color:·'#d4af37',·fontWeight:·'bold',·fontSize:·11·}}>⚖️·تعدیل</Text></View>]
+L6508: []
+
+=== ردیف انبار (خطوط 6318-6328) - با نشانگر فاصله ===
+L6318: []
+L6319: [················<Text·style={[s.tdCell,·{·width:·80,·fontSize:·12,·color:·C.text·}]}>{fmt(m.sold)}</Text>]
+L6320: []
+L6321: [················<Text·style={[s.tdCell,·{·width:·90,·fontSize:·12,·color:·statusColor(m.status),·fontWeight:·'bold',·fontSize:·15·}]}>{fmt(m.currentQty)}</Text>]
+L6322: []
+L6323: [················<Text·style={[s.tdCell,·{·width:·110,·fontSize:·12,·color:·'#0891b2',·fontSize:·11·}]}>{fmt(m.unitCost·||·0)}</Text>]
+L6324: []
+L6325: [················<Text·style={[s.tdCell,·{·width:·130,·fontSize:·12,·color:·'#059669',·fontWeight:·'bold',·fontSize:·11·}]}>{fmt(m.totalValue·||·0)}</Text>]
+L6326: []
+L6327: [················<TouchableOpacity·onPress={()·=>·openAdjustment(m)}·style={[s.tdCell,·{·width:·110,·alignItems:·'center'·}]}>]
+L6328: []
+
+=== منطق تزریق شده (خطوط 6295-6310) ===
+L6295: []
+L6296: [··]
+L6297: [··const·renderItem·=·useCallback(({·item:·m,·index:·i·}:·{·item:·any,·index:·number·})·=>·{]
+L6298: []
+L6299: [············const·_u·=·getPackForCodeGlobal(m.code);]
+L6300: [················const·bU·=·_u·?·_u.base_unit·:·'عدد';]
+L6301: [················const·pU·=·_u·?·_u.pack_unit·:·'بسته';]
+L6302: [················const·pS·=·_u·?·Number(_u.pack_size)·:·0;]
+L6303: [················const·packQty·=·pS·>·0·?·((Number(m.currentQty)·||·0)·/·pS).toFixed(2).replace(/\.00$/,·'')·:·'0';]
+L6304: []
+L6305: [················const·rowBg·=·m.status·===·'negative'·?·(C.isDark·?·'#1e293b'·:·'#f1f5f9')·:·m.status·===·'out'·?·(C.isDark·?·'#3b1219'·:·'#fef2f2')·:·m.status·===·'low'·?·(C.isDark·?·'#3b2a12'·:·'#fffbeb')·:·(i·%·2·===·0·?·C.cardAlt·:·'transparent');]
+L6306: []
+L6307: [············return·(<>]
+L6308: []
+L6309: [··············<View·key={i}·style={[s.tblRow,·{·flexDirection:·'row-reverse',·backgroundColor:·rowBg,·borderRightWidth:·3,·borderRightColor:·statusColor(m.status)·}]}>]
+L6310: []

@@ -1384,3 +1384,33 @@ export async function getLoans(): Promise<any[]> {
   if (error) throw new Error(error.message);
   return data || [];
 }
+
+
+// ═══════════════════════════════════════════════════
+// Pack Map Global (برای استفاده در انبار و معین)
+// ═══════════════════════════════════════════════════
+export const packMapRef: { current: Map<string, { pack_size: number; base_unit: string; pack_unit: string }> | null } = { current: null };
+
+export const refreshPackMap = async () => {
+  try {
+    const prods = await getProducts();
+    const m = new Map();
+    (prods || []).forEach((p: any) => {
+      m.set(String(p.code || ''), {
+        pack_size: Number(p.pack_size) || 0,
+        base_unit: String(p.base_unit || 'عدد'),
+        pack_unit: String(p.pack_unit || 'بسته')
+      });
+    });
+    packMapRef.current = m;
+  } catch (e) {
+    console.log('refreshPackMap error:', e);
+    packMapRef.current = new Map();
+  }
+};
+
+export const getPackForCodeGlobal = (code: string) => {
+  const m = packMapRef.current;
+  if (!m) return null;
+  return m.get(String(code || '')) || null;
+};

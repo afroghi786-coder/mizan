@@ -1,0 +1,53 @@
+=== App.tsx: getProducts از کجا می‌آید؟ ===
+67: import DateField from './lib.datefield';
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerBy
+72: import { resolvePartyForInvoice } from './lib.partyIdentity';
+74: import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+76: import SuperAssistant from './SuperAssistant';
+78: import BotUI from './BotUI';
+80: import GlobalVoice from './GlobalVoice';
+
+=== lib.offline.ts: getProducts ===
+614: export async function getProducts() {
+615:   // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
+616:   const local = await getLocal<any[]>('products');
+617:   return _applyTombstones('products', local || []);
+618: }
+619: export async function createProduct(p: any) {
+620:   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+621:   const nowPr = new Date().toISOString();
+622:   const item = {
+623:     ...p,
+624:     _localId: Date.now(),
+625:     local_id: p.local_id || ('prd_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+
+=== lib.ts: refreshPackMap فعلی ===
+1389: // ═══════════════════════════════════════════════════
+1390: // Pack Map Global (برای استفاده در انبار و معین)
+1391: // ═══════════════════════════════════════════════════
+1392: export const packMapRef: { current: Map<string, { pack_size: number; base_unit: string; pack_unit: string }> | null } = { current: null };
+1393: 
+1394: export const refreshPackMap = async () => {
+1395:   try {
+1396:     const prods = await getProducts();
+1397:     const m = new Map();
+1398:     (prods || []).forEach((p: any) => {
+1399:       m.set(String(p.code || ''), {
+1400:         pack_size: Number(p.pack_size) || 0,
+1401:         base_unit: String(p.base_unit || 'عدد'),
+1402:         pack_unit: String(p.pack_unit || 'بسته')
+1403:       });
+1404:     });
+1405:     packMapRef.current = m;
+1406:   } catch (e) {
+1407:     console.log('refreshPackMap error:', e);
+1408:     packMapRef.current = new Map();
+1409:   }
+1410: };
+1411: 
+1412: export const getPackForCodeGlobal = (code: string) => {
+1413:   const m = packMapRef.current;
+1414:   if (!m) return null;
+1415:   return m.get(String(code || '')) || null;
+1416: };
+1417: 

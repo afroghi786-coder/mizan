@@ -1,0 +1,706 @@
+=== App.tsx: بخش ویرایش (7500-8100) ===
+7500: 
+7501:   });
+7502: 
+7503: 
+7504: 
+7505:   const openEdit = async (inv: string, type: string) => {
+7506: 
+7507:     try {
+7508: 
+7509:       const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+7510: 
+7511:       if (!rows.length) { showToast('فاکتور پیدا نشد', true); return; }
+7512: 
+7513:       const isSales = type === 'sales';
+7514: 
+7515:       setEditRows(rows.map((r: any) => ({
+7516: 
+7517:         rowId: r.id,
+7518: 
+7519:         modelCode: r.model_code || '',
+7520: 
+7521:         modelName: r.model_name || '',
+7522: 
+7523:         quantity: r.quantity || 0,
+7524: 
+7525:         priceUnit: r.price_unit || 0,
+7526: 
+7527:         payment: r.payment || 0,
+7528: 
+7529:         description: r.description || '',
+7530: 
+7531:         depositDate: r.deposit_date || '',
+7532: 
+7533:         bankName: r.bank_name || r.receiver_bank || '',
+7534:         accountHolder: r.account_holder || r.receiver_name || '',
+7535:         accountHolderCode: isSales ? (r.account_holder_code || r.receiver_code || '') : (r.payer_code || ''),
+7536: 
+7537:         shipping: isSales ? (r.shipping || '') : '',
+7538: 
+7539:         _deleted: false,
+7540: 
+7541:       })));
+7542: 
+7543:       const _code = isSales ? rows[0].customer_code : rows[0].supplier_code;
+7544:       const _oldPhone = isSales ? rows[0].customer_phone : rows[0].supplier_phone;
+7545:       const _p = (partiesList || []).find((x: any) =>
+7546:         String(x.code || '') === String(_code || '') ||
+7547:         (String(x.phone || '').replace(/[^0-9]/g, '') && String(x.phone || '').replace(/[^0-9]/g, '') === String(_oldPhone || '').replace(/[^0-9]/g, ''))
+7548:       );
+7549:       setEditing({
+7550:         invoice: inv,
+7551:         type,
+7552:         name: _p?.name || (isSales ? rows[0].customer_name : rows[0].supplier_name),
+7553:         code: _code,
+7554:         phone: _p?.phone || (isSales ? (rows[0].customer_phone || '') : (rows[0].supplier_phone || '')),
+7555:         manualInv: isSales ? '' : (rows[0].manual_invoice || ''),
+7556:       });
+7557: 
+7558:       setDirty(false);
+7559: 
+7560:     } catch (e: any) { showToast(e.message || 'خطا در باز کردن فاکتور', true); }
+7561: 
+7562:   };
+7563: 
+7564: 
+7565: 
+7566:   const delRow = (i: number) => { const n = [...editRows]; n[i]._deleted = !n[i]._deleted; setEditRows(n); setDirty(true); };
+7567: 
+7568:   const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', shipping: '', _deleted: false, _new: true }]); setDirty(true); };
+7569: 
+7570:   const updRow = (i: number, f: string, v: any) => { const n = [...editRows]; (n[i] as any)[f] = v; setEditRows(n); setDirty(true); };
+7571: 
+7572: 
+7573: 
+7574:   const previewInvoice = async () => {
+7575:     const validRows = editRows.filter((r: any) => !r._deleted);
+7576:     if (!validRows.length) { showToast('هیچ ردیفی برای نمایش نیست', true); return; }
+7577:     const items = validRows.map((r: any) => ({
+7578:       modelName: r.modelName || '',
+7579:       modelCode: r.modelCode || '',
+7580:       quantity: Number(r.quantity) || 0,
+7581:       priceUnit: Number(r.priceUnit) || 0,
+7582:       total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+7583:     }));
+7584:     const sales = items.reduce((a: number, it: any) => a + it.total, 0);
+7585:     const payments = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+7586:     let prev: any = { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
+7587:     try { prev = await getCustomerPreviousBalance(editing.code, editing.invoice); } catch {}
+7588:     setShowInvoice({
+7589:       customer: {
+7590:         code: editing.code,
+7591:         name: editing.name,
+7592:         phone: editing.phone || '',
+7593:         address: '',
+7594:         shipping: validRows[0]?.shipping || '',
+7595:       },
+7596:       current: {
+7597:         invoiceNumber: editing.invoice,
+7598:         items,
+7599:         sales,
+7600:         payments,
+7601:         balance: sales - payments,
+7602:       },
+7603:       previous: prev,
+7604:       totals: {
+7605:         sales: (prev.sales || 0) + sales,
+7606:         payments: (prev.payments || 0) + payments,
+7607:         balance: (prev.balance || 0) + (sales - payments),
+7608:       },
+7609:       timeString: displayDate(new Date().toISOString()),
+7610:     });
+7611:   };
+7612: 
+7613:   const save = async () => {
+7614: 
+7615:     if (!dirty) return showToast('تغییری نیست', true);
+7616: 
+7617:     if (savingRef.current) return;
+7618:     savingRef.current = true;
+7619:     setSaving(true);
+7620:     try {
+7621: 
+7622:       const tbl = editing.type === 'sales' ? 'sales' : 'purchases';
+7623: 
+7624:       
+7625: 
+7626:       // چک کن اگه فاکتور توی صف آفلاین هست
+7627: 
+7628:       const anyPending = editRows.some((r: any) => r.rowId && String(r.rowId).startsWith('queued_'));
+7629: 
+7630:       
+7631: 
+7632:       if (anyPending) {
+7633:         const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows);
+7634:         if (ok) {
+7635:           alertMsg('✅ موفق', 'تغییرات روی فاکتور آفلاین ذخیره شد');
+7636:           setEditing(null); setEditRows([]); setDirty(false); load();
+7637:           return;
+7638:         }
+7639:         const metaFallback: any = editing.type === 'sales'
+7640:           ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '' }
+7641:           : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '' };
+7642:         if (editing.type === 'sales') {
+7643:           await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+7644:         } else {
+7645:           await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+7646:         }
+7647:         alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+7648:         setEditing(null); setEditRows([]); setDirty(false); load();
+7649:         return;
+7650:       }
+7651: 
+7652:       // ═══ ذخیره فاکتور سینک‌شده (آفلاین یا آنلاین) ═══
+7653:       const validRows = editRows.filter((r: any) => !r._deleted);
+7654:       const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+7655:       const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+7656:       const meta: any = editing.type === 'sales'
+7657:         ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '' }
+7658:         : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '' };
+7659: 
+7660:       if (editing.type === 'sales') {
+7661:         await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta });
+7662:       } else {
+7663:         await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta });
+7664:       }
+7665: 
+7666:       // آپدیت فوری لیست محلی
+7667:       setList((prev: any[]) => prev.map((x: any) => x.invoice === editing.invoice
+7668:         ? { ...x, total: newTotal, paid: newPaid, name: editing.name, phone: editing.phone }
+7669:         : x));
+7670: 
+7671:       
+7672: 
+7673:       
+7674: 
+7675:       alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+7676: 
+7677:       setEditing(null); setEditRows([]); setDirty(false); load();
+7678: 
+7679:     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+7680:     finally { savingRef.current = false; setSaving(false); }
+7681: 
+7682:   };
+7683: 
+7684: 
+7685: 
+7686:   const remove = async (inv: string, type: string) => {
+7687:     const ok = await confirmMsg('حذف', 'فاکتور ' + inv + ' حذف شود؟');
+7688:     if (!ok) return;
+7689:     try {
+7690:       if (type === 'sales') {
+7691:         await deleteSale(inv);
+7692:       } else {
+7693:         await deletePurchase(inv);
+7694:       }
+7695:       showToast('✅ حذف شد');
+7696:       load();
+7697:     } catch (e: any) { showToast(e.message || 'خطا در حذف', true); }
+7698:   };
+7699: 
+7700: 
+7701: 
+7702:   const [returnReason, setReturnReason] = useState('');
+7703:   const [returnShipping, setReturnShipping] = useState('');
+7704:   const [returnSettlement, setReturnSettlement] = useState('credit');
+7705:   const [returnBank, setReturnBank] = useState('');
+7706:   const [returnHolder, setReturnHolder] = useState('');
+7707:   const [returnDepositDate, setReturnDepositDate] = useState('');
+7708:   const [returnNote, setReturnNote] = useState('');
+7709: 
+7710:   const openReturn = async (inv: string, type: string) => {
+7711:     try {
+7712:       const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+7713:       if (!rows.length) { showToast('فاکتور پیدا نشد', true); return; }
+7714:       const isSales = type === 'sales';
+7715:       setReturnRows(rows.map((r: any) => ({
+7716:         modelCode: r.model_code || '',
+7717:         modelName: r.model_name || '',
+7718:         quantity: Number(r.quantity) || 0,
+7719:         priceUnit: Number(r.price_unit) || 0,
+7720:         returnQty: 0,
+7721:       })));
+7722:       setReturnInvoice({
+7723:         invoice: inv,
+7724:         type: isSales ? 'sales' : 'purchase',
+7725:         name: isSales ? rows[0].customer_name : rows[0].supplier_name,
+7726:         code: isSales ? rows[0].customer_code : rows[0].supplier_code,
+7727:       });
+7728:       setReturnReason('');
+7729:       setReturnShipping('');
+7730:       setReturnSettlement('credit');
+7731:       setReturnBank('');
+7732:       setReturnHolder('');
+7733:       setReturnDepositDate('');
+7734:       setReturnNote('');
+7735:       setReturnModalOpen(true);
+7736:     } catch (e: any) {
+7737:       showToast(e?.message || 'خطا در باز کردن فاکتور', true);
+7738:     }
+7739:   };
+7740: 
+7741:   const submitReturn = async () => {
+7742:     if (!returnInvoice) return;
+7743:     const items = returnRows.filter((r: any) => Number(r.returnQty) > 0);
+7744:     if (!items.length) { showToast('تعداد برگشتی را وارد کنید', true); return; }
+7745: 
+7746:     for (const it of items) {
+7747:       if (Number(it.returnQty) > Number(it.quantity)) {
+7748:         showToast('تعداد برگشتی برای ' + (it.modelName || it.modelCode) + ' بیشتر از تعداد اصلی است', true);
+7749:         return;
+7750:       }
+7751:     }
+7752: 
+7753:     setReturnSaving(true);
+7754:     const savedType = returnInvoice.type;
+7755:     try {
+7756:       const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);
+7757:       const shipping = Number(returnShipping) || 0;
+7758:       const total = subtotal + shipping;
+7759:       const settlementAmount = returnSettlement === 'credit' ? 0 : total;
+7760:       const balance = total - settlementAmount;
+7761:       const returnNumber = (savedType === 'sales' ? 'SR-' : 'PR-') + Date.now().toString().slice(-8);
+7762: 
+7763:       const payload = {
+7764:         return_number: returnNumber,
+7765:         status: 'approved',
+7766:         original_invoice_number: returnInvoice.invoice,
+7767:         party_name: returnInvoice.name,
+7768:         party_code: returnInvoice.code,
+7769:         type: savedType,
+7770:         date: new Date().toISOString(),
+7771:         reason: returnReason || '',
+7772:         shipping_cost: shipping,
+7773:         settlement_method: returnSettlement,
+7774:         settlement_amount: settlementAmount,
+7775:         balance: balance,
+7776:         bank: returnBank || '',
+7777:         account_holder: returnHolder || '',
+7778:         deposit_date: returnDepositDate || '',
+7779:         note: returnNote || '',
+7780:         subtotal,
+7781:         total,
+7782:         items,
+7783:       };
+7784: 
+7785:       if (savedType === 'sales') {
+7786:         await createSalesReturn(payload);
+7787:       } else {
+7788:         await createPurchaseReturn(payload);
+7789:       }
+7790: 
+7791:       showToast('✅ برگشت ثبت شد — ' + returnNumber);
+7792:       setReturnModalOpen(false);
+7793:       setReturnInvoice(null);
+7794:       setReturnRows([]);
+7795: 
+7796:       if (onReturnSaved) onReturnSaved(savedType);
+7797:       else load();
+7798:     } catch (e: any) {
+7799:       showToast(e?.message || 'خطا در ثبت برگشت', true);
+7800:     } finally {
+7801:       setReturnSaving(false);
+7802:     }
+7803:   };;
+7804: 
+7805: ;
+7806: 
+7807:   // ═══ حالت ویرایش ═══
+7808: 
+7809:     if (showInvoice) return (
+7810:     <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView
+7811:       invoice={showInvoice}
+7812:       onBack={() => { setShowInvoice(null); load(); }}
+7813:       onNew={() => { setShowInvoice(null); setEditing(null); setEditRows([]); setDirty(false); }}
+7814:       showToast={showToast}
+7815:     /></View>
+7816:   );
+7817: 
+7818:   if (editing) return (
+7819: 
+7820:     <View>
+7821:       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+7822: 
+7823:         <View style={[s.mgrHead, { backgroundColor: '#c0392b' }]}>
+7824: 
+7825:           <TouchableOpacity onPress={async () => { if (dirty) { const ok = await confirmMsg('خروج', 'تغییرات ذخیره نشده — خارج شوی؟'); if (!ok) return; } setEditing(null); setEditRows([]); setDirty(false); }}>
+7826: 
+7827:             <EL textKey="← بازگشت" style={{ color: '#fff', fontSize: 16 }} />
+7828: 
+7829:           </TouchableOpacity>
+7830: 
+7831:           <View style={{ flex: 1, marginRight: 10 }}>
+7832: 
+7833:             <Text style={s.mgrHeadTxt}>✏️ {editing.invoice}</Text>
+7834: 
+7835:             <Text style={{ color: '#fff', fontSize: 11, opacity: 0.9 }}>{editing.name} | {editing.code} | {toFaNum(editRows.length)} ردیف</Text>
+7836: 
+7837:           </View>
+7838: 
+7839:         </View>
+7840: 
+7841: 
+7842: 
+7843:         <ScrollView horizontal showsHorizontalScrollIndicator>
+7844: 
+7845:           <View>
+7846: 
+7847:             <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+7848: 
+7849:               <Text style={[s.thCell, { width: 36, fontSize: 12, fontWeight: 'bold', textAlign: 'center' }]}>#</Text>
+7850: 
+7851:               <EL textKey="کد" style={[s.thCell, { width: 90, textAlign: 'center' }]} />
+7852: 
+7853:               <EL textKey="نام مدل" style={[s.thCell, { width: 180, textAlign: 'center' }]} />
+7854: 
+7855:               <EL textKey="تعداد" style={[s.thCell, { width: 80, textAlign: 'center' }]} />
+7856: 
+7857:               <EL textKey="قیمت" style={[s.thCell, { width: 110, textAlign: 'center' }]} />
+7858: 
+7859:               <EL textKey="مبلغ" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+7860: 
+7861:               <EL textKey="پرداخت" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+7862: 
+7863:               <EL textKey="مانده" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+7864: 
+7865:              <EL textKey="تاریخ واریز" style={[s.thCell, { width: 340, textAlign: 'center' }]} />
+7866: 
+7867:               <EL textKey="بانک" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+7868: 
+7869:               <EL textKey="صاحب حساب" style={[s.thCell, { width: 130, textAlign: 'center' }]} />
+7870: 
+7871:               <EL textKey="کد صاحب حساب" style={[s.thCell, { width: 110, textAlign: 'center' }]} />
+7872: 
+7873:               <EL textKey="شرح" style={[s.thCell, { width: 140, textAlign: 'center' }]} />
+7874: 
+7875:               {editing.type === 'sales' && <EL textKey="باربری" style={[s.thCell, { width: 130, textAlign: 'center' }]} />}
+7876: 
+7877:               <EL textKey="حذف" style={[s.thCell, { width: 56, textAlign: 'center' }]} />
+7878: 
+7879:             </View>
+7880: 
+7881:             {editRows.map((r, i) => {
+7882: 
+7883:               const lt = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
+7884: 
+7885:               const lb = lt - (Number(r.payment) || 0);
+7886: 
+7887:               return (
+7888: 
+7889:                 <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, r._deleted && { opacity: 0.4 }, r._new && { backgroundColor: C.isDark ? '#2e1065' : '#f5f3ff' }]}>
+7890: 
+7891:                   <Text style={[s.tdCell, { width: 36, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+7892: 
+7893:                   <View style={{ width: 90, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelCode} onChangeText={(v) => updRow(i, 'modelCode', v)} editable={!r._deleted} /></View>
+7894: 
+7895:                                   <View style={{ width: 180, paddingHorizontal: 3 }}>
+7896: 
+7897:                     <CellAutocomplete
+7898: 
+7899:                       value={r.modelName}
+7900: 
+7901:                       onChange={(v: string) => updRow(i, 'modelName', v)}
+7902: 
+7903:                       onSelect={(v: string) => {
+7904: 
+7905:                         const p = prods.find((x: any) => x.name === v);
+7906: 
+7907:                         if (p) {
+7908: 
+7909:                           updRow(i, 'modelCode', p.code || '');
+7910: 
+7911:                           updRow(i, 'priceUnit', p.price || 0);
+7912: 
+7913:                         }
+7914: 
+7915:                       }}
+7916: 
+7917:                       options={prods.map(p => p.name).filter(Boolean)}
+7918: 
+7919:                       placeholder={term('product') + '...'}
+7920: 
+7921:                     />
+7922: 
+7923:                   </View>
+7924: 
+7925:                   <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.entered_unit === 'pack' ? (r.entered_qty || '') : (r.quantity || ''))} onChangeText={(v) => { const raw = parseNum(v); const u = r.entered_unit || 'base'; updRow(i, 'entered_unit', u); updRow(i, 'entered_qty', raw); updRow(i, 'quantity', (u === 'pack' && Number(r.pack_size) > 0) ? Math.round(raw * Number(r.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" editable={!r._deleted} /></View>
+7926: 
+7927:                   {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'base'); updRow(i, 'entered_qty', r.quantity); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.base_unit || 'عدد'}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'pack'); updRow(i, 'entered_qty', Number(r.pack_size) > 0 ? r.quantity / Number(r.pack_size) : 0); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.pack_unit || 'بسته'}</Text></TouchableOpacity></View>)}
+7928: 
+7929: <View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+7930: 
+7931:                   <Text style={[s.tdCell, { width: 100, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{lt ? fmt(lt) : '—'}</Text>
+7932: 
+7933:                   <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.payment || '')} onChangeText={(v) => updRow(i, 'payment', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+7934: 
+7935:                   <Text style={[s.tdCell, { width: 100, fontSize: 12, color: lb > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{lt ? fmt(lb) : '—'}</Text>
+7936: 
+7937:                                   <View style={{ width: 340, paddingHorizontal: 3 }}><DateField value={r.depositDate} onChange={(v: string) => updRow(i, 'depositDate', v)} compact /></View>
+7938: 
+7939:                                                      <View style={{ width: 100, paddingHorizontal: 2 }}>
+7940:                     <CellAutocomplete
+7941:                       value={r.bankName}
+7942:                       onChange={(v: string) => updRow(i, 'bankName', v)}
+7943:                       options={banksList.filter(Boolean).filter(Boolean).map((b: any) => b.name)}
+7944:                       placeholder="بانک"
+7945:                     />
+7946:                   </View>
+7947: 
+7948:                                   <View style={{ width: 130, paddingHorizontal: 2 }}>
+7949:                     <CellAutocomplete
+7950:                       value={r.accountHolder}
+7951:                       onChange={(v: string) => updRow(i, 'accountHolder', v)}
+7952:                       onSelect={async (v: string) => {
+7953:                         try {
+7954:                           const f = await lookupPayerUniversal(v);
+7955:                           if (f) {
+7956:                             updRow(i, 'accountHolderCode', f.code || '');
+7957:                             if (f.bank) updRow(i, 'bankName', f.bank);
+7958:                           } else {
+7959:                             const code = await lookupCodeByName(v);
+7960:                             updRow(i, 'accountHolderCode', code);
+7961:                           }
+7962:                         } catch {}
+7963:                       }}
+7964:                       options={Array.from(new Set([
+7965:                         ...partiesList.filter(Boolean).filter(Boolean).map((p:any)=>p.name).filter(Boolean),
+7966:                         ...partnersList.filter(Boolean).filter(Boolean).map((p:any)=>p.name).filter(Boolean),
+7967:                         ...prods.map((p: any) => p.supplier_name || '').filter(Boolean)
+7968:                       ]))}
+7969:                       placeholder="صاحب حساب"
+7970:                     />
+7971:                   </View>
+7972: 
+7973:                   <View style={{ width: 110, paddingHorizontal: 2 }}>
+7974:                     <TextInput accessibilityLabel="خودکار"
+7975:                       style={[s.tdInput, { backgroundColor: C.cardAlt, color: '#059669', borderColor: C.border, fontWeight: 'bold', textAlign: 'center', height: 34, fontSize: 11, paddingVertical: 0 }]}
+7976:                       value={r.accountHolderCode || ''}
+7977:                       editable={false}
+7978:                       placeholder="خودکار"
+7979:                     />
+7980:                   </View>
+7981: 
+7982:                   <View style={{ width: 140, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.description} onChangeText={(v) => updRow(i, 'description', v)} editable={!r._deleted} /></View>
+7983: 
+7984:                   {editing.type === 'sales' && (
+7985: 
+7986:                                       <View style={{ width: 130, paddingHorizontal: 2 }}>
+7987:                     <CellAutocomplete
+7988:                       value={r.shipping}
+7989:                       onChange={(v: string) => updRow(i, 'shipping', v)}
+7990:                       options={shippingsList.filter(Boolean).filter(Boolean).map((s: any) => s.name)}
+7991:                       placeholder="باربری"
+7992:                     />
+7993:                   </View>
+7994: 
+7995:                   )}
+7996: 
+7997:                   <TouchableOpacity onPress={() => delRow(i)} style={[s.tdCell, { width: 56, alignItems: 'center' }]}><Text style={{ fontSize: 18 }}>{r._deleted ? '↺' : '🗑'}</Text></TouchableOpacity>
+7998: 
+7999:                 </View>
+8000: 
+8001:               );
+8002: 
+8003:             })}
+8004: 
+8005:           </View>
+8006: 
+8007:         </ScrollView>
+8008: 
+8009: 
+8010: 
+8011:         <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
+8012: 
+8013:         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+8014: 
+8015:           <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => { setEditing(null); setEditRows([]); }}><Text style={s.btnTxt}>{t('↩️ برگشت')}</Text></TouchableOpacity>
+8016: 
+8017:           <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#8e44ad' }]} onPress={previewInvoice}><Text style={s.btnTxt}>{t('🖨️ صدور مجدد')}</Text></TouchableOpacity>
+8018:           <TouchableOpacity style={[s.btn, { flex: 2, backgroundColor: '#059669' }]} onPress={save} disabled={saving}><Text style={s.btnTxt}>{t('💾 ذخیره')}</Text></TouchableOpacity>
+8019: 
+8020:         </View>
+8021: 
+8022:       </ScrollView>
+8023: 
+8024:     </View>
+8025: 
+8026:   );
+8027: 
+8028: 
+8029: 
+8030:   // ═══ حالت لیست ═══
+8031: 
+8032:   const typeLabel = (t: string) => t === 'purchases' ? '🛍️ خرید' : '🛒 فروش';
+8033: 
+8034:   const statusLabel = (total: number, paid: number) => paid >= total && total > 0 ? '✅ پرداخت‌شده' : paid > 0 ? '⏳ جزئی' : '❌ پرداخت‌نشده';
+8035: 
+8036:   const statusColorFn = (total: number, paid: number) => paid >= total && total > 0 ? '#059669' : paid > 0 ? '#f39c12' : '#dc2626';
+8037: 
+8038: 
+8039: 
+8040:   return (
+8041: 
+8042:     <View>
+8043: 
+8044:       <TextInput accessibilityLabel="🔍 فاکتور، نام، تلفن..." style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 فاکتور، نام، تلفن..." placeholderTextColor={C.textMut} />
+8045: 
+8046:       <View style={{ flexDirection: 'row', gap: 6, marginVertical: 8, flexWrap: 'wrap' }}>
+8047: 
+8048:         {[{ k: 'all', l: '📋 همه' }, { k: 'sales', l: '🛒 فروش' }, { k: 'purchases', l: '🛍️ خرید' }].map((f) => (
+8049: 
+8050:           <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
+8051: 
+8052:         ))}
+8053: 
+8054:       </View>
+8055: 
+8056:       <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+8057: 
+8058:         {[{ k: 'all', l: 'همه وضعیت' }, { k: 'paid', l: '✅ پرداخت‌شده' }, { k: 'unpaid', l: '❌ نشده' }, { k: 'partial', l: '⏳ جزئی' }].map((f) => (
+8059: 
+8060:           <TouchableOpacity key={f.k} onPress={() => setStatusFilter(f.k)} style={[s.chip, statusFilter === f.k && { backgroundColor: '#6c3483', borderColor: '#6c3483' }]}><Text style={[s.chipTxt, statusFilter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
+8061: 
+8062:         ))}
+8063: 
+8064:       </View>
+8065: 
+8066:       <EL text="📄 نتایج ({toFaNum(filtered.length)})" style={s.secT} />
+8067: 
+8068: 
+8069: 
+8070:       {/* جدول ۱۲ ستونه */}
+8071: 
+8072:       <ScrollView horizontal showsHorizontalScrollIndicator>
+8073: 
+8074:         <View>
+8075: 
+8076:           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+8077: 
+8078:             <Text style={[s.thCell, { width: 40, fontSize: 12, fontWeight: 'bold' }]}>#</Text>
+8079: 
+8080:             <EL textKey="فاکتور" style={[s.thCell, { width: 150 }]} />
+8081: 
+8082:             <EL textKey="نوع" style={[s.thCell, { width: 100 }]} />
+8083: 
+8084:             <EL textKey="نام" style={[s.thCell, { width: 150 }]} />
+8085: 
+8086:             <EL textKey="تلفن" style={[s.thCell, { width: 120 }]} />
+8087: 
+8088:             <EL textKey="تاریخ" style={[s.thCell, { width: 130 }]} />
+8089: 
+8090:             <EL textKey="ردیف" style={[s.thCell, { width: 70 }]} />
+8091: 
+8092:             <EL textKey="مبلغ" style={[s.thCell, { width: 130 }]} />
+8093: 
+8094:             <EL textKey="پرداخت" style={[s.thCell, { width: 130 }]} />
+8095: 
+8096:             <EL textKey="مانده" style={[s.thCell, { width: 130 }]} />
+8097: 
+8098:             <EL textKey="وضعیت" style={[s.thCell, { width: 130 }]} />
+8099: 
+8100:             <EL textKey="عملیات" style={[s.thCell, { width: 120 }]} />
+
+=== lib.ts: updateSale و updatePurchase ===
+986: export async function updateSale(payload: { invoiceNumber: string; rows: any[] }) {
+987:   const { invoiceNumber, rows } = payload || {};
+988:   if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+989:   
+990:   // دریافت اطلاعات قبلی برای حفظ متادیتا (مشتری، تاریخ و...)
+991:   const { data: oldRows, error: fetchErr } = await supabase.from('sales').select('*').eq('invoice_number', invoiceNumber).limit(1);
+992:   if (fetchErr) throw fetchErr;
+993:   if (!oldRows || oldRows.length === 0) throw new Error('فاکتور اصلی در سرور پیدا نشد');
+994:   
+995:   const template = oldRows[0];
+996:   const cleanRows = rows.filter((r: any) => !r._deleted).map((r: any) => {
+997:     const merged = { ...template };
+998:     delete merged.id; delete merged.created_at; // اجازه بده تا سرور رکورد جدید بسازد
+999:     merged.model_code = r.modelCode || '';
+1000:     merged.model_name = r.modelName || '';
+1001:     merged.quantity = Number(r.quantity) || 0;
+1002:     merged.price_unit = Number(r.priceUnit) || 0;
+1003:     merged.payment = Number(r.payment) || 0;
+1004:     merged.amount = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
+1005:     merged.description = r.description || '';
+1006:     if (r.dateFactor) merged.date_factor = r.dateFactor;
+1007:     if (r.dateReg) merged.date_reg = r.dateReg;
+1008:     if (r.bankName) merged.bank_name = r.bankName;
+1009:     if (r.accountHolder) merged.account_holder = r.accountHolder;
+1010:     if (r.accountHolderCode) merged.account_holder_code = r.accountHolderCode;
+1011:     if (r.depositDate) merged.deposit_date = r.depositDate;
+1012:     return merged;
+1013:   });
+1014: 
+1015:   const { error: delErr } = await supabase.from('sales').delete().eq('invoice_number', invoiceNumber);
+1016:   if (delErr) throw delErr;
+1017:   if (cleanRows.length) {
+1018:     const { error } = await supabase.from('sales').insert(cleanRows);
+1019:     if (error) throw error;
+1020:   }
+1021: }
+1022: 
+1023: export async function updatePurchase(payload: { invoiceNumber: string; rows: any[] }) {
+1024:   const { invoiceNumber, rows } = payload || {};
+1025:   if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+1026:   
+1027:   const { data: oldRows, error: fetchErr } = await supabase.from('purchases').select('*').eq('invoice_number', invoiceNumber).limit(1);
+1028:   if (fetchErr) throw fetchErr;
+1029:   if (!oldRows || oldRows.length === 0) throw new Error('فاکتور اصلی در سرور پیدا نشد');
+1030:   
+1031:   const template = oldRows[0];
+1032:   const cleanRows = rows.filter((r: any) => !r._deleted).map((r: any) => {
+1033:     const merged = { ...template };
+1034:     delete merged.id; delete merged.created_at;
+1035:     merged.model_code = r.modelCode || '';
+---
+1023: export async function updatePurchase(payload: { invoiceNumber: string; rows: any[] }) {
+1024:   const { invoiceNumber, rows } = payload || {};
+1025:   if (!invoiceNumber) throw new Error('invoiceNumber لازم است');
+1026:   
+1027:   const { data: oldRows, error: fetchErr } = await supabase.from('purchases').select('*').eq('invoice_number', invoiceNumber).limit(1);
+1028:   if (fetchErr) throw fetchErr;
+1029:   if (!oldRows || oldRows.length === 0) throw new Error('فاکتور اصلی در سرور پیدا نشد');
+1030:   
+1031:   const template = oldRows[0];
+1032:   const cleanRows = rows.filter((r: any) => !r._deleted).map((r: any) => {
+1033:     const merged = { ...template };
+1034:     delete merged.id; delete merged.created_at;
+1035:     merged.model_code = r.modelCode || '';
+1036:     merged.model_name = r.modelName || '';
+1037:     merged.quantity = Number(r.quantity) || 0;
+1038:     merged.price_unit = Number(r.priceUnit) || 0;
+1039:     merged.payment = Number(r.payment) || 0;
+1040:     merged.amount = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
+1041:     merged.description = r.description || '';
+1042:     if (r.dateFactor) merged.date_factor = r.dateFactor;
+1043:     if (r.dateReg) merged.date_reg = r.dateReg;
+1044:     return merged;
+1045:   });
+1046: 
+1047:   const { error: delErr } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+1048:   if (delErr) throw delErr;
+1049:   if (cleanRows.length) {
+1050:     const { error } = await supabase.from('purchases').insert(cleanRows);
+1051:     if (error) throw error;
+1052:   }
+1053: }
+1054: 
+1055: 
+1056: // ═══════════════════════════════════════════
+1057: //  updateExpense / deleteExpense — برای سینک صف هزینه‌ها
+1058: // ═══════════════════════════════════════════
+1059: export async function updateExpense(p: any) {
+1060:   const id = p?.local_id || p?.id;
+1061:   if (!id) throw new Error('local_id لازم است');
+1062:   const clean: any = { ...p };
+1063:   delete clean.id; delete clean.user_id;
+1064:   const { error: delErr } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1065:   if (delErr) throw delErr;
+1066:   const { error } = await supabase.from('expenses').insert(clean);
+1067:   if (error) throw error;
+1068: }
+1069: 
+1070: export async function deleteExpense(id: string) {
+1071:   if (!id) throw new Error('id لازم است');
+1072:   const { error } = await supabase.from('expenses').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+---

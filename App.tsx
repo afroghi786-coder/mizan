@@ -71,7 +71,7 @@ import DateField from './lib.datefield';
 import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
 import { resolvePartyForInvoice } from './lib.partyIdentity';
 
-import { getCalType, parseDateAny, toStorageDateFull } from './lib';;
+import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
 
 import SuperAssistant from './SuperAssistant';
 
@@ -719,6 +719,12 @@ const dash = {
 //  ROOT
 
 // ══════════════════════════════════════════════════════════
+
+
+
+// بارگذاری اولیه
+refreshPackMap();
+
 
 export default function App() {
 
@@ -2787,13 +2793,13 @@ function SalesScreen({ showToast }: any) {
 
 
 
-  const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '', pack_size: 0, uom_label: '' }]);
+  const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '', pack_size: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
 
   const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
 
   const delItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
 
-  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack_unit || ''; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].shelf = p.shelf || ''; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
+  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack_unit || ''; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].shelf = p.shelf || ''; n[i].entered_unit = 'base'; n[i].entered_qty = n[i].quantity || 0; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
 
 
 
@@ -2876,7 +2882,20 @@ function SalesScreen({ showToast }: any) {
       const rows = await getInvoiceDetail(inv, 'sales');
       if (rows.length > 0) {
         const r = rows[0];
-        const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
+        const its = rows.map((x: any) => {
+                  const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+                  return {
+                    modelName: x.model_name,
+                    modelCode: x.model_code,
+                    shelf: x.shelf || '',
+                    quantity: x.quantity,
+                    priceUnit: x.price_unit,
+                    total: x.quantity * x.price_unit,
+                    base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+                    pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+                    pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+                  };
+                });
         const tot = its.reduce((a: number, it: any) => a + it.total, 0);
         const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
         const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
@@ -2949,7 +2968,20 @@ function SalesScreen({ showToast }: any) {
       const rows = await getInvoiceDetail(inv, 'sales');
       if (rows.length > 0) {
         const r = rows[0];
-        const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, shelf: x.shelf, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
+        const its = rows.map((x: any) => {
+                  const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+                  return {
+                    modelName: x.model_name,
+                    modelCode: x.model_code,
+                    shelf: x.shelf || '',
+                    quantity: x.quantity,
+                    priceUnit: x.price_unit,
+                    total: x.quantity * x.price_unit,
+                    base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+                    pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+                    pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+                  };
+                });
         const tot = its.reduce((a: number, it: any) => a + it.total, 0);
         const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
         const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
@@ -2998,7 +3030,20 @@ function SalesScreen({ showToast }: any) {
 
       const r = rows[0];
 
-      const its = rows.map((x: any) => ({ modelName: x.model_name, modelCode: x.model_code, quantity: x.quantity, priceUnit: x.price_unit, total: x.quantity * x.price_unit }));
+      const its = rows.map((x: any) => {
+                const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+                return {
+                  modelName: x.model_name,
+                  modelCode: x.model_code,
+                  shelf: x.shelf || '',
+                  quantity: x.quantity,
+                  priceUnit: x.price_unit,
+                  total: x.quantity * x.price_unit,
+                  base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+                  pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+                  pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+                };
+              });
 
       const total = its.reduce((a: number, it: any) => a + it.total, 0);
 
@@ -3026,7 +3071,7 @@ function SalesScreen({ showToast }: any) {
 
 
 
-  if (view === 'invoice' && invoice) return <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView invoice={invoice} onBack={() => { setView('list'); setInvoice(null); load(); }} showToast={showToast} onNew={resetForm} /></View>;
+  if (view === 'invoice' && invoice) return <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView invoice={invoice} prods={prods} onBack={() => { setView('list'); setInvoice(null); load(); }} showToast={showToast} onNew={resetForm} /></View>;
 
 
 
@@ -3287,9 +3332,9 @@ function SalesScreen({ showToast }: any) {
 
                         style={S.miniInput}
 
-                        value={String(it.quantity || '')}
+                        value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))}
 
-                        onChangeText={(v) => updItem(i, 'quantity', parseInt(v) || 0)}
+                        onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updItem(i, 'quantity', (u === 'pack' && Number(it.pack_size) > 0) ? Math.round(raw * Number(it.pack_size) * 1000) / 1000 : raw); }}
 
                         keyboardType="numeric"
 
@@ -3298,6 +3343,10 @@ function SalesScreen({ showToast }: any) {
                         placeholderTextColor="#94a3b8"
 
                       />
+
+                      {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.base_unit || 'عدد'}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'pack'); updItem(i, 'entered_qty', Number(it.pack_size) > 0 ? it.quantity / Number(it.pack_size) : 0); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.pack_unit || 'بسته'}</Text></TouchableOpacity></View>)}
+
+                      {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || 'عدد'}</Text>)}
 
                     </View>
 
@@ -4355,8 +4404,8 @@ function PurchaseScreen({ showToast }: any) {
                     <EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} />
 
                     <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))} onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updItem(i, 'quantity', (u === 'pack' && Number(it.pack_size) > 0) ? Math.round(raw * Number(it.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
-{Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>پایه</Text></TouchableOpacity><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'pack'); updItem(i, 'entered_qty', Number(it.pack_size) > 0 ? it.quantity / Number(it.pack_size) : 0); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>بسته</Text></TouchableOpacity></View>)}
-{it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} پایه</Text>)}
+{Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.base_unit || 'عدد'}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'pack'); updItem(i, 'entered_qty', Number(it.pack_size) > 0 ? it.quantity / Number(it.pack_size) : 0); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.pack_unit || 'بسته'}</Text></TouchableOpacity></View>)}
+{it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || 'عدد'}</Text>)}
 
                   </View>
 
@@ -5147,7 +5196,8 @@ function PrintScreen({ showToast }: any) {
           <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
           <Text style={{ width: 70, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>کد مدل</Text>
           <Text style={{ width: 130, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>نام مدل</Text>
-          <Text style={{ width: 40, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+          <Text style={{ width: 55, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تعداد (واحد پایه)</Text>
+<Text style={{ width: 55, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
           <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
           <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
           <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بدهکار</Text>
@@ -5175,7 +5225,8 @@ function PrintScreen({ showToast }: any) {
                 <Text style={{ width: 90, color: '#7c3aed', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{r.invoice || '—'}</Text>
                 <Text style={{ width: 70, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{r.modelCode || '—'}</Text>
                 <Text style={{ width: 130, color: '#1e3a5f', fontSize: 11, textAlign: 'right' }} numberOfLines={1}>{r.modelName || '—'}</Text>
-                <Text style={{ width: 40, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{toFaNum(r.qty)}</Text>
+                <Text style={{ width: 55, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{toFaNum(r.qty)} {(() => { const _u = prods.find((p: any) => String(p.code || '') === String(r.modelCode || '')); return _u ? _u.base_unit || 'عدد' : 'عدد'; })()}</Text>
+<Text style={{ width: 55, color: '#0891b2', fontSize: 11, textAlign: 'center' }}>{(() => { const _u = prods.find((p: any) => String(p.code || '') === String(r.modelCode || '')); if (_u && _u.pack_size > 0) { const packs = (Number(r.qty) / Number(_u.pack_size)).toFixed(2).replace(/\.00$/, ''); return packs + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
                 <Text style={{ width: 80, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{fmt(r.priceUnit)}</Text>
                 <Text style={{ width: 90, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{fmt(r.total)}</Text>
                 <Text style={{ width: 80, color: '#1e40af', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{debit ? fmt(debit) : '—'}</Text>
@@ -5739,6 +5790,21 @@ function InventoryScreen({ showToast }: any) {
 
   const [invRef] = useState({ current: null as any });
 
+  const [prodMap, setProdMap] = useState(new Map());
+  useEffect(() => {
+    getProducts().then(prods => {
+      const m = new Map();
+      (prods || []).forEach((p: any) => {
+        m.set(String(p.code || ''), {
+          pack_size: Number(p.pack_size) || 0,
+          base_unit: String(p.base_unit || 'عدد'),
+          pack_unit: String(p.pack_unit || 'بسته')
+        });
+      });
+      setProdMap(m);
+    });
+  }, []);
+
 
 
   const _buildInvHtml = (rows: any[], st: any) => {
@@ -6220,7 +6286,13 @@ function InventoryScreen({ showToast }: any) {
   
   const renderItem = useCallback(({ item: m, index: i }: { item: any, index: number }) => {
 
-            const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
+            const _u = prodMap.get(String(m.code || '')) || {};
+                const bU = _u.base_unit || 'عدد';
+                const pU = _u.pack_unit || 'بسته';
+                const pS = Number(_u.pack_size) || 0;
+                const packQty = pS > 0 ? ((Number(m.currentQty) || 0) / pS).toFixed(2).replace(/\.00$/, '') : '0';
+
+                const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
 
             return (<>
 
@@ -6237,6 +6309,10 @@ function InventoryScreen({ showToast }: any) {
                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.sold)}</Text>
 
                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: statusColor(m.status), fontWeight: 'bold', fontSize: 15 }]}>{fmt(m.currentQty)}</Text>
+
+                <Text style={[s.tdCell, { width: 80, fontSize: 11, color: '#0891b2' }]}>{pS > 0 ? pS + ' ' + bU : '—'}</Text>
+
+                <Text style={[s.tdCell, { width: 80, fontSize: 11, color: '#059669', fontWeight: 'bold' }]}>{pS > 0 ? packQty + ' ' + pU : '—'}</Text>
 
                 <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0891b2', fontSize: 11 }]}>{fmt(m.unitCost || 0)}</Text>
 
@@ -6300,7 +6376,7 @@ function InventoryScreen({ showToast }: any) {
 
           
               
-  }, [C]);
+  }, [C, prodMap]);
 
 return (
 
@@ -6417,6 +6493,10 @@ return (
             <Text style={[HDR.cell, { width: 80 }]}>فروش</Text>
 
             <Text style={[HDR.cell, { width: 90 }]}>موجودی</Text>
+
+            <Text style={[HDR.cell, { width: 80 }]}>واحد پایه</Text>
+
+            <Text style={[HDR.cell, { width: 80 }]}>واحد بسته</Text>
 
             <Text style={[HDR.cell, { width: 110 }]}>بهای واحد</Text>
 
@@ -6644,7 +6724,8 @@ return (
 
                           <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
 
-                          <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+                          <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد (واحد پایه)</Text>
+<Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
 
                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
 
@@ -6664,7 +6745,8 @@ return (
 
                             <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.payer_name || '—'}</Text>
 
-                            <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+                            <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = getPackForCodeGlobal(modelKardexCode); return _u ? _u.base_unit || 'عدد' : 'عدد'; })()}</Text>
+<Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = getPackForCodeGlobal(modelKardexCode); if (_u && _u.pack_size > 0) { const packs = (Number(r.quantity) || 0) / Number(_u.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
 
                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
 
@@ -7486,6 +7568,11 @@ function SearchSection({ showToast, onReturnSaved }: any) {
         priceUnit: r.price_unit || 0,
 
         payment: r.payment || 0,
+        base_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).base_unit) || '',
+        pack_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).pack_unit) || '',
+        pack_size: (getPackForCodeGlobal(r.model_code) && Number(getPackForCodeGlobal(r.model_code).pack_size)) || 0,
+        entered_unit: 'base',
+        entered_qty: Number(r.quantity) || 0,
 
         description: r.description || '',
 
@@ -7526,7 +7613,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
   const delRow = (i: number) => { const n = [...editRows]; n[i]._deleted = !n[i]._deleted; setEditRows(n); setDirty(true); };
 
-  const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', shipping: '', _deleted: false, _new: true }]); setDirty(true); };
+  const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', shipping: '', base_unit: '', pack_unit: '', pack_size: 0, entered_unit: 'base', entered_qty: 0, _deleted: false, _new: true }]); setDirty(true); };
 
   const updRow = (i: number, f: string, v: any) => { const n = [...editRows]; (n[i] as any)[f] = v; setEditRows(n); setDirty(true); };
 
@@ -7535,13 +7622,19 @@ function SearchSection({ showToast, onReturnSaved }: any) {
   const previewInvoice = async () => {
     const validRows = editRows.filter((r: any) => !r._deleted);
     if (!validRows.length) { showToast('هیچ ردیفی برای نمایش نیست', true); return; }
-    const items = validRows.map((r: any) => ({
-      modelName: r.modelName || '',
-      modelCode: r.modelCode || '',
-      quantity: Number(r.quantity) || 0,
-      priceUnit: Number(r.priceUnit) || 0,
-      total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
-    }));
+    const items = validRows.map((r: any) => {
+      const _u = prods.find((p: any) => String(p.code || '') === String(r.modelCode || ''));
+      return {
+        modelName: r.modelName || '',
+        modelCode: r.modelCode || '',
+        quantity: Number(r.quantity) || 0,
+        priceUnit: Number(r.priceUnit) || 0,
+        total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+        base_unit: r.base_unit || (_u ? _u.base_unit : 'عدد'),
+        pack_unit: r.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+        pack_size: r.pack_size !== undefined ? Number(r.pack_size) : (_u ? Number(_u.pack_size) : 0),
+      };
+    });
     const sales = items.reduce((a: number, it: any) => a + it.total, 0);
     const payments = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
     let prev: any = { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
@@ -7769,6 +7862,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
     if (showInvoice) return (
     <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView
+      prods={prods}
       invoice={showInvoice}
       onBack={() => { setShowInvoice(null); load(); }}
       onNew={() => { setShowInvoice(null); setEditing(null); setEditRows([]); setDirty(false); }}
@@ -7814,6 +7908,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
               <EL textKey="نام مدل" style={[s.thCell, { width: 180, textAlign: 'center' }]} />
 
               <EL textKey="تعداد" style={[s.thCell, { width: 80, textAlign: 'center' }]} />
+              <EL textKey="واحد بسته" style={[s.thCell, { width: 70, textAlign: 'center' }]} />
 
               <EL textKey="قیمت" style={[s.thCell, { width: 110, textAlign: 'center' }]} />
 
@@ -7870,6 +7965,11 @@ function SearchSection({ showToast, onReturnSaved }: any) {
                           updRow(i, 'modelCode', p.code || '');
 
                           updRow(i, 'priceUnit', p.price || 0);
+                          updRow(i, 'base_unit', p.base_unit || '');
+                          updRow(i, 'pack_unit', p.pack_unit || '');
+                          updRow(i, 'pack_size', Number(p.pack_size) || 0);
+                          updRow(i, 'entered_unit', 'base');
+                          updRow(i, 'entered_qty', Number(r.quantity) || 0);
 
                         }
 
@@ -7883,9 +7983,11 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
                   </View>
 
-                  <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.quantity || '')} onChangeText={(v) => updRow(i, 'quantity', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+                  <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.entered_unit === 'pack' ? (r.entered_qty || '') : (r.quantity || ''))} onChangeText={(v) => { const raw = parseNum(v); const u = r.entered_unit || 'base'; updRow(i, 'entered_unit', u); updRow(i, 'entered_qty', raw); updRow(i, 'quantity', (u === 'pack' && Number(r.pack_size) > 0) ? Math.round(raw * Number(r.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" editable={!r._deleted} /></View>
 
-                  <View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+                  {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'base'); updRow(i, 'entered_qty', r.quantity); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.base_unit || 'عدد'}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'pack'); updRow(i, 'entered_qty', Number(r.pack_size) > 0 ? r.quantity / Number(r.pack_size) : 0); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.pack_unit || 'بسته'}</Text></TouchableOpacity></View>)}
+
+<View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
 
                   <Text style={[s.tdCell, { width: 100, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{lt ? fmt(lt) : '—'}</Text>
 
@@ -10677,7 +10779,7 @@ function ProductsSection({ showToast }: any) {
 
 // ══════════════════════════════════════════════════════════
 
-function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
+function InvoiceView({ invoice, prods, onBack, onNew, showToast }: any) {
 
   const ref = useRef<View>(null);
 
@@ -10691,16 +10793,16 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
             if (mode === 'print') {
         const esc = (v: any) => String(v == null ? '' : v).replace(/[&<>"']/g, (m: string) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m));
         const curLabel = (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '');
-        const itemsRows = (invoice.current?.items || []).map((it: any, i: number) =>
-          '<tr>' +
+        const itemsRows = (invoice.current?.items || []).map((it: any, i: number) => { const _u = prods.find((p: any) => String(p.code || '') === String(it.modelCode || '')); const bU = it.base_unit || (_u ? _u.base_unit : 'عدد'); const pU = it.pack_unit || (_u ? _u.pack_unit : 'بسته'); const pS = Number(it.pack_size) || (_u ? Number(_u.pack_size) : 0); return '<tr>' +
           '<td style="text-align:center">' + (i + 1) + '</td>' +
           '<td style="text-align:center;font-size:11px">' + esc(it.modelCode || '—') + '</td>' +
           '<td style="text-align:right;font-weight:bold">' + esc(it.modelName || '') + '</td>' +
           '<td style="text-align:center">' + esc(it.shelf || '—') + '</td>' +
-          '<td style="text-align:center">' + esc(it.quantity || 0) + ' ' + esc(it.base_unit || '') + (it.pack_size && Number(it.pack_size) > 0 ? '<br/><span style="font-size:9px;color:#64748b">' + ((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\.00$/, '') + ' ' + esc(it.pack_unit || 'بسته') + '</span>' : '') + '</td>' +
+          '<td style="text-align:center">' + esc(it.quantity || 0) + ' ' + esc(bU) + '</td>' +
+          '<td style="text-align:center;color:#0891b2;font-weight:bold">' + (pS > 0 ? ((Number(it.quantity) || 0) / pS).toFixed(2).replace(/\.00$/, '') + ' ' + esc(pU) : '—') + '</td>' +
           '<td style="text-align:center">' + fmt(it.priceUnit || 0) + '</td>' +
           '<td style="text-align:center;font-weight:bold">' + fmt(it.total || 0) + '</td>' +
-          '</tr>').join('');
+          '</tr>'; }).join('');
         let words = '';
         try { if (typeof numToWords === 'function') words = String(numToWords(Number(tot.balance || 0)) || ''); } catch {}
         const html = '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="UTF-8"><title>فاکتور ' + esc(invoice.current?.invoiceNumber || '') + '</title>' +
@@ -10739,7 +10841,7 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
           '<div class="info-item"><b>🚚 باربری:</b> ' + esc(invoice.customer?.shipping || '—') + '</div>' +
           '</div>' +
           '<table><thead><tr>' +
-          '<th style="width:5%">#</th><th style="width:15%">کد مدل</th><th style="width:30%">نام مدل</th><th style="width:8%">قفسه</th><th style="width:8%">تعداد</th><th style="width:16%">قیمت واحد</th><th style="width:18%">جمع</th>' +
+          '<th style="width:5%">#</th><th style="width:15%">کد مدل</th><th style="width:30%">نام مدل</th><th style="width:8%">قفسه</th><th style="width:8%">واحد پایه</th><th style="width:8%">واحد بسته</th><th style="width:16%">قیمت واحد</th><th style="width:18%">جمع</th>' +
           '</tr></thead><tbody>' + itemsRows + '</tbody></table>' +
           '<div class="sum-box">' +
           '<div class="sum-row"><span>جمع فروش:</span><b>' + fmt(invoice.current?.sales || 0) + ' ' + esc(curLabel) + '</b></div>' +
@@ -10892,7 +10994,8 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
             <Text style={[s.invTh, { flex: 1.2, textAlign: 'center' }]}>کد مدل</Text>
             <Text style={[s.invTh, { flex: 2, textAlign: 'right' }]}>نام مدل</Text>
             <Text style={[s.invTh, { flex: 0.8, textAlign: 'center' }]}>قفسه</Text>
-            <Text style={[s.invTh, { flex: 0.6, textAlign: 'center' }]}>تعداد</Text>
+            <Text style={[s.invTh, { flex: 0.5, textAlign: 'center' }]}>واحد پایه</Text>
+              <Text style={[s.invTh, { flex: 0.5, textAlign: 'center' }]}>واحد بسته</Text>
             <Text style={[s.invTh, { flex: 1, textAlign: 'center' }]}>قیمت</Text>
             <Text style={[s.invTh, { flex: 1.2, textAlign: 'center' }]}>مبلغ</Text>
           </View>
@@ -10902,10 +11005,8 @@ function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
               <Text style={[s.invTd, { flex: 1.2, textAlign: 'center', fontSize: 11 }]}>{it.modelCode || '—'}</Text>
               <Text style={[s.invTd, { flex: 2, textAlign: 'right', fontWeight: 'bold' }]}>{it.modelName}</Text>
               <Text style={[s.invTd, { flex: 0.8, textAlign: 'center' }]}>{it.shelf || '—'}</Text>
-              <View style={{ flex: 0.6, alignItems: 'center' }}>
-                <Text style={[s.invTd, { textAlign: 'center' }]}>{it.quantity} {it.base_unit || ''}</Text>
-                {it.pack_size && Number(it.pack_size) > 0 ? <Text style={{ fontSize: 9, color: '#64748b', textAlign: 'center' }}>{((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\.00$/, '')} {it.pack_unit || 'بسته'}</Text> : null}
-              </View>
+              <Text style={[s.invTd, { flex: 0.5, textAlign: 'center' }]}>{Number(it.quantity) || 0} {it.base_unit || 'عدد'}</Text>
+              <Text style={[s.invTd, { flex: 0.5, textAlign: 'center', color: '#0891b2', fontWeight: 'bold' }]}>{Number(it.pack_size) > 0 ? (((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\.00$/, '') + ' ' + (it.pack_unit || 'بسته')) : '—'}</Text>
               <Text style={[s.invTd, { flex: 1, textAlign: 'center' }]}>{fmt(it.priceUnit)}</Text>
               <Text style={[s.invTd, { flex: 1.2, textAlign: 'center', fontWeight: 'bold' }]}>{fmt(it.total)}</Text>
             </View>

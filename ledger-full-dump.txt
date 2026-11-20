@@ -1,0 +1,366 @@
+=== App.tsx: ترازنامه و معین ===
+--- یافت شد حول خط 1322 ---
+1292: 
+1293: // ══════════════════════════════════════════════════════════
+1294: 
+1295: const DEFAULT_TAB_PINS: Record<string, string> = {
+1296: 
+1297:   purchase: '4242', print: '4242', mgr: '4242', profit: '4242', inventory: '4242', settings: '4242',
+1298: 
+1299: };
+1300: 
+1301: function getTabPins(settings: any): Record<string, string> {
+1302: 
+1303:   const p = settings?.tab_pins;
+1304: 
+1305:   if (!p || typeof p !== 'object') return DEFAULT_TAB_PINS;
+1306: 
+1307:   return { ...DEFAULT_TAB_PINS, ...p };
+1308: 
+1309: }
+1310: 
+1311: 
+1312: 
+1313: function MainApp({ showToast, onCycleTheme, langTick }: any) {
+1314: 
+1315:   const [showLang, setShowLang] = useState(false);
+1316: 
+1317:   const [curLang, setCurLang] = useState(getLang());
+1318: 
+1319:   const [tab, setTab] = useState('dashboard');
+1320:   const [supportOpenTicketId, setSupportOpenTicketId] = useState<string>('');
+1321:   const [supportUnread, setSupportUnread] = useState(0);
+1322:   const [ledgerOpen, setLedgerOpen] = useState(false);
+1323: 
+1324:   const [plus, setPlus] = useState(false);
+1325: 
+1326:   useEffect(() => { (globalThis as any).__newFormHandlers = (globalThis as any).__newFormHandlers || {}; }, []);
+1327: 
+1328:   useEffect(() => { console.log('TAB_NOW:', tab); }, [tab]);
+1329: 
+1330: 
+1331: 
+1332:   useEffect(() => {
+1333:     (globalThis as any).__nav = { setTab };
+1334:     console.warn('NAV_BRIDGE_READY');
+1335:   }, []);
+1336: 
+1337:   // کلیک روی نوتیف support_reply → باز کردن تب پشتیبانی و همان تیکت
+1338:   useEffect(() => {
+1339:     try {
+1340:       const sub = Notifications?.addNotificationResponseReceivedListener?.((resp: any) => {
+1341:         try {
+1342:           const data = resp?.notification?.request?.content?.data || {};
+1343:           const t = String(data?.type || '');
+1344:           const tid = String(data?.ticket_id || '');
+1345:           if (t === 'support_reply' || tid) {
+1346:             if (tid) setSupportOpenTicketId(tid);
+1347:             setTab('support');
+1348:           }
+1349:         } catch {}
+1350:       });
+1351:       return () => { try { sub?.remove?.(); } catch {} };
+1352:     } catch { return; }
+1353:   }, []);
+1354: 
+1355:   // SUPPORT_BADGE_POLL — شمارش پاسخ‌های خوانده‌نشده ادمین
+1356:   useEffect(() => {
+1357:     let alive = true;
+1358:     const tick = async () => {
+1359:       try {
+1360:         const c = await getSupportUnreadCount();
+1361:         if (alive) setSupportUnread(Number(c) || 0);
+1362:       } catch {}
+1363:     };
+1364:     tick();
+1365:     const iv = setInterval(tick, 15000);
+1366:     return () => { alive = false; clearInterval(iv); };
+1367:   }, []);
+1368: 
+1369:   useEffect(() => {
+1370: 
+1371:     (globalThis as any).__nav = { setTab: (t: string) => { console.warn('NAV_SET', t); setTab(t as any); } };
+1372: 
+1373:     console.warn('NAV_READY');
+1374: 
+1375:     setTimeout(() => { try { require('./lib.voice').speakText('سیستم آماده است', 'fa-IR'); } catch(e) { console.warn('TTS_STARTUP_ERR', e); } }, 1500);
+1376: 
+1377:   }, []);
+1378: 
+1379: 
+1380: 
+1381: 
+1382: 
+1383:   // 📖 دفترچه فرمان‌های تب‌های اصلی
+1384: 
+1385:   useEffect(() => {
+1386: 
+1387:     registerCommands('main', {
+1388: 
+1389:       'صرافی':        () => setTab('exchange'),
+1390: 
+1391:       'صراف':         () => setTab('exchange'),
+1392: 
+1393:       'بازار عمومی':  () => setTab('publicMarket'),
+1394: 
+1395:       'بازار':        () => setTab('publicMarket'),
+1396: 
+1397:       'سفارش':        () => setTab('order'),
+1398: 
+1399:       'فروش':         () => setTab('order'),
+1400: 
+1401:       'خانه':         () => setTab('order'),
+1402: 
+1403:       'داشبورد':      () => setTab('order'),
+1404: 
+1405:       'خرید':         () => setTab('purchase'),
+1406: 
+1407:       'انبار':        () => setTab('inventory'),
+1408: 
+1409:       'موجودی':       () => setTab('inventory'),
+1410: 
+1411:       'هزینه‌ها':     () => setTab('expenses'),
+1412: 
+1413:       'هزینه':        () => setTab('expenses'),
+1414: 
+1415:       'کارمندان':     () => setTab('employees'),
+1416: 
+1417:       'کارمند':       () => setTab('employees'),
+1418: 
+1419:       'سود':          () => setTab('profit'),
+1420: 
+1421:       'درآمد':        () => setTab('profit'),
+1422: 
+1423:       'بانک':         () => setTab('bankMatch'),
+1424: 
+1425:       'پیامک':        () => setTab('bankMatch'),
+1426: 
+1427:       'آموزش':        () => setTab('botLearning'),
+1428: 
+1429:       'دستیار':       () => setTab('manualEntry'),
+1430: 
+1431:       'ربات':         () => setTab('aiAssistant'),
+1432: 
+1433:       'مدیریت':       () => setTab('mgr'),
+1434: 
+1435:       'پرینت':        () => setTab('print'),
+1436: 
+1437:     });
+1438: 
+1439:   }, []);
+1440: 
+1441:   const [botInnerView, setBotInnerView] = useState<string>('bot');
+1442: 
+1443: 
+1444: 
+1445:   // 🌉 ثبت Navigator برای ربات
+1446: 
+1447:   useEffect(() => {
+1448: 
+1449:     try {
+1450: 
+1451:       
+1452: 
+1453:     } catch {}
+1454: 
+1455:     /* cleanup __nav حذف شد */
+1456: 
+1457:   }, [tab]);
+1458: 
+1459: 
+1460: 
+1461:   const navRef = React.useMemo(() => ({
+1462: 
+1463:     setTab: (t: string) => setTab(t as any),
+1464: 
+1465:     setSub: (s: string) => { try { (globalThis as any).__exchangeSetSub?.(s); } catch {} },
+1466: 
+1467:     openModal: (name: string, data?: any) => { try { (globalThis as any).__openModal?.(name, data); } catch {} },
+1468: 
+1469:     getState: () => ({ tab }),
+1470: 
+1471:   }), [tab]);
+\n
+--- یافت شد حول خط 1972 ---
+1942:       
+1943: 
+1944:             <TouchableOpacity 
+1945: 
+1946:               key="plus_tab" 
+1947: 
+1948:               accessibilityLabel="ایجاد سریع" 
+1949: 
+1950:               accessibilityRole="button" 
+1951: 
+1952:               onPress={() => setPlus(true)} 
+1953: 
+1954:               activeOpacity={0.7} 
+1955: 
+1956:               style={s.tab}
+1957: 
+1958:             >
+1959: 
+1960:               <Text style={s.tabIcon}>➕</Text>
+1961: 
+1962:               <Text style={[s.tabLbl, { color: '#fff' }]}>ایجاد</Text>
+1963: 
+1964:             </TouchableOpacity>
+1965: 
+1966:           </ScrollView>
+1967: 
+1968:       )}
+1969: 
+1970:       <View key={`tab-${tab}-${langTick || 0}`} style={{ flex: 1 }}>
+1971: 
+1972:       {tab === 'dashboard' && <DashboardScreen onLedgerOpenChange={setLedgerOpen} lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabKey); setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); } else { requestTab(k); } }} />}
+1973: 
+1974:       {tab === 'order' && <SalesScreen showToast={showToast} />}
+1975: 
+1976:       {tab === 'purchase' && <PurchaseScreen showToast={showToast} />}
+1977: 
+1978:       {tab === 'print' && <PrintScreen showToast={showToast} />}
+1979: 
+1980:       {tab === 'mgr' && (
+1981:               <View style={{ flex: 1 }}>
+1982:                 <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+1983:                   <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+1984:                     <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>← بازگشت به داشبورد</Text>
+1985:                   </TouchableOpacity>
+1986:                   <Text style={{ color: '#d4af37', fontSize: 14, fontWeight: 'bold' }}>📁 مدیریت</Text>
+1987:                 </View>
+1988:                 <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />
+1989:               </View>
+1990:             )}
+1991: 
+1992:       {tab === 'assistant' && (
+1993:         <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+1994:           <AssistantHome showToast={showToast} />
+1995:         </ScrollView>
+1996:       )}
+1997: 
+1998:       {tab === 'settings' && (
+1999:         <View style={{ flex: 1, backgroundColor: '#0a1628' }}>
+2000:           <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+2001:             <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+2002:               <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>→ بازگشت</Text>
+2003:             </TouchableOpacity>
+2004:             <Text style={{ color: '#f4d47a', fontSize: 16, fontWeight: 'bold' }}>⚙️ تنظیمات</Text>
+2005:           </View>
+2006:           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+2007:             <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />
+2008:           </ScrollView>
+2009:         </View>
+2010:       )}
+2011: 
+2012:       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
+2013: 
+2014:       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
+2015: 
+2016:       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
+2017: 
+2018:       {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
+2019: 
+2020:       {tab === 'support' && (
+2021:         <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 120 }}>
+2022:           <SupportSection showToast={showToast} initialTicketId={supportOpenTicketId} />
+2023:         </ScrollView>
+2024:       )}
+2025: 
+2026:       {tab === 'recovery' && (
+2027:         <View style={{ flex: 1 }}>
+2028:           <RecoveryPanel showToast={showToast} onBack={() => setTab('dashboard')} />
+2029:         </View>
+2030:       )}
+2031: 
+2032:       {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
+2033: 
+2034:       {tab === 'botLearning' && <LearningScreen showToast={showToast} />}
+2035: 
+2036:       {tab === 'manualEntry' && <ManualEntryScreen showToast={showToast} />}
+2037: 
+2038:       {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
+2039: 
+2040:       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
+2041: 
+2042:       {tab === 'employees' && <EmployeesScreen showToast={showToast} settings={settings} />}
+2043: 
+2044:       <TouchableOpacity
+2045: 
+2046:         activeOpacity={0.85}
+2047: 
+2048:         onPress={() => setPlus(true)}
+2049: 
+2050:         style={{ display: 'none' }}
+2051: 
+2052:       >
+2053: 
+2054:         <Text style={{ color: '#e2e8f0', fontSize: 32, fontWeight: 'bold', lineHeight: 34 }}>+</Text>
+2055: 
+2056:       </TouchableOpacity>
+2057: 
+2058:       <PlusMenu visible={plus} onClose={() => setPlus(false)} lang={curLang === 'ps' ? 'ps' : 'fa'} onPick={(n: any) => { 
+2059: 
+2060:           setPlus(false); 
+2061: 
+2062:           const k = String(n.key); 
+2063: 
+2064:           const [tabKey, sub] = k.includes(':') ? k.split(':') : [k, undefined]; 
+2065: 
+2066:           (globalThis as any).__openNewPending = tabKey; 
+2067: 
+2068:           requestTab(tabKey); 
+2069: 
+2070:           if (sub) setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); 
+2071: 
+2072:           setTimeout(() => { 
+2073: 
+2074:             try { 
+2075: 
+2076:               const h = (globalThis as any).__newFormHandlers?.[tabKey]; 
+2077: 
+2078:               if (typeof h === 'function') h(); 
+2079: 
+2080:             } catch {} 
+2081: 
+2082:           }, 400); 
+2083: 
+2084:         }} />
+2085: 
+2086:             <GlobalVoice
+2087: 
+2088:         showToast={showToast}
+2089: 
+2090:         renderScreen={(name: string) => {
+2091: 
+2092:           if (name === 'exchange') return <ExchangeScreen showToast={showToast} />;
+2093: 
+2094:           if (name === 'publicMarket') return <PublicMarketScreen showToast={showToast} />;
+2095: 
+2096:           if (name === 'order') return <SalesScreen showToast={showToast} />;
+2097: 
+2098:           if (name === 'purchase') return <PurchaseScreen showToast={showToast} />;
+2099: 
+2100:           if (name === 'inventory') return <InventoryScreen showToast={showToast} />;
+2101: 
+2102:           if (name === 'expenses') return <ExpensesScreen showToast={showToast} />;
+2103: 
+2104:           if (name === 'employees') return <EmployeesScreen showToast={showToast} settings={settings} />;
+2105: 
+2106:           if (name === 'profit') return <ProfitScreen showToast={showToast} settings={settings} />;
+2107: 
+2108:           if (name === 'bankMatch') return <SmsMatchScreen showToast={showToast} />;
+2109: 
+2110:           return null;
+2111: 
+2112:         }}
+2113: 
+2114:       />
+2115: 
+2116:       </View>
+2117: 
+2118:       <LanguageModal
+2119: 
+2120:         visible={showLang}
+2121: 
+\n
+=== lib.ts: توابع مرتبط با ترازنامه و معین ===

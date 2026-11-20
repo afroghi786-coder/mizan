@@ -1,0 +1,175 @@
+=== App.tsx: جستجوی کلمات کلیدی معین/ledger/طرف حساب ===
+
+--- یافت شد حول محور خط 1322 ---
+1307:   return { ...DEFAULT_TAB_PINS, ...p };
+1308: 
+1309: }
+1310: 
+1311: 
+1312: 
+1313: function MainApp({ showToast, onCycleTheme, langTick }: any) {
+1314: 
+1315:   const [showLang, setShowLang] = useState(false);
+1316: 
+1317:   const [curLang, setCurLang] = useState(getLang());
+1318: 
+1319:   const [tab, setTab] = useState('dashboard');
+1320:   const [supportOpenTicketId, setSupportOpenTicketId] = useState<string>('');
+1321:   const [supportUnread, setSupportUnread] = useState(0);
+1322:   const [ledgerOpen, setLedgerOpen] = useState(false);
+1323: 
+1324:   const [plus, setPlus] = useState(false);
+1325: 
+1326:   useEffect(() => { (globalThis as any).__newFormHandlers = (globalThis as any).__newFormHandlers || {}; }, []);
+1327: 
+1328:   useEffect(() => { console.log('TAB_NOW:', tab); }, [tab]);
+1329: 
+1330: 
+1331: 
+1332:   useEffect(() => {
+1333:     (globalThis as any).__nav = { setTab };
+1334:     console.warn('NAV_BRIDGE_READY');
+1335:   }, []);
+1336: 
+1337:   // کلیک روی نوتیف support_reply → باز کردن تب پشتیبانی و همان تیکت
+1338:   useEffect(() => {
+1339:     try {
+1340:       const sub = Notifications?.addNotificationResponseReceivedListener?.((resp: any) => {
+1341:         try {
+1342:           const data = resp?.notification?.request?.content?.data || {};
+1343:           const t = String(data?.type || '');
+1344:           const tid = String(data?.ticket_id || '');
+1345:           if (t === 'support_reply' || tid) {
+1346:             if (tid) setSupportOpenTicketId(tid);
+1347:             setTab('support');
+1348:           }
+1349:         } catch {}
+1350:       });
+1351:       return () => { try { sub?.remove?.(); } catch {} };
+1352:     } catch { return; }
+1353:   }, []);
+1354: 
+1355:   // SUPPORT_BADGE_POLL — شمارش پاسخ‌های خوانده‌نشده ادمین
+1356:   useEffect(() => {
+1357:     let alive = true;
+1358:     const tick = async () => {
+1359:       try {
+1360:         const c = await getSupportUnreadCount();
+1361:         if (alive) setSupportUnread(Number(c) || 0);
+
+--- یافت شد حول محور خط 1924 ---
+1909: 
+1910:               <Text style={{ fontSize: 24, color: '#f4d47a' }}>⚖️</Text>
+1911: 
+1912:               <Text style={s.hTitle}>{t('میزان')}</Text>
+1913: 
+1914:             </View>
+1915: 
+1916:             <Text style={s.hSub}>{t('حساب‌ها دقیق، معاملات امن، ذهن آسوده')} [v3]</Text>
+1917: 
+1918:           </View>
+1919: 
+1920:         </View>
+1921: 
+1922:       </View>
+1923: 
+1924:       {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && tab !== 'mgr' && tab !== 'recovery' && !ledgerOpen && (
+1925: 
+1926:         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
+1927: 
+1928:         {tabs.map((t) => (
+1929: 
+1930:                    <TouchableOpacity key={t.key} accessibilityLabel={String(t.label)} accessibilityRole="button" onPress={() => requestTab(t.key)} activeOpacity={0.7} style={[s.tab, tab === t.key && { backgroundColor: C.isSimple ? '#64748b' : t.color, borderColor: '#d4af37' }]}>
+1931: 
+1932:             <Text style={s.tabIcon}>{t.icon}</Text>
+1933: 
+1934:             <Text style={[s.tabLbl, { color: C.textMut }, tab === t.key && s.tabLblActive]}>{t.label}</Text>
+1935: 
+1936:             {isLocked(t.key) && <Text style={s.lock}>🔒</Text>}
+1937: 
+1938:           </TouchableOpacity>
+1939: 
+1940:         ))}
+1941: 
+1942:       
+1943: 
+1944:             <TouchableOpacity 
+1945: 
+1946:               key="plus_tab" 
+1947: 
+1948:               accessibilityLabel="ایجاد سریع" 
+1949: 
+1950:               accessibilityRole="button" 
+1951: 
+1952:               onPress={() => setPlus(true)} 
+1953: 
+1954:               activeOpacity={0.7} 
+1955: 
+1956:               style={s.tab}
+1957: 
+1958:             >
+1959: 
+1960:               <Text style={s.tabIcon}>➕</Text>
+1961: 
+1962:               <Text style={[s.tabLbl, { color: '#fff' }]}>ایجاد</Text>
+1963: 
+
+--- یافت شد حول محور خط 1972 ---
+1957: 
+1958:             >
+1959: 
+1960:               <Text style={s.tabIcon}>➕</Text>
+1961: 
+1962:               <Text style={[s.tabLbl, { color: '#fff' }]}>ایجاد</Text>
+1963: 
+1964:             </TouchableOpacity>
+1965: 
+1966:           </ScrollView>
+1967: 
+1968:       )}
+1969: 
+1970:       <View key={`tab-${tab}-${langTick || 0}`} style={{ flex: 1 }}>
+1971: 
+1972:       {tab === 'dashboard' && <DashboardScreen onLedgerOpenChange={setLedgerOpen} lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabKey); setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); } else { requestTab(k); } }} />}
+1973: 
+1974:       {tab === 'order' && <SalesScreen showToast={showToast} />}
+1975: 
+1976:       {tab === 'purchase' && <PurchaseScreen showToast={showToast} />}
+1977: 
+1978:       {tab === 'print' && <PrintScreen showToast={showToast} />}
+1979: 
+1980:       {tab === 'mgr' && (
+1981:               <View style={{ flex: 1 }}>
+1982:                 <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+1983:                   <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+1984:                     <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>← بازگشت به داشبورد</Text>
+1985:                   </TouchableOpacity>
+1986:                   <Text style={{ color: '#d4af37', fontSize: 14, fontWeight: 'bold' }}>📁 مدیریت</Text>
+1987:                 </View>
+1988:                 <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />
+1989:               </View>
+1990:             )}
+1991: 
+1992:       {tab === 'assistant' && (
+1993:         <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+1994:           <AssistantHome showToast={showToast} />
+1995:         </ScrollView>
+1996:       )}
+1997: 
+1998:       {tab === 'settings' && (
+1999:         <View style={{ flex: 1, backgroundColor: '#0a1628' }}>
+2000:           <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+2001:             <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+2002:               <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>→ بازگشت</Text>
+2003:             </TouchableOpacity>
+2004:             <Text style={{ color: '#f4d47a', fontSize: 16, fontWeight: 'bold' }}>⚙️ تنظیمات</Text>
+2005:           </View>
+2006:           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+2007:             <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />
+2008:           </ScrollView>
+2009:         </View>
+2010:       )}
+2011: 
+
+
+=== lib.ts: توابع دریافت اطلاعات معین و تراکنش‌ها ===

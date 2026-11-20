@@ -1,0 +1,37 @@
+=== 1. جستجوی تمام توابع سازنده‌ی HTML ===
+365: const _buildHtml = (forParty) => {
+443: const pdfAll = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(false), 'ledger-' + Date.now() + '.pdf'); if (showToast) showToast(r.ok ? '
+444: const printAll = async () => { try { var r = await printHtml(_buildHtml(false)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, 
+448: const pdfParty = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(true), 'statement-' + selectedParty.code + '.pdf'); if (showToast) showTo
+449: const printParty = async () => { try { var r = await printHtml(_buildHtml(true)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message,
+470: const _buildInvoiceHtml = () => {
+492: const _buildInvoiceListHtml = () => {
+533: const _buildInvoiceDetailHtml = () => {
+555: const pdfInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await shareHtmlAsP
+556: const printInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await printHtml(
+604: const pdfInvoice = async () => { try { var html = _buildInvoiceHTMLInline(invoiceDetailMeta, invoiceDetailRows); var r = await shareHtmlAsPdf(html, 'i
+605: const printInvoice = async () => { try { var html = _buildInvoiceHTMLInline(invoiceDetailMeta, invoiceDetailRows); var r = await printHtml(html); if (
+
+=== 2. تمام خطوط شامل <th> در LedgerScreen ===
+424: _p.push('<table style="font-size:8px"><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>جمع ردیف</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+476: _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th></tr>');
+502: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+507: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
+515: _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</th></tr>');
+538: _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th><th>باربری</th></tr>');
+583: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>قیمت</th><th>جمع ردیف</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+
+=== 3. تمام خطوط شامل colspan ===
+398: _p.push('<td colspan="5" style="text-align:left; padding:8px">جمع کل:</td>');
+432: _p.push('<tr class="total"><td colspan="7" style="text-align:left;font-weight:bold">جمع:</td><td style="font-weight:bold">' + toFaNum(tQty) + '</td><td></td><td></td><td style="color:#1e40af;font-weight:bold">' + fmt(tDebit) + '</td><td style="color:#059669;font-weight:bold">' + fmt(tCredit) + '</td
+483: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
+513: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td>' + fmt(Math.abs(tot-paid)) + '</td></tr>');
+522: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td>' + fmt(totP) + '</td><td colspan="2"></td></tr>');
+545: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td colspan="3"></td></tr>');
+591: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="10" style="text-align:left">جمع:</td><td style="color:#1e40af">' + fmt(td) + '</td><td style="color:#059669">' + fmt(tc) + '</td><td>' + fmt(Math.abs(td - tc)) + '</td><td colspan="6"></td></tr>');
+
+=== 4. تمام خطوط شامل prodMap یا packMapRef ===
+93: const [prodMap, setProdMap] = useState(new Map());
+589: _p.push('<tr><td>' + idx + '</td><td>' + _safeLedgerDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_
+1118: <Text style={[s.td, { width: 60, fontSize: 9, color: '#0891b2' }]}>{(() => { const _code = String(r.model_code || ''); const _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}
+1119: <Text style={[s.td, { width: 70, fontSize: 9, color: '#059669', fontWeight: 'bold' }]}>{(() => { const _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; const pU = _u.pack_u

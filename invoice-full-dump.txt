@@ -1,0 +1,319 @@
+=== previewInvoice (7574-7615) ===
+7574: 
+7575:   const updRow = (i: number, f: string, v: any) => { const n = [...editRows]; (n[i] as any)[f] = v; setEditRows(n); setDirty(true); };
+7576: 
+7577: 
+7578: 
+7579:   const previewInvoice = async () => {
+7580:     const validRows = editRows.filter((r: any) => !r._deleted);
+7581:     if (!validRows.length) { showToast('هیچ ردیفی برای نمایش نیست', true); return; }
+7582:     const items = validRows.map((r: any) => ({
+7583:       modelName: r.modelName || '',
+7584:       modelCode: r.modelCode || '',
+7585:       quantity: Number(r.quantity) || 0,
+7586:       priceUnit: Number(r.priceUnit) || 0,
+7587:       total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+7588:     }));
+7589:     const sales = items.reduce((a: number, it: any) => a + it.total, 0);
+7590:     const payments = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+7591:     let prev: any = { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
+7592:     try { prev = await getCustomerPreviousBalance(editing.code, editing.invoice); } catch {}
+7593:     setShowInvoice({
+7594:       customer: {
+7595:         code: editing.code,
+7596:         name: editing.name,
+7597:         phone: editing.phone || '',
+7598:         address: '',
+7599:         shipping: validRows[0]?.shipping || '',
+7600:       },
+7601:       current: {
+7602:         invoiceNumber: editing.invoice,
+7603:         items,
+7604:         sales,
+7605:         payments,
+7606:         balance: sales - payments,
+7607:       },
+7608:       previous: prev,
+7609:       totals: {
+7610:         sales: (prev.sales || 0) + sales,
+7611:         payments: (prev.payments || 0) + payments,
+7612:         balance: (prev.balance || 0) + (sales - payments),
+7613:       },
+7614:       timeString: displayDate(new Date().toISOString()),
+7615:     });
+
+=== InvoiceView captureAndShare & Buttons (10727-11000) ===
+10727: 
+10728: //  INVOICE A5 VIEW
+10729: 
+10730: // ══════════════════════════════════════════════════════════
+10731: 
+10732: function InvoiceView({ invoice, onBack, onNew, showToast }: any) {
+10733: 
+10734:   const ref = useRef<View>(null);
+10735: 
+10736:   const c = invoice.customer, cur = invoice.current, tot = invoice.totals;
+10737: 
+10738: 
+10739: 
+10740:   const captureAndShare = async (mode: 'share' | 'save' | 'print') => {
+10741:     try {
+10742:       // پرینت: همیشه HTML/PDF استاندارد، نه تصویر
+10743:             if (mode === 'print') {
+10744:         const esc = (v: any) => String(v == null ? '' : v).replace(/[&<>"']/g, (m: string) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m] || m));
+10745:         const curLabel = (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '');
+10746:         const itemsRows = (invoice.current?.items || []).map((it: any, i: number) => { const _u = getPackForCodeGlobal(it.modelCode); const bU = _u ? _u.base_unit : (it.base_unit || 'عدد'); const pU = _u ? _u.pack_unit : (it.pack_unit || 'بسته'); const pS = _u ? Number(_u.pack_size) : Number(it.pack_size); let qtyStr = esc(it.quantity || 0) + ' ' + esc(bU); if (pS > 0) { const packs = ((Number(it.quantity) || 0) / pS).toFixed(2).replace(/\.00$/, ''); qtyStr += '<br/><span style="font-size:9px;color:#0891b2;font-weight:bold">' + packs + ' ' + esc(pU) + '</span>'; } return
+10747:           '<tr>' +
+10748:           '<td style="text-align:center">' + (i + 1) + '</td>' +
+10749:           '<td style="text-align:center;font-size:11px">' + esc(it.modelCode || '—') + '</td>' +
+10750:           '<td style="text-align:right;font-weight:bold">' + esc(it.modelName || '') + '</td>' +
+10751:           '<td style="text-align:center">' + esc(it.shelf || '—') + '</td>' +
+10752:           '<td style="text-align:center">' + qtyStr + '</td>' +
+10753:           '<td style="text-align:center">' + fmt(it.priceUnit || 0) + '</td>' +
+10754:           '<td style="text-align:center;font-weight:bold">' + fmt(it.total || 0) + '</td>' +
+10755:           '</tr>'; }).join('');
+10756:         let words = '';
+10757:         try { if (typeof numToWords === 'function') words = String(numToWords(Number(tot.balance || 0)) || ''); } catch {}
+10758:         const html = '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="UTF-8"><title>فاکتور ' + esc(invoice.current?.invoiceNumber || '') + '</title>' +
+10759:           '<style>' +
+10760:           '@page { size: A4; margin: 10mm; }' +
+10761:           '* { box-sizing: border-box; }' +
+10762:           'body { font-family: Tahoma, Arial, sans-serif; font-size: 12px; color: #0f172a; margin:0; padding:0; }' +
+10763:           '.header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #d4af37; padding-bottom:8px; margin-bottom:10px; }' +
+10764:           '.brand { font-size:24px; font-weight:bold; color:#0f2438; }' +
+10765:           '.slogan { font-size:11px; color:#64748b; margin-top:2px; }' +
+10766:           '.meta { text-align:left; font-size:11px; color:#475569; line-height:1.7; }' +
+10767:           '.title { text-align:center; font-size:20px; font-weight:bold; margin:8px 0 12px; color:#0f2438; }' +
+10768:           '.info-grid { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }' +
+10769:           '.info-item { border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px; font-size:11px; background:#f8fafc; }' +
+10770:           '.info-item b { color:#0f2438; }' +
+10771:           'table { width:100%; border-collapse:collapse; margin-top:6px; }' +
+10772:           'thead th { background:#0f2438; color:#fff; font-size:11px; padding:8px 6px; border:1px solid #0f2438; }' +
+10773:           'tbody td { border:1px solid #e2e8f0; padding:7px 6px; font-size:11px; }' +
+10774:           'tbody tr:nth-child(even) { background:#f8fafc; }' +
+10775:           '.sum-box { margin-top:12px; border:1px solid #cbd5e1; border-radius:6px; padding:8px 12px; background:#f8fafc; }' +
+10776:           '.sum-row { display:flex; justify-content:space-between; padding:4px 0; font-size:12px; }' +
+10777:           '.sum-row b { color:#0f2438; }' +
+10778:           '.words { margin-top:8px; border:1px dashed #059669; background:#f0fdf4; padding:6px; text-align:center; font-size:11px; font-weight:bold; }' +
+10779:           '.footer { margin-top:16px; text-align:center; font-size:10px; color:#94a3b8; }' +
+10780:           '</style></head><body>' +
+10781:           '<div class="header">' +
+10782:           '<div><div class="brand">⚖️ میزان</div><div class="slogan">حساب‌ها دقیق، معاملات امن، ذهن آسوده</div></div>' +
+10783:           '<div class="meta"><div>📅 ' + esc(invoice.timeString || '') + '</div><div>🧾 شماره فاکتور: ' + esc(invoice.current?.invoiceNumber || '') + '</div></div>' +
+10784:           '</div>' +
+10785:           '<div class="title">فاکتور فروش</div>' +
+10786:           '<div class="info-grid">' +
+10787:           '<div class="info-item"><b>👤 نام:</b> ' + esc(invoice.customer?.name || '') + '</div>' +
+10788:           '<div class="info-item"><b>📞 تلفن:</b> ' + esc(invoice.customer?.phone || '') + '</div>' +
+10789:           '<div class="info-item"><b>کد:</b> ' + esc(invoice.customer?.code || '') + '</div>' +
+10790:           '<div class="info-item"><b>📍 آدرس:</b> ' + esc(invoice.customer?.address || '—') + '</div>' +
+10791:           '<div class="info-item"><b>🚚 باربری:</b> ' + esc(invoice.customer?.shipping || '—') + '</div>' +
+10792:           '</div>' +
+10793:           '<table><thead><tr>' +
+10794:           '<th style="width:5%">#</th><th style="width:15%">کد مدل</th><th style="width:30%">نام مدل</th><th style="width:8%">قفسه</th><th style="width:8%">تعداد</th><th style="width:16%">قیمت واحد</th><th style="width:18%">جمع</th>' +
+10795:           '</tr></thead><tbody>' + itemsRows + '</tbody></table>' +
+10796:           '<div class="sum-box">' +
+10797:           '<div class="sum-row"><span>جمع فروش:</span><b>' + fmt(invoice.current?.sales || 0) + ' ' + esc(curLabel) + '</b></div>' +
+10798:           '<div class="sum-row"><span>پرداخت:</span><b>' + fmt(invoice.current?.payments || 0) + ' ' + esc(curLabel) + '</b></div>' +
+10799:           '<div class="sum-row"><span>مانده این فاکتور:</span><b>' + fmt(invoice.current?.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+10800:           (invoice.previous ? '<div class="sum-row"><span>مانده قبلی:</span><b>' + fmt(invoice.previous.balance || 0) + ' ' + esc(curLabel) + '</b></div>' : '') +
+10801:           '<div class="sum-row"><span>مانده نهایی قابل پرداخت:</span><b>' + fmt(tot.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+10802:           '</div>' +
+10803:           (words ? '<div class="words">مبلغ به حروف: ' + esc(words) + ' ' + esc(curLabel) + '</div>' : '') +
+10804:           '<div class="footer">میزان — سند رسمی فاکتور</div>' +
+10805:           '</body></html>';
+10806:         const r = await printHtml(html);
+10807:         showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+10808:         return;
+10809:       }
+10810: 
+10811:       // برای اشتراک/ذخیره: کیفیت بالاتر در وب (PNG)
+10812:       const uri = await captureRef(ref, Platform.OS === 'web'
+10813:         ? { format: 'png', quality: 1 }
+10814:         : { format: 'jpg', quality: 0.95 });
+10815: 
+10816:       if (Platform.OS === 'web') {
+10817:         const safeName = String(invoice.customer?.name || 'customer').replace(/[^\w\u0600-\u06FF\- ]/g, '').trim() || 'customer';
+10818:         const invNum = String(invoice.current?.invoiceNumber || '').replace(/[^\w\-]/g, '');
+10819:         const fileName = safeName + '_' + invNum + '.png';
+10820: 
+10821:         const dataUriToFile = (dataUri: string) => {
+10822:           const arr = dataUri.split(',');
+10823:           const mimeMatch = arr[0].match(/:(.*?);/);
+10824:           const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+10825:           const bstr = atob(arr[1]);
+10826:           let n = bstr.length;
+10827:           const u8 = new Uint8Array(n);
+10828:           while (n--) { u8[n] = bstr.charCodeAt(n); }
+10829:           return new File([u8], fileName, { type: mime });
+10830:         };
+10831: 
+10832:         if (mode === 'share' && typeof navigator !== 'undefined' && (navigator as any).share && (navigator as any).canShare) {
+10833:           try {
+10834:             const f = dataUriToFile(uri);
+10835:             if ((navigator as any).canShare({ files: [f] })) {
+10836:               await (navigator as any).share({ files: [f], title: 'فاکتور ' + invNum, text: 'فاکتور ' + safeName });
+10837:               showToast('✅ به اشتراک گذاشته شد', false);
+10838:               return;
+10839:             }
+10840:           } catch (e: any) { if (e?.name !== 'AbortError') console.log('Web Share failed:', e); }
+10841:         }
+10842: 
+10843:         if (mode === 'share' && typeof navigator !== 'undefined' && (navigator as any).clipboard && (navigator as any).clipboard.write && typeof ClipboardItem !== 'undefined') {
+10844:           try {
+10845:             const f = dataUriToFile(uri);
+10846:             await (navigator as any).clipboard.write([new ClipboardItem({ [f.type]: f })]);
+10847:             showToast('✅ تصویر در کلیپ‌بورد کپی شد. در واتساپ وب Ctrl+V بزنید.', false);
+10848:             return;
+10849:           } catch (e: any) { console.log('Clipboard write failed:', e); }
+10850:         }
+10851: 
+10852:         const a = document.createElement('a');
+10853:         a.href = uri;
+10854:         a.download = fileName;
+10855:         document.body.appendChild(a);
+10856:         a.click();
+10857:         document.body.removeChild(a);
+10858:         showToast('✅ تصویر ذخیره شد: ' + fileName, false);
+10859:         return;
+10860:       }
+10861: 
+10862:       if (await Sharing.isAvailableAsync()) {
+10863:         await Sharing.shareAsync(uri);
+10864:         if (mode === 'save') showToast('✅ ذخیره شد');
+10865:       } else {
+10866:         showToast('اشتراک پشتیبانی نمی‌شود', true);
+10867:       }
+10868:     } catch (e: any) { showToast(e.message, true); }
+10869:   };
+10870: 
+10871: 
+10872: 
+10873:   return (
+10874: 
+10875:     <View style={{ flex: 1, overflow: 'hidden' }}>
+10876:     <ScrollView style={[s.content, { backgroundColor: C.bg, flex: 1 }]} contentContainerStyle={{ padding: 10, paddingBottom: 60 }}>
+10877: 
+10878:       <View ref={ref} collapsable={false} style={s.invoiceContainer}>
+10879: 
+10880:         <View style={s.invHeader}>
+10881: 
+10882:           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+10883: 
+10884:             <Text style={{ fontSize: 20 }}>⚖️</Text>
+10885: 
+10886:             <View>
+10887: 
+10888:               <EL textKey="میزان" style={s.invBrand} />
+10889: 
+10890:                        <EL textKey="حساب‌ها دقیق، معاملات امن، ذهن آسوده." style={s.invSlogan} />
+10891: 
+10892:             </View>
+10893: 
+10894:           </View>
+10895: 
+10896:           <View style={{ alignItems: 'flex-end' }}>
+10897: 
+10898:             <Text style={s.invSmall}>📞 ________________</Text>
+10899: 
+10900:             <Text style={s.invSmall}>📧 ________________</Text>
+10901: 
+10902:           </View>
+10903: 
+10904:         </View>
+10905: 
+10906: 
+10907: 
+10908:         <EL textKey="پیش فروش کفش تاج" style={s.invTitle} />
+10909: 
+10910:         <Text style={s.invDateTxt}>📅 {invoice.timeString}</Text>
+10911: 
+10912: 
+10913: 
+10914:         <View style={s.invSection}>
+10915: 
+10916:           <EL textKey="👤 اطلاعات مشتری" style={s.invSectionTitle} />
+10917: 
+10918:           <View style={s.invCGrid}>
+10919: 
+10920:             <View style={s.invCell}><EL textKey="نام" style={s.invCellL} /><Text style={s.invCellV}>{c.name}</Text></View>
+10921: 
+10922:             <View style={s.invCell}><EL textKey="تلفن" style={s.invCellL} /><Text style={s.invCellV}>{c.phone}</Text></View>
+10923: 
+10924:             <View style={s.invCell}><EL textKey="کد مشتری" style={s.invCellL} /><Text style={s.invCellV}>{c.code}</Text></View>
+10925: 
+10926:             <View style={s.invCell}><EL textKey="شماره فاکتور" style={s.invCellL} /><Text style={s.invCellV}>{cur.invoiceNumber}</Text></View>
+10927: 
+10928:             {c.address ? <View style={[s.invCell, { width: '100%' }]}><EL textKey="📍 آدرس" style={s.invCellL} /><Text style={s.invCellV}>{c.address}</Text></View> : null}
+10929: 
+10930:             {c.shipping ? <View style={s.invCell}><EL textKey="🚚 باربری" style={s.invCellL} /><Text style={s.invCellV}>{c.shipping}</Text></View> : null}
+10931: 
+10932:           </View>
+10933: 
+10934:         </View>
+10935: 
+10936: 
+10937: 
+10938:         <View style={s.invSection}>
+10939: 
+10940:           <EL textKey="📦 اقلام" style={s.invSectionTitle} />
+10941: 
+10942:           <View style={s.invTableHead}>
+10943:             <Text style={[s.invTh, { flex: 0.4, textAlign: 'center' }]}>#</Text>
+10944:             <Text style={[s.invTh, { flex: 1.2, textAlign: 'center' }]}>کد مدل</Text>
+10945:             <Text style={[s.invTh, { flex: 2, textAlign: 'right' }]}>نام مدل</Text>
+10946:             <Text style={[s.invTh, { flex: 0.8, textAlign: 'center' }]}>قفسه</Text>
+10947:             <Text style={[s.invTh, { flex: 0.5, textAlign: 'center' }]}>تعداد (واحد پایه)</Text>
+10948:               <Text style={[s.invTh, { flex: 0.5, textAlign: 'center' }]}>واحد بسته</Text>
+10949:             <Text style={[s.invTh, { flex: 1, textAlign: 'center' }]}>قیمت</Text>
+10950:             <Text style={[s.invTh, { flex: 1.2, textAlign: 'center' }]}>مبلغ</Text>
+10951:           </View>
+10952:           {cur.items.map((it: any, i: number) => (
+10953:             <View key={i} style={[s.invRow, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+10954:               <Text style={[s.invTd, { flex: 0.4, textAlign: 'center' }]}>{i + 1}</Text>
+10955:               <Text style={[s.invTd, { flex: 1.2, textAlign: 'center', fontSize: 11 }]}>{it.modelCode || '—'}</Text>
+10956:               <Text style={[s.invTd, { flex: 2, textAlign: 'right', fontWeight: 'bold' }]}>{it.modelName}</Text>
+10957:               <Text style={[s.invTd, { flex: 0.8, textAlign: 'center' }]}>{it.shelf || '—'}</Text>
+10958:               <View style={{ flex: 0.6, alignItems: 'center' }}>
+10959:                 <Text style={[s.invTd, { textAlign: 'center' }]}>{it.quantity} {it.base_unit || ''}</Text>
+10960:                 {it.pack_size && Number(it.pack_size) > 0 ? <Text style={{ fontSize: 9, color: '#64748b', textAlign: 'center' }}>{((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\.00$/, '')} {it.pack_unit || 'بسته'}</Text> : null}
+10961:               </View>
+10962:               <Text style={[s.invTd, { flex: 1, textAlign: 'center' }]}>{fmt(it.priceUnit)}</Text>
+10963:               <Text style={[s.invTd, { flex: 1.2, textAlign: 'center', fontWeight: 'bold' }]}>{fmt(it.total)}</Text>
+10964:             </View>
+10965:           ))}
+10966: 
+10967:         </View>
+10968: 
+10969: 
+10970: 
+10971:               <View style={s.invSection}>
+10972: 
+10973:           <EL textKey="💰 خلاصه مالی" style={s.invSectionTitle} />
+10974: 
+10975: 
+10976: 
+10977:           {/* این سفارش */}
+10978: 
+10979:           <SumRow l="🛍️ مبلغ این سفارش" v={fmt(cur.sales) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} />
+10980: 
+10981:           <SumRow l="💳 پرداخت این سفارش" v={fmt(cur.payments) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} green />
+10982: 
+10983: 
+10984: 
+10985:           {/* فاکتورهای قبلی */}
+10986: 
+10987:           {invoice.previous && invoice.previous.invoiceCount > 0 && (
+10988: 
+10989:             <>
+10990: 
+10991:               <SumRow l="📁 تعداد فاکتورهای قبلی" v={toFaNum(invoice.previous.invoiceCount) + ' فاکتور'} />
+10992: 
+10993:               <SumRow l="💰 جمع خریدهای قبلی" v={fmt(invoice.previous.sales) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} />
+10994: 
+10995:               <SumRow l="💳 جمع پرداخت‌های قبلی" v={fmt(invoice.previous.payments) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} green />
+10996: 
+10997:               <SumRow
+10998: 
+10999:                 l={invoice.previous.balance > 0 ? '⚖️ بدهی از قبل' : invoice.previous.balance < 0 ? '💰 بستانکاری از قبل' : '✅ تسویه شده از قبل'}
+11000: 

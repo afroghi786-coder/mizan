@@ -1,0 +1,59 @@
+=== 1. وضعیت فعلی prodMap در انبار ===
+5818: const [prodMap, setProdMap] = useState(new Map());
+6314: const _u = prodMap.get(String(m.code || '')) || {};
+
+=== 2. renderItem انبار (خطوط 6310-6340) ===
+6310: 
+6311:   
+6312:   const renderItem = useCallback(({ item: m, index: i }: { item: any, index: number }) => {
+6313: 
+6314:             const _u = prodMap.get(String(m.code || '')) || {};
+6315:                 const bU = _u.base_unit || 'عدد';
+6316:                 const pU = _u.pack_unit || 'بسته';
+6317:                 const pS = Number(_u.pack_size) || 0;
+6318:                 const packQty = pS > 0 ? ((Number(m.currentQty) || 0) / pS).toFixed(2).replace(/\.00$/, '') : '0';
+6319: 
+6320:                 const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
+6321: 
+6322:             return (<>
+6323: 
+6324:               <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: rowBg, borderRightWidth: 3, borderRightColor: statusColor(m.status) }]}>
+6325: 
+6326:                 <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+6327: 
+6328:                 <TouchableOpacity onPress={() => openModelKardex(m)} style={[s.tdCell, { width: 100 }]}><Text style={{ color: '#7c3aed', fontWeight: 'bold', textDecorationLine: 'underline' }}>{m.code}</Text></TouchableOpacity>
+6329: 
+6330:                 <Text style={[s.tdCell, { width: 180, fontSize: 12, color: C.text, textAlign: 'right', fontWeight: 'bold' }]} numberOfLines={1}>{m.name}</Text>
+6331: 
+6332:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.bought)}</Text>
+6333: 
+6334:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.sold)}</Text>
+6335: 
+6336:                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: statusColor(m.status), fontWeight: 'bold', fontSize: 15 }]}>{fmt(m.currentQty)}</Text>
+6337: 
+6338:                 <Text style={[s.tdCell, { width: 80, fontSize: 11, color: '#0891b2' }]}>{pS > 0 ? pS + ' ' + bU : '—'}</Text>
+6339: 
+6340:                 <Text style={[s.tdCell, { width: 80, fontSize: 11, color: '#059669', fontWeight: 'bold' }]}>{pS > 0 ? packQty + ' ' + pU : '—'}</Text>
+
+=== 3. جستجوی نام دقیق فیلدهای بسته‌بندی در محصولات ===
+733: pack_size: Number(p.pack_size) || 0,
+734: base_unit: p.base_unit || '',
+735: pack_unit: p.pack_unit || '',
+2821: const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accoun
+2827: const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelC
+4243: n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base
+5253: <Text style={{ width: 55, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{toFaNum(r.qty)} {(() => { const _u = prods.find((p: any) => String(p
+5254: <Text style={{ width: 55, color: '#0891b2', fontSize: 11, textAlign: 'center' }}>{(() => { const _u = prods.find((p: any) => String(p.code || '') === 
+5824: pack_size: Number(p.pack_size) || 0,
+5825: base_unit: String(p.base_unit || 'عدد'),
+5826: pack_unit: String(p.pack_unit || 'بسته')
+7282: const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorag
+7288: const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelC
+7993: updRow(i, 'base_unit', p.base_unit || '');
+7994: updRow(i, 'pack_unit', p.pack_unit || '');
+7995: updRow(i, 'pack_size', Number(p.pack_size) || 0);
+10783: <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0ea5e9', fontWeight: 'bold' }]}>{p.uom_label || p.base_unit || p.unit_label || 'عدد'}</Te
+10784: <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_size ? toFaNum(p.pack_size) : '—'}</Text>
+10785: <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.base_unit || 'عدد'}</Text>
+10786: <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_unit || '—'}</Text>
+10821: const itemsRows = (invoice.current?.items || []).map((it: any, i: number) => { const _u = prods.find((p: any) => String(p.code || '') === String(it.mo

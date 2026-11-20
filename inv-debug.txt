@@ -1,0 +1,177 @@
+=== 1. renderItem انبار (خطوط 6297-6330) ===
+6297:   const renderItem = useCallback(({ item: m, index: i }: { item: any, index: number }) => {
+6298: 
+6299:             const _u = getPackForCodeGlobal(m.code);
+6300:                 const bU = _u ? _u.base_unit : 'عدد';
+6301:                 const pU = _u ? _u.pack_unit : 'بسته';
+6302:                 const pS = _u ? Number(_u.pack_size) : 0;
+6303:                 const packQty = pS > 0 ? ((Number(m.currentQty) || 0) / pS).toFixed(2).replace(/\.00$/, '') : '0';
+6304: 
+6305:                 const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
+6306: 
+6307:             return (<>
+6308: 
+6309:               <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: rowBg, borderRightWidth: 3, borderRightColor: statusColor(m.status) }]}>
+6310: 
+6311:                 <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+6312: 
+6313:                 <TouchableOpacity onPress={() => openModelKardex(m)} style={[s.tdCell, { width: 100 }]}><Text style={{ color: '#7c3aed', fontWeight: 'bold', textDecorationLine: 'underline' }}>{m.code}</Text></TouchableOpacity>
+6314: 
+6315:                 <Text style={[s.tdCell, { width: 180, fontSize: 12, color: C.text, textAlign: 'right', fontWeight: 'bold' }]} numberOfLines={1}>{m.name}</Text>
+6316: 
+6317:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.bought)}</Text>
+6318: 
+6319:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.sold)}</Text>
+6320: 
+6321:                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: statusColor(m.status), fontWeight: 'bold', fontSize: 15 }]}>{fmt(m.currentQty)}</Text>
+6322: 
+6323:                 <Text style={[s.tdCell, { width: 80, fontSize: 11, color: '#0891b2' }]}>{pS > 0 ? pS + ' ' + bU : '—'}</Text>
+6324: 
+6325:                 <Text style={[s.tdCell, { width: 80, fontSize: 11, color: '#059669', fontWeight: 'bold' }]}>{pS > 0 ? packQty + ' ' + pU : '—'}</Text>
+6326: 
+6327:                 <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0891b2', fontSize: 11 }]}>{fmt(m.unitCost || 0)}</Text>
+6328: 
+6329:                 <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#059669', fontWeight: 'bold', fontSize: 11 }]}>{fmt(m.totalValue || 0)}</Text>
+6330: 
+
+=== 2. تعریف getPackForCodeGlobal ===
+742: };
+743: 
+744: const getPackForCodeGlobal = (code: string) => {
+745:   const m = packMapRef.current;
+746:   if (!m) return null;
+747:   return m.get(String(code || '')) || null;
+748: };
+749: 
+750: // بارگذاری اولیه
+751: refreshPackMap();
+752: 
+753: 
+754: export default function App() {
+755: 
+756:   // 🔐 حالت بازیابی رمز
+757: 
+758:   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+---
+6297:   const renderItem = useCallback(({ item: m, index: i }: { item: any, index: number }) => {
+6298: 
+6299:             const _u = getPackForCodeGlobal(m.code);
+6300:                 const bU = _u ? _u.base_unit : 'عدد';
+6301:                 const pU = _u ? _u.pack_unit : 'بسته';
+6302:                 const pS = _u ? Number(_u.pack_size) : 0;
+6303:                 const packQty = pS > 0 ? ((Number(m.currentQty) || 0) / pS).toFixed(2).replace(/\.00$/, '') : '0';
+6304: 
+6305:                 const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
+6306: 
+6307:             return (<>
+6308: 
+6309:               <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: rowBg, borderRightWidth: 3, borderRightColor: statusColor(m.status) }]}>
+6310: 
+6311:                 <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+6312: 
+6313:                 <TouchableOpacity onPress={() => openModelKardex(m)} style={[s.tdCell, { width: 100 }]}><Text style={{ color: '#7c3aed', fontWeight: 'bold', textDecorationLine: 'underline' }}>{m.code}</Text></TouchableOpacity>
+---
+6756:                             <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.payer_name || '—'}</Text>
+6757: 
+6758:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = getPackForCodeGlobal(modelKardexCode); return _u ? _u.base_unit || 'عدد' : 'عدد'; })()}</Text>
+6759: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = getPackForCodeGlobal(modelKardexCode); if (_u && _u.pack_size > 0) { const packs = (Number(r.quantity) || 0) / Number(_u.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
+6760: 
+6761:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6762: 
+6763:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+6764: 
+6765:                           </View>
+6766: 
+6767:                         ))}
+6768: 
+6769:                       </View>
+6770: 
+6771:                     </ScrollView>
+6772: 
+---
+6757: 
+6758:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = getPackForCodeGlobal(modelKardexCode); return _u ? _u.base_unit || 'عدد' : 'عدد'; })()}</Text>
+6759: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = getPackForCodeGlobal(modelKardexCode); if (_u && _u.pack_size > 0) { const packs = (Number(r.quantity) || 0) / Number(_u.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
+6760: 
+6761:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6762: 
+6763:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+6764: 
+6765:                           </View>
+6766: 
+6767:                         ))}
+6768: 
+6769:                       </View>
+6770: 
+6771:                     </ScrollView>
+6772: 
+6773:                   </View>
+---
+7579: 
+7580:         payment: r.payment || 0,
+7581:         base_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).base_unit) || '',
+7582:         pack_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).pack_unit) || '',
+7583:         pack_size: (getPackForCodeGlobal(r.model_code) && Number(getPackForCodeGlobal(r.model_code).pack_size)) || 0,
+7584:         entered_unit: 'base',
+7585:         entered_qty: Number(r.quantity) || 0,
+7586: 
+7587:         description: r.description || '',
+7588: 
+7589:         depositDate: r.deposit_date || '',
+7590: 
+7591:         bankName: r.bank_name || r.receiver_bank || '',
+7592:         accountHolder: r.account_holder || r.receiver_name || '',
+7593:         accountHolderCode: isSales ? (r.account_holder_code || r.receiver_code || '') : (r.payer_code || ''),
+7594: 
+7595:         shipping: isSales ? (r.shipping || '') : '',
+---
+7580:         payment: r.payment || 0,
+7581:         base_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).base_unit) || '',
+7582:         pack_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).pack_unit) || '',
+7583:         pack_size: (getPackForCodeGlobal(r.model_code) && Number(getPackForCodeGlobal(r.model_code).pack_size)) || 0,
+7584:         entered_unit: 'base',
+7585:         entered_qty: Number(r.quantity) || 0,
+7586: 
+7587:         description: r.description || '',
+7588: 
+7589:         depositDate: r.deposit_date || '',
+7590: 
+7591:         bankName: r.bank_name || r.receiver_bank || '',
+7592:         accountHolder: r.account_holder || r.receiver_name || '',
+7593:         accountHolderCode: isSales ? (r.account_holder_code || r.receiver_code || '') : (r.payer_code || ''),
+7594: 
+7595:         shipping: isSales ? (r.shipping || '') : '',
+7596: 
+---
+7581:         base_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).base_unit) || '',
+7582:         pack_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).pack_unit) || '',
+7583:         pack_size: (getPackForCodeGlobal(r.model_code) && Number(getPackForCodeGlobal(r.model_code).pack_size)) || 0,
+7584:         entered_unit: 'base',
+7585:         entered_qty: Number(r.quantity) || 0,
+7586: 
+7587:         description: r.description || '',
+7588: 
+7589:         depositDate: r.deposit_date || '',
+7590: 
+7591:         bankName: r.bank_name || r.receiver_bank || '',
+7592:         accountHolder: r.account_holder || r.receiver_name || '',
+7593:         accountHolderCode: isSales ? (r.account_holder_code || r.receiver_code || '') : (r.payer_code || ''),
+7594: 
+7595:         shipping: isSales ? (r.shipping || '') : '',
+7596: 
+7597:         _deleted: false,
+---
+
+=== 3. جستجوی packMap یا prods ===
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDa
+725: const packMapRef: { current: Map<string, { pack_size: number; base_unit: string; pack_unit: string }> | null } = { curre
+729: const prods = await getProducts();
+738: packMapRef.current = m;
+740: packMapRef.current = new Map();
+745: const m = packMapRef.current;
+2787: const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+4219: const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+6227: const _prods = await getProducts();
+7241: getProducts().then(setProds);
+7517: const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+10535: const data = await getProducts();

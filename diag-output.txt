@@ -1,0 +1,402 @@
+
+
+██████████████████████████████████████████████████████████████████
+█ A. انبار (الگو) — همه "واحد پایه" ها
+██████████████████████████████████████████████████████████████████
+  خط 5181: <Text style={{ width: 55, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تعداد (واحد پایه)</Text>
+  خط 6724: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد (واحد پایه)</Text>
+  خط 10688: <Text style={[s.thCell, { width: 90 }]}>واحد پایه</Text>
+  خط 10714: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_unit || '')} onChangeText={(v: string) =
+  خط 10747: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.base_unit || '')} onChangeText={(v: str
+  خط 10855: '<th style="width:4%">#</th><th style="width:13%">کد مدل</th><th style="width:26%">نام مدل</th><th style="width:7%">قفسه</th><th style="width:10%">واحد پایه</th
+  خط 11008: <Text style={[s.invTh, { flex: 0.5, textAlign: 'center' }]}>تعداد (واحد پایه)</Text>
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 جدول انبار — context هدر و ردیف
+╚══════════════════════════════════════════════════════════════════════╝
+5161: 
+5162:               <Text style={{ fontSize: 10, color: '#475569', textAlign: 'right', marginTop: 2 }}>🆔 {report.code}   📞 {report.phone}</Text>
+5163: 
+5164:             </View>
+5165: 
+5166: 
+5167: 
+5168:             {report.salesRows.length > 0 && (
+5169:   <View style={{ marginBottom: 16 }}>
+5170:     <Text style={{ fontSize: 14, color: '#1e40af', fontWeight: 'bold', textAlign: 'right', backgroundColor: '#eff6ff', padding: 8, borderRadius: 6, marginBottom: 6 }}>
+5171:       🛒 فروش — {toFaNum(report.salesRows.length)} ردیف
+5172:     </Text>
+5173:     <ScrollView horizontal showsHorizontalScrollIndicator>
+5174:       <View style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 6, overflow: 'hidden' }}>
+5175:         <View style={{ flexDirection: 'row-reverse', backgroundColor: '#1e3a8a', paddingVertical: 8 }}>
+5176:           <Text style={{ width: 30, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+5177:           <Text style={{ width: 120, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تاریخ و زمان</Text>
+5178:           <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+5179:           <Text style={{ width: 70, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>کد مدل</Text>
+5180:           <Text style={{ width: 130, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>نام مدل</Text>
+5181:           <Text style={{ width: 55, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تعداد (واحد پایه)</Text>
+5182: <Text style={{ width: 55, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
+5183:           <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+5184:           <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+5185:           <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بدهکار</Text>
+5186:           <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بستانکار</Text>
+5187:           <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+5188:           <Text style={{ width: 70, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+5189:           <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>صاحب حساب</Text>
+5190:           <Text style={{ width: 120, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
+5191:           <Text style={{ width: 100, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>شرح</Text>
+5192:           <Text style={{ width: 70, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>وضعیت</Text>
+5193:         </View>
+5194:         {(() => {
+5195:           let runS = 0;
+5196:           return report.salesRows.map((r: any, i: number) => {
+5197:             const debit = r.total || 0;
+5198:             const credit = r.payment || 0;
+5199:             runS += debit - credit;
+5200:             const balAbs = Math.abs(runS);
+5201:             const status = runS > 0 ? 'بدهکار' : runS < 0 ? 'بستانکار' : 'تسویه';
+5202:             const statusColor = runS > 0 ? '#dc2626' : runS < 0 ? '#059669' : '#64748b';
+5203:             return (
+5204:               <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#fff', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', alignItems: 'center' }}>
+5205:                 <Text style={{ width: 30, color: '#d4af37', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{i + 1}</Text>
+5206:                 <Text style={{ width: 120, color: '#1e3a5f', fontSize: 10, textAlign: 'center' }}>{displayDate(r.date) || '—'}</Text>
+5207:                 <Text style={{ width: 90, color: '#7c3aed', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{r.invoice || '—'}</Text>
+5208:                 <Text style={{ width: 70, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{r.modelCode || '—'}</Text>
+5209:                 <Text style={{ width: 130, color: '#1e3a5f', fontSize: 11, textAlign: 'right' }} numberOfLines={1}>{r.modelName || '—'}</Text>
+5210:                 <Text style={{ width: 55, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{toFaNum(r.qty)} {(() => { const _u = getPackForCodeGlobal(r.modelCode); return _u ? _u.base_unit || 'عدد' : 'عدد'; })()}</Text>
+5211: <Text style={{ width: 55, color: '#0891b2', fontSize: 11, textAlign: 'center' }}>{(() => { const _u = getPackForCodeGlobal(r.modelCode); if (_u && _u.pack_size > 0) { const packs = (Number(r.qty) / Number(_u.pack_size)).toFixed(2).replace(/\.00$/, ''); return packs + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
+5212:                 <Text style={{ width: 80, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{fmt(r.priceUnit)}</Text>
+5213:                 <Text style={{ width: 90, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{fmt(r.total)}</Text>
+5214:                 <Text style={{ width: 80, color: '#1e40af', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{debit ? fmt(debit) : '—'}</Text>
+5215:                 <Text style={{ width: 80, color: '#059669', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{credit ? fmt(credit) : '—'}</Text>
+5216:                 <Text style={{ width: 90, color: '#475569', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>{fmt(balAbs)}</Text>
+5217:                 <Text style={{ width: 70, color: '#475569', fontSize: 11, textAlign: 'center' }}>{r.bank || '—'}</Text>
+5218:                 <Text style={{ width: 90, color: '#475569', fontSize: 11, textAlign: 'center' }}>{r.holder || '—'}</Text>
+5219:                 <Text style={{ width: 120, color: '#475569', fontSize: 10, textAlign: 'center' }}>{r.depositDate ? displayDate(r.depositDate) : '—'}</Text>
+5220:                 <Text style={{ width: 100, color: '#475569', fontSize: 11, textAlign: 'right' }} numberOfLines={1}>{r.desc || '—'}</Text>
+
+
+██████████████████████████████████████████████████████████████████
+█ B. فرم فروش/خرید — تاگل انتخاب واحد
+██████████████████████████████████████████████████████████████████
+  خط 3321: value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))}
+  خط 3323: onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updIt
+  خط 3331: />{Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base
+  خط 4388: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.entered_unit === 'pack' ? (it.entered_qty 
+  خط 4389: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base')
+  خط 4390: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quan
+  خط 7397: <View style={{ flex: 1 }}><EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.t
+  خط 7398: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { upd(i, 'entered_unit', 'base'); up
+  خط 7399: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quan
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 تاگل واحد در فرم فروش/خرید
+╚══════════════════════════════════════════════════════════════════════╝
+3301:                     <View style={S.threeColCell}>
+3302: 
+3303:                       <EL textKey={"کد مدل" + (it.shelf ? ' | 📍 قفسه: ' + it.shelf : '')} style={S.miniLabel} />
+3304: 
+3305:                       <View style={S.miniValue}>
+3306: 
+3307:                         <Text style={S.miniValueTxt}>{it.modelCode || '—'}</Text>
+3308: 
+3309:                       </View>
+3310: 
+3311:                     </View>
+3312: 
+3313:                     <View style={S.threeColCell}>
+3314: 
+3315:                       <EL text="{t('تعداد')}" style={S.miniLabel}><Text style={S.required}>*</Text></EL>
+3316: 
+3317:                       <TextInput
+3318: 
+3319:                         style={S.miniInput}
+3320: 
+3321:                         value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))}
+3322: 
+3323:                         onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updItem(i, 'quantity', (u === 'pack' && Number(it.pack_size) > 0) ? Math.round(raw * Number(it.pack_size) * 1000) / 1000 : raw); }}
+3324: 
+3325:                         keyboardType="numeric"
+3326: 
+3327:                         placeholder="0"
+3328: 
+3329:                         placeholderTextColor="#94a3b8"
+3330: 
+3331:                       />{Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.base_unit || it.uom_label || 'عدد'}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'pack'); updItem(i, 'entered_qty', Number(it.pack_size) > 0 ? it.quantity / Number(it.pack_size) : 0); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.pack_unit || 'بسته'}</Text></TouchableOpacity></View>)}{it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || it.uom_label || 'عدد'}</Text>)}
+3332: 
+3333:                     </View>
+3334: 
+3335:                     <View style={S.threeColCell}>
+3336: 
+3337:                       <EL text="{t('قیمت')}" style={S.miniLabel}><Text style={S.required}>*</Text></EL>
+3338: 
+3339:                       <TextInput
+3340: 
+3341:                         style={S.miniInput}
+3342: 
+3343:                         value={String(it.priceUnit || '')}
+3344: 
+3345:                         onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))}
+3346: 
+3347:                         keyboardType="numeric"
+3348: 
+3349:                         placeholder="0"
+3350: 
+
+
+██████████████████████████████████████████████████████████████████
+█ C. دفتر معین — هدر جدول
+██████████████████████████████████████████████████████████████████
+
+
+██████████████████████████████████████████████████████████████████
+█ D. دفتر معین — ردیف‌ها
+██████████████████████████████████████████████████████████████████
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 ردیف دفتر معین
+╚══════════════════════════════════════════════════════════════════════╝
+6726:                           <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>واحد</Text>
+6727: 
+6728:                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+6729: 
+6730:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+6731: 
+6732:                         </View>
+6733: 
+6734:                         {modelKardexData.purchases.map((r: any, i: number) => (
+6735: 
+6736:                           <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6737: 
+6738:                             <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6739: 
+6740:                             <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+6741: 
+6742:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+6743: 
+6744:                             <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.payer_name || '—'}</Text>
+6745: 
+6746:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = getPackForCodeGlobal(modelKardexCode); return _u.base_unit || 'عدد'; })()}</Text>
+6747: 
+6748:                             <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = getPackForCodeGlobal(modelKardexCode); if (_u && _u.pack_size > 0) { const packs = (Number(r.quantity) || 0) / Number(_u.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
+6749: 
+6750:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6751: 
+6752:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+6753: 
+6754:                           </View>
+6755: 
+6756:                         ))}
+6757: 
+6758:                       </View>
+6759: 
+6760:                     </ScrollView>
+6761: 
+6762:                   </View>
+6763: 
+6764:                 )}
+6765: 
+6766:                 {(modelKardexData.sales || []).length > 0 && (
+6767: 
+6768:                   <View>
+6769: 
+6770:                     <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>🛍️ فروش‌ها ({modelKardexData.sales.length})</Text>
+6771: 
+6772:                     <ScrollView horizontal>
+6773: 
+6774:                       <View>
+6775: 
+6776:                         <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+6777: 
+6778:                           <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+6779: 
+6780:                           <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+6781: 
+6782:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+6783: 
+6784:                           <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مشتری</Text>
+6785: 
+
+
+██████████████████████████████████████████████████████████████████
+█ E. دفتر معین — جمع کل
+██████████████████████████████████████████████████████████████████
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 ردیف جمع کل دفتر معین
+╚══════════════════════════════════════════════════════════════════════╝
+6785: 
+6786:                           <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+6787: 
+6788:                           <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+6789: 
+6790:                           <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+6791: 
+6792:                         </View>
+6793: 
+6794:                         {modelKardexData.sales.map((r: any, i: number) => (
+6795: 
+6796:                           <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6797: 
+6798:                             <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6799: 
+6800:                             <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+6801: 
+6802:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+6803: 
+6804:                             <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+6805: 
+6806:                             <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+6807: 
+6808:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6809: 
+6810:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+6811: 
+6812:                           </View>
+6813: 
+6814:                         ))}
+
+
+██████████████████████████████████████████████████████████████████
+█ F. تب جستجو/ویرایش — نمایش ردیف
+██████████████████████████████████████████████████████████████████
+
+
+██████████████████████████████████████████████████████████████████
+█ G. تب جستجو/ویرایش — دکمه/ناحیه افزودن آیتم
+██████████████████████████████████████████████████████████████████
+  خط 3395: <TouchableOpacity style={S.addModelBtn} onPress={addItem}>
+  خط 3551: <TouchableOpacity style={[S.btnPrimary, { flex: 1 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
+  خط 4438: <TouchableOpacity style={s.addBtn2} onPress={addItem}><Text style={s.btnTxt}>{t('➕ افزودن مدل')}</Text></TouchableOpacity>
+  خط 4592: <TouchableOpacity style={[s.addBtn, { backgroundColor: '#166534', marginTop: 8 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
+  خط 7425: <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
+  خط 8052: <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
+  خط 10068: <TouchableOpacity onPress={addBankDraft} style={{ backgroundColor: '#7c3aed', padding: 10, borderRadius: 8, alignItems: 'center', marginBottom: 10 }}><Text styl
+  خط 10329: <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#7c3aed' }]} onPress={startNew}><Text style={s.btnTxt}>➕ افزودن بانک</Text></TouchableOpacity>
+
+
+██████████████████████████████████████████████████████████████████
+█ H. فاکتور A4 (پرینت) — itemsRows
+██████████████████████████████████████████████████████████████████
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 itemsRows در A4
+╚══════════════════════════════════════════════════════════════════════╝
+10806:         const itemsRows = (invoice.current?.items || []).map((it: any, i: number) =>
+10807:           '<tr>' +
+10808:           '<td style="text-align:center">' + (i + 1) + '</td>' +
+10809:           '<td style="text-align:center;font-size:11px">' + esc(it.modelCode || '—') + '</td>' +
+10810:           '<td style="text-align:right;font-weight:bold">' + esc(it.modelName || '') + '</td>' +
+10811:           '<td style="text-align:center">' + esc(it.shelf || '—') + '</td>' +
+10812:           '<td style="text-align:center;font-weight:bold">' + esc(it.quantity || 0) + ' ' + esc(it.base_unit || 'عدد') + '</td>' +
+10813:           '<td style="text-align:center;font-weight:bold;color:#0891b2">' + (it.pack_size && Number(it.pack_size) > 0 ? (((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\.00$/, '') + ' ' + esc(it.pack_unit || 'بسته')) : '—') + '</td>' +
+10814:           '<td style="text-align:center">' + fmt(it.priceUnit || 0) + '</td>' +
+10815:           '<td style="text-align:center;font-weight:bold">' + fmt(it.total || 0) + '</td>' +
+10816:           '</tr>').join('');
+10817:         let words = '';
+10818:         try { if (typeof numToWords === 'function') words = String(numToWords(Number(tot.balance || 0)) || ''); } catch {}
+10819:         const html = '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="UTF-8"><title>فاکتور ' + esc(invoice.current?.invoiceNumber || '') + '</title>' +
+10820:           '<style>' +
+10821:           '@page { size: A4; margin: 10mm; }' +
+10822:           '* { box-sizing: border-box; }' +
+10823:           'body { font-family: Tahoma, Arial, sans-serif; font-size: 12px; color: #0f172a; margin:0; padding:0; }' +
+10824:           '.header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #d4af37; padding-bottom:8px; margin-bottom:10px; }' +
+10825:           '.brand { font-size:24px; font-weight:bold; color:#0f2438; }' +
+
+
+██████████████████████████████████████████████████████████████████
+█ I. فاکتور A5 — هدر و ردیف
+██████████████████████████████████████████████████████████████████
+
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 📌 هدر و ردیف A5
+╚══════════════════════════════════════════════════════════════════════╝
+4790: 
+4791:   };
+4792: 
+4793: 
+4794: 
+4795:   const capture = async (mode: 'share' | 'print') => {
+4796: 
+4797:     try {
+4798: 
+4799:       const uri = await captureRef(ref, { format: 'jpg', quality: 0.95 });
+4800: 
+4801:       if (mode === 'print') await Print.printAsync({ uri });
+4802: 
+4803:       else if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+4804: 
+4805:     } catch (e: any) { showToast(e.message, true); }
+4806: 
+4807:   };
+4808: 
+4809: 
+4810: 
+4811:   const exportExcel = async () => {
+4812: 
+4813:     if (!report) return;
+4814: 
+4815:     try {
+4816: 
+4817:       const wb = XLSX.utils.book_new();
+4818: 
+4819:       const t = report.totals;
+4820: 
+4821: 
+4822: 
+4823:       if (report.salesRows.length) {
+4824: 
+4825:         const data = report.salesRows.map((r: any, i: number) => ({
+4826: 
+4827:           '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice,
+4828: 
+4829:           'کد مدل': r.modelCode, 'نام مدل': r.modelName,
+4830: 
+4831:           'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+4832: 
+4833:           'پرداخت': r.payment, 'مانده': r.total - r.payment,
+4834: 
+4835:           'بانک': r.bank, 'صاحب حساب': r.holder, 'کد صاحب حساب': r.holderCode,
+4836: 
+4837:           'تاریخ واریز': displayDateOnly(r.depositDate), 'باربری': r.shipping, 'شرح': r.desc,
+4838: 
+4839:         }));
+4840: 
+4841:         data.push({ 'نام مدل': 'جمع فروش', 'جمع': totals.totalSales, 'پرداخت': totals.paidByCustomer, 'مانده': totals.customerOwes } as any);
+4842: 
+4843:         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'فروش');
+4844: 
+4845:       }
+4846: 
+4847: 
+4848: 
+4849:       if (report.purchaseRows.length) {
+4850: 
+4851:         const data = report.purchaseRows.map((r: any, i: number) => ({
+4852: 
+4853:           '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'فاکتور دستی': r.manualInv,
+4854: 
+4855:           'کد مدل': r.modelCode, 'نام مدل': r.modelName,
+4856: 
+4857:           'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+4858: 
+4859:           'پرداخت': r.payment, 'مانده': r.total - r.payment,
+4860: 
+4861:           'بانک': r.bank, 'صاحب حساب': r.holder, 'کد پرداخت‌کننده': r.payerCode,
+4862: 
+4863:           'تاریخ واریز': displayDateOnly(r.depositDate), 'شرح': r.desc,
+4864: 
+
+
+██████████████████████████████████████████████████████████████████
+█ J. فاکتور A5 — جمع کل
+██████████████████████████████████████████████████████████████████
+
+
+✅ تمام.

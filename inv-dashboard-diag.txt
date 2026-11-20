@@ -1,0 +1,40 @@
+=== DashboardScreen: components/DashboardScreen.tsx ===
+تعداد خطوط: 60
+--- جستجوی انبار/Inventory در داشبورد ---
+--- جستجوی تاگل/واحد در داشبورد ---
+>>> تعداد تطابق تاگل: 0
+--- جستجو در App.tsx برای InventoryScreen ---
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g
+1297: purchase: '4242', print: '4242', mgr: '4242', profit: '4242', inventory: '4242', settings: '4242',
+1407: 'انبار':        () => setTab('inventory'),
+1409: 'موجودی':       () => setTab('inventory'),
+1862: tab === 'inventory' ? '#0f5132' :
+2014: {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
+2100: if (name === 'inventory') return <InventoryScreen showToast={showToast} />;
+5767: //  INVENTORY SCREEN — جدول ردیفی مثل وب
+5796: function InventoryScreen({ showToast }: any) {
+5834: var words = '<div class="net-words">ارزش کل انبار به حروف: ' + numToWords(st.totalValue || 0) + ' ' + cur + '</div>';
+5842: var signs = mizanSignaturesHtml(['امضای انباردار', 'امضای مدیر مالی', 'مهر شرکت']);
+5846: return buildStandardHtml('گزارش موجودی انبار', meta + summary + table + words + signs + note, '📦 انبار');
+5858: const r = await shareHtmlAsPdf(html, 'inventory-' + Date.now() + '.pdf');
+5890: const r = await exportExcel([{ name: 'انبار', data }], 'inventory-' + Date.now() + '.xlsx');
+5902: Alert.alert('خروجی انبار', 'نوع خروجی:', [
+5936: const d = await getInventoryByModel(m.code);
+6014: var adjTable = (data.adjustments || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">⚖ تعدیلات انبار</h3><table><tr><th>#</th><th>تاریخ</th><th>دلیل</th><th>مقدار
+6016: var signs = mizanSignaturesHtml(['امضای انباردار', 'امضای مدیر مالی', 'مهر شرکت']);
+6194: // re-fetch adjModel از inventory جدید
+6196: const inv = await getInventory();
+6211: try { const d = await getInventory(); setList(d.list); setStats(d.stats); setThresholdInput(String(d.threshold)); }
+6254: await updateSettings({ ...settings, inventory_threshold: v });
+6255: clearInventoryCache();
+6886: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>⚖️ تعدی
+8730: } else if (type === 'inventory') {
+8732: const d = await getInventory();
+8736: setData({ rows, total: rows.reduce((a: number, r: any) => a + r.currentQty, 0), title: 'موجودی انبار', columns: ['کد', 'نام', 'خرید', 'فروش', 'موجودی', 'قفسه'] });
+8798: { k: 'inventory', l: '📦 موجودی' },
+8898: {type === 'inventory' && <>
+9221: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(settings.inventory_threshold || 5)} onChangeText={(v) => setS
+9265: { k: 'inventory', l: '📦 موجودی' },
+10585: clearInventoryCache();
+10595: try { await deleteProduct(p.local_id || p.id || p._localId || p.code); clearInventoryCache(); load(); showToast('✅ حذف شد'); }
+11590: // Inventory Stats Box

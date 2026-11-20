@@ -1,0 +1,21 @@
+=== 1. هدر انبار (اطراف کلمه موجودی) ===
+6499:             <Text style={[HDR.cell, { width: 80 }]}>فروش</Text>
+6500: 
+6501:             <Text style={[HDR.cell, { width: 90 }]}>موجودی</Text>
+6502: 
+6503:             <Text style={[HDR.cell, { width: 110 }]}>بهای واحد</Text>
+6504: 
+6505:             <Text style={[HDR.cell, { width: 130 }]}>ارزش کل</Text>
+6506: 
+---
+
+=== 2. ردیف انبار (اطراف width 90 و statusColor) ===
+6319:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.sold)}</Text>
+6320: 
+6321:                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: statusColor(m.status), fontWeight: 'bold', fontSize: 15 }]}>{fmt(m.currentQty)}</Text>
+6322: 
+6323:                 <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0891b2', fontSize: 11 }]}>{fmt(m.unitCost || 0)}</Text>
+6324: 
+6325:                 <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#059669', fontWeight: 'bold', fontSize: 11 }]}>{fmt(m.totalValue || 0)}</Text>
+6326: 
+---

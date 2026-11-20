@@ -1,0 +1,7 @@
+=== 1. بررسی useEffect برای prodMap ===
+
+=== 2. بررسی نحوه خواندن کد در بدنه مودال ===
+538: _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quanti
+584: _p.push('<tr><td>' + idx + '</td><td>' + _safeLedgerDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_
+1113: <Text style={[s.td, { width: 60, fontSize: 9, color: '#0891b2' }]}>{(() => { const _u = prodMap.get(String(r.model_code || '')) || {}; const bU = _u.base_unit || 'عدد'; const pS = Number(_u.pack_size)
+1114: <Text style={[s.td, { width: 70, fontSize: 9, color: '#059669', fontWeight: 'bold' }]}>{(() => { const _u = prodMap.get(String(r.model_code || '')) || {}; const pU = _u.pack_unit || 'بسته'; const pS =

@@ -1,0 +1,819 @@
+=== App.tsx: رندر کردن نمای معین/ترازنامه (ledgerOpen) ===
+--- یافت شد حول خط 1924 ---
+1914:             </View>
+1915: 
+1916:             <Text style={s.hSub}>{t('حساب‌ها دقیق، معاملات امن، ذهن آسوده')} [v3]</Text>
+1917: 
+1918:           </View>
+1919: 
+1920:         </View>
+1921: 
+1922:       </View>
+1923: 
+1924:       {tab !== 'exchange' && tab !== 'publicMarket' && tab !== 'aiAssistant' && tab !== 'settings' && tab !== 'mgr' && tab !== 'recovery' && !ledgerOpen && (
+1925: 
+1926:         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.tabsBar, { backgroundColor: C.card }]} contentContainerStyle={s.tabsCont}>
+1927: 
+1928:         {tabs.map((t) => (
+1929: 
+1930:                    <TouchableOpacity key={t.key} accessibilityLabel={String(t.label)} accessibilityRole="button" onPress={() => requestTab(t.key)} activeOpacity={0.7} style={[s.tab, tab === t.key && { backgroundColor: C.isSimple ? '#64748b' : t.color, borderColor: '#d4af37' }]}>
+1931: 
+1932:             <Text style={s.tabIcon}>{t.icon}</Text>
+1933: 
+1934:             <Text style={[s.tabLbl, { color: C.textMut }, tab === t.key && s.tabLblActive]}>{t.label}</Text>
+1935: 
+1936:             {isLocked(t.key) && <Text style={s.lock}>🔒</Text>}
+1937: 
+1938:           </TouchableOpacity>
+1939: 
+1940:         ))}
+1941: 
+1942:       
+1943: 
+1944:             <TouchableOpacity 
+1945: 
+1946:               key="plus_tab" 
+1947: 
+1948:               accessibilityLabel="ایجاد سریع" 
+1949: 
+1950:               accessibilityRole="button" 
+1951: 
+1952:               onPress={() => setPlus(true)} 
+1953: 
+1954:               activeOpacity={0.7} 
+1955: 
+1956:               style={s.tab}
+1957: 
+1958:             >
+1959: 
+1960:               <Text style={s.tabIcon}>➕</Text>
+1961: 
+1962:               <Text style={[s.tabLbl, { color: '#fff' }]}>ایجاد</Text>
+1963: 
+1964:             </TouchableOpacity>
+1965: 
+1966:           </ScrollView>
+1967: 
+1968:       )}
+1969: 
+1970:       <View key={`tab-${tab}-${langTick || 0}`} style={{ flex: 1 }}>
+1971: 
+1972:       {tab === 'dashboard' && <DashboardScreen onLedgerOpenChange={setLedgerOpen} lang={curLang === 'ps' ? 'ps' : 'fa'} onOpen={(n: any) => { const k = String(n.key); if (k.includes(':')) { const [tabKey, sub] = k.split(':'); requestTab(tabKey); setTimeout(() => { try { (globalThis as any).__exchangeSetSub?.(sub); } catch {} }, 200); } else { requestTab(k); } }} />}
+1973: 
+1974:       {tab === 'order' && <SalesScreen showToast={showToast} />}
+1975: 
+1976:       {tab === 'purchase' && <PurchaseScreen showToast={showToast} />}
+1977: 
+1978:       {tab === 'print' && <PrintScreen showToast={showToast} />}
+1979: 
+1980:       {tab === 'mgr' && (
+1981:               <View style={{ flex: 1 }}>
+1982:                 <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+1983:                   <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+1984:                     <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>← بازگشت به داشبورد</Text>
+1985:                   </TouchableOpacity>
+1986:                   <Text style={{ color: '#d4af37', fontSize: 14, fontWeight: 'bold' }}>📁 مدیریت</Text>
+1987:                 </View>
+1988:                 <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />
+1989:               </View>
+1990:             )}
+1991: 
+1992:       {tab === 'assistant' && (
+1993:         <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+1994:           <AssistantHome showToast={showToast} />
+1995:         </ScrollView>
+1996:       )}
+1997: 
+1998:       {tab === 'settings' && (
+1999:         <View style={{ flex: 1, backgroundColor: '#0a1628' }}>
+2000:           <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#1f3a5f', backgroundColor: '#0f2438' }}>
+2001:             <TouchableOpacity onPress={() => setTab('dashboard')} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+2002:               <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>→ بازگشت</Text>
+2003:             </TouchableOpacity>
+2004:             <Text style={{ color: '#f4d47a', fontSize: 16, fontWeight: 'bold' }}>⚙️ تنظیمات</Text>
+2005:           </View>
+2006:           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+2007:             <SettingsSection showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} />
+2008:           </ScrollView>
+2009:         </View>
+2010:       )}
+2011: 
+2012:       {tab === 'profit' && <ProfitScreen showToast={showToast} settings={settings} />}
+2013: 
+2014:       {tab === 'inventory' && <InventoryScreen showToast={showToast} />}
+2015: 
+2016:       {tab === 'exchange' && <ExchangeScreen showToast={showToast} />}
+2017: 
+2018:       {tab === 'publicMarket' && <PublicMarketScreen showToast={showToast} />}
+2019: 
+2020:       {tab === 'support' && (
+2021:         <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingBottom: 120 }}>
+2022:           <SupportSection showToast={showToast} initialTicketId={supportOpenTicketId} />
+2023:         </ScrollView>
+2024:       )}
+2025: 
+2026:       {tab === 'recovery' && (
+2027:         <View style={{ flex: 1 }}>
+2028:           <RecoveryPanel showToast={showToast} onBack={() => setTab('dashboard')} />
+2029:         </View>
+2030:       )}
+2031: 
+2032:       {tab === 'aiAssistant' && <BotUI showToast={showToast} onExit={() => setTab('dashboard')} onNavigate={Platform.OS !== 'web' ? setTab : undefined} />}
+2033: 
+2034:       {tab === 'botLearning' && <LearningScreen showToast={showToast} />}
+2035: 
+2036:       {tab === 'manualEntry' && <ManualEntryScreen showToast={showToast} />}
+2037: 
+2038:       {tab === 'bankMatch' && <SmsMatchScreen showToast={showToast} />}
+2039: 
+2040:       {tab === 'expenses' && <ExpensesScreen showToast={showToast} />}
+2041: 
+2042:       {tab === 'employees' && <EmployeesScreen showToast={showToast} settings={settings} />}
+2043: 
+\n
+\n=== lib.ts: توابع پشت‌صحنه معین و تراز ===
+--- یافت شد حول خط 531 ---
+531:       balance: -(payload.paymentAmount || 0),
+532:       description: payload.note || '',
+533:       deposit_date: payload.paymentDate || toStorageDateFull(now),
+534:       bank_name: payload.bankAccount || '',
+535:       account_holder: payload.payerName || '',
+536:       payer_code: payload.payerCode || '',
+537:       receiver: payload.receiverAccount || '',
+538:       date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+539:       date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+540:     });
+541:     if (error) throw new Error(error.message);
+542:     return finalInvoiceNumber;
+543:   }
+544: 
+545:   const rows = items.map((it, idx) => ({
+546:     invoice_number: finalInvoiceNumber,
+547:     manual_invoice: payload.manualInvoice,
+548:     supplier_code: payload.supplierCode || '',
+549:     supplier_name: payload.supplierName,
+550:     supplier_phone: payload.supplierPhone || '',
+551:     model_code: it.modelCode || '',
+552:     model_name: it.modelName,
+553:     quantity: it.quantity,
+554:     price_unit: it.priceUnit,
+555:     amount: it.quantity * it.priceUnit,
+556:     total_amount: idx === 0 ? totalAll : 0,
+557:     payment: idx === 0 ? (payload.paymentAmount || 0) : 0,
+558:     balance: idx === 0 ? remaining : 0,
+559:     description: it.description || '',
+560:     deposit_date: idx === 0 ? (payload.paymentDate || toStorageDateFull(now)) : '',
+561:     bank_name: idx === 0 ? (payload.bankAccount || '') : '',
+562:     account_holder: idx === 0 ? (payload.payerName || '') : '',
+563:     payer_code: idx === 0 ? (payload.payerCode || '') : '',
+564:     receiver: idx === 0 ? (payload.receiverAccount || '') : '',
+565:     date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+566:     date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+567:   }));
+568:   const { error } = await supabase.from('purchases').insert(rows);
+569:   if (error) throw new Error(error.message);
+570:   return finalInvoiceNumber;
+571: }
+572: 
+573: export async function getPurchasesGrouped() {
+574:   const { data, error } = await supabase
+575:     .from('purchases').select('*')
+576:     .order('created_at', { ascending: false });
+577:   if (error) throw new Error(error.message);
+578:   const groups: Record<string, any> = {};
+579:   (data || []).forEach((r: any) => {
+580:     if (!groups[r.invoice_number]) {
+581:       groups[r.invoice_number] = {
+582:         invoice: r.invoice_number,
+583:         manual: r.manual_invoice,
+584:         name: r.supplier_name,
+585:         phone: r.supplier_phone, total: 0, paid: 0, items: [],
+586:         date: r.date_reg || r.created_at,
+587:       };
+588:     }
+589:     const g = groups[r.invoice_number];
+590:     g.total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+\n
+--- یافت شد حول خط 558 ---
+558:     balance: idx === 0 ? remaining : 0,
+559:     description: it.description || '',
+560:     deposit_date: idx === 0 ? (payload.paymentDate || toStorageDateFull(now)) : '',
+561:     bank_name: idx === 0 ? (payload.bankAccount || '') : '',
+562:     account_holder: idx === 0 ? (payload.payerName || '') : '',
+563:     payer_code: idx === 0 ? (payload.payerCode || '') : '',
+564:     receiver: idx === 0 ? (payload.receiverAccount || '') : '',
+565:     date_factor: payload.invoiceDate ? toStorageDate(payload.invoiceDate) : toStorageDate(now),
+566:     date_reg: payload.invoiceDate ? toStorageDateFull(payload.invoiceDate) : toStorageDateFull(now),
+567:   }));
+568:   const { error } = await supabase.from('purchases').insert(rows);
+569:   if (error) throw new Error(error.message);
+570:   return finalInvoiceNumber;
+571: }
+572: 
+573: export async function getPurchasesGrouped() {
+574:   const { data, error } = await supabase
+575:     .from('purchases').select('*')
+576:     .order('created_at', { ascending: false });
+577:   if (error) throw new Error(error.message);
+578:   const groups: Record<string, any> = {};
+579:   (data || []).forEach((r: any) => {
+580:     if (!groups[r.invoice_number]) {
+581:       groups[r.invoice_number] = {
+582:         invoice: r.invoice_number,
+583:         manual: r.manual_invoice,
+584:         name: r.supplier_name,
+585:         phone: r.supplier_phone, total: 0, paid: 0, items: [],
+586:         date: r.date_reg || r.created_at,
+587:       };
+588:     }
+589:     const g = groups[r.invoice_number];
+590:     g.total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+591:     g.paid += Number(r.payment) || 0;
+592:     g.items.push(r);
+593:   });
+594:   return Object.values(groups);
+595: }
+596: export async function deletePurchase(invoiceNumber: string) {
+597:   const { error } = await supabase.from('purchases').delete().eq('invoice_number', invoiceNumber);
+598:   if (error) throw new Error(error.message);
+599: }
+600: 
+601: // ═══════════════════════════════════════════════════
+602: // 🗄️ DB — داشبورد و سود
+603: // ═══════════════════════════════════════════════════
+604: export async function getDashboardStats(range: string = 'month', filter: string = 'both') {
+605:   const settings = await getSettings();
+606:   const margin = settings.profit_margin ?? 0.10;
+607: 
+608:   const now = new Date();
+609:   let startDate: Date | null = null;
+610:   const calType = getCalType();
+611:   
+612:   if (range === 'today') {
+613:     startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+614:   } else if (range === 'month') {
+615:     try {
+616:       if (calType === 'jalali') {
+617:         const [jy, jm] = g2j(now.getFullYear(), now.getMonth() + 1, now.getDate());
+\n
+--- یافت شد حول خط 662 ---
+662:       supplierDebt += Number(r.balance) || 0;
+663:     }
+664:   });
+665:   Object.values(purchaseByCode).forEach((arr) => arr.sort((a, b) => a.date - b.date));
+666: 
+667:   const findPurchaseForSale = (code: string, saleTime: number) => {
+668:     const arr = purchaseByCode[code];
+669:     if (!arr || !arr.length) return { price: 0, source: 'unknown' as const };
+670:     const sd = new Date(saleTime);
+671:     const saleYM = `${sd.getFullYear()}/${pad2(sd.getMonth() + 1)}`;
+672:     for (let k = arr.length - 1; k >= 0; k--) {
+673:       const pd = new Date(arr[k].date);
+674:       const ym = `${pd.getFullYear()}/${pad2(pd.getMonth() + 1)}`;
+675:       if (ym === saleYM && arr[k].date <= saleTime) {
+676:         return { price: arr[k].price, source: 'same-month' as const };
+677:       }
+678:     }
+679:     let lastBefore: any = null;
+680:     for (let k = 0; k < arr.length; k++) {
+681:       if (arr[k].date <= saleTime) lastBefore = arr[k];
+682:       else break;
+683:     }
+684:     if (lastBefore) return { price: lastBefore.price, source: 'historical' as const };
+685:     return { price: 0, source: 'unknown' as const };
+686:   };
+687: 
+688:   let totalSales = 0, customerPaid = 0, totalProfit = 0;
+689:   const modelProfits: Record<string, any> = {};
+690:   (sData || []).forEach((r: any) => {
+691:     const saleDate = parseDateAny(r.date_factor) || parseDateAny(r.date_reg);
+692:     if (!saleDate) return;
+693:     if (!inRange(r.date_factor)) return;
+694:     const code = String(r.model_code || '').trim();
+695:     const name = String(r.model_name || '').trim();
+696:     const qty = Number(r.quantity) || 0;
+697:     const price = Number(r.price_unit) || 0;
+698:     const lineTotal = qty * price;
+699:     const payment = Number(r.payment) || 0;
+700:     if (filter !== 'purchase') {
+701:       totalSales += lineTotal;
+702:       customerPaid += payment;
+703:     }
+704:     if (filter !== 'purchase') {
+705:       const info = findPurchaseForSale(code, saleDate.getTime());
+706:       const rowProfit = info.price > 0 && qty > 0 && price > 0
+707:         ? (price - info.price) * qty : 0;
+708:       totalProfit += rowProfit;
+709:       if (code) {
+710:         if (!modelProfits[code]) {
+711:           modelProfits[code] = {
+712:             code, name: name || purchaseNames[code] || '—',
+713:             purchasePrice: info.price, priceSource: info.source,
+714:             totalQty: 0, totalSales: 0, totalProfit: 0, estimated: false,
+715:           };
+716:         }
+717:         const m = modelProfits[code];
+718:         m.totalQty += qty; m.totalSales += lineTotal; m.totalProfit += rowProfit;
+719:         if (name) m.name = name;
+720:         if (info.price > 0) { m.purchasePrice = info.price; m.priceSource = info.source; }
+721:       }
+\n
+--- یافت شد حول خط 1242 ---
+1242: //  Partners & Bank Accounts & Transactions
+1243: // ═══════════════════════════════════════════
+1244: export async function getPartners() {
+1245:   const { data, error } = await supabase.from('partners').select('*').order('code', { ascending: true });
+1246:   if (error) { console.log('[getPartners]', error.message); return []; }
+1247:   return data || [];
+1248: }
+1249: export async function createPartner(p: any) {
+1250:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1251:   if (!clean.local_id) clean.local_id = 'pt_' + Date.now();
+1252:   const { error } = await supabase.from('partners').insert(clean);
+1253:   if (error) throw new Error(error.message);
+1254:   return clean;
+1255: }
+1256: export async function updatePartner(id: string, p: any) {
+1257:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1258:   const { error } = await supabase.from('partners').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1259:   if (error) throw new Error(error.message);
+1260: }
+1261: export async function deletePartner(id: string) {
+1262:   const { error } = await supabase.from('partners').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1263:   if (error) throw new Error(error.message);
+1264: }
+1265: 
+1266: export async function getPartnerBankAccounts(partnerCode: string) {
+1267:   const { data, error } = await supabase.from('partner_bank_accounts').select('*').eq('partner_code', partnerCode);
+1268:   if (error) { console.log('[getPBA]', error.message); return []; }
+1269:   return data || [];
+1270: }
+1271: export async function createPartnerBankAccount(p: any) {
+1272:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1273:   if (!clean.local_id) clean.local_id = 'pba_' + Date.now();
+1274:   const { error } = await supabase.from('partner_bank_accounts').insert(clean);
+1275:   if (error) throw new Error(error.message);
+1276:   return clean;
+1277: }
+1278: export async function updatePartnerBankAccount(id: string, p: any) {
+1279:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1280:   const { error } = await supabase.from('partner_bank_accounts').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1281:   if (error) throw new Error(error.message);
+1282: }
+1283: export async function deletePartnerBankAccount(id: string) {
+1284:   const { error } = await supabase.from('partner_bank_accounts').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1285:   if (error) throw new Error(error.message);
+1286: }
+1287: 
+1288: export async function getPartnerTransactions(partnerCode: string) {
+1289:   const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+1290:   if (error) { console.log('[getPT]', error.message); return []; }
+1291:   return data || [];
+1292: }
+1293: export async function createPartnerTransaction(p: any) {
+1294:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1295:   if (!clean.local_id) clean.local_id = 'ptx_' + Date.now();
+1296:   const { error } = await supabase.from('partner_transactions').insert(clean);
+1297:   if (error) throw new Error(error.message);
+1298:   return clean;
+1299: }
+1300: export async function deletePartnerTransaction(id: string) {
+1301:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+\n
+--- یافت شد حول خط 1288 ---
+1288: export async function getPartnerTransactions(partnerCode: string) {
+1289:   const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+1290:   if (error) { console.log('[getPT]', error.message); return []; }
+1291:   return data || [];
+1292: }
+1293: export async function createPartnerTransaction(p: any) {
+1294:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1295:   if (!clean.local_id) clean.local_id = 'ptx_' + Date.now();
+1296:   const { error } = await supabase.from('partner_transactions').insert(clean);
+1297:   if (error) throw new Error(error.message);
+1298:   return clean;
+1299: }
+1300: export async function deletePartnerTransaction(id: string) {
+1301:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1302:   if (error) throw new Error(error.message);
+1303: }
+1304: // ═══════════════════════════════════════════
+1305: //  Banks
+1306: // ═══════════════════════════════════════════
+1307: export async function getBanks() {
+1308:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1309:   if (error) { console.log('[getBanks]', error.message); return []; }
+1310:   return data || [];
+1311: }
+1312: export async function createBank(p: any) {
+1313:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1314:   if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+1315:   const { error } = await supabase.from('banks').insert(clean);
+1316:   if (error) throw new Error(error.message);
+1317:   return clean;
+1318: }
+1319: export async function updateBank(id: string, p: any) {
+1320:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1321:   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: export async function deleteBank(id: string) {
+1325:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1326:   if (error) throw new Error(error.message);
+1327: }
+1328: 
+1329: // ═══════════════════════════════════════════
+1330: //  Shippings
+1331: // ═══════════════════════════════════════════
+1332: export async function getShippings() {
+1333:   const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+1334:   if (error) { console.log('[getShippings]', error.message); return []; }
+1335:   return data || [];
+1336: }
+1337: export async function createShipping(p: any) {
+1338:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1339:   if (!clean.local_id) clean.local_id = 'ship_' + Date.now();
+1340:   const { error } = await supabase.from('shippings').insert(clean);
+1341:   if (error) throw new Error(error.message);
+1342:   return clean;
+1343: }
+1344: export async function updateShipping(id: string, p: any) {
+1345:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1346:   const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1347:   if (error) throw new Error(error.message);
+\n
+--- یافت شد حول خط 1289 ---
+1289:   const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+1290:   if (error) { console.log('[getPT]', error.message); return []; }
+1291:   return data || [];
+1292: }
+1293: export async function createPartnerTransaction(p: any) {
+1294:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1295:   if (!clean.local_id) clean.local_id = 'ptx_' + Date.now();
+1296:   const { error } = await supabase.from('partner_transactions').insert(clean);
+1297:   if (error) throw new Error(error.message);
+1298:   return clean;
+1299: }
+1300: export async function deletePartnerTransaction(id: string) {
+1301:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1302:   if (error) throw new Error(error.message);
+1303: }
+1304: // ═══════════════════════════════════════════
+1305: //  Banks
+1306: // ═══════════════════════════════════════════
+1307: export async function getBanks() {
+1308:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1309:   if (error) { console.log('[getBanks]', error.message); return []; }
+1310:   return data || [];
+1311: }
+1312: export async function createBank(p: any) {
+1313:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1314:   if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+1315:   const { error } = await supabase.from('banks').insert(clean);
+1316:   if (error) throw new Error(error.message);
+1317:   return clean;
+1318: }
+1319: export async function updateBank(id: string, p: any) {
+1320:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1321:   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: export async function deleteBank(id: string) {
+1325:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1326:   if (error) throw new Error(error.message);
+1327: }
+1328: 
+1329: // ═══════════════════════════════════════════
+1330: //  Shippings
+1331: // ═══════════════════════════════════════════
+1332: export async function getShippings() {
+1333:   const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+1334:   if (error) { console.log('[getShippings]', error.message); return []; }
+1335:   return data || [];
+1336: }
+1337: export async function createShipping(p: any) {
+1338:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1339:   if (!clean.local_id) clean.local_id = 'ship_' + Date.now();
+1340:   const { error } = await supabase.from('shippings').insert(clean);
+1341:   if (error) throw new Error(error.message);
+1342:   return clean;
+1343: }
+1344: export async function updateShipping(id: string, p: any) {
+1345:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1346:   const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1347:   if (error) throw new Error(error.message);
+1348: }
+\n
+--- یافت شد حول خط 1293 ---
+1293: export async function createPartnerTransaction(p: any) {
+1294:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1295:   if (!clean.local_id) clean.local_id = 'ptx_' + Date.now();
+1296:   const { error } = await supabase.from('partner_transactions').insert(clean);
+1297:   if (error) throw new Error(error.message);
+1298:   return clean;
+1299: }
+1300: export async function deletePartnerTransaction(id: string) {
+1301:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1302:   if (error) throw new Error(error.message);
+1303: }
+1304: // ═══════════════════════════════════════════
+1305: //  Banks
+1306: // ═══════════════════════════════════════════
+1307: export async function getBanks() {
+1308:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1309:   if (error) { console.log('[getBanks]', error.message); return []; }
+1310:   return data || [];
+1311: }
+1312: export async function createBank(p: any) {
+1313:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1314:   if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+1315:   const { error } = await supabase.from('banks').insert(clean);
+1316:   if (error) throw new Error(error.message);
+1317:   return clean;
+1318: }
+1319: export async function updateBank(id: string, p: any) {
+1320:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1321:   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: export async function deleteBank(id: string) {
+1325:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1326:   if (error) throw new Error(error.message);
+1327: }
+1328: 
+1329: // ═══════════════════════════════════════════
+1330: //  Shippings
+1331: // ═══════════════════════════════════════════
+1332: export async function getShippings() {
+1333:   const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+1334:   if (error) { console.log('[getShippings]', error.message); return []; }
+1335:   return data || [];
+1336: }
+1337: export async function createShipping(p: any) {
+1338:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1339:   if (!clean.local_id) clean.local_id = 'ship_' + Date.now();
+1340:   const { error } = await supabase.from('shippings').insert(clean);
+1341:   if (error) throw new Error(error.message);
+1342:   return clean;
+1343: }
+1344: export async function updateShipping(id: string, p: any) {
+1345:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1346:   const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1347:   if (error) throw new Error(error.message);
+1348: }
+1349: export async function deleteShipping(id: string) {
+1350:   const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1351:   if (error) throw new Error(error.message);
+1352: }
+\n
+--- یافت شد حول خط 1296 ---
+1296:   const { error } = await supabase.from('partner_transactions').insert(clean);
+1297:   if (error) throw new Error(error.message);
+1298:   return clean;
+1299: }
+1300: export async function deletePartnerTransaction(id: string) {
+1301:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1302:   if (error) throw new Error(error.message);
+1303: }
+1304: // ═══════════════════════════════════════════
+1305: //  Banks
+1306: // ═══════════════════════════════════════════
+1307: export async function getBanks() {
+1308:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1309:   if (error) { console.log('[getBanks]', error.message); return []; }
+1310:   return data || [];
+1311: }
+1312: export async function createBank(p: any) {
+1313:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1314:   if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+1315:   const { error } = await supabase.from('banks').insert(clean);
+1316:   if (error) throw new Error(error.message);
+1317:   return clean;
+1318: }
+1319: export async function updateBank(id: string, p: any) {
+1320:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1321:   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: export async function deleteBank(id: string) {
+1325:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1326:   if (error) throw new Error(error.message);
+1327: }
+1328: 
+1329: // ═══════════════════════════════════════════
+1330: //  Shippings
+1331: // ═══════════════════════════════════════════
+1332: export async function getShippings() {
+1333:   const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+1334:   if (error) { console.log('[getShippings]', error.message); return []; }
+1335:   return data || [];
+1336: }
+1337: export async function createShipping(p: any) {
+1338:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1339:   if (!clean.local_id) clean.local_id = 'ship_' + Date.now();
+1340:   const { error } = await supabase.from('shippings').insert(clean);
+1341:   if (error) throw new Error(error.message);
+1342:   return clean;
+1343: }
+1344: export async function updateShipping(id: string, p: any) {
+1345:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1346:   const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1347:   if (error) throw new Error(error.message);
+1348: }
+1349: export async function deleteShipping(id: string) {
+1350:   const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1351:   if (error) throw new Error(error.message);
+1352: }
+1353: // ═══════════════════════════════════════════
+1354: //  Aliases for queue operations
+1355: //  (syncToServer uses item.op as function name)
+\n
+--- یافت شد حول خط 1300 ---
+1300: export async function deletePartnerTransaction(id: string) {
+1301:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1302:   if (error) throw new Error(error.message);
+1303: }
+1304: // ═══════════════════════════════════════════
+1305: //  Banks
+1306: // ═══════════════════════════════════════════
+1307: export async function getBanks() {
+1308:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1309:   if (error) { console.log('[getBanks]', error.message); return []; }
+1310:   return data || [];
+1311: }
+1312: export async function createBank(p: any) {
+1313:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1314:   if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+1315:   const { error } = await supabase.from('banks').insert(clean);
+1316:   if (error) throw new Error(error.message);
+1317:   return clean;
+1318: }
+1319: export async function updateBank(id: string, p: any) {
+1320:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1321:   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: export async function deleteBank(id: string) {
+1325:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1326:   if (error) throw new Error(error.message);
+1327: }
+1328: 
+1329: // ═══════════════════════════════════════════
+1330: //  Shippings
+1331: // ═══════════════════════════════════════════
+1332: export async function getShippings() {
+1333:   const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+1334:   if (error) { console.log('[getShippings]', error.message); return []; }
+1335:   return data || [];
+1336: }
+1337: export async function createShipping(p: any) {
+1338:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1339:   if (!clean.local_id) clean.local_id = 'ship_' + Date.now();
+1340:   const { error } = await supabase.from('shippings').insert(clean);
+1341:   if (error) throw new Error(error.message);
+1342:   return clean;
+1343: }
+1344: export async function updateShipping(id: string, p: any) {
+1345:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1346:   const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1347:   if (error) throw new Error(error.message);
+1348: }
+1349: export async function deleteShipping(id: string) {
+1350:   const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1351:   if (error) throw new Error(error.message);
+1352: }
+1353: // ═══════════════════════════════════════════
+1354: //  Aliases for queue operations
+1355: //  (syncToServer uses item.op as function name)
+1356: // ═══════════════════════════════════════════
+1357: export const createPTX = createPartnerTransaction;
+1358: export const deletePTX = deletePartnerTransaction;
+1359: export const createPBA = createPartnerBankAccount;
+\n
+--- یافت شد حول خط 1301 ---
+1301:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1302:   if (error) throw new Error(error.message);
+1303: }
+1304: // ═══════════════════════════════════════════
+1305: //  Banks
+1306: // ═══════════════════════════════════════════
+1307: export async function getBanks() {
+1308:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1309:   if (error) { console.log('[getBanks]', error.message); return []; }
+1310:   return data || [];
+1311: }
+1312: export async function createBank(p: any) {
+1313:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1314:   if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+1315:   const { error } = await supabase.from('banks').insert(clean);
+1316:   if (error) throw new Error(error.message);
+1317:   return clean;
+1318: }
+1319: export async function updateBank(id: string, p: any) {
+1320:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1321:   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: export async function deleteBank(id: string) {
+1325:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1326:   if (error) throw new Error(error.message);
+1327: }
+1328: 
+1329: // ═══════════════════════════════════════════
+1330: //  Shippings
+1331: // ═══════════════════════════════════════════
+1332: export async function getShippings() {
+1333:   const { data, error } = await supabase.from('shippings').select('*').order('name', { ascending: true });
+1334:   if (error) { console.log('[getShippings]', error.message); return []; }
+1335:   return data || [];
+1336: }
+1337: export async function createShipping(p: any) {
+1338:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1339:   if (!clean.local_id) clean.local_id = 'ship_' + Date.now();
+1340:   const { error } = await supabase.from('shippings').insert(clean);
+1341:   if (error) throw new Error(error.message);
+1342:   return clean;
+1343: }
+1344: export async function updateShipping(id: string, p: any) {
+1345:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1346:   const { error } = await supabase.from('shippings').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1347:   if (error) throw new Error(error.message);
+1348: }
+1349: export async function deleteShipping(id: string) {
+1350:   const { error } = await supabase.from('shippings').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1351:   if (error) throw new Error(error.message);
+1352: }
+1353: // ═══════════════════════════════════════════
+1354: //  Aliases for queue operations
+1355: //  (syncToServer uses item.op as function name)
+1356: // ═══════════════════════════════════════════
+1357: export const createPTX = createPartnerTransaction;
+1358: export const deletePTX = deletePartnerTransaction;
+1359: export const createPBA = createPartnerBankAccount;
+1360: export const deletePBA = deletePartnerBankAccount;
+\n
+--- یافت شد حول خط 1357 ---
+1357: export const createPTX = createPartnerTransaction;
+1358: export const deletePTX = deletePartnerTransaction;
+1359: export const createPBA = createPartnerBankAccount;
+1360: export const deletePBA = deletePartnerBankAccount;
+1361: 
+1362: 
+1363: // ═══════════════════════════════════════════
+1364: //  getSalaryPayments — خواندن حقوق‌ها
+1365: // ═══════════════════════════════════════════
+1366: export async function getSalaryPayments(): Promise<any[]> {
+1367:   const { data, error } = await supabase
+1368:     .from('salary_payments')
+1369:     .select('*')
+1370:     .order('created_at', { ascending: false });
+1371:   if (error) throw new Error(error.message);
+1372:   return data || [];
+1373: }
+1374: 
+1375: 
+1376: // ═══════════════════════════════════════════
+1377: //  getLoans — خواندن وام‌های کارمندان
+1378: // ═══════════════════════════════════════════
+1379: export async function getLoans(): Promise<any[]> {
+1380:   const { data, error } = await supabase
+1381:     .from('employee_loans')
+1382:     .select('*')
+1383:     .order('created_at', { ascending: false });
+1384:   if (error) throw new Error(error.message);
+1385:   return data || [];
+1386: }
+1387: 
+\n
+--- یافت شد حول خط 1358 ---
+1358: export const deletePTX = deletePartnerTransaction;
+1359: export const createPBA = createPartnerBankAccount;
+1360: export const deletePBA = deletePartnerBankAccount;
+1361: 
+1362: 
+1363: // ═══════════════════════════════════════════
+1364: //  getSalaryPayments — خواندن حقوق‌ها
+1365: // ═══════════════════════════════════════════
+1366: export async function getSalaryPayments(): Promise<any[]> {
+1367:   const { data, error } = await supabase
+1368:     .from('salary_payments')
+1369:     .select('*')
+1370:     .order('created_at', { ascending: false });
+1371:   if (error) throw new Error(error.message);
+1372:   return data || [];
+1373: }
+1374: 
+1375: 
+1376: // ═══════════════════════════════════════════
+1377: //  getLoans — خواندن وام‌های کارمندان
+1378: // ═══════════════════════════════════════════
+1379: export async function getLoans(): Promise<any[]> {
+1380:   const { data, error } = await supabase
+1381:     .from('employee_loans')
+1382:     .select('*')
+1383:     .order('created_at', { ascending: false });
+1384:   if (error) throw new Error(error.message);
+1385:   return data || [];
+1386: }
+1387: 
+\n

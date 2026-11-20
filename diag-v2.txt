@@ -1,0 +1,38 @@
+🛡️ BACKUP: backup-units-v2-1795085611976.tsx
+
+═══════════ تغییرات اعمال‌شده ═══════════
+✅ FIX 1: purchases header → واحد بسته (line 6726)
+✅ FIX 2a: sales header → تعداد (واحد پایه)
+✅ FIX 2b: sales header + واحد بسته
+✅ FIX 3: sales row + واحد پایه + واحد بسته
+✅ FIX 4a: A4 base_unit prods fallback
+✅ FIX 4b: A4 pack_unit prods fallback
+✅ FIX 4c: A4 pack_size prods fallback
+
+7 تغییر اعمال شد.
+
+═══════════ DIAGNOSTIC ═══════════
+
+🔍 getPackForCodeGlobal تعریف:
+   ✅ خط 744: const getPackForCodeGlobal = (code: string) => {
+
+🔍 "همه" tab — فاکتور دستی / جمع ردیف:
+   خط 4248: if (!manualInv) return alertMsg('⚠️ خطا', 'شماره فاکتور دستی الزامی است');
+   خط 4334: <EL text="{t('🧾 شماره فاکتور دستی *')}" style={[s.lbl, { color: C.textMut }]} />
+   خط 4545: <Text style={{ color: C.textMut }}>🧾 فاکتور دستی:</Text>
+   خط 4853: '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'فاکتور دستی': r.manualInv,
+
+🔍 A5 — captureRef / ref={:
+   خط 53: import { captureRef } from 'react-native-view-shot';
+   خط 4799: const uri = await captureRef(ref, { format: 'jpg', quality: 0.95 });
+   خط 5145: <View ref={ref} collapsable={false} style={{ backgroundColor: '#ffffff', flex: 1, padding: 8, marginTop: 8 }}>
+   خط 5591: const uri = await captureRef(profitRef, { format: 'jpg', quality: 0.95 });
+   خط 8501: const uri = await captureRef(viewRef, { format: 'jpg', quality: 0.95 });
+   خط 8513: <View ref={viewRef} collapsable={false}>
+   خط 10875: const uri = await captureRef(ref, Platform.OS === 'web'
+   خط 10941: <View ref={ref} collapsable={false} style={s.invoiceContainer}>
+
+🔍 فرم ویرایش فاکتور (cur.items):
+   خط 11015: {cur.items.map((it: any, i: number) => (
+
+✅ تمام. لطفاً این خروجی را بفرستید.

@@ -1,0 +1,1001 @@
+\n=== فایل: App.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-3-sections-1795080396481.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-a4-final-1795125543613.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-a4-preview-1795126380561.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-a4-prods-1795129254244.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-a4-return-1795130655991.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-a5-invoice-only-1795115277137.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-a5-simple-1795117863775.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-addrow-search-1795088211576.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-adj-datefield-1794735071676.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-adj-final-1794731622161.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-adj-history-1794731878927.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-adj-totals-1794732895279.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-app-edit-1795120795260.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-cache-all-1794740455988.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-cache-final-1794685356576.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-capture-share-v2-1794835663478.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-customer-sync-app-1794828918215.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-customer-sync-offline-1794828918215.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-dirty-flag-1794685197152.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-edit-v2-1795122534996.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-everything-final-1795084223241.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-final-two-app-1794722756506.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-final-two-offline-1794722756506.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-fix-all-app-1794720290393.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-fix-all-offline-1794720290393.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-flatlist-auto-1794713665152.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-bugs-1794717892030.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-cb-1794741387521.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-final-1794684613918.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-final-cb-1794741471464.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-height-1794713266076.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-iso3-1794754392420.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-isolate-1794753626544.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-isolate-v2-1794754300398.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-ultimate-1794741575852.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-v2-1794684497792.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-flatlist-v3-1794684750126.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-global-unit-1795083275700.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-headers-a4a5-1795124734883.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-import-flatlist-1794690206052.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-import-hook-1794726172112.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-import-safe-1794726939141.tsx ===
+1: import { useDeferredValue, __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-input-lag-1794736570944.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-inv-speed-v2-1794665820143.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-inv-speed-v3-1794665880483.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-invoice-robust-1795123878577.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-invoice-units-1795123731335.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-kardex-cond-1794750029443.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-kardex-deps-1794752044802.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-kardex-grouped-1794723851098.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-kardex-position-1794749922991.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-kardex-super-1794752613160.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-kardex-timeout-1794745255019.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-ledger-parties-1794839949671.tsx ===
+1: // LedgerScreen.tsx — ترازنامه یکپارچه با مودال جامع (۱۹ ستون)
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleS
+\n=== فایل: backup-lookup-type-app-1794832265663.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-lookup-type-offline-1794832265663.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-lookup-type-v2-1794832398790.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-modal-render-1794741013029.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-modal-render-v2-1794741209544.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-modal-simple-1794682894876.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-phase1-offline-1794681548902.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-phase2-offline-1794681843808.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-phase3-app-1794682709902.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-preview-units-1795126834635.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-print-a4-1794895968542.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-print-quality-search-1794838895036.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-prods-prop-1795129746286.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-proper-fix-1795093468423.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-purchase-sale-toggle-1795111377882.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-react-import-1794727035604.tsx ===
+1: import { useDeferredValue, __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-recovery-icon-1794392280941.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-report-restore-1795082789350.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-sale-form-safe-1795112604125.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-sale-party-code-1794892845846.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-sale-party-code-v2-1794893044335.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-sale-preview-1795127256435.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-sale-toggle-1795095701393.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-sale-toggle-final-1795113048802.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-search-edit-final-1795087862116.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-search-edit-tab-1795119633759.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-search-enrich-1794831538213.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-second-call-1795129936766.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-second-call-1795130109489.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-shaking-1794736845253.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-stable-flatlist-1794810877182.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-submit-reload-1794737073645.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-surprise2-final-1794758375808.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-threshold-final-1794743877624.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-units-v2-1795085611976.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-updateparty-fix-1794832852574.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne
+\n=== فایل: backup-use-prods-1795128123600.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMe
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+   
+\n=== فایل: backup-web-invoice-1794834752395.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: backup-web-share-1794835441830.tsx ===
+1: import { __clearSeen } from "./lib.storage";
+import { startGlobalBotWorker } from './lib.bot.worker';
+import DashboardScreen from './components/DashboardScreen';
+
+import PlusMenu f
+21: ' +
+            'اگر این کارها را نکنی، اطلاعات محلی از دست می‌رود.';
+          if (Platform.OS === 'web') window.alert(msg);
+          else Alert.alert('قفل دستگاه', msg);
+       
+\n=== فایل: LedgerScreen.tsx ===
+1: // LedgerScreen.tsx — ترازنامه یکپارچه با مودال جامع (۱۹ ستون)
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleS
+\n=== فایل: lib.offline.ts ===
+1: // lib.offline.ts — لایه‌ی Offline-First روی lib.ts
+import AsyncStorage from './lib.storage';
+import * as lib from './lib';
+
+
+// ═══ EDIT_AUDIT_WRAPPER ═══
+const _EDIT_TRACKED = ne

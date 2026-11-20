@@ -1,0 +1,36 @@
+=== 1. خط ایمپورت (خط 9) ===
+9: import { toFaNum, getProducts } from './lib';
+
+=== 2. بلاک راه‌اندازی prodMap ===
+92:   const [prodMap, setProdMap] = useState(new Map());
+93: 
+94:   useEffect(() => {
+95:     getProducts().then(prods => {
+96:       const m = new Map();
+97:       (prods || []).forEach((p: any) => {
+98:         m.set(String(p.code || ''), {
+99:           pack_size: Number(p.pack_size) || 0,
+100:           base_unit: String(p.base_unit || 'عدد'),
+101:           pack_unit: String(p.pack_unit || 'بسته')
+102:         });
+103:       });
+104:       setProdMap(m);
+105:     });
+106:   }, []);
+107:   const [searchQuery, setSearchQuery] = useState('');
+108:   const [activeTab, setActiveTab] = useState<'parties' | 'partners' | 'employees' | 'expenses'>('parties');
+109:   const [selectedParty, setSelectedParty] = useState(null);
+110:   const [modalVisible, setModalVisible] = useState(false);
+111:   const [partyFilter, setPartyFilter] = useState('all');
+
+=== 3. تابع getProducts در lib.ts ===
+266: export async function getProducts(): Promise<Product[]> {
+267:   const { data, error } = await supabase.from('products').select('*').order('name');
+268:   if (error) throw new Error(error.message);
+269:   return (data || []) as Product[];
+270: }
+271: export async function createProduct(p: Product) {
+272:   const { id, ...rest } = p as any;
+273:   const { error } = await supabase.from('products').insert(rest);
+274:   if (error) throw new Error(error.message);
+275: }

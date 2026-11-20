@@ -1,0 +1,1444 @@
+=== LedgerScreen.tsx (کامل) ===
+1: // LedgerScreen.tsx — ترازنامه یکپارچه با مودال جامع (۱۹ ستون)
+2: import React, { useState, useEffect, useRef } from 'react';
+3: import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Share, Modal, TextInput } from 'react-native';
+4: import { captureRef } from 'react-native-view-shot';
+5: import { getLedgerData, getInvoiceDetail, getParties } from './lib.offline';
+6: import { getCurrencySync } from './lib.currency';
+7: import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
+8: import { displayDate } from './lib-date';
+9: import { toFaNum } from './lib';
+10: function _safeLedgerDate(input: any): string {
+11:   if (input === null || input === undefined || input === '') return '—';
+12:   let s = String(input).trim();
+13:   if (!s) return '—';
+14:   s = s.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+15:        .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+16:   const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+17:   if (m) {
+18:     const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0));
+19:     if (!isNaN(d.getTime())) return displayDate(d.toISOString());
+20:   }
+21:   const d2 = new Date(s);
+22:   if (!isNaN(d2.getTime())) return displayDate(d2.toISOString());
+23:   return s;
+24: }
+25: 
+26: 
+27: const fmt = (n) => (Number(n) || 0).toLocaleString('en-US');
+28: const TYPE_LABEL = {
+29:   sale: 'فروش', purchase: 'خرید',
+30:   payment_received: 'دریافت وجه', payment_sent: 'پرداخت',
+31:   triangular_received: 'دریافت مثلثی',
+32:   partner_deposit: 'واریز شریک', partner_withdraw: 'برداشت شریک',
+33:   partner_transfer_in: 'انتقال به شریک', partner_transfer_out: 'انتقال از شریک',
+34:   transfer_in: 'انتقال ورودی', transfer_out: 'انتقال خروجی',
+35:   salary: 'حقوق', salary_payment: 'پرداخت حقوق',
+36:   expense: 'هزینه', expense_payment: 'پرداخت هزینه',
+37:   loan: 'وام', loan_payment: 'بازپرداخت وام',
+38:   deposit: 'واریز', withdraw: 'برداشت',
+39: };
+40: const TYPE_COLOR = {
+41:   sale: '#1e40af', purchase: '#dc2626',
+42:   payment_received: '#059669', payment_sent: '#0891b2',
+43:   triangular_received: '#7c3aed',
+44:   partner_deposit: '#059669', partner_withdraw: '#dc2626',
+45:   partner_transfer_in: '#7c3aed', partner_transfer_out: '#7c3aed',
+46:   transfer_in: '#7c3aed', transfer_out: '#7c3aed',
+47:   salary: '#f59e0b', salary_payment: '#059669',
+48:   expense: '#dc2626', expense_payment: '#059669',
+49:   loan: '#dc2626', loan_payment: '#059669',
+50:   deposit: '#059669', withdraw: '#dc2626',
+51: };
+52: 
+53: const CP_LABEL: Record<string, string> = {
+54:   expense: 'هزینه', employee: 'کارمند',
+55:   customer: 'مشتری', supplier: 'تأمین‌کننده',
+56:   partner: 'شریک', box: 'صندوق', bank: 'بانک',
+57:   none: '—', '': '—',
+58: };
+59: function cpLabel(t: any) {
+60:   const k = String(t?.counterpartType || '').trim();
+61:   if (k && k !== 'none') return CP_LABEL[k] || '—';
+62:   const st = String(t?.sourceType || t?.source_type || '').trim().toLowerCase();
+63:   const ty = String(t?.type || '').trim().toLowerCase();
+64:   const infer: Record<string,string> = {
+65:     expense: 'هزینه', salary: 'کارمند', sale: 'مشتری', purchase: 'تأمین‌کننده',
+66:     loan: 'کارمند', transfer: 'انتقال',
+67:   };
+68:   if (infer[st]) return infer[st];
+69:   if (ty.includes('expense')) return 'هزینه';
+70:   if (ty.includes('salary') || ty.includes('loan')) return 'کارمند';
+71:   if (ty.includes('sale')) return 'مشتری';
+72:   if (ty.includes('purchase')) return 'تأمین‌کننده';
+73:   if (ty.includes('transfer')) return 'انتقال';
+74:   return '—';
+75: }
+76: function cleanDesc(t: any) {
+77:   let s = String(t?.description || '');
+78:   s = s.replace(/طرف:\s*none(\s*\([^)]*\))?/gi, '')
+79:        .replace(/طرف:\s*(customer|supplier|partner|employee|expense|box|bank)[^|]*/gi, '')
+80:        .replace(/\|\s*(customer|supplier|partner|employee|expense|box|bank)\s*\([^)]*\)/gi, '')
+81:        .replace(/\b(customer|supplier|partner|employee|expense|box|bank)\s*\([^)]*\)/gi, '')
+82:        .replace(/\s*\|\s*$/g, '')
+83:        .replace(/\s*\|\s*\|/g, ' | ')
+84:        .trim();
+85:   if (!s) s = TYPE_LABEL[t?.type] || t?.type || '—';
+86:   return s;
+87: }
+88: 
+89: export default function LedgerScreen({ onBack, showToast }) {
+90:   const [data, setData] = useState([]);
+91:   const [loading, setLoading] = useState(true);
+92:   const [searchQuery, setSearchQuery] = useState('');
+93:   const [activeTab, setActiveTab] = useState<'parties' | 'partners' | 'employees' | 'expenses'>('parties');
+94:   const [selectedParty, setSelectedParty] = useState(null);
+95:   const [modalVisible, setModalVisible] = useState(false);
+96:   const [partyFilter, setPartyFilter] = useState('all');
+97:   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
+98:   const [partyViewMode, setPartyViewMode] = useState<'all' | 'in' | 'out'>('all');
+99:   const [invoiceList, setInvoiceList] = useState<any[] | null>(null);
+100:   const [invoiceDetailRows, setInvoiceDetailRows] = useState<any[] | null>(null);
+101:   const [invoiceDetailMeta, setInvoiceDetailMeta] = useState<any>(null);
+102:   const [invoiceLoading, setInvoiceLoading] = useState(false);
+103:   const invoiceModalRef = useRef(null);
+104:   const invoiceRef = useRef(null);
+105:   const [treeMode, setTreeMode] = useState<'flat'|'groups'|'group'|'counterparty'>('flat');
+106:   const [activeGroup, setActiveGroup] = useState('');
+107:   const [activeCounterparty, setActiveCounterparty] = useState('');
+108:   const ref = useRef(null);
+109:   const modalRef = useRef(null);
+110: 
+111:   const load = async () => {
+112:     setLoading(true);
+113:     try {
+114:       const result = await getLedgerData();
+115:       let _displayData: any = result;
+116:       try {
+117:         const _parties = await getParties();
+118:         const _normPhoneL = (v: any) => {
+119:           let s = String(v || '').replace(/[^0-9]/g, '');
+120:           if (s.length === 10 && s[0] !== '0') s = '0' + s;
+121:           return s;
+122:         };
+123:         const _byLocal: any = {};
+124:         const _byCode: any = {};
+125:         const _byPhone: any = {};
+126:         for (const p of (_parties || [])) {
+127:           const lid = String((p as any).local_id || (p as any).id || '');
+128:           if (lid) _byLocal[lid] = p;
+129:           const c = String((p as any).code || '');
+130:           if (c) _byCode[c] = p;
+131:           const ph = _normPhoneL((p as any).phone);
+132:           if (ph) _byPhone[ph] = p;
+133:         }
+134:         _displayData = (result || []).map((r: any) => {
+135:           const codes = r.allCodes || [];
+136:           let p: any = _byLocal[String(r.customer_local_id || r.local_id || '')];
+137:           if (!p) {
+138:             for (const c of codes) {
+139:               if (_byCode[String(c)]) { p = _byCode[String(c)]; break; }
+140:             }
+141:           }
+142:           if (!p && r.code) p = _byCode[String(r.code)];
+143:           if (!p && r.phone) p = _byPhone[_normPhoneL(r.phone)];
+144:           if (!p) return r;
+145:           return {
+146:             ...r,
+147:             displayName: (p as any).name || r.name,
+148:             displayPhone: (p as any).phone || r.phone,
+149:             displayCode: (p as any).code || r.code,
+150:             displayCodes: (p as any).code ? String((p as any).code) : (r.allCodes || []).join(', '),
+151:           };
+152:         });
+153:       } catch (e) {
+154:         console.log('ledger display enrich err:', e);
+155:       }
+156:       setData(_displayData);
+157:     } catch (e) { if (showToast) showToast('خطا در بارگذاری', true); console.log(e); }
+158:     finally { setLoading(false); }
+159:   };
+160:   useEffect(() => { load(); }, []);
+161: 
+162:   const curLabel = (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : 'افغانی');
+163: 
+164:   function buildInvoices(p: any) {
+165:     const map: any = {};
+166:     (p?.transactions || []).forEach((t: any) => {
+167:       const inv = String(t.invoice || '').trim();
+168:       if (!inv) return;
+169:       const ty = String(t.type || '');
+170:       const isSale = ty === 'sale';
+171:       const isPurchase = ty === 'purchase';
+172:       const isPay = ty === 'payment_received' || ty === 'payment_sent' || ty === 'triangular_received';
+173:       if (isSale || isPurchase) {
+174:         if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0 };
+175:         map[inv].total += Number(t.lineTotal) || Number(t.credit) || Number(t.debit) || 0;
+176:       } else if (isPay) {
+177:         if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0 };
+178:         map[inv].paid += Number(t.credit) || Number(t.debit) || Number(t.lineTotal) || 0;
+179:       }
+180:     });
+181:     return Object.values(map).map((x: any) => ({ ...x, balance: x.total - x.paid })).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+182:   }
+183: 
+184:   const openInvoiceDetail = async (inv: any) => {
+185:     setInvoiceLoading(true);
+186:     try {
+187:       const rows = await getInvoiceDetail(inv.invoice, inv.type === 'purchase' ? 'purchase' : 'sales');
+188:       setInvoiceDetailRows(rows || []);
+189:       setInvoiceDetailMeta(inv);
+190:     } catch (e: any) { if (showToast) showToast(e.message, true); }
+191:     finally { setInvoiceLoading(false); }
+192:   };
+193: 
+194:   function buildInvoicesList(p: any) {
+195:     const map: any = {};
+196:     (p?.transactions || []).forEach((t: any) => {
+197:       const inv = String(t.invoice || '').trim();
+198:       if (!inv) return;
+199:       const ty = String(t.type || '');
+200:       const isSale = ty === 'sale';
+201:       const isPurchase = ty === 'purchase';
+202:       const isPay = ty === 'payment_received' || ty === 'payment_sent' || ty === 'triangular_received';
+203:       if (isSale || isPurchase) {
+204:         if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+205:         map[inv].total += Number(t.lineTotal) || 0;
+206:         map[inv].count += 1;
+207:       } else if (isPay) {
+208:         if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+209:         map[inv].paid += Number(t.lineTotal) || 0;
+210:       }
+211:     });
+212:     return Object.values(map).map((x: any) => ({ ...x, balance: x.total - x.paid })).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+213:   }
+214: 
+215:   function buildPartyTransactions(p: any) {
+216:     let run = 0;
+217:     return (p?.transactions || []).map((t: any) => {
+218:       const d = Number(t.debit) || 0;
+219:       const c = Number(t.credit) || 0;
+220:       run += c - d;
+221:       return { ...t, _running: run };
+222:     });
+223:   }
+224:   function buildPaymentsList(p: any) {
+225:     return (p?.transactions || [])
+226:       .filter((t: any) => t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received')
+227:       .sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')));
+228:   }
+229: 
+230:   const openParty = (p: any) => {
+231:   if (activeTab === 'parties') {
+232:     setSelectedParty(p);
+233:     setInvoiceList(buildInvoicesList(p));
+234:     setInvoiceDetailRows([]);
+235:     setInvoiceDetailMeta(null);
+236:     setPartyViewMode(String(p?.type || '').includes('مشتری') ? 'out' : 'in');
+237:     setInvoiceModalVisible(true);
+238:     return;
+239:   }
+240:   setSelectedParty(p);
+241:   setPartyFilter('all');
+242:   setTreeMode('flat');
+243:   setActiveGroup('');
+244:   setActiveCounterparty('');
+245:   setModalVisible(true);
+246: };;;
+247:   const partyDetails = selectedParty ? selectedParty.transactions : [];
+248:   const filteredPartyDetails = (partyDetails || []).filter((t: any) => {
+249:     if (partyFilter === 'all') return true;
+250:     if (partyFilter === 'in') return (Number(t.credit) || 0) > 0;
+251:     if (partyFilter === 'out') return (Number(t.debit) || 0) > 0;
+252:     if (partyFilter === 'transfer') return String(t.type || '').includes('transfer');
+253:     if (partyFilter === 'salary') return String(t.type || '') === 'salary';
+254:     if (partyFilter === 'salary_payment') return String(t.type || '') === 'salary_payment';
+255:     if (partyFilter === 'expense') return String(t.type || '') === 'expense';
+256:     if (partyFilter === 'expense_payment') return String(t.type || '') === 'expense_payment';
+257:     return String(t.accountType || 'current') === partyFilter;
+258:   });
+259: 
+260:   const filteredData = data.filter((r) => {
+261:     const q = searchQuery.trim();
+262:     if (!q) return true;
+263:     if ((r.name || '').includes(q)) return true;
+264:     if ((r.phone || '').includes(q)) return true;
+265:     if ((r.allCodes || []).some((c) => String(c).includes(q))) return true;
+266:     return false;
+267:   });
+268: 
+269:   const getDisplayData = () => {
+270:     if (activeTab === 'parties') {
+271:       return filteredData.filter((r: any) => r.type !== 'شریک' && r.type !== 'کارمند' && r.type !== 'هزینه‌گیرنده');
+272:     }
+273:     if (activeTab === 'partners') {
+274:       return filteredData.filter((r: any) => r.type === 'شریک');
+275:     }
+276:     if (activeTab === 'employees') {
+277:       return filteredData.filter((r: any) => r.type === 'کارمند');
+278:     }
+279:     return filteredData.filter((r: any) => r.type === 'هزینه‌گیرنده');
+280:   };
+281: 
+282:   function treeGroupOf(t: any) {
+283:     const cp = String(t?.counterpartType || '').toLowerCase();
+284:     const st = String(t?.sourceType || '').toLowerCase();
+285:     const ty = String(t?.type || '').toLowerCase();
+286:     if (cp === 'expense' || st === 'expense' || ty.includes('expense')) return '🧾 هزینه‌ها';
+287:     if (cp === 'employee' || st === 'salary' || st === 'loan' || ty.includes('salary') || ty.includes('loan')) return '👷 کارمندان';
+288:     if (cp === 'customer' || st === 'sale' || ty.includes('sale')) return '👥 مشتریان';
+289:     if (cp === 'supplier' || st === 'purchase' || ty.includes('purchase')) return '🏭 تأمین‌کنندگان';
+290:     if (cp === 'partner' || ty.includes('partner')) return '🤝 شرکا';
+291:     if (cp === 'box' || cp === 'bank') return '🏦 صندوق و بانک';
+292:     if (ty.includes('transfer')) return '🔁 انتقالات';
+293:     return '📦 سایر';
+294:   }
+295:   function treeKeyOf(t: any) {
+296:     const g = treeGroupOf(t);
+297:     if (g === '🧾 هزینه‌ها') {
+298:       const s = cleanDesc(t);
+299:       const m = s.match(/هزینه\s*:?\s*([^\-|]+)/);
+300:       if (m && m[1]) return m[1].trim();
+301:       const cp = cpLabel(t);
+302:       return cp !== '—' ? cp : 'متفرقه';
+303:     }
+304:     const cp = cpLabel(t);
+305:     if (cp !== '—') {
+306:       const code = String(t?.counterpartCode || t?.sourceId || '');
+307:       return cp + (code ? ' (' + code + ')' : '');
+308:     }
+309:     return (cleanDesc(t).split('|')[0] || 'متفرقه').trim();
+310:   }
+311:   function getTreeGroups() {
+312:     const map: Record<string, any> = {};
+313:     (filteredPartyDetails || []).forEach((t: any) => {
+314:       const g = treeGroupOf(t);
+315:       if (!map[g]) map[g] = { name: g, count: 0, debit: 0, credit: 0 };
+316:       map[g].count++;
+317:       map[g].debit += Number(t.debit) || 0;
+318:       map[g].credit += Number(t.credit) || 0;
+319:     });
+320:     return Object.values(map).map((x: any) => ({ ...x, balance: x.credit - x.debit }));
+321:   }
+322:   function getTreeCounterparties(group: string) {
+323:     const map: Record<string, any> = {};
+324:     (filteredPartyDetails || []).forEach((t: any) => {
+325:       if (treeGroupOf(t) !== group) return;
+326:       const k = treeKeyOf(t);
+327:       if (!map[k]) map[k] = { name: k, count: 0, debit: 0, credit: 0 };
+328:       map[k].count++;
+329:       map[k].debit += Number(t.debit) || 0;
+330:       map[k].credit += Number(t.credit) || 0;
+331:     });
+332:     return Object.values(map).map((x: any) => ({ ...x, balance: x.credit - x.debit }));
+333:   }
+334:   function getTreeTxns() {
+335:     return (filteredPartyDetails || []).filter((t: any) => treeKeyOf(t) === activeCounterparty);
+336:   }
+337:   const treeTxns = getTreeTxns();
+338:   const treeTxnsDebit = treeTxns.reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0);
+339:   const treeTxnsCredit = treeTxns.reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0);
+340:   const pTotal = partyDetails.reduce((a, t) => ({
+341:     qty: a.qty + (t.qty || 0), debit: a.debit + (t.debit || 0), credit: a.credit + (t.credit || 0),
+342:   }), { qty: 0, debit: 0, credit: 0 });
+343: 
+344:   // PDF builder
+345:   const _buildHtml = (forParty) => {
+346:     var _p = [];
+347:     _p.push('<div class="info"><b>📅 تاریخ:</b> ' + _safeLedgerDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
+348:     if (!forParty) {
+349:       _p.push('<div class="title">📊 ترازنامه (کلی)</div>');
+350:       _p.push('<table style="width:100%; table-layout:fixed; border-collapse:collapse;">');
+351:       _p.push('<thead><tr style="background:#0f2438; color:#fff;">');
+352:       _p.push('<th style="width:4%">#</th><th style="width:14%">نوع</th><th style="width:20%">نام</th>');
+353:       _p.push('<th style="width:14%">کدها</th><th style="width:12%">تلفن</th>');
+354:       _p.push('<th style="width:10%">بدهکار</th><th style="width:10%">بستانکار</th>');
+355:       _p.push('<th style="width:10%">مانده</th><th style="width:10%">وضعیت</th>');
+356:       _p.push('</tr></thead><tbody>');
+357:       var tdSum = 0, tcSum = 0;
+358:       var rows = data.map(function(r, i) {
+359:         var st = r.balance > 0 ? 'طرف بدهکار' : r.balance < 0 ? 'ما بدهکار' : 'تسویه';
+360:         var col = r.balance > 0 ? '#dc2626' : r.balance < 0 ? '#059669' : '#64748b';
+361:         if (r.balance > 0) tdSum += r.balance;
+362:         if (r.balance < 0) tcSum += Math.abs(r.balance);
+363:         var typeColor = r.type === 'مشتری' ? '#059669' : r.type === 'تأمین‌کننده' ? '#ea580c' : '#7c3aed';
+364:         return '<tr>' +
+365:           '<td style="text-align:center">' + (i+1) + '</td>' +
+366:           '<td style="text-align:center; font-weight:bold; color:' + typeColor + '">' + (r.type || '—') + '</td>' +
+367:           '<td style="text-align:right">' + r.name + '</td>' +
+368:           '<td style="text-align:center">' + (r.allCodes||[]).join(', ') + '</td>' +
+369:           '<td style="text-align:center">' + r.phone + '</td>' +
+370:           '<td style="text-align:center">' + fmt(r.totalDebit) + '</td>' +
+371:           '<td style="text-align:center">' + fmt(r.totalCredit) + '</td>' +
+372:           '<td style="text-align:center; font-weight:bold">' + fmt(Math.abs(r.balance)) + '</td>' +
+373:           '<td style="text-align:center; color:' + col + '; font-weight:bold">' + st + '</td>' +
+374:         '</tr>';
+375:       }).join('');
+376:       _p.push(rows);
+377:       _p.push('<tr style="background:#f1f5f9; font-weight:bold;">');
+378:       _p.push('<td colspan="5" style="text-align:left; padding:8px">جمع کل:</td>');
+379:       _p.push('<td style="text-align:center">' + fmt(data.reduce((a, r) => a + r.totalDebit, 0)) + '</td>');
+380:       _p.push('<td style="text-align:center">' + fmt(data.reduce((a, r) => a + r.totalCredit, 0)) + '</td>');
+381:       _p.push('<td style="text-align:center">' + fmt(tdSum + tcSum) + '</td>');
+382:       _p.push('<td style="text-align:center">طرف بدهکار: ' + fmt(tdSum) + '<br>ما بدهکار: ' + fmt(tcSum) + '</td>');
+383:       _p.push('</tr></tbody></table>');
+384:     } else {
+385:       _p.push('<div class="title">📋 کارت حساب: ' + (selectedParty?.name || '—') + '</div>');
+386:       _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (selectedParty?.type || '—') + '</div>');
+387:       var _stBal = Number(selectedParty?.balance || 0);
+388:       var _stTxt = '', _stCol = '#64748b', _stBg = '#f1f5f9';
+389:       if (_stBal > 0) { _stTxt = 'ما بستانکاریم — طرف‌حساب بدهکار است'; _stCol = '#dc2626'; _stBg = '#fef2f2'; }
+390:       else if (_stBal < 0) { _stTxt = 'ما بدهکاریم — طرف‌حساب بستانکار است'; _stCol = '#059669'; _stBg = '#ecfdf5'; }
+391:       else { _stTxt = 'تسویه'; _stCol = '#64748b'; _stBg = '#f1f5f9'; }
+392:       _p.push('<div id="status-top" style="margin:8px 0;padding:10px;background:' + _stBg + ';border:1px solid ' + _stCol + ';border-radius:6px;text-align:right">');
+393:       _p.push('<div style="font-size:12px;font-weight:bold;color:#0f2438">💵 مانده نهایی: ' + fmt(Math.abs(_stBal)) + ' ' + curLabel + '</div>');
+394:       _p.push('<div style="font-size:11px;color:#475569;margin-top:4px">🔤 به حروف: ' + numToWords(Math.abs(_stBal)) + ' ' + curLabel + '</div>');
+395:       _p.push('<div style="font-size:12px;font-weight:bold;color:' + _stCol + ';margin-top:4px">📌 وضعیت: ' + _stTxt + '</div>');
+396:       _p.push('</div>');
+397: 
+398:       var txns = (filteredPartyDetails || []).filter(function(t: any) {
+399:         if (partyViewMode === 'in') return t.type === 'sale' || t.type === 'purchase';
+400:         if (partyViewMode === 'out') return t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received';
+401:         return true;
+402:       });
+403: 
+404:       _p.push('<table style="font-size:8px"><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>قیمت</th><th>جمع ردیف</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+405:       var tQty = 0, tDebit = 0, tCredit = 0;
+406:       txns.forEach(function(t: any, i: number) {
+407:         tQty += Number(t.qty) || 0;
+408:         tDebit += Number(t.debit) || 0;
+409:         tCredit += Number(t.credit) || 0;
+410:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||'—') + '</td><td>' + (t.manualInvoice||'—') + '</td><td>' + (t.modelCode||'—') + '</td><td style="text-align:right">' + (t.modelName||'—') + '</td><td>' + (t.qty?toFaNum(t.qty):'—') + '</td><td>' + (t.priceUnit?fmt(t.priceUnit):'—') + '</td><td>' + (t.lineTotal?fmt(t.lineTotal):'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t.runningBalance||0)) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td><td>' + (t.holderCode||'—') + '</td><td>' + (t.depositDate?_safeLedgerDate(t.depositDate):'—') + '</td><td>' + (t.shipping||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td></tr>');
+411:       });
+412:       _p.push('<tr class="total"><td colspan="7" style="text-align:left;font-weight:bold">جمع:</td><td style="font-weight:bold">' + toFaNum(tQty) + '</td><td></td><td></td><td style="color:#1e40af;font-weight:bold">' + fmt(tDebit) + '</td><td style="color:#059669;font-weight:bold">' + fmt(tCredit) + '</td><td style="font-weight:bold">' + fmt(Math.abs(tCredit - tDebit)) + '</td><td colspan="6"></td></tr>');
+413:       _p.push('</table>');
+414:       _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(tCredit - tDebit)) + ' ' + curLabel + '</div>');
+415:     }
+416:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+417:     _p.push(mizanComputerNoteHtml());
+418:     var html = buildStandardHtml('گزارش', _p.join(''), '📊 گزارش');
+419:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+420:     return html;
+421:   };
+422: 
+423:   const pdfAll = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(false), 'ledger-' + Date.now() + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+424:   const printAll = async () => { try { var r = await printHtml(_buildHtml(false)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+425:   const imgAll = async () => { try { if (!ref.current) return; var uri = await captureRef(ref, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'ترازنامه', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+426:   const xlsAll = async () => { try { var rows = data.map((r, i) => ({ '#': i+1, 'نام': r.name, 'کدها': (r.allCodes||[]).join(', '), 'تلفن': r.phone, 'طرف بدهکار': r.totalDebit, 'ما بدهکار': r.totalCredit, 'مانده': Math.abs(r.balance), 'وضعیت': r.balance > 0 ? 'ما بستانکاریم' : r.balance < 0 ? 'ما بدهکاریم' : 'تسویه' })); var r2 = await exportExcel([{ name: 'ترازنامه', data: rows }], 'ledger-' + Date.now() + '.xlsx'); if (showToast) showToast(r2.ok ? '✅ ' + r2.message : '❌ ' + r2.message, !r2.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+427: 
+428:   const pdfParty = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(true), 'statement-' + selectedParty.code + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+429:   const printParty = async () => { try { var r = await printHtml(_buildHtml(true)); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e) { if (showToast) showToast(e.message, true); } };
+430:   const imgParty = async () => { try { if (!modalRef.current) return; var uri = await captureRef(modalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'کارت حساب', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e) { if (showToast) showToast(e.message, true); } };
+431: 
+432:   const xlsParty = async () => {
+433:     try {
+434:       let sheets: any[] = [];
+435:       if (treeMode === 'groups') {
+436:         sheets = [{ name: 'گروه‌ها', data: getTreeGroups().map((g: any, i: number) => ({ '#': i+1, 'گروه': g.name, 'تعداد': g.count, 'بدهکار': g.debit, 'بستانکار': g.credit, 'مانده': Math.abs(g.balance) })) }];
+437:       } else if (treeMode === 'group') {
+438:         sheets = [{ name: (activeGroup || 'گروه').slice(0, 28), data: getTreeCounterparties(activeGroup).map((c: any, i: number) => ({ '#': i+1, 'طرف / دسته': c.name, 'تعداد': c.count, 'بدهکار': c.debit, 'بستانکار': c.credit, 'مانده': Math.abs(c.balance) })) }];
+439:       } else if (treeMode === 'counterparty') {
+440:         sheets = [{ name: (activeCounterparty || 'طرف').slice(0, 28), data: treeTxns.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.sourceInfo?.invoice || t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'جمع سند': t.sourceInfo?.total || 0, 'پرداخت سند': t.sourceInfo?.paid || 0, 'مانده سند': t.sourceInfo?.balance || 0, 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t.runningBalance || 0) })) }];
+441:       } else {
+442:         sheets = [{ name: 'ریز', data: filteredPartyDetails.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'حساب': t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings' ? 'برداشت' : t.accountType === 'current' ? 'جاری' : '—', 'طرف': cpLabel(t), 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t.runningBalance || 0) })) }];
+443:       }
+444:       const r = await exportExcel(sheets, 'statement-' + (selectedParty?.code || 'party') + '-' + Date.now() + '.xlsx');
+445:       if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+446:     } catch (e: any) { if (showToast) showToast(e.message, true); }
+447:   };
+448: 
+449:   
+450:   const _buildInvoiceHtml = () => {
+451:     var _p = [];
+452:     _p.push('<div class="info"><b>📅 تاریخ:</b> ' + _safeLedgerDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
+453:     _p.push('<div class="title">📄 فاکتور: ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+454:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + '</div>');
+455:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+456:     _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th></tr>');
+457:     var tot = 0, pay = 0;
+458:     (invoiceDetailRows || []).forEach(function(r, i) {
+459:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+460:       tot += line; pay += Number(r.payment) || 0;
+461:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' + (r.model_name || r.modelName || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity)||0) + '</td><td>' + fmt(Number(r.price_unit)||0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment)||0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td></tr>');
+462:     });
+463:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
+464:     _p.push('</table>');
+465:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+466:     _p.push(mizanComputerNoteHtml());
+467:     var html = buildStandardHtml('فاکتور', _p.join(''), '📄 فاکتور');
+468:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+469:     return html;
+470:   };
+471: 
+472:   const _buildInvoiceListHtml = () => {
+473:     var _p = [];
+474:     var title = '';
+475:     if (partyViewMode === 'all') title = '📋 همه حرکات ' + (selectedParty?.name || '');
+476:     else if (partyViewMode === 'in') title = '📥 ورودی‌های ' + (selectedParty?.name || '');
+477:     else title = '📤 خروجی‌های ' + (selectedParty?.name || '');
+478:     _p.push('<div class="title">' + title + '</div>');
+479:     _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + '</div>');
+480:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:9px">');
+481:     if (partyViewMode === 'all') {
+482:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+483:       (buildPartyTransactions(selectedParty) || []).forEach(function(t: any, i: number) {
+484:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t._running||0)) + '</td></tr>');
+485:       });
+486:     } else if ((selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in')) {
+487:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
+488:       var tot = 0, paid = 0;
+489:       (invoiceList || []).forEach(function(inv: any, i: number) {
+490:         tot += Number(inv.total) || 0; paid += Number(inv.paid) || 0;
+491:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>' + fmt(inv.paid) + '</td><td>' + fmt(Math.abs(inv.balance)) + '</td></tr>');
+492:       });
+493:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td>' + fmt(Math.abs(tot-paid)) + '</td></tr>');
+494:     } else {
+495:       _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</th></tr>');
+496:       var totP = 0;
+497:       (buildPaymentsList(selectedParty) || []).forEach(function(t: any, i: number) {
+498:         var amt = Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0;
+499:         totP += amt;
+500:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (t.invoice||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="font-weight:bold">' + fmt(amt) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td></tr>');
+501:       });
+502:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td>' + fmt(totP) + '</td><td colspan="2"></td></tr>');
+503:     }
+504:     _p.push('</table>');
+505:     var _bal = Number(selectedParty?.balance || 0);
+506:     if (_bal !== 0) { _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(_bal)) + ' ' + curLabel + '</div>'); }
+507:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+508:     _p.push(mizanComputerNoteHtml());
+509:     var html = buildStandardHtml('گزارش', _p.join(''), '📋 گزارش');
+510:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+511:     return html;
+512:   };
+513:   const _buildInvoiceDetailHtml = () => {
+514:     var _p = [];
+515:     _p.push('<div class="title">📄 فاکتور ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+516:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(invoiceDetailMeta?.date || '') + '</div>');
+517:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+518:     _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th><th>باربری</th></tr>');
+519:     var tot = 0, paid = 0;
+520:     (invoiceDetailRows || []).forEach(function(r: any, i: number) {
+521:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+522:       tot += line; paid += Number(r.payment) || 0;
+523:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity) || 0) + '</td><td>' + fmt(Number(r.price_unit) || 0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment) || 0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td></tr>');
+524:     });
+525:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td colspan="3"></td></tr>');
+526:     _p.push('</table>');
+527:     var _balD = (Number(td) || 0) - (Number(tc) || 0);
+528:     if (_balD !== 0) { _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(_balD)) + ' ' + curLabel + '</div>'); }
+529:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+530:     _p.push(mizanComputerNoteHtml());
+531:     var _h = buildStandardHtml('فاکتور', _p.join(''), '📄 فاکتور');
+532:     _h = _h.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+533:     return _h;
+534:   };
+535:   const pdfInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await shareHtmlAsPdf(html, 'statement-' + (selectedParty?.code || 'party') + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };;;
+536:   const printInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await printHtml(html); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };;;
+537:   const imgInvoiceList = async () => { try { if (!invoiceModalRef.current) return; const uri = await captureRef(invoiceModalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'فاکتورها', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e: any) { if (showToast) showToast(e.message, true); } };
+538: 
+539:   const xlsInvoiceList = async () => {
+540:     try {
+541:       let rows: any[] = [];
+542:       let name = 'گزارش';
+543:       if (partyViewMode === 'all') {
+544:         name = 'همه';
+545:         rows = (buildPartyTransactions(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t._running || 0) }));
+546:       } else if (partyViewMode === 'in') {
+547:         name = 'ورودی‌ها';
+548:         rows = (invoiceList || []).map((inv: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(inv.date), 'نوع': inv.type === 'purchase' ? 'خرید' : 'فروش', 'شماره فاکتور': inv.invoice, 'تعداد': inv.count || 0, 'مبلغ کل': inv.total, 'پرداخت': inv.paid, 'مانده': Math.abs(inv.balance) }));
+549:       } else {
+550:         name = 'خروجی‌ها';
+551:         rows = (buildPaymentsList(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'سند': t.invoice || '', 'شرح': cleanDesc(t), 'مبلغ پرداخت': Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0, 'بانک': t.bank || '', 'صاحب حساب': t.holder || '' }));
+552:       }
+553:       const r = await exportExcel([{ name, data: rows }], 'party-' + (selectedParty?.code || 'p') + '-' + Date.now() + '.xlsx');
+554:       if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+555:     } catch (e: any) { if (showToast) showToast(e.message, true); }
+556:   };
+557:   function _buildInvoiceHTMLInline(meta: any, rows: any[]) {
+558:     var isP = meta && meta.type === 'purchase';
+559:     var _p = [];
+560:     _p.push('<div class="title">📄 فاکتور ' + (meta?.invoice || '') + '</div>');
+561:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(meta?.date || '') + '</div>');
+562:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
+563:     _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>قیمت</th><th>جمع ردیف</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+564:     var td = 0, tc = 0, run = 0, idx = 0;
+565:     (rows || []).forEach(function(r) {
+566:       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0, line = qty * pr;
+567:       var d = isP ? 0 : line, c = isP ? line : 0;
+568:       td += d; tc += c; run += c - d; idx++;
+569:       _p.push('<tr><td>' + idx + '</td><td>' + _safeLedgerDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_invoice || '—') + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + toFaNum(qty) + '</td><td>' + fmt(pr) + '</td><td>' + fmt(line) + '</td><td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.account_holder || '—') + '</td><td>' + (r.account_holder_code || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td><td style="text-align:right">' + (r.description || '—') + '</td></tr>');
+570:     });
+571:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="10" style="text-align:left">جمع:</td><td style="color:#1e40af">' + fmt(td) + '</td><td style="color:#059669">' + fmt(tc) + '</td><td>' + fmt(Math.abs(td - tc)) + '</td><td colspan="6"></td></tr>');
+572:     _p.push('</table>');
+573:     var bal = td - tc;
+574:     var stTxt = bal > 0 ? 'ما بستانکاریم' : bal < 0 ? 'ما بدهکاریم' : 'تسویه';
+575:     var stCol = bal > 0 ? '#dc2626' : bal < 0 ? '#059669' : '#64748b';
+576:     _p.push('<div style="margin-top:8px;padding:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;text-align:right"><div style="font-size:11px;font-weight:bold">💵 مانده: ' + fmt(Math.abs(bal)) + ' ' + curLabel + '</div><div style="font-size:10px;color:#475569">🔤 به حروف: ' + numToWords(Math.abs(bal)) + ' ' + curLabel + '</div><div style="font-size:11px;font-weight:bold;color:' + stCol + '">📌 وضعیت: ' + stTxt + '</div></div>');
+577:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+578:     _p.push(mizanComputerNoteHtml());
+579:     var html = buildStandardHtml('فاکتور', _p.join(''), '📄 فاکتور');
+580:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+581:     return html;
+582:   }
+583: 
+584:   const pdfInvoice = async () => { try { var html = _buildInvoiceHTMLInline(invoiceDetailMeta, invoiceDetailRows); var r = await shareHtmlAsPdf(html, 'invoice-' + (invoiceDetailMeta?.invoice || '') + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { console.error('[pdfInvoice] error:', e); if (showToast) showToast(e.message || String(e), true); } };;;
+585:   const printInvoice = async () => { try { var html = _buildInvoiceHTMLInline(invoiceDetailMeta, invoiceDetailRows); var r = await printHtml(html); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { console.error('[printInvoice] error:', e); if (showToast) showToast(e.message || String(e), true); } };;;
+586:   const imgInvoice = async () => { try { if (!invoiceRef.current) return; const uri = await captureRef(invoiceRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'فاکتور', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e: any) { if (showToast) showToast(e.message, true); } };
+587:   const xlsInvoice = async () => { try { const rows = (invoiceDetailRows || []).map((r: any, i: number) => ({ '#': i+1, 'کد مدل': r.model_code || r.modelCode || '', 'نام مدل': r.model_name || r.modelName || '', 'قفسه': r.shelf || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity)||0)*(Number(r.price_unit)||0), 'پرداخت': Number(r.payment) || 0, 'بانک': r.bank_name || r.receiver_bank || '', 'تاریخ واریز': r.deposit_date || '' })); const r = await exportExcel([{ name: 'فاکتور', data: rows }], 'invoice-' + (invoiceDetailMeta?.invoice || '') + '-' + Date.now() + '.xlsx'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };
+588: 
+589:   if (loading) return <View style={s.center}><ActivityIndicator size="large" color="#7c3aed" /></View>;
+590: 
+591:   return (
+592:     <ScrollView style={s.container} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+593:       <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+594:         <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#0f2438' }}>📊 ترازنامه (دفتر معین)</Text>
+595:         <TouchableOpacity onPress={onBack} style={{ padding: 8, backgroundColor: '#e2e8f0', borderRadius: 8 }}>
+596:           <Text style={{ fontWeight: 'bold' }}>← بازگشت</Text>
+597:         </TouchableOpacity>
+598:       </View>
+599: 
+600:       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 12, paddingHorizontal: 2 }}>
+601:         <TouchableOpacity onPress={() => setActiveTab('parties')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'parties' ? '#7c3aed' : '#e2e8f0' }}>
+602:           <Text style={{ color: activeTab === 'parties' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 13 }}>👥 طرف‌حساب‌ها</Text>
+603:         </TouchableOpacity>
+604:         <TouchableOpacity onPress={() => setActiveTab('partners')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'partners' ? '#7c3aed' : '#e2e8f0' }}>
+605:           <Text style={{ color: activeTab === 'partners' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 13 }}>🤝 تراز شرکا</Text>
+606:         </TouchableOpacity>
+607:         <TouchableOpacity onPress={() => setActiveTab('employees')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'employees' ? '#7c3aed' : '#e2e8f0' }}>
+608:           <Text style={{ color: activeTab === 'employees' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>👷 کارمندان</Text>
+609:         </TouchableOpacity>
+610:         <TouchableOpacity onPress={() => setActiveTab('expenses')} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, alignItems: 'center', backgroundColor: activeTab === 'expenses' ? '#7c3aed' : '#e2e8f0' }}>
+611:           <Text style={{ color: activeTab === 'expenses' ? '#fff' : '#475569', fontWeight: 'bold', fontSize: 12 }}>🧾 هزینه‌ها</Text>
+612:         </TouchableOpacity>
+613:       </ScrollView>
+614: 
+615:       <View style={{ flexDirection: 'row-reverse', backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 10, alignItems: 'center', marginBottom: 12 }}>
+616:         <Text style={{ fontSize: 16, color: '#64748b', marginRight: 8 }}>🔍</Text>
+617:         <TextInput style={{ flex: 1, paddingVertical: 10, textAlign: 'right', fontSize: 13, color: '#0f2438' }} placeholder="جستجو (نام، کد، تلفن)..." placeholderTextColor="#94a3b8" value={searchQuery} onChangeText={setSearchQuery} />
+618:         {searchQuery.length > 0 && (<TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}><Text style={{ color: '#dc2626', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>)}
+619:       </View>
+620: 
+621:       <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+622:         <TouchableOpacity onPress={pdfAll} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+623:         <TouchableOpacity onPress={printAll} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+624:         <TouchableOpacity onPress={imgAll} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+625:         <TouchableOpacity onPress={xlsAll} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📊 اکسل</Text></TouchableOpacity>
+626:       </View>
+627: 
+628:       <View ref={ref} collapsable={false} style={{ backgroundColor: '#fff', padding: 8, borderRadius: 8, alignSelf: 'stretch', width: '100%' }}>
+629:         <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1, minWidth: '100%' }}>
+630:           <View style={{ flex: 1, minWidth: '100%' }}>
+631:             {activeTab === 'parties' ? (
+632:               <>
+633:                 <View style={s.thead}>
+634:                   <Text style={[s.th, { width: 40, flex: 0.5 }]}>#</Text>
+635:                   <Text style={[s.th, { flex: 1.5 }]}>نوع</Text>
+636:                   <Text style={[s.th, { flex: 3, textAlign: 'right', paddingRight: 8 }]}>نام طرف حساب</Text>
+637:                   <Text style={[s.th, { flex: 2 }]}>کدها</Text>
+638:                   <Text style={[s.th, { flex: 2 }]}>تلفن</Text>
+639:                   <Text style={[s.th, { flex: 1.5 }]}>جمع بدهکار</Text>
+640:                   <Text style={[s.th, { flex: 1.5 }]}>جمع بستانکار</Text>
+641:                   <Text style={[s.th, { flex: 1.5 }]}>مانده</Text>
+642:                   <Text style={[s.th, { flex: 1.2 }]}>وضعیت</Text>
+643:                 </View>
+644:                 {getDisplayData().map((r: any, i: number) => (
+645:                   <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+646:                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
+647:                     <Text style={[s.td, { flex: 1.5, fontSize: 10, fontWeight: 'bold', color: r.type === 'مشتری' ? '#059669' : r.type === 'تأمین‌کننده' ? '#ea580c' : '#7c3aed' }]}>{r.type || '—'}</Text>
+648:                     <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.displayName || r.name}</Text>
+649:                     <Text style={[s.td, { flex: 2, fontSize: 9 }]} numberOfLines={1}>{r.displayCodes || (r.allCodes || []).join(', ')}</Text>
+650:                     <Text style={[s.td, { flex: 2, fontSize: 10 }]} numberOfLines={1}>{r.displayPhone || r.phone}</Text>
+651:                     <Text style={[s.td, { flex: 1.5, color: '#1e40af', fontWeight: 'bold' }]}>{fmt(r.totalDebit)}</Text>
+652:                     <Text style={[s.td, { flex: 1.5, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.totalCredit)}</Text>
+653:                     <Text style={[s.td, { flex: 1.5, fontWeight: 'bold' }]}>{fmt(Math.abs(r.balance))}</Text>
+654:                     <Text style={[s.td, { flex: 1.2, fontWeight: 'bold', color: r.balance > 0 ? '#dc2626' : r.balance < 0 ? '#059669' : '#64748b' }]}>{r.balance > 0 ? 'ما بستانکاریم' : r.balance < 0 ? 'ما بدهکاریم' : 'تسویه'}</Text>
+655:                   </TouchableOpacity>
+656:                 ))}
+657:               </>
+658:             ) : activeTab === 'partners' ? (
+659:               <>
+660:                 <View style={s.thead}>
+661:                   <Text style={[s.th, { width: 40, flex: 0.5 }]}>#</Text>
+662:                   <Text style={[s.th, { flex: 2.5, textAlign: 'right', paddingRight: 8 }]}>نام شریک</Text>
+663:                   <Text style={[s.th, { flex: 1.2 }]}>کد</Text>
+664:                   <Text style={[s.th, { flex: 1.5 }]}>تلفن</Text>
+665:                   <Text style={[s.th, { flex: 1.3 }]}>سرمایه</Text>
+666:                   <Text style={[s.th, { flex: 1.3 }]}>جاری</Text>
+667:                   <Text style={[s.th, { flex: 1.3 }]}>برداشت</Text>
+668:                   <Text style={[s.th, { flex: 1.5 }]}>مانده کل</Text>
+669:                   <Text style={[s.th, { flex: 1.8 }]}>وضعیت</Text>
+670:                 </View>
+671:                 {getDisplayData().map((r: any, i: number) => (
+672:                   <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+673:                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
+674:                     <Text style={[s.td, { flex: 2.5, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.displayName || r.name}</Text>
+675:                     <Text style={[s.td, { flex: 1.2, fontSize: 9, color: '#7c3aed' }]}>{r.displayCode || r.code}</Text>
+676:                     <Text style={[s.td, { flex: 1.5, fontSize: 10 }]}>{r.displayPhone || r.phone}</Text>
+677:                     <Text style={[s.td, { flex: 1.3, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.capital || 0)}</Text>
+678:                     <Text style={[s.td, { flex: 1.3, color: (r.current || 0) >= 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }]}>{fmt(r.current || 0)}</Text>
+679:                     <Text style={[s.td, { flex: 1.3, color: '#dc2626', fontWeight: 'bold' }]}>{fmt(r.drawings || 0)}</Text>
+680:                     <Text style={[s.td, { flex: 1.5, fontWeight: 'bold' }]}>{fmt(Math.abs(r.balance || 0))}</Text>
+681:                     <Text style={[s.td, { flex: 1.8, fontWeight: 'bold', color: r.balance > 0 ? '#dc2626' : r.balance < 0 ? '#059669' : '#64748b' }]}>{r.balance > 0 ? 'شرکت بدهکار به شریک' : r.balance < 0 ? 'شریک بدهکار به شرکت' : 'تسویه'}</Text>
+682:                   </TouchableOpacity>
+683:                 ))}
+684:               </>
+685:             ) : activeTab === 'employees' ? (
+686:               <>
+687:                 <View style={s.thead}>
+688:                   <Text style={[s.th, { width: 40, flex: 0.5 }]}>#</Text>
+689:                   <Text style={[s.th, { flex: 3, textAlign: 'right', paddingRight: 8 }]}>نام کارمند</Text>
+690:                   <Text style={[s.th, { flex: 1.5 }]}>کد</Text>
+691:                   <Text style={[s.th, { flex: 1.8 }]}>جمع حقوق</Text>
+692:                   <Text style={[s.th, { flex: 1.8 }]}>جمع پرداخت</Text>
+693:                   <Text style={[s.th, { flex: 1.5 }]}>مانده</Text>
+694:                   <Text style={[s.th, { flex: 2 }]}>وضعیت</Text>
+695:                 </View>
+696:                 {getDisplayData().map((r: any, i: number) => (
+697:                   <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+698:                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
+699:                     <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.displayName || r.name}</Text>
+700:                     <Text style={[s.td, { flex: 1.5, fontSize: 10, color: '#7c3aed' }]}>{r.displayCode || r.code}</Text>
+701:                     <Text style={[s.td, { flex: 1.8, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.totalCredit || 0)}</Text>
+702:                     <Text style={[s.td, { flex: 1.8, color: '#1e40af', fontWeight: 'bold' }]}>{fmt(r.totalDebit || 0)}</Text>
+703:                     <Text style={[s.td, { flex: 1.5, fontWeight: 'bold' }]}>{fmt(Math.abs(r.balance || 0))}</Text>
+704:                     <Text style={[s.td, { flex: 2, fontWeight: 'bold', color: r.balance < 0 ? '#dc2626' : r.balance > 0 ? '#059669' : '#64748b' }]}>{r.balance < 0 ? 'شرکت بدهکار به کارمند' : r.balance > 0 ? 'کارمند بدهکار به شرکت' : 'تسویه'}</Text>
+705:                   </TouchableOpacity>
+706:                 ))}
+707:               </>
+708:             ) : (
+709:               <>
+710:                 <View style={s.thead}>
+711:                   <Text style={[s.th, { width: 40, flex: 0.5 }]}>#</Text>
+712:                   <Text style={[s.th, { flex: 3, textAlign: 'right', paddingRight: 8 }]}>نام هزینه‌گیرنده</Text>
+713:                   <Text style={[s.th, { flex: 1.5 }]}>کد</Text>
+714:                   <Text style={[s.th, { flex: 1.8 }]}>جمع هزینه</Text>
+715:                   <Text style={[s.th, { flex: 1.8 }]}>جمع پرداخت</Text>
+716:                   <Text style={[s.th, { flex: 1.5 }]}>مانده</Text>
+717:                   <Text style={[s.th, { flex: 2 }]}>وضعیت</Text>
+718:                 </View>
+719:                 {getDisplayData().map((r: any, i: number) => (
+720:                   <TouchableOpacity key={i} onPress={() => openParty(r)} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+721:                     <Text style={[s.td, { width: 40, flex: 0.5 }]}>{i + 1}</Text>
+722:                     <Text style={[s.td, { flex: 3, textAlign: 'right', paddingRight: 8, color: '#2563eb', textDecorationLine: 'underline', fontWeight: 'bold' }]} numberOfLines={1}>{r.displayName || r.name}</Text>
+723:                     <Text style={[s.td, { flex: 1.5, fontSize: 10, color: '#7c3aed' }]}>{r.displayCode || r.code}</Text>
+724:                     <Text style={[s.td, { flex: 1.8, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.totalCredit || 0)}</Text>
+725:                     <Text style={[s.td, { flex: 1.8, color: '#1e40af', fontWeight: 'bold' }]}>{fmt(r.totalDebit || 0)}</Text>
+726:                     <Text style={[s.td, { flex: 1.5, fontWeight: 'bold' }]}>{fmt(Math.abs(r.balance || 0))}</Text>
+727:                     <Text style={[s.td, { flex: 2, fontWeight: 'bold', color: r.balance > 0 ? '#dc2626' : r.balance < 0 ? '#059669' : '#64748b' }]}>{r.balance > 0 ? 'ما بدهکاریم' : r.balance < 0 ? 'ما بستانکاریم' : 'تسویه'}</Text>
+728:                   </TouchableOpacity>
+729:                 ))}
+730:               </>
+731:             )}
+732:             {getDisplayData().length === 0 && (<View style={{ padding: 20, alignItems: 'center' }}><Text style={{ color: '#64748b' }}>موردی یافت نشد</Text></View>)}
+733:           </View>
+734:         </ScrollView>
+735:       </View>
+736: 
+737:       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+738:         <View style={s.modalBg}>
+739:           <View style={s.modalBox}>
+740:             <View style={s.modalHead}>
+741:               <Text style={s.modalTitle}>📋 کارت حساب: {selectedParty?.name}</Text>
+742:               <TouchableOpacity onPress={() => setModalVisible(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
+743:             </View>
+744: 
+745:             <View style={{ flexDirection: 'row', gap: 6, padding: 8, flexWrap: 'wrap', justifyContent: 'flex-end', backgroundColor: '#f8fafc' }}>
+746:               <TouchableOpacity onPress={pdfParty} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+747:               <TouchableOpacity onPress={printParty} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+748:               <TouchableOpacity onPress={imgParty} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+749:               <TouchableOpacity onPress={xlsParty} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+750:             </View>
+751: 
+752:             <ScrollView style={{ padding: 8 }} ref={modalRef} collapsable={false}>
+753:               <View style={s.modalInfo}>
+754:                 <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>کدها: </Text>{(selectedParty?.allCodes || []).join(', ')}</Text>
+755:                 <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>تلفن‌ها: </Text>{(selectedParty?.allPhones || []).join(', ')}</Text>
+756:                 <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>نوع: </Text>{selectedParty?.type || '—'}</Text>
+757: 
+758:                 {selectedParty?.type === 'شریک' && (
+759:                   <>
+760:                     <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#059669' }}>سرمایه: </Text>{fmt(selectedParty?.capital || 0)} {curLabel}</Text>
+761:                     <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: (selectedParty?.current || 0) >= 0 ? '#059669' : '#dc2626' }}>جاری: </Text>{fmt(selectedParty?.current || 0)} {curLabel}</Text>
+762:                     <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#dc2626' }}>برداشت: </Text>{fmt(selectedParty?.drawings || 0)} {curLabel}</Text>
+763:                   </>
+764:                 )}
+765: 
+766:                 {selectedParty?.type === 'کارمند' && (
+767:                   <>
+768:                     <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#059669' }}>جمع حقوق: </Text>{fmt(selectedParty?.totalCredit || 0)} {curLabel}</Text>
+769:                     <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#1e40af' }}>جمع پرداخت: </Text>{fmt(selectedParty?.totalDebit || 0)} {curLabel}</Text>
+770:                   </>
+771:                 )}
+772: 
+773:                 {selectedParty?.type === 'هزینه‌گیرنده' && (
+774:                   <>
+775:                     <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#059669' }}>جمع هزینه: </Text>{fmt(selectedParty?.totalCredit || 0)} {curLabel}</Text>
+776:                     <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold', color: '#1e40af' }}>جمع پرداخت: </Text>{fmt(selectedParty?.totalDebit || 0)} {curLabel}</Text>
+777:                   </>
+778:                 )}
+779: 
+780:                 <Text style={s.infoTxt}><Text style={{ fontWeight: 'bold' }}>مانده نهایی: </Text>{fmt(Math.abs(selectedParty?.balance || 0))} {curLabel}</Text>
+781:                 <Text style={s.infoTxt}>
+782:                   <Text style={{ fontWeight: 'bold' }}>وضعیت: </Text>
+783:                   <Text style={{ color: selectedParty?.balance > 0 ? '#dc2626' : selectedParty?.balance < 0 ? '#059669' : '#64748b', fontWeight: 'bold' }}>
+784:                     {selectedParty?.type === 'شریک'
+785:                       ? (selectedParty?.balance > 0 ? 'شرکت بدهکار به شریک' : selectedParty?.balance < 0 ? 'شریک بدهکار به شرکت' : 'تسویه')
+786:                       : selectedParty?.type === 'کارمند'
+787:                       ? (selectedParty?.balance < 0 ? 'شرکت بدهکار به کارمند' : selectedParty?.balance > 0 ? 'کارمند بدهکار به شرکت' : 'تسویه')
+788:                       : selectedParty?.type === 'هزینه‌گیرنده'
+789:                       ? (selectedParty?.balance > 0 ? 'ما بدهکاریم' : selectedParty?.balance < 0 ? 'ما بستانکاریم' : 'تسویه')
+790:                       : (selectedParty?.balance > 0 ? 'ما بستانکاریم' : selectedParty?.balance < 0 ? 'ما بدهکاریم' : 'تسویه')}
+791:                   </Text>
+792:                 </Text>
+793:               </View>
+794: 
+795:               <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginVertical: 8 }}>
+796:                 {(selectedParty?.type === 'شریک'
+797:                   ? [
+798:                       { k: 'all', l: 'همه' }, { k: 'capital', l: 'سرمایه' }, { k: 'current', l: 'جاری' },
+799:                       { k: 'drawings', l: 'برداشت' }, { k: 'in', l: 'ورودی‌ها' }, { k: 'out', l: 'خروجی‌ها' },
+800:                       { k: 'transfer', l: 'انتقالات' },
+801:                     ]
+802:                   : selectedParty?.type === 'کارمند'
+803:                   ? [
+804:                       { k: 'all', l: 'همه' }, { k: 'salary', l: 'حقوق' }, { k: 'salary_payment', l: 'پرداخت حقوق' },
+805:                       { k: 'in', l: 'ورودی‌ها' }, { k: 'out', l: 'خروجی‌ها' },
+806:                     ]
+807:                   : selectedParty?.type === 'هزینه‌گیرنده'
+808:                   ? [
+809:                       { k: 'all', l: 'همه' }, { k: 'expense', l: 'هزینه' }, { k: 'expense_payment', l: 'پرداخت هزینه' },
+810:                       { k: 'in', l: 'ورودی‌ها' }, { k: 'out', l: 'خروجی‌ها' },
+811:                     ]
+812:                   : [
+813:                       { k: 'all', l: 'همه' }, { k: 'in', l: 'ورودی‌ها' }, { k: 'out', l: 'خروجی‌ها' },
+814:                     ]
+815:                 ).map((f: any) => (
+816:                   <TouchableOpacity key={f.k} onPress={() => setPartyFilter(f.k)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: partyFilter === f.k ? '#7c3aed' : '#e2e8f0' }}>
+817:                     <Text style={{ color: partyFilter === f.k ? '#fff' : '#475569', fontSize: 11, fontWeight: 'bold' }}>{f.l}</Text>
+818:                   </TouchableOpacity>
+819:                 ))}
+820:                     <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+821:                       <Text style={[s.td, { width: 30 }]}></Text>
+822:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+823:                       <Text style={[s.td, { width: 75 }]}></Text>
+824:                       <Text style={[s.td, { width: 90 }]}></Text>
+825:                       <Text style={[s.td, { width: 85 }]}></Text>
+826:                       <Text style={[s.td, { width: 60 }]}></Text>
+827:                       <Text style={[s.td, { width: 120 }]}></Text>
+828:                       <Text style={[s.td, { width: 45, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.qty) || 0), 0))}</Text>
+829:                       <Text style={[s.td, { width: 65 }]}></Text>
+830:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal) || 0) : 0), 0))}</Text>
+831:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#1e40af' }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
+832:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
+833:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((buildPartyTransactions(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
+834:                       <Text style={[s.td, { width: 80 }]}></Text>
+835:                       <Text style={[s.td, { width: 90 }]}></Text>
+836:                       <Text style={[s.td, { width: 65 }]}></Text>
+837:                       <Text style={[s.td, { width: 90 }]}></Text>
+838:                       <Text style={[s.td, { width: 85 }]}></Text>
+839:                       <Text style={[s.td, { width: 120 }]}></Text>
+840:                       <Text style={[s.td, { width: 70 }]}></Text>
+841:                     </View>
+842:               </View>
+843: 
+844:               <Text style={{ fontSize: 13, fontWeight: 'bold', textAlign: 'right', marginVertical: 8 }}>ریز تراکنش‌ها ({toFaNum(filteredPartyDetails.length)})</Text>
+845: 
+846:               <View style={{ flexDirection: 'row-reverse', gap: 6, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+847:                 {treeMode === 'flat' ? (
+848:                   <TouchableOpacity onPress={() => setTreeMode('groups')} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: '#0f2438' }}>
+849:                     <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>🗂 نمایش گروهی</Text>
+850:                   </TouchableOpacity>
+851:                 ) : (
+852:                   <TouchableOpacity onPress={() => {
+853:                     if (treeMode === 'counterparty') { setTreeMode('group'); setActiveCounterparty(''); }
+854:                     else if (treeMode === 'group') { setTreeMode('groups'); setActiveGroup(''); }
+855:                     else { setTreeMode('flat'); }
+856:                   }} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: '#64748b' }}>
+857:                     <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>← بازگشت</Text>
+858:                   </TouchableOpacity>
+859:                 )}
+860:                 {treeMode !== 'flat' && (
+861:                   <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#0f2438' }}>
+862:                     {treeMode === 'groups' ? 'گروه‌ها' : treeMode === 'group' ? activeGroup : activeCounterparty}
+863:                   </Text>
+864:                 )}
+865:               </View>
+866: 
+867:               {treeMode === 'flat' ? (
+868:                 <ScrollView horizontal showsHorizontalScrollIndicator>
+869:                   <View>
+870:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+871:                       <Text style={[s.th, { width: 30 }]}>#</Text>
+872:                       <Text style={[s.th, { width: 80 }]}>تاریخ</Text>
+873:                       <Text style={[s.th, { width: 90 }]}>نوع</Text>
+874:                       <Text style={[s.th, { width: 70 }]}>حساب</Text>
+875:                       <Text style={[s.th, { width: 80 }]}>طرف</Text>
+876:                       <Text style={[s.th, { width: 90 }]}>سند</Text>
+877:                       <Text style={[s.th, { width: 180 }]}>شرح</Text>
+878:                       <Text style={[s.th, { width: 85 }]}>بدهکار</Text>
+879:                       <Text style={[s.th, { width: 85 }]}>بستانکار</Text>
+880:                       <Text style={[s.th, { width: 85 }]}>مانده</Text>
+881:                     </View>
+882:                     {filteredPartyDetails.map((t: any, i: number) => (
+883:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+884:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+885:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
+886:                         <Text style={[s.td, { width: 90, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
+887:                         <Text style={[s.td, { width: 70, fontSize: 9, color: '#7c3aed' }]}>{t.accountType === 'capital' ? 'سرمایه' : t.accountType === 'drawings' ? 'برداشت' : t.accountType === 'current' ? 'جاری' : '—'}</Text>
+888:                         <Text style={[s.td, { width: 80, fontSize: 9, color: '#0891b2' }]}>{cpLabel(t)}</Text>
+889:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#7c3aed' }]} numberOfLines={1}>{t.invoice || t.sourceId || '—'}</Text>
+890:                         <Text style={[s.td, { width: 180, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
+891:                         <Text style={[s.td, { width: 85, fontSize: 9, color: t.debit ? '#1e40af' : '#475569', fontWeight: 'bold' }]}>{t.debit ? fmt(t.debit) : '—'}</Text>
+892:                         <Text style={[s.td, { width: 85, fontSize: 9, color: t.credit ? '#059669' : '#475569', fontWeight: 'bold' }]}>{t.credit ? fmt(t.credit) : '—'}</Text>
+893:                         <Text style={[s.td, { width: 85, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}
+894:                     </Text>
+895:                       </View>
+896:                     ))}
+897:                     <View style={[s.trow, { backgroundColor: '#f1f5f9', borderTopWidth: 1, borderTopColor: '#cbd5e1' }]}>
+898:                       <Text style={[s.td, { width: 30 }]}></Text>
+899:                       <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+900:                       <Text style={[s.td, { width: 90 }]}></Text>
+901:                       <Text style={[s.td, { width: 70 }]}></Text>
+902:                       <Text style={[s.td, { width: 80 }]}></Text>
+903:                       <Text style={[s.td, { width: 90 }]}></Text>
+904:                       <Text style={[s.td, { width: 180 }]}></Text>
+905:                       <Text style={[s.td, { width: 85, color: '#1e40af', fontWeight: 'bold', fontSize: 10 }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
+906:                       <Text style={[s.td, { width: 85, color: '#059669', fontWeight: 'bold', fontSize: 10 }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
+907:                       <Text style={[s.td, { width: 85, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
+908:                     </View>
+909:                   </View>
+910:                 </ScrollView>
+911:               ) : treeMode === 'groups' ? (
+912:                 <ScrollView horizontal showsHorizontalScrollIndicator>
+913:                   <View>
+914:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+915:                       <Text style={[s.th, { width: 40 }]}>#</Text>
+916:                       <Text style={[s.th, { width: 180, textAlign: 'right' }]}>گروه</Text>
+917:                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
+918:                       <Text style={[s.th, { width: 100 }]}>بدهکار</Text>
+919:                       <Text style={[s.th, { width: 100 }]}>بستانکار</Text>
+920:                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
+921:                     </View>
+922:                     {getTreeGroups().map((g: any, i: number) => (
+923:                       <TouchableOpacity key={g.name} onPress={() => { setActiveGroup(g.name); setTreeMode('group'); }} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+924:                         <Text style={[s.td, { width: 40 }]}>{i + 1}</Text>
+925:                         <Text style={[s.td, { width: 180, textAlign: 'right', fontWeight: 'bold', color: '#2563eb' }]}>{g.name}</Text>
+926:                         <Text style={[s.td, { width: 80 }]}>{toFaNum(g.count)}</Text>
+927:                         <Text style={[s.td, { width: 100, color: '#1e40af', fontWeight: 'bold' }]}>{fmt(g.debit)}</Text>
+928:                         <Text style={[s.td, { width: 100, color: '#059669', fontWeight: 'bold' }]}>{fmt(g.credit)}</Text>
+929:                         <Text style={[s.td, { width: 100, fontWeight: 'bold' }]}>{fmt(Math.abs(g.balance))}</Text>
+930:                       </TouchableOpacity>
+931:                     ))}
+932:                     <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+933:                       <Text style={[s.td, { width: 30 }]}></Text>
+934:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+935:                       <Text style={[s.td, { width: 75 }]}></Text>
+936:                       <Text style={[s.td, { width: 90 }]}></Text>
+937:                       <Text style={[s.td, { width: 85 }]}></Text>
+938:                       <Text style={[s.td, { width: 60 }]}></Text>
+939:                       <Text style={[s.td, { width: 120 }]}></Text>
+940:                       <Text style={[s.td, { width: 45, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.qty) || 0), 0))}</Text>
+941:                       <Text style={[s.td, { width: 65 }]}></Text>
+942:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal) || 0) : 0), 0))}</Text>
+943:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#1e40af' }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
+944:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
+945:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs(filteredPartyDetails.reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
+946:                       <Text style={[s.td, { width: 80 }]}></Text>
+947:                       <Text style={[s.td, { width: 90 }]}></Text>
+948:                       <Text style={[s.td, { width: 65 }]}></Text>
+949:                       <Text style={[s.td, { width: 90 }]}></Text>
+950:                       <Text style={[s.td, { width: 85 }]}></Text>
+951:                       <Text style={[s.td, { width: 120 }]}></Text>
+952:                       <Text style={[s.td, { width: 70 }]}></Text>
+953:                     </View>
+954:                   </View>
+955:                 </ScrollView>
+956:               ) : treeMode === 'group' ? (
+957:                 <ScrollView horizontal showsHorizontalScrollIndicator>
+958:                   <View>
+959:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+960:                       <Text style={[s.th, { width: 40 }]}>#</Text>
+961:                       <Text style={[s.th, { width: 240, textAlign: 'right' }]}>طرف / دسته</Text>
+962:                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
+963:                       <Text style={[s.th, { width: 100 }]}>بدهکار</Text>
+964:                       <Text style={[s.th, { width: 100 }]}>بستانکار</Text>
+965:                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
+966:                     </View>
+967:                     {getTreeCounterparties(activeGroup).map((c: any, i: number) => (
+968:                       <TouchableOpacity key={c.name} onPress={() => { setActiveCounterparty(c.name); setTreeMode('counterparty'); }} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+969:                         <Text style={[s.td, { width: 40 }]}>{i + 1}</Text>
+970:                         <Text style={[s.td, { width: 240, textAlign: 'right', fontWeight: 'bold', color: '#2563eb' }]}>{c.name}</Text>
+971:                         <Text style={[s.td, { width: 80 }]}>{toFaNum(c.count)}</Text>
+972:                         <Text style={[s.td, { width: 100, color: '#1e40af', fontWeight: 'bold' }]}>{fmt(c.debit)}</Text>
+973:                         <Text style={[s.td, { width: 100, color: '#059669', fontWeight: 'bold' }]}>{fmt(c.credit)}</Text>
+974:                         <Text style={[s.td, { width: 100, fontWeight: 'bold' }]}>{fmt(Math.abs(c.balance))}</Text>
+975:                       </TouchableOpacity>
+976:                     ))}
+977:                   </View>
+978:                 </ScrollView>
+979:               ) : (
+980:                 <ScrollView horizontal showsHorizontalScrollIndicator>
+981:                   <View>
+982:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+983:                       <Text style={[s.th, { width: 30 }]}>#</Text>
+984:                       <Text style={[s.th, { width: 75 }]}>تاریخ</Text>
+985:                       <Text style={[s.th, { width: 80 }]}>نوع</Text>
+986:                       <Text style={[s.th, { width: 95 }]}>سند</Text>
+987:                       <Text style={[s.th, { width: 170 }]}>شرح</Text>
+988:                       <Text style={[s.th, { width: 90 }]}>جمع سند</Text>
+989:                       <Text style={[s.th, { width: 90 }]}>پرداخت سند</Text>
+990:                       <Text style={[s.th, { width: 90 }]}>مانده سند</Text>
+991:                       <Text style={[s.th, { width: 80 }]}>بدهکار</Text>
+992:                       <Text style={[s.th, { width: 80 }]}>بستانکار</Text>
+993:                       <Text style={[s.th, { width: 80 }]}>مانده</Text>
+994:                     </View>
+995:                     {treeTxns.map((t: any, i: number) => (
+996:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+997:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+998:                         <Text style={[s.td, { width: 75, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
+999:                         <Text style={[s.td, { width: 80, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
+1000:                         <Text style={[s.td, { width: 95, fontSize: 9, color: '#7c3aed' }]} numberOfLines={1}>{t.sourceInfo?.invoice || t.invoice || t.sourceId || '—'}</Text>
+1001:                         <Text style={[s.td, { width: 170, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
+1002:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#1e40af', fontWeight: 'bold' }]}>{t.sourceInfo?.total ? fmt(t.sourceInfo.total) : '—'}</Text>
+1003:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#059669', fontWeight: 'bold' }]}>{t.sourceInfo?.paid ? fmt(t.sourceInfo.paid) : '—'}</Text>
+1004:                         <Text style={[s.td, { width: 90, fontSize: 9, fontWeight: 'bold' }]}>{t.sourceInfo?.balance !== undefined ? fmt(Math.abs(t.sourceInfo.balance)) : '—'}</Text>
+1005:                         <Text style={[s.td, { width: 80, fontSize: 9, color: t.debit ? '#1e40af' : '#475569', fontWeight: 'bold' }]}>{t.debit ? fmt(t.debit) : '—'}</Text>
+1006:                         <Text style={[s.td, { width: 80, fontSize: 9, color: t.credit ? '#059669' : '#475569', fontWeight: 'bold' }]}>{t.credit ? fmt(t.credit) : '—'}</Text>
+1007:                         <Text style={[s.td, { width: 80, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}</Text>
+1008:                       </View>
+1009:                     ))}
+1010:                     <View style={[s.trow, { backgroundColor: '#f1f5f9', borderTopWidth: 1, borderTopColor: '#cbd5e1' }]}>
+1011:                       <Text style={[s.td, { width: 30 }]}></Text>
+1012:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1013:                       <Text style={[s.td, { width: 80 }]}></Text>
+1014:                       <Text style={[s.td, { width: 95 }]}></Text>
+1015:                       <Text style={[s.td, { width: 170 }]}></Text>
+1016:                       <Text style={[s.td, { width: 90, color: '#1e40af', fontWeight: 'bold', fontSize: 10 }]}>{fmt(treeTxns.reduce((a: number, t: any) => a + (Number(t.sourceInfo?.total) || 0), 0))}</Text>
+1017:                       <Text style={[s.td, { width: 90, color: '#059669', fontWeight: 'bold', fontSize: 10 }]}>{fmt(treeTxns.reduce((a: number, t: any) => a + (Number(t.sourceInfo?.paid) || 0), 0))}</Text>
+1018:                       <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs(treeTxns.reduce((a: number, t: any) => a + (Number(t.sourceInfo?.balance) || 0), 0)))}</Text>
+1019:                       <Text style={[s.td, { width: 80, color: '#1e40af', fontWeight: 'bold', fontSize: 10 }]}>{fmt(treeTxnsDebit)}</Text>
+1020:                       <Text style={[s.td, { width: 80, color: '#059669', fontWeight: 'bold', fontSize: 10 }]}>{fmt(treeTxnsCredit)}</Text>
+1021:                       <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs(treeTxnsCredit - treeTxnsDebit))}</Text>
+1022:                     </View>
+1023:                   </View>
+1024:                 </ScrollView>
+1025:               )}
+1026:             </ScrollView>
+1027:           </View>
+1028:         </View>
+1029:       </Modal>
+1030:       <Modal visible={invoiceModalVisible} transparent animationType="slide" onRequestClose={() => setInvoiceModalVisible(false)}>
+1031:         <View style={s.modalBg}>
+1032:           <View style={s.modalBox}>
+1033:             <View style={s.modalHead}>
+1034:               <Text style={s.modalTitle}>{invoiceDetailMeta ? '📄 فاکتور: ' + invoiceDetailMeta.invoice : '📋 ' + (selectedParty?.name || '')}</Text>
+1035:               <TouchableOpacity onPress={() => setInvoiceModalVisible(false)}><Text style={{ color: '#fff', fontSize: 24 }}>×</Text></TouchableOpacity>
+1036:             </View>
+1037: 
+1038:             {invoiceDetailMeta ? (
+1039:               <View style={{ flexDirection: 'row', gap: 6, padding: 8, flexWrap: 'wrap', justifyContent: 'flex-end', backgroundColor: '#f8fafc' }}>
+1040:                 <TouchableOpacity onPress={pdfInvoice} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+1041:                 <TouchableOpacity onPress={printInvoice} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+1042:                 <TouchableOpacity onPress={imgInvoice} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+1043:                 <TouchableOpacity onPress={xlsInvoice} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+1044:               </View>
+1045:             ) : (
+1046:               <>
+1047:                 <View style={{ flexDirection: 'row-reverse', gap: 6, padding: 8, backgroundColor: '#f8fafc' }}>
+1048:                   <TouchableOpacity onPress={() => setPartyViewMode('all')} style={{ flex: 1, padding: 8, borderRadius: 6, alignItems: 'center', backgroundColor: partyViewMode === 'all' ? '#7c3aed' : '#e2e8f0' }}>
+1049:                     <Text style={{ fontWeight: 'bold', fontSize: 12, color: partyViewMode === 'all' ? '#fff' : '#475569' }}>همه</Text>
+1050:                   </TouchableOpacity>
+1051:                   <TouchableOpacity onPress={() => setPartyViewMode('in')} style={{ flex: 1, padding: 8, borderRadius: 6, alignItems: 'center', backgroundColor: partyViewMode === 'in' ? '#7c3aed' : '#e2e8f0' }}>
+1052:                     <Text style={{ fontWeight: 'bold', fontSize: 12, color: partyViewMode === 'in' ? '#fff' : '#475569' }}>ورودی‌ها</Text>
+1053:                   </TouchableOpacity>
+1054:                   <TouchableOpacity onPress={() => setPartyViewMode('out')} style={{ flex: 1, padding: 8, borderRadius: 6, alignItems: 'center', backgroundColor: partyViewMode === 'out' ? '#7c3aed' : '#e2e8f0' }}>
+1055:                     <Text style={{ fontWeight: 'bold', fontSize: 12, color: partyViewMode === 'out' ? '#fff' : '#475569' }}>خروجی‌ها</Text>
+1056:                   </TouchableOpacity>
+1057:                 </View>
+1058:                 <View style={{ flexDirection: 'row', gap: 6, padding: 8, flexWrap: 'wrap', justifyContent: 'flex-end', backgroundColor: '#f8fafc' }}>
+1059:                   <TouchableOpacity onPress={pdfInvoiceList} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text></TouchableOpacity>
+1060:                   <TouchableOpacity onPress={printInvoiceList} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</Text></TouchableOpacity>
+1061:                   <TouchableOpacity onPress={imgInvoiceList} style={[s.btn, { backgroundColor: '#f59e0b' }]}><Text style={s.btnTxt}>📤 تصویر</Text></TouchableOpacity>
+1062:                 <TouchableOpacity onPress={xlsInvoiceList} style={[s.btn, { backgroundColor: '#059669' }]}><Text style={s.btnTxt}>📥 اکسل</Text></TouchableOpacity>
+1063:                 </View>
+1064:               </>
+1065:             )}
+1066: 
+1067:             <ScrollView ref={invoiceModalRef} style={{ padding: 8 }}>
+1068:               {invoiceDetailMeta ? (
+1069:                 <>
+1070:                   <TouchableOpacity onPress={() => { setInvoiceDetailMeta(null); setInvoiceDetailRows([]); }} style={{ alignSelf: 'flex-end', padding: 6, backgroundColor: '#e2e8f0', borderRadius: 6, marginBottom: 6 }}>
+1071:                     <Text style={{ fontWeight: 'bold', fontSize: 11 }}>← بازگشت</Text>
+1072:                   </TouchableOpacity>
+1073:                   {invoiceLoading ? <ActivityIndicator /> : (
+1074:                     <ScrollView horizontal>
+1075:                       <View>
+1076:                         <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+1077:                           <Text style={[s.th, { width: 30 }]}>#</Text>
+1078:                           <Text style={[s.th, { width: 80 }]}>کد مدل</Text>
+1079:                           <Text style={[s.th, { width: 130, textAlign: 'right' }]}>نام مدل</Text>
+1080:                           <Text style={[s.th, { width: 60 }]}>قفسه</Text>
+1081:                           <Text style={[s.th, { width: 60 }]}>تعداد</Text>
+1082:                           <Text style={[s.th, { width: 80 }]}>قیمت</Text>
+1083:                           <Text style={[s.th, { width: 90 }]}>جمع</Text>
+1084:                           <Text style={[s.th, { width: 90 }]}>پرداخت</Text>
+1085:                           <Text style={[s.th, { width: 100 }]}>بانک</Text>
+1086:                           <Text style={[s.th, { width: 90 }]}>تاریخ واریز</Text>
+1087:                           <Text style={[s.th, { width: 100 }]}>باربری</Text>
+1088:                         </View>
+1089:                         {(invoiceDetailRows || []).map((r: any, i: number) => (
+1090:                           <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1091:                             <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1092:                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{r.model_code || '—'}</Text>
+1093:                             <Text style={[s.td, { width: 130, fontSize: 9, textAlign: 'right' }]}>{r.model_name || '—'}</Text>
+1094:                             <Text style={[s.td, { width: 60, fontSize: 9 }]}>{r.shelf || '—'}</Text>
+1095:                             <Text style={[s.td, { width: 60, fontSize: 9 }]}>{toFaNum(Number(r.quantity) || 0)}</Text>
+1096:                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{fmt(Number(r.price_unit) || 0)}</Text>
+1097:                             <Text style={[s.td, { width: 90, fontSize: 9, fontWeight: 'bold' }]}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+1098:                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{fmt(Number(r.payment) || 0)}</Text>
+1099:                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.bank_name || r.receiver_bank || '—'}</Text>
+1100:                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—'}</Text>
+1101:                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.shipping || '—'}</Text>
+1102:                           </View>
+1103:                         ))}
+1104:                       </View>
+1105:                     </ScrollView>
+1106:                   )}
+1107:                 </>
+1108:               ) : partyViewMode === 'all' ? (
+1109:                 <ScrollView horizontal>
+1110:                   <View>
+1111:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+1112:                       <Text style={[s.th, { width: 30 }]}>#</Text>
+1113:                       <Text style={[s.th, { width: 75 }]}>تاریخ</Text>
+1114:                       <Text style={[s.th, { width: 75 }]}>نوع</Text>
+1115:                       <Text style={[s.th, { width: 90 }]}>فاکتور</Text>
+1116:                       <Text style={[s.th, { width: 85 }]}>فاکتور دستی</Text>
+1117:                       <Text style={[s.th, { width: 60 }]}>کد مدل</Text>
+1118:                       <Text style={[s.th, { width: 120, textAlign: 'right' }]}>نام مدل</Text>
+1119:                       <Text style={[s.th, { width: 45 }]}>تعداد</Text>
+1120:                       <Text style={[s.th, { width: 65 }]}>قیمت</Text>
+1121:                       <Text style={[s.th, { width: 75 }]}>جمع ردیف</Text>
+1122:                       <Text style={[s.th, { width: 75 }]}>بدهکار</Text>
+1123:                       <Text style={[s.th, { width: 75 }]}>بستانکار</Text>
+1124:                       <Text style={[s.th, { width: 75 }]}>مانده</Text>
+1125:                       <Text style={[s.th, { width: 80 }]}>بانک</Text>
+1126:                       <Text style={[s.th, { width: 90 }]}>صاحب حساب</Text>
+1127:                       <Text style={[s.th, { width: 65 }]}>کد صاحب</Text>
+1128:                       <Text style={[s.th, { width: 90 }]}>تاریخ واریز</Text>
+1129:                       <Text style={[s.th, { width: 85 }]}>باربری</Text>
+1130:                       <Text style={[s.th, { width: 120, textAlign: 'right' }]}>شرح</Text>
+1131:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1132:                     </View>
+1133:                     {filteredPartyDetails.map((t: any, i: number) => (
+1134:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1135:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1136:                         <Text style={[s.td, { width: 75, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
+1137:                         <Text style={[s.td, { width: 75, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
+1138:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#7c3aed' }]}>{t.invoice || '—'}</Text>
+1139:                         <Text style={[s.td, { width: 85, fontSize: 9 }]}>{t.manualInvoice || '—'}</Text>
+1140:                         <Text style={[s.td, { width: 60, fontSize: 9 }]}>{t.modelCode || '—'}</Text>
+1141:                         <Text style={[s.td, { width: 120, fontSize: 9, textAlign: 'right' }]} numberOfLines={1}>{t.modelName || '—'}</Text>
+1142:                         <Text style={[s.td, { width: 45, fontSize: 9 }]}>{t.qty ? toFaNum(t.qty) : '—'}</Text>
+1143:                         <Text style={[s.td, { width: 65, fontSize: 9 }]}>{t.priceUnit ? fmt(t.priceUnit) : '—'}</Text>
+1144:                         <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) && t.lineTotal ? fmt(t.lineTotal) : '—'}</Text>
+1145:                         <Text style={[s.td, { width: 75, fontSize: 9, color: t.debit ? '#1e40af' : '#475569', fontWeight: 'bold' }]}>{t.debit ? fmt(t.debit) : '—'}</Text>
+1146:                         <Text style={[s.td, { width: 75, fontSize: 9, color: t.credit ? '#059669' : '#475569', fontWeight: 'bold' }]}>{t.credit ? fmt(t.credit) : '—'}</Text>
+1147:                         <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}</Text>
+1148:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{t.bank || '—'}</Text>
+1149:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.holder || '—'}</Text>
+1150:                         <Text style={[s.td, { width: 65, fontSize: 9 }]}>{t.holderCode || '—'}</Text>
+1151:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.depositDate ? _safeLedgerDate(t.depositDate) : '—'}</Text>
+1152:                         <Text style={[s.td, { width: 85, fontSize: 9 }]}>{t.shipping || '—'}</Text>
+1153:                         <Text style={[s.td, { width: 120, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
+1154:                         <View style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1155:                           {t.invoice && (t.type === 'sale' || t.type === 'purchase' || t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received') ? (
+1156:                             <TouchableOpacity onPress={() => openInvoiceDetail({ invoice: t.invoice, type: (t.type === 'purchase' || t.type === 'payment_sent') ? 'purchase' : 'sales' })}>
+1157:                               <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>👁️</Text>
+1158:                             </TouchableOpacity>
+1159:                           ) : (
+1160:                             <Text style={{ color: '#94a3b8', fontSize: 10 }}>—</Text>
+1161:                           )}
+1162:                         </View>
+1163:                       </View>
+1164:                     ))}
+1165:                   
+1166:                     <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1167:                       <Text style={[s.td, { width: 30 }]}></Text>
+1168:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1169:                       <Text style={[s.td, { width: 75 }]}></Text>
+1170:                       <Text style={[s.td, { width: 90 }]}></Text>
+1171:                       <Text style={[s.td, { width: 85 }]}></Text>
+1172:                       <Text style={[s.td, { width: 60 }]}></Text>
+1173:                       <Text style={[s.td, { width: 120 }]}></Text>
+1174:                       <Text style={[s.td, { width: 45, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.qty) || 0), 0))}</Text>
+1175:                       <Text style={[s.td, { width: 65 }]}></Text>
+1176:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal) || 0) : 0), 0))}</Text>
+1177:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#1e40af' }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
+1178:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
+1179:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
+1180:                       <Text style={[s.td, { width: 80 }]}></Text>
+1181:                       <Text style={[s.td, { width: 90 }]}></Text>
+1182:                       <Text style={[s.td, { width: 65 }]}></Text>
+1183:                       <Text style={[s.td, { width: 90 }]}></Text>
+1184:                       <Text style={[s.td, { width: 85 }]}></Text>
+1185:                       <Text style={[s.td, { width: 120 }]}></Text>
+1186:                       <Text style={[s.td, { width: 70 }]}></Text>
+1187:                     </View></View>
+1188:                 </ScrollView>
+1189:               ) : (selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in') ? (
+1190:                 <ScrollView horizontal>
+1191:                   <View>
+1192:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+1193:                       <Text style={[s.th, { width: 30 }]}>#</Text>
+1194:                       <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
+1195:                       <Text style={[s.th, { width: 80 }]}>نوع</Text>
+1196:                       <Text style={[s.th, { width: 110 }]}>شماره فاکتور</Text>
+1197:                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
+1198:                       <Text style={[s.th, { width: 100 }]}>جمع</Text>
+1199:                       <Text style={[s.th, { width: 100 }]}>پرداخت</Text>
+1200:                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
+1201:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1202:                     </View>
+1203:                     {(invoiceList || []).map((inv: any, i: number) => (
+1204:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1205:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1206:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{_safeLedgerDate(inv.date)}</Text>
+1207:                         <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
+1208:                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{inv.invoice}</Text>
+1209:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{toFaNum(inv.count || 0)}</Text>
+1210:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
+1211:                         <Text style={[s.td, { width: 100, fontSize: 9, color: '#059669' }]}>{fmt(inv.paid)}</Text>
+1212:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(inv.balance))}
+1213:                       </Text>
+1214:                         <TouchableOpacity onPress={() => openInvoiceDetail(inv)} style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1215:                           <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>👁️</Text>
+1216:                         </TouchableOpacity>
+1217:                       </View>
+1218:                     ))}
+1219:                       <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1220:                         <Text style={[s.td, { width: 30 }]}></Text>
+1221:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1222:                         <Text style={[s.td, { width: 80 }]}></Text>
+1223:                         <Text style={[s.td, { width: 110 }]}></Text>
+1224:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1225:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1226:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1227:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1228:                         <Text style={[s.td, { width: 70 }]}></Text>
+1229:                       </View>
+1230:                   </View>
+1231:                 </ScrollView>
+1232:               ) : (
+1233:                 <ScrollView horizontal>
+1234:                   <View>
+1235:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+1236:                       <Text style={[s.th, { width: 30 }]}>#</Text>
+1237:                       <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
+1238:                       <Text style={[s.th, { width: 110 }]}>سند</Text>
+1239:                       <Text style={[s.th, { width: 180 }]}>شرح</Text>
+1240:                       <Text style={[s.th, { width: 110 }]}>مبلغ پرداخت</Text>
+1241:                       <Text style={[s.th, { width: 100 }]}>بانک</Text>
+1242:                       <Text style={[s.th, { width: 130 }]}>صاحب حساب</Text>
+1243:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1244:                     </View>
+1245:                     {(buildPaymentsList(selectedParty) || []).map((t: any, i: number) => (
+1246:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1247:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1248:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
+1249:                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{t.invoice || '—'}</Text>
+1250:                         <Text style={[s.td, { width: 180, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
+1251:                         <Text style={[s.td, { width: 110, fontSize: 9, fontWeight: 'bold', color: '#059669' }]}>{fmt(Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0)}</Text>
+1252:                         <Text style={[s.td, { width: 100, fontSize: 9 }]}>{t.bank || '—'}</Text>
+1253:                         <Text style={[s.td, { width: 130, fontSize: 9 }]} numberOfLines={1}>{t.holder || '—'}</Text>
+1254:                         <View style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1255:                           {t.invoice ? (
+1256:                             <TouchableOpacity onPress={() => openInvoiceDetail({ invoice: t.invoice, type: (t.type === 'payment_sent' || t.type === 'purchase') ? 'purchase' : 'sales' })}>
+1257:                               <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>👁️</Text>
+1258:                             </TouchableOpacity>
+1259:                           ) : (
+1260:                             <Text style={{ color: '#94a3b8', fontSize: 10 }}>—</Text>
+1261:                           )}
+1262:                         </View>
+1263:                       </View>
+1264:                     ))}
+1265:                       <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1266:                         <Text style={[s.td, { width: 30 }]}></Text>
+1267:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1268:                         <Text style={[s.td, { width: 110 }]}></Text>
+1269:                         <Text style={[s.td, { width: 180 }]}></Text>
+1270:                         <Text style={[s.td, { width: 110, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((buildPaymentsList(selectedParty) || []).reduce((a: number, t: any) => a + (Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0), 0))}</Text>
+1271:                         <Text style={[s.td, { width: 100 }]}></Text>
+1272:                         <Text style={[s.td, { width: 130 }]}></Text>
+1273:                         <Text style={[s.td, { width: 70 }]}></Text>
+1274:                       </View>
+1275:                       
+1276:                   </View>
+1277:                 </ScrollView>
+1278:               )}
+1279:             </ScrollView>
+1280:           </View>
+1281:         </View>
+1282:       </Modal>
+1283:     </ScrollView>
+1284:   );
+1285: }
+1286: 
+1287: const s = StyleSheet.create({
+1288:   container: { flex: 1, backgroundColor: '#f5f7fa' },
+1289:   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+1290:   btn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+1291:   btnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+1292:   thead: { flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 8, width: '100%' },
+1293:   th: { color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 3 },
+1294:   trow: { flexDirection: 'row-reverse', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingVertical: 8, alignItems: 'center', width: '100%' },
+1295:   td: { fontSize: 10, color: '#0f2438', textAlign: 'center', paddingHorizontal: 3 },
+1296:   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 6 },
+1297:   modalBox: { backgroundColor: '#fff', borderRadius: 12, maxHeight: '95%', width: '98%', alignSelf: 'center', overflow: 'hidden' },
+1298:   modalHead: { backgroundColor: '#0f2438', padding: 12, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
+1299:   modalTitle: { color: '#d4af37', fontWeight: 'bold', fontSize: 14 },
+1300:   modalInfo: { backgroundColor: '#f8fafc', padding: 10, borderRadius: 6, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+1301:   infoTxt: { fontSize: 11, color: '#1e3a5f', textAlign: 'right', marginVertical: 2 },
+1302: });
+1303: 
+
+=== lib.ts: توابع کلیدی معین و تراز ===
+604: export async function getDashboardStats(range: string = 'month', filter: string = 'both') {
+605:   const settings = await getSettings();
+606:   const margin = settings.profit_margin ?? 0.10;
+607: 
+608:   const now = new Date();
+609:   let startDate: Date | null = null;
+610:   const calType = getCalType();
+611:   
+612:   if (range === 'today') {
+613:     startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+614:   } else if (range === 'month') {
+615:     try {
+616:       if (calType === 'jalali') {
+617:         const [jy, jm] = g2j(now.getFullYear(), now.getMonth() + 1, now.getDate());
+618:         const g = j2g(jy, jm, 1);
+619:         startDate = new Date(g.y, g.m - 1, g.d);
+620:       } else if (calType === 'hijri') {
+621:         const h = g2h(now);
+622:         const g = h2g(h.y, h.m, 1);
+623:         startDate = new Date(g.y, g.m - 1, g.d);
+624:       } else {
+625:         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+626:       }
+627:     } catch (e) {
+628:       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+629:     }
+630:   } else if (range === 'year') {
+631:     startDate = new Date(now.getFullYear(), 0, 1); // برای سال، معمولاً سال میلادی مبناست، اگر نیاز شد تغییر می‌دهیم
+632:   } else if (range === 'last6months') {
+633:     startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+634:   }
+635: 
+636:   const inRange = (d: any) => {
+637:     if (!startDate) return true;
+638:     const dt = parseDateAny(d);
+639:     return !!dt && dt >= startDate && dt <= now;
+640:   };
+641: 
+642:   const [{ data: pData }, { data: sData }] = await Promise.all([
+643:     supabase.from('purchases').select('*'),
+644:     supabase.from('sales').select('*'),
+645:   ]);
+646: 
+647:   const purchaseByCode: Record<string, { date: number; price: number }[]> = {};
+648:   const purchaseNames: Record<string, string> = {};
+=========================================
+754:   const d = await getDashboardStats('month', 'both');
+755:   return d.models;
+756: }
+757: 
+758: // ═══════════════════════════════════════════════════
+759: // 🗄️ DB — انبار
+760: // ═══════════════════════════════════════════════════
+761: export async function getInventory() {
+762:   const settings = await getSettings();
+763:   const threshold = settings.inventory_threshold ?? 5;
+764:   const [{ data: pData }, { data: sData }, { data: aData }, products] = await Promise.all([
+765:     supabase.from('purchases').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+766:     supabase.from('sales').select('model_code, model_name, quantity, price_unit, date_factor, date_reg'),
+767:     supabase.from('stock_adjustments').select('model_code, adjustment'),
+768:     getProducts(),
+769:   ]);
+770:   const adjustmentMap: Record<string, number> = {};
+771:   (aData || []).forEach((r: any) => {
+772:     const c = String(r.model_code || '').trim();
+773:     if (!c) return;
+774:     adjustmentMap[c] = (adjustmentMap[c] || 0) + (Number(r.adjustment) || 0);
+775:   });
+776:   const productMap: Record<string, Product> = {};
+777:   products.forEach((p) => { productMap[p.code] = p; });
+778:   const models: Record<string, any> = {};
+779:   const nowTs = Date.now();
+780:   (pData || []).forEach((r: any) => {
+781:     const c = String(r.model_code || '').trim();
+782:     if (!c) return;
+783:     if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+784:     const qty = Number(r.quantity) || 0;
+785:     const price = Number(r.price_unit) || 0;
+786:     models[c].bought += qty;
+787:     models[c].boughtValue += qty * price;
+788:     if (r.model_name) models[c].name = r.model_name;
+789:     if (price > 0) models[c].lastPrice = price;
+790:     const d = parseDateAny(r.date_factor || r.date_reg);
+791:     if (d && d.getTime() > models[c].lastPurchaseTime) models[c].lastPurchaseTime = d.getTime();
+792:   });
+793:   (sData || []).forEach((r: any) => {
+794:     const c = String(r.model_code || '').trim();
+795:     if (!c) return;
+796:     if (!models[c]) models[c] = { code: c, name: r.model_name || '', bought: 0, sold: 0, boughtValue: 0, lastPrice: 0, lastSalePrice: 0, lastPurchaseTime: 0, lastSaleTime: 0 };
+797:     const qty = Number(r.quantity) || 0;
+798:     const price = Number(r.price_unit) || 0;
+=========================================
+1288: export async function getPartnerTransactions(partnerCode: string) {
+1289:   const { data, error } = await supabase.from('partner_transactions').select('*').eq('partner_code', partnerCode).order('transaction_date', { ascending: true });
+1290:   if (error) { console.log('[getPT]', error.message); return []; }
+1291:   return data || [];
+1292: }
+1293: export async function createPartnerTransaction(p: any) {
+1294:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1295:   if (!clean.local_id) clean.local_id = 'ptx_' + Date.now();
+1296:   const { error } = await supabase.from('partner_transactions').insert(clean);
+1297:   if (error) throw new Error(error.message);
+1298:   return clean;
+1299: }
+1300: export async function deletePartnerTransaction(id: string) {
+1301:   const { error } = await supabase.from('partner_transactions').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1302:   if (error) throw new Error(error.message);
+1303: }
+1304: // ═══════════════════════════════════════════
+1305: //  Banks
+1306: // ═══════════════════════════════════════════
+1307: export async function getBanks() {
+1308:   const { data, error } = await supabase.from('banks').select('*').order('name', { ascending: true });
+1309:   if (error) { console.log('[getBanks]', error.message); return []; }
+1310:   return data || [];
+1311: }
+1312: export async function createBank(p: any) {
+1313:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1314:   if (!clean.local_id) clean.local_id = 'bank_' + Date.now();
+1315:   const { error } = await supabase.from('banks').insert(clean);
+1316:   if (error) throw new Error(error.message);
+1317:   return clean;
+1318: }
+1319: export async function updateBank(id: string, p: any) {
+1320:   const clean = { ...p }; delete clean.id; delete clean.user_id;
+1321:   const { error } = await supabase.from('banks').update(clean).or('local_id.eq.' + id + ',id.eq.' + id);
+1322:   if (error) throw new Error(error.message);
+1323: }
+1324: export async function deleteBank(id: string) {
+1325:   const { error } = await supabase.from('banks').delete().or('local_id.eq.' + id + ',id.eq.' + id);
+1326:   if (error) throw new Error(error.message);
+1327: }
+1328: 
+1329: // ═══════════════════════════════════════════
+1330: //  Shippings
+1331: // ═══════════════════════════════════════════
+1332: export async function getShippings() {
+=========================================

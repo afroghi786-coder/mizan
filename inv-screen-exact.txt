@@ -1,0 +1,706 @@
+=== استخراج InventoryScreen از App.tsx ===
+5796: function InventoryScreen({ showToast }: any) {
+5797: 
+5798:   const [list, setList] = useState<any[]>([]);
+5799: 
+5800:   const [stats, setStats] = useState<any>({});
+5801: 
+5802:   const [thresholdInput, setThresholdInput] = useState('5');
+5803: 
+5804:   const [loading, setLoading] = useState(true);
+5805: 
+5806:   const [q, setQ] = useState('');
+5807: 
+5808:   const [filter, setFilter] = useState('all');
+5809: 
+5810:   const [agingFilter, setAgingFilter] = useState('');
+5811: 
+5812:   const [editItem, setEditItem] = useState<any>(null);
+5813: 
+5814:   const [shelfVal, setShelfVal] = useState('');
+5815: 
+5816:   const [invRef] = useState({ current: null as any });
+5817: 
+5818: 
+5819: 
+5820:   const _buildInvHtml = (rows: any[], st: any) => {
+5821: 
+5822:     var cur = getCurrencySync().label || 'افغانی';
+5823: 
+5824:     var head = '<tr><th>#</th><th>کد</th><th>نام</th><th>خرید</th><th>فروش</th><th>موجودی</th><th>بهای واحد</th><th>ارزش کل</th><th>قفسه</th><th>وضعیت</th></tr>';
+5825: 
+5826:     var body = rows.map(function(m: any, i: number) {
+5827: 
+5828:       return '<tr><td>' + (i + 1) + '</td><td>' + m.code + '</td><td style="text-align:right">' + (m.name || '—') + '</td><td>' + fmt(m.bought) + '</td><td>' + fmt(m.sold) + '</td><td style="font-weight:bold;color:#0891b2">' + fmt(m.currentQty) + '</td><td>' + fmt(m.unitCost || 0) + '</td><td style="font-weight:bold;color:#059669">' + fmt(m.totalValue || 0) + '</td><td>' + (m.shelf || '—') + '</td><td>' + (m.status === 'negative' ? '⚫ منفی' : m.status === 'out' ? '🔴 ناموجود' : m.status === 'low' ? '⚠️ کمبود' : '✅ سالم') + '</td></tr>';
+5829: 
+5830:     }).join('');
+5831: 
+5832:     var summary = '<div class="info"><b>📦 مدل‌ها:</b> ' + (st.totalModels || 0) + ' &nbsp;|&nbsp; <b>💰 ارزش کل:</b> ' + fmt(st.totalValue || 0) + ' ' + cur + ' &nbsp;|&nbsp; <b>💵 درآمد بالقوه:</b> ' + fmt(st.potentialRevenue || 0) + ' ' + cur + ' &nbsp;|&nbsp; <b>⚠️ کمبود:</b> ' + (st.lowStock || 0) + ' &nbsp;|&nbsp; <b>🔴 ناموجود:</b> ' + (st.outOfStock || 0) + ' &nbsp;|&nbsp; <b>⏸ راکد:</b> ' + ((st.agingBuckets && st.agingBuckets.dead) || 0) + '</div>';
+5833: 
+5834:     var words = '<div class="net-words">ارزش کل انبار به حروف: ' + numToWords(st.totalValue || 0) + ' ' + cur + '</div>';
+5835: 
+5836:     var serial = 'INV-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + rows.length;
+5837: 
+5838:     var meta = '<div class="info"><b>📄 شماره سند:</b> ' + serial + ' &nbsp;|&nbsp; <b>📅 تاریخ:</b> ' + new Date().toLocaleDateString('fa-IR') + '</div>';
+5839: 
+5840:     var table = '<table>' + head + body + '</table>';
+5841: 
+5842:     var signs = mizanSignaturesHtml(['امضای انباردار', 'امضای مدیر مالی', 'مهر شرکت']);
+5843: 
+5844:     var note = mizanComputerNoteHtml();
+5845: 
+5846:     return buildStandardHtml('گزارش موجودی انبار', meta + summary + table + words + signs + note, '📦 انبار');
+5847: 
+5848:   };
+5849: 
+5850: 
+5851: 
+5852:   const _invSharePdf = async () => {
+5853: 
+5854:     try {
+5855: 
+5856:       const html = _buildInvHtml(filtered, stats);
+5857: 
+5858:       const r = await shareHtmlAsPdf(html, 'inventory-' + Date.now() + '.pdf');
+5859: 
+5860:       showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+5861: 
+5862:     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+5863: 
+5864:   };
+5865: 
+5866:   const _invPrint = async () => {
+5867: 
+5868:     try {
+5869: 
+5870:       const html = _buildInvHtml(filtered, stats);
+5871: 
+5872:       const r = await printHtml(html);
+5873: 
+5874:       showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+5875: 
+5876:     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+5877: 
+5878:   };
+5879: 
+5880:   const _invExcel = async () => {
+5881: 
+5882:     try {
+5883: 
+5884:       const data = filtered.map(function(m: any, i: number) {
+5885: 
+5886:         return { '#': i + 1, 'کد': m.code, 'نام': m.name, 'خرید': m.bought, 'فروش': m.sold, 'موجودی': m.currentQty, 'بهای واحد': m.unitCost || 0, 'ارزش کل': m.totalValue || 0, 'آخرین فروش': m.lastSaleDate || '', 'روز از فروش': m.daysSinceLastSale, 'قفسه': m.shelf, 'وضعیت': m.status };
+5887: 
+5888:       });
+5889: 
+5890:       const r = await exportExcel([{ name: 'انبار', data }], 'inventory-' + Date.now() + '.xlsx');
+5891: 
+5892:       showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+5893: 
+5894:     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+5895: 
+5896:   };
+5897: 
+5898:   const invExportMenu = () => {
+5899: 
+5900:     if (Platform.OS === 'web') { _invPrint(); return; }
+5901: 
+5902:     Alert.alert('خروجی انبار', 'نوع خروجی:', [
+5903: 
+5904:       { text: '📄 PDF / اشتراک', onPress: _invSharePdf },
+5905: 
+5906:       { text: '🖨️ چاپ', onPress: _invPrint },
+5907: 
+5908:       { text: '📊 اکسل', onPress: _invExcel },
+5909: 
+5910:       { text: 'لغو', style: 'cancel' },
+5911: 
+5912:     ]);
+5913: 
+5914:   };
+5915: 
+5916: 
+5917: 
+5918:   // ═══ کاردکس مدل ═══
+5919: 
+5920:   const [modelKardexModal, setModelKardexModal] = useState(false);
+5921: 
+5922:   const [modelKardexData, setModelKardexData] = useState<any>(null);
+5923: 
+5924:   const [modelKardexLoading, setModelKardexLoading] = useState(false);
+5925: 
+5926:   const [modelKardexCode, setModelKardexCode] = useState('');
+5927: 
+5928: 
+5929: 
+5930:   const openModelKardex = useCallback(async (m: any) => {
+5931:     setModelKardexCode(m.code);
+5932:     setModelKardexModal(true);
+5933:     setModelKardexLoading(true);
+5934:     setModelKardexData(null);
+5935:     try {
+5936:       const d = await getInventoryByModel(m.code);
+5937:       const name = m.name || (d.purchases?.[0] && d.purchases[0].model_name) || (d.sales?.[0] && d.sales[0].model_name) || m.code;
+5938:       setModelKardexData({ ...d, name, model: m });
+5939:     } catch (e: any) {
+5940:       showToast('خطا: ' + (e?.message || ''), true);
+5941:     } finally {
+5942:       setModelKardexLoading(false);
+5943:     }
+5944:   }, []);
+5945: 
+5946: 
+5947: 
+5948:   const _mkHtml = (data: any) => {
+5949:     var cur = getCurrencySync().label || 'افغانی';
+5950: 
+5951:     var pRows = (data.purchases || []).map(function(r: any, i: number) {
+5952:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5953:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5954:       var qty = Number(r.quantity) || 0;
+5955:       var price = Number(r.price_unit) || 0;
+5956:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5957:     }).join('');
+5958: 
+5959:     var sRows = (data.sales || []).map(function(r: any, i: number) {
+5960:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5961:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5962:       var qty = Number(r.quantity) || 0;
+5963:       var price = Number(r.price_unit) || 0;
+5964:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5965:     }).join('');
+5966: 
+5967:     var srRows = (data.salesReturns || []).map(function(r: any, i: number) {
+5968:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5969:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5970:       var qty = Number(r.quantity) || 0;
+5971:       var price = Number(r.price_unit) || 0;
+5972:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5973:     }).join('');
+5974: 
+5975:     var prRows = (data.purchaseReturns || []).map(function(r: any, i: number) {
+5976:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5977:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5978:       var qty = Number(r.quantity) || 0;
+5979:       var price = Number(r.price_unit) || 0;
+5980:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5981:     }).join('');
+5982: 
+5983:     var adjRows = (data.adjustments || []).map(function(r: any, i: number) {
+5984:       var d = r.adjustment_date || r.created_at || '';
+5985:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5986:       var qty = Number(r.adjustment) || 0;
+5987:       var uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+5988:       var totalVal = qty * uCost;
+5989:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty >= 0 ? '+' : '') + fmt(qty) + '</td><td>' + fmt(uCost) + '</td><td style="font-weight:bold">' + fmt(totalVal) + '</td><td style="text-align:right">' + (r.note || '') + '</td></tr>';
+5990:     }).join('');
+5991: 
+5992:     var totalP = (data.purchases || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+5993:     var totalS = (data.sales || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+5994:     var totalBoughtQty = (data.purchases || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5995:     var totalSoldQty = (data.sales || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5996:     var totalSRQty = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5997:     var totalPRQty = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5998:     var totalAdj = (data.adjustments || []).reduce(function(a: number, r: any) { return a + (Number(r.adjustment) || 0); }, 0);
+5999:     var stock = totalBoughtQty - totalSoldQty + totalSRQty - totalPRQty + totalAdj;
+6000: 
+6001:     var summary = '<div class="info"><b>📦 موجودی:</b> ' + fmt(stock) + ' &nbsp;|&nbsp; <b>⬇ خرید:</b> ' + fmt(totalBoughtQty) + ' &nbsp;|&nbsp; <b>⬆ فروش:</b> ' + fmt(totalSoldQty) + ' &nbsp;|&nbsp; <b>↩ برگشت فروش:</b> ' + fmt(totalSRQty) + ' &nbsp;|&nbsp; <b>↪ برگشت خرید:</b> ' + fmt(totalPRQty) + ' &nbsp;|&nbsp; <b>⚖ تعدیل:</b> ' + fmt(totalAdj) + '</div>';
+6002:     var _totalSRVal = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+6003:     var _totalPRVal = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+6004:     var _totalAdjVal = (data.adjustments || []).reduce(function(a: number, r: any) { return a + ((Number(r.adjustment) || 0) * (Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0)); }, 0);
+6005:     var summary2 = '<div class="info"><b>💵 جمع خرید:</b> ' + fmt(totalP) + ' ' + cur + ' &nbsp;|&nbsp; <b>💰 جمع فروش:</b> ' + fmt(totalS) + ' ' + cur + ' &nbsp;|&nbsp; <b>↩ جمع برگشت فروش:</b> ' + fmt(_totalSRVal) + ' ' + cur + ' &nbsp;|&nbsp; <b>↪ جمع برگشت خرید:</b> ' + fmt(_totalPRVal) + ' ' + cur + ' &nbsp;|&nbsp; <b>⚖ جمع ارزش تعدیل:</b> ' + fmt(_totalAdjVal) + ' ' + cur + '</div>';
+6006: 
+6007:     var serial = 'MK-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (data.model && data.model.code || '');
+6008:     var meta = '<div class="info"><b>📄 شماره سند:</b> ' + serial + ' &nbsp;|&nbsp; <b>📅 تاریخ:</b> ' + new Date().toLocaleDateString('fa-IR') + '</div>';
+6009: 
+6010:     var pTable = (data.purchases || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬇ خریدها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + pRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="4" style="text-align:right">جمع</td><td>' + fmt(totalBoughtQty) + '</td><td></td><td>' + fmt(totalP) + '</td></tr></table>' : '';
+6011:     var sTable = (data.sales || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬆ فروش‌ها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + sRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="4" style="text-align:right">جمع</td><td>' + fmt(totalSoldQty) + '</td><td></td><td>' + fmt(totalS) + '</td></tr></table>' : '';
+6012:     var srTable = (data.salesReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↩ برگشت از فروش</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + srRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="5" style="text-align:right">جمع</td><td>' + fmt(totalSRQty) + '</td><td></td><td>' + fmt(_totalSRVal) + '</td></tr></table>' : '';
+6013:     var prTable = (data.purchaseReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↪ برگشت از خرید</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + prRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="5" style="text-align:right">جمع</td><td>' + fmt(totalPRQty) + '</td><td></td><td>' + fmt(_totalPRVal) + '</td></tr></table>' : '';
+6014:     var adjTable = (data.adjustments || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">⚖ تعدیلات انبار</h3><table><tr><th>#</th><th>تاریخ</th><th>دلیل</th><th>مقدار</th><th>بهای واحد</th><th>ارزش کل</th><th>یادداشت</th></tr>' + adjRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="3" style="text-align:right">جمع</td><td>' + fmt(totalAdj) + '</td><td></td><td>' + fmt(_totalAdjVal) + '</td><td></td></tr></table>' : '';
+6015: 
+6016:     var signs = mizanSignaturesHtml(['امضای انباردار', 'امضای مدیر مالی', 'مهر شرکت']);
+6017:     var note = mizanComputerNoteHtml();
+6018:     return buildStandardHtml('کاردکس مدل: ' + data.name, meta + summary + summary2 + pTable + sTable + srTable + prTable + adjTable + signs + note, '📦 ' + (data.model && data.model.code || ''));
+6019:   };
+6020: 
+6021: 
+6022: 
+6023:   const _mkSharePdf = async () => {
+6024: 
+6025:     try { const r = await shareHtmlAsPdf(_mkHtml(modelKardexData), 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.pdf'); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+6026: 
+6027:   };
+6028: 
+6029:   const _mkPrint = async () => {
+6030: 
+6031:     try { const r = await printHtml(_mkHtml(modelKardexData)); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+6032: 
+6033:   };
+6034: 
+6035:   const _mkExcel = async () => {
+6036:     try {
+6037:       var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.supplier_name || r.payer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+6038:       var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+6039:       var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+6040:       var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.supplier_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+6041:       var adjData = (modelKardexData.adjustments || []).map(function(r: any, i: number) {
+6042:         var _qty = Number(r.adjustment) || 0;
+6043:         var _uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+6044:         return { 'نوع': 'تعدیل', '#': i + 1, 'تاریخ': r.adjustment_date || r.created_at || '', 'دلیل': r.reason || '', 'مقدار': _qty, 'بهای واحد': _uCost, 'ارزش کل': _qty * _uCost, 'یادداشت': r.note || '' };
+6045:       });
+6046:       var r = await exportExcel([{ name: 'خرید', data: pData }, { name: 'فروش', data: sData }, { name: 'برگشت فروش', data: srData }, { name: 'برگشت خرید', data: prData }, { name: 'تعدیلات', data: adjData }], 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.xlsx');
+6047:       showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+6048:     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+6049:   };
+6050: 
+6051:   const modelKardexMenu = () => {
+6052: 
+6053:     if (Platform.OS === 'web') { _mkPrint(); return; }
+6054: 
+6055:     Alert.alert('خروجی کاردکس مدل', 'نوع خروجی:', [
+6056: 
+6057:       { text: '📄 PDF / اشتراک', onPress: _mkSharePdf },
+6058: 
+6059:       { text: '🖨️ چاپ', onPress: _mkPrint },
+6060: 
+6061:       { text: '📊 اکسل', onPress: _mkExcel },
+6062: 
+6063:       { text: 'لغو', style: 'cancel' },
+6064: 
+6065:     ]);
+6066: 
+6067:   };
+6068: 
+6069: 
+6070: 
+6071:   // ═══ تعدیل موجودی ═══
+6072: 
+6073:   const [adjModal, setAdjModal] = useState(false);
+6074:   const [editingAdjId, setEditingAdjId] = useState<string | null>(null);
+6075: 
+6076:   const [adjModel, setAdjModel] = useState<any>(null);
+6077: 
+6078:   const [adjForm, setAdjForm] = useState<any>({ type: 'in', amount: '', reason: 'شمارش فیزیکی', adjustment_date: toStorageDateFull(new Date()), note: '' });
+6079: 
+6080:   const [adjList, setAdjList] = useState<any[]>([]);
+6081: 
+6082:   const [adjLoading, setAdjLoading] = useState(false);
+6083: 
+6084: 
+6085: 
+6086:   const openAdjustment = useCallback(async (m: any) => {
+6087:   setEditingAdjId(null);
+6088:   setAdjModel(m);
+6089:   const _defCost = Number(m.unitCost) || Number(m.lastPrice) || 0;
+6090:   setAdjForm({ type: 'in', amount: '', unit_cost: String(_defCost), reason: 'تصحیح موجودی', adjustment_date: toStorageDateFull(new Date()), note: '' });
+6091:   setAdjModal(true);
+6092:   setAdjLoading(true);
+6093:   try {
+6094:     const list = await getStockAdjustments(m.code);
+6095:     setAdjList(list || []);
+6096:   } catch (e) { console.log('adj load err:', e); }
+6097:   finally { setAdjLoading(false); }
+6098: }, []);
+6099: 
+6100: 
+6101: 
+6102:   
+6103:   const editAdj = (r: any) => {
+6104:     setEditingAdjId(r.local_id || r.id);
+6105:     setAdjForm({
+6106:       type: (Number(r.adjustment) || 0) > 0 ? 'in' : 'out',
+6107:       amount: String(Math.abs(Number(r.adjustment) || 0)),
+6108:       unit_cost: String(r.unit_cost || ''),
+6109:       reason: r.reason || 'سایر',
+6110:       adjustment_date: r.adjustment_date || toStorageDateFull(new Date()),
+6111:       note: r.note || '',
+6112:     });
+6113:   };
+6114: 
+6115:   const deleteAdj = async (id: string) => {
+6116:     if (!(await confirmMsg('حذف تعدیل', 'آیا از حذف این تعدیل مطمئن هستید؟'))) return;
+6117:     try {
+6118:       await deleteStockAdjustment(id);
+6119:       showToast('✅ تعدیل حذف شد', false);
+6120:       const list = await getStockAdjustments(adjModel.code);
+6121:       setAdjList(list || []);
+6122:     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+6123:   };
+6124: 
+6125:   const submitAdjustment = async () => {
+6126: 
+6127:     if (!adjModel) return;
+6128: 
+6129:     const amt = parseFloat(String(adjForm.amount).replace(/[^\d.]/g, '')) || 0;
+6130: 
+6131:     if (!amt || amt <= 0) { showToast('مقدار معتبر وارد کن', true); return; }
+6132: 
+6133:     const signed = adjForm.type === 'out' ? -amt : amt;
+6134:     if (editingAdjId) { await deleteStockAdjustment(editingAdjId); setEditingAdjId(null); }
+6135: 
+6136:     try {
+6137: 
+6138:       await createStockAdjustment({
+6139: 
+6140:         model_code: adjModel.code,
+6141: 
+6142:         model_name: adjModel.name || adjModel.code,
+6143: 
+6144:         adjustment: signed,
+6145:         unit_cost: Number(adjForm.unit_cost) || Number(adjModel.unitCost) || Number(adjModel.lastPrice) || 0,
+6146: 
+6147:         reason: adjForm.reason || 'سایر',
+6148: 
+6149:         adjustment_date: adjForm.adjustment_date || toStorageDateFull(new Date()),
+6150: 
+6151:         note: adjForm.note || '',
+6152: 
+6153:       });
+6154: 
+6155:       showToast('✅ تعدیل ثبت شد');
+6156:       setAdjModal(false);
+6157:       setTimeout(() => load(), 200);
+6158:       setAdjForm({ type: 'in', amount: '', reason: adjForm.reason, adjustment_date: toStorageDateFull(new Date()), note: '' });
+6159: 
+6160:       const list = await getStockAdjustments(adjModel.code);
+6161: 
+6162:       setAdjList(list || []);
+6163: 
+6164:       load();
+6165: 
+6166:     } catch (e: any) {
+6167: 
+6168:       showToast('خطا: ' + (e?.message || ''), true);
+6169: 
+6170:     }
+6171: 
+6172:   };
+6173: 
+6174: 
+6175: 
+6176:   const removeAdjustment = async (id: string) => {
+6177: 
+6178:     if (!id) return;
+6179: 
+6180:     if (Platform.OS !== 'web' && !(await new Promise<boolean>(res => { Alert.alert('حذف تعدیل', 'مطمئنی؟', [{ text: 'لغو', style: 'cancel', onPress: () => res(false) }, { text: 'حذف', style: 'destructive', onPress: () => res(true) }]); }))) return;
+6181: 
+6182:     try {
+6183: 
+6184:       await deleteStockAdjustment(id);
+6185: 
+6186:       showToast('✅ حذف شد');
+6187: 
+6188:       const list = await getStockAdjustments(adjModel?.code);
+6189: 
+6190:       setAdjList(list || []);
+6191: 
+6192:       await load();
+6193: 
+6194:       // re-fetch adjModel از inventory جدید
+6195:       try {
+6196:         const inv = await getInventory();
+6197:         const freshM = (inv.list || []).find((x: any) => String(x.code) === String(adjModel?.code));
+6198:         if (freshM) setAdjModel(freshM);
+6199:       } catch {}
+6200: 
+6201:     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+6202: 
+6203:   };
+6204: 
+6205: 
+6206: 
+6207:   const load = async () => {
+6208: 
+6209:     setLoading(true);
+6210: 
+6211:     try { const d = await getInventory(); setList(d.list); setStats(d.stats); setThresholdInput(String(d.threshold)); }
+6212: 
+6213:     catch (e: any) { showToast(e.message, true); } finally { setLoading(false); }
+6214: 
+6215:   };
+6216: 
+6217:   useEffect(() => { load(); }, []);
+6218: 
+6219: 
+6220: 
+6221:   const saveShelf = async () => {
+6222: 
+6223:     if (!editItem) return;
+6224: 
+6225:     try {
+6226: 
+6227:       const _prods = await getProducts();
+6228: 
+6229:       const _found = _prods.find((x: any) => x.code === editItem.code);
+6230: 
+6231:       if (_found && (_found.id || _found._localId || _found.local_id)) {
+6232: 
+6233:         await updateProduct(_found.id || _found._localId || _found.local_id, { shelf: shelfVal });
+6234: 
+6235:       } else {
+6236: 
+6237:         await createProduct({ code: editItem.code, name: editItem.name, price: editItem.lastPrice || 0, shelf: shelfVal });
+6238: 
+6239:       }
+6240: 
+6241:       showToast('✅ ذخیره شد'); setEditItem(null); load();
+6242: 
+6243:     } catch (e: any) { showToast(e.message, true); }
+6244: 
+6245:   };
+6246: 
+6247: 
+6248: 
+6249:   const saveThreshold = async () => {
+6250:     await new Promise(r => setTimeout(r, 150));
+6251:     const v = parseInt(thresholdInput, 10) || 5;
+6252:     try {
+6253:       const settings = await getSettings();
+6254:       await updateSettings({ ...settings, inventory_threshold: v });
+6255:       clearInventoryCache();
+6256:       showToast('✅ ذخیره شد');
+6257:       await load();
+6258:     } catch (e: any) { showToast(e.message, true); }
+6259:   };
+6260: 
+6261: 
+6262: 
+6263:   const deferredQ = useDeferredValue(q);
+6264:   const filtered = useMemo(() => list.filter((m) => {
+6265: 
+6266:     if (filter !== 'all' && m.status !== filter) return false;
+6267: 
+6268:     if (agingFilter) {
+6269: 
+6270:       const d = m.daysSinceLastSale;
+6271: 
+6272:       if (agingFilter === 'healthy' && !(d !== null && d <= 30)) return false;
+6273: 
+6274:       if (agingFilter === 'slow' && !(d !== null && d > 30 && d <= 60)) return false;
+6275: 
+6276:       if (agingFilter === 'verySlow' && !(d !== null && d > 60 && d <= 90)) return false;
+6277: 
+6278:       if (agingFilter === 'dead' && !(d === null || d > 90)) return false;
+6279: 
+6280:     }
+6281: 
+6282:     if (deferredQ) { const h = `${m.code} ${m.name} ${m.shelf || ''}`.toLowerCase(); if (!h.includes(deferredQ.toLowerCase())) return false; }
+6283: 
+6284:     return true;
+6285: 
+6286:   }), [list, deferredQ, filter, agingFilter]);
+6287: 
+6288: 
+6289: 
+6290:   const statusLabel = (st: string) => st === 'negative' ? '⚫ منفی' : st === 'out' ? '🔴 ناموجود' : st === 'low' ? '⚠️ کمبود' : '✅ سالم';
+6291: 
+6292:   const statusColor = (st: string) => st === 'negative' ? '#94a3b8' : st === 'out' ? '#dc2626' : st === 'low' ? '#d97706' : '#059669';
+6293: 
+6294: 
+6295: 
+6296:   
+6297:   const renderItem = useCallback(({ item: m, index: i }: { item: any, index: number }) => {
+6298: 
+6299:             const rowBg = m.status === 'negative' ? (C.isDark ? '#1e293b' : '#f1f5f9') : m.status === 'out' ? (C.isDark ? '#3b1219' : '#fef2f2') : m.status === 'low' ? (C.isDark ? '#3b2a12' : '#fffbeb') : (i % 2 === 0 ? C.cardAlt : 'transparent');
+6300: 
+6301:             return (<>
+6302: 
+6303:               <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: rowBg, borderRightWidth: 3, borderRightColor: statusColor(m.status) }]}>
+6304: 
+6305:                 <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+6306: 
+6307:                 <TouchableOpacity onPress={() => openModelKardex(m)} style={[s.tdCell, { width: 100 }]}><Text style={{ color: '#7c3aed', fontWeight: 'bold', textDecorationLine: 'underline' }}>{m.code}</Text></TouchableOpacity>
+6308: 
+6309:                 <Text style={[s.tdCell, { width: 180, fontSize: 12, color: C.text, textAlign: 'right', fontWeight: 'bold' }]} numberOfLines={1}>{m.name}</Text>
+6310: 
+6311:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.bought)}</Text>
+6312: 
+6313:                 <Text style={[s.tdCell, { width: 80, fontSize: 12, color: C.text }]}>{fmt(m.sold)}</Text>
+6314: 
+6315:                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: statusColor(m.status), fontWeight: 'bold', fontSize: 15 }]}>{fmt(m.currentQty)}</Text>
+6316: 
+6317:                 <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0891b2', fontSize: 11 }]}>{fmt(m.unitCost || 0)}</Text>
+6318: 
+6319:                 <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#059669', fontWeight: 'bold', fontSize: 11 }]}>{fmt(m.totalValue || 0)}</Text>
+6320: 
+6321:                 <TouchableOpacity onPress={() => openAdjustment(m)} style={[s.tdCell, { width: 110, alignItems: 'center' }]}>
+6322: 
+6323:                   <View style={{ backgroundColor: (m.adjustment || 0) === 0 ? '#fef3c7' : (m.adjustment || 0) > 0 ? '#d1fae5' : '#fee2e2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: (m.adjustment || 0) === 0 ? '#f59e0b' : (m.adjustment || 0) > 0 ? '#059669' : '#dc2626', minWidth: 50, alignItems: 'center' }}>
+6324: 
+6325:                     <Text style={{ color: (m.adjustment || 0) === 0 ? '#92400e' : (m.adjustment || 0) > 0 ? '#065f46' : '#991b1b', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
+6326: 
+6327:                       {(m.adjustment || 0) === 0 ? '➕' : ((m.adjustment || 0) > 0 ? '+' : '') + fmt(m.adjustment)}
+6328: 
+6329:                     </Text>
+6330: 
+6331:                   </View>
+6332: 
+6333:                 </TouchableOpacity>
+6334: 
+6335:                 <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#64748b', fontSize: 10 }]}>{m.lastSaleDate ? (displayDateOnly ? displayDateOnly(m.lastSaleDate) : m.lastSaleDate.slice(0,10)) : '—'}</Text>
+6336: 
+6337:                 <Text style={[s.tdCell, { width: 100, fontSize: 12, color: (m.daysSinceLastSale !== null && m.daysSinceLastSale > 90) ? '#dc2626' : (m.daysSinceLastSale !== null && m.daysSinceLastSale > 60) ? '#f59e0b' : '#059669', fontWeight: 'bold', fontSize: 11 }]}>{m.daysSinceLastSale !== null ? toFaNum(m.daysSinceLastSale) : '—'}</Text>
+6338: 
+6339:                 <TouchableOpacity style={{ width: 120, alignItems: 'center', paddingVertical: 4 }} onPress={() => { setEditItem(m); setShelfVal(m.shelf || ''); }}>
+6340: 
+6341:                   <View style={{ backgroundColor: '#f0f9ff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+6342: 
+6343:                     <Text style={{ color: '#075985', fontSize: 11, fontWeight: 'bold' }}>📍 {m.shelf || 'ثبت نشده'}</Text>
+6344: 
+6345:                   </View>
+6346: 
+6347:                 </TouchableOpacity>
+6348: 
+6349:                 <View style={[s.tdCell, { width: 110, alignItems: 'center' }]}>
+6350: 
+6351:                   <Text style={{ color: statusColor(m.status), fontSize: 11, fontWeight: 'bold' }}>{statusLabel(m.status)}</Text>
+6352: 
+6353:                 </View>
+6354: 
+6355:                 
+6356: 
+6357:                 <TouchableOpacity onPress={() => { setEditItem(m); setShelfVal(m.shelf || ''); }} style={[s.tdCell, { width: 100, alignItems: 'center' }]}>
+6358: 
+6359:                   <View style={{ backgroundColor: '#7c3aed', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}>
+6360: 
+6361:                     <EL textKey="📍 قفسه" style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+6362: 
+6363:                   </View>
+6364: 
+6365:                 </TouchableOpacity>
+6366: 
+6367:               </View>
+6368: 
+6369:             
+6370: 
+6371:       
+6372: 
+6373:       
+6374: 
+6375:     </>);
+6376: 
+6377:           
+6378:               
+6379:   }, [C]);
+6380: 
+6381: return (
+6382: 
+6383:     <ScrollView style={[s.content, { backgroundColor: C.bg }]} contentContainerStyle={{ padding: 12, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+6384: 
+6385:       {/* آمار */}
+6386: 
+6387:       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
+6388: 
+6389:         {[
+6390: 
+6391:           { l: '📊 مدل‌ها', v: stats.totalModels || 0, c: '#60a5fa' },
+6392: 
+6393:           { l: '📦 جمع موجودی', v: stats.totalQty || 0, c: '#34d399' },
+6394: 
+6395:           { l: '💰 ارزش کل', v: stats.totalValue || 0, c: '#d4af37', money: true },
+6396: 
+6397:           { l: '💵 درآمد بالقوه', v: stats.potentialRevenue || 0, c: '#a78bfa', money: true },
+6398: 
+6399:           { l: '⚠️ کمبود', v: stats.lowStock || 0, c: '#fb923c' },
+6400: 
+6401:           { l: '🔴 ناموجود', v: stats.outOfStock || 0, c: '#f87171' },
+6402: 
+6403:           { l: '⏸ راکد (۹۰+ روز)', v: (stats.agingBuckets && stats.agingBuckets.dead) || 0, c: '#94a3b8' },
+6404: 
+6405:         ].map((b, i) => (
+6406: 
+6407:           <View key={i} style={[s.sBox, { backgroundColor: C.card }]}><Text style={s.sBoxL}>{b.l}</Text><Text style={[s.sBoxV, { color: b.c }]}>{fmt(b.v)}</Text></View>
+6408: 
+6409:         ))}
+6410: 
+6411:       </View>
+6412: 
+6413: 
+6414: 
+6415:       {stats.agingBuckets && (
+6416: 
+6417:         <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 4, marginTop: 8, padding: 8, backgroundColor: C.card, borderRadius: 6 }}>
+6418: 
+6419:           <Text style={{ color: C.textMut, fontSize: 10, fontWeight: 'bold', marginLeft: 'auto' }}>🌡 کهنگی موجودی:</Text>
+6420: 
+6421:           {agingFilter ? (<TouchableOpacity onPress={() => setAgingFilter('')} style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#334155' }}><Text style={{ color: '#fff', fontSize: 9, fontWeight: 'bold' }}>✕ پاک فیلتر</Text></TouchableOpacity>) : null}
+6422: 
+6423:           <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'healthy' ? '' : 'healthy')} style={{ backgroundColor: agingFilter === 'healthy' ? '#059669' : '#d1fae5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'healthy' ? '#fff' : '#065f46', fontSize: 10, fontWeight: 'bold' }}>🟢 سالم {toFaNum(stats.agingBuckets.healthy || 0)}</Text></TouchableOpacity>
+6424: 
+6425:           <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'slow' ? '' : 'slow')} style={{ backgroundColor: agingFilter === 'slow' ? '#f59e0b' : '#fef3c7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'slow' ? '#fff' : '#78350f', fontSize: 10, fontWeight: 'bold' }}>🟡 کند {toFaNum(stats.agingBuckets.slow || 0)}</Text></TouchableOpacity>
+6426: 
+6427:           <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'verySlow' ? '' : 'verySlow')} style={{ backgroundColor: agingFilter === 'verySlow' ? '#ea580c' : '#fed7aa', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'verySlow' ? '#fff' : '#7c2d12', fontSize: 10, fontWeight: 'bold' }}>🟠 خیلی کند {toFaNum(stats.agingBuckets.verySlow || 0)}</Text></TouchableOpacity>
+6428: 
+6429:           <TouchableOpacity onPress={() => setAgingFilter(agingFilter === 'dead' ? '' : 'dead')} style={{ backgroundColor: agingFilter === 'dead' ? '#dc2626' : '#fee2e2', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}><Text style={{ color: agingFilter === 'dead' ? '#fff' : '#991b1b', fontSize: 10, fontWeight: 'bold' }}>🔴 راکد {toFaNum(stats.agingBuckets.dead || 0)}</Text></TouchableOpacity>
+6430: 
+6431:         </View>
+6432: 
+6433:       )}
+6434: 
+6435: 
+6436: 
+6437:       {/* آستانه */}
+6438: 
+6439:       <View style={[s.thresholdBox, { backgroundColor: C.card, borderColor: C.border }]}>
+6440: 
+6441:         <EL text="{t('⚙️ آستانه کمبود')}" style={[s.lbl, { color: C.textMut }]} />
+6442: 
+6443:         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+6444: 
+6445:           <LocalInput value={thresholdInput} onChange={(v: string) => setThresholdInput(v)} style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} keyboardType="numeric" />
+6446: 
+6447:           <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#059669' }]} onPress={saveThreshold}><Text style={s.btnTxt}>💾</Text></TouchableOpacity>
+6448: 
+6449:           <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#8e44ad' }]} onPress={invExportMenu}><Text style={s.btnTxt}>📤</Text></TouchableOpacity>
+6450: 
+6451:         </View>
+6452: 
+6453:       </View>
+6454: 
+6455: 
+6456: 
+6457:       {/* جستجو و فیلتر */}
+6458: 
+6459:       <TextInput accessibilityLabel="🔍 جستجو: کد، نام، قفسه..." style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو: کد، نام، قفسه..." placeholderTextColor={C.textMut} />
+6460: 
+6461:       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
+6462: 
+6463:         {[{ k: 'all', l: '📋 همه' }, { k: 'negative', l: '⚫ منفی' }, { k: 'out', l: '🔴 ناموجود' }, { k: 'low', l: '⚠️ کمبود' }, { k: 'ok', l: '✅ سالم' }].map((f) => (
+6464: 
+6465:           <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, filter === f.k && s.chipTxtActive]}>{f.l}</Text></TouchableOpacity>
+6466: 
+6467:         ))}
+6468: 
+6469:       </ScrollView>
+6470: 
+6471: 
+6472: 
+6473:       <EL text="📦 موجودی ({toFaNum(filtered.length)})" style={s.secT} />
+6474: 
+6475: 
+6476: 
+6477:       {/* ⭐ جدول ردیفی */}
+6478: 
+6479:       <ScrollView horizontal showsHorizontalScrollIndicator>
+6480: 
+6481:         <View>
+6482: 
+6483:           <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+6484: 
+6485:             <Text style={[s.thCell, { width: 40, fontSize: 12, fontWeight: 'bold' }]}>#</Text>
+6486: 
+6487:             <Text style={[HDR.cell, { width: 100 }]}>کد</Text>
+6488: 
+6489:             <EL textKey="نام مدل" style={[s.thCell, { width: 180 }]} />
+6490: 
+6491:             <Text style={[HDR.cell, { width: 80 }]}>خرید</Text>
+6492: 
+6493:             <Text style={[HDR.cell, { width: 80 }]}>فروش</Text>
+6494: 
+6495:             <Text style={[HDR.cell, { width: 90 }]}>موجودی</Text>
+6496: 
+6497:             <Text style={[HDR.cell, { width: 110 }]}>بهای واحد</Text>
+6498: 
+6499:             <Text style={[HDR.cell, { width: 130 }]}>ارزش کل</Text>
+6500: 

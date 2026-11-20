@@ -1,0 +1,125 @@
+=== 1. هدر مودال ریز فاکتور (اطراف خط 1081) ===
+1076:                         <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+1077:                           <Text style={[s.th, { width: 30 }]}>#</Text>
+1078:                           <Text style={[s.th, { width: 80 }]}>کد مدل</Text>
+1079:                           <Text style={[s.th, { width: 130, textAlign: 'right' }]}>نام مدل</Text>
+1080:                           <Text style={[s.th, { width: 60 }]}>قفسه</Text>
+1081:                           <Text style={[s.th, { width: 60 }]}>تعداد</Text>
+1082:                           <Text style={[s.th, { width: 80 }]}>قیمت</Text>
+1083:                           <Text style={[s.th, { width: 90 }]}>جمع</Text>
+1084:                           <Text style={[s.th, { width: 90 }]}>پرداخت</Text>
+1085:                           <Text style={[s.th, { width: 100 }]}>بانک</Text>
+1086:                           <Text style={[s.th, { width: 90 }]}>تاریخ واریز</Text>
+1087:                           <Text style={[s.th, { width: 100 }]}>باربری</Text>
+1088:                         </View>
+1089:                         {(invoiceDetailRows || []).map((r: any, i: number) => (
+1090:                           <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1091:                             <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1092:                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{r.model_code || '—'}</Text>
+1093:                             <Text style={[s.td, { width: 130, fontSize: 9, textAlign: 'right' }]}>{r.model_name || '—'}</Text>
+1094:                             <Text style={[s.td, { width: 60, fontSize: 9 }]}>{r.shelf || '—'}</Text>
+1095:                             <Text style={[s.td, { width: 60, fontSize: 9 }]}>{toFaNum(Number(r.quantity) || 0)}</Text>
+1096:                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{fmt(Number(r.price_unit) || 0)}</Text>
+1097:                             <Text style={[s.td, { width: 90, fontSize: 9, fontWeight: 'bold' }]}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+1098:                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{fmt(Number(r.payment) || 0)}</Text>
+1099:                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.bank_name || r.receiver_bank || '—'}</Text>
+1100:                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—'}</Text>
+
+=== 2. بدنه مودال ریز فاکتور (اطراف خط 1095) ===
+1089:                         {(invoiceDetailRows || []).map((r: any, i: number) => (
+1090:                           <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1091:                             <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1092:                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{r.model_code || '—'}</Text>
+1093:                             <Text style={[s.td, { width: 130, fontSize: 9, textAlign: 'right' }]}>{r.model_name || '—'}</Text>
+1094:                             <Text style={[s.td, { width: 60, fontSize: 9 }]}>{r.shelf || '—'}</Text>
+1095:                             <Text style={[s.td, { width: 60, fontSize: 9 }]}>{toFaNum(Number(r.quantity) || 0)}</Text>
+1096:                             <Text style={[s.td, { width: 80, fontSize: 9 }]}>{fmt(Number(r.price_unit) || 0)}</Text>
+1097:                             <Text style={[s.td, { width: 90, fontSize: 9, fontWeight: 'bold' }]}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+1098:                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{fmt(Number(r.payment) || 0)}</Text>
+1099:                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.bank_name || r.receiver_bank || '—'}</Text>
+1100:                             <Text style={[s.td, { width: 90, fontSize: 9 }]}>{r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—'}</Text>
+1101:                             <Text style={[s.td, { width: 100, fontSize: 9 }]}>{r.shipping || '—'}</Text>
+1102:                           </View>
+1103:                         ))}
+1104:                       </View>
+1105:                     </ScrollView>
+1106:                   )}
+1107:                 </>
+1108:               ) : partyViewMode === 'all' ? (
+1109:                 <ScrollView horizontal>
+1110:                   <View>
+
+=== 3. هدر پرینت HTML (_buildInvoiceHTMLInline - اطراف خط 563) ===
+559:     var _p = [];
+560:     _p.push('<div class="title">📄 فاکتور ' + (meta?.invoice || '') + '</div>');
+561:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(meta?.date || '') + '</div>');
+562:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
+563:     _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>قیمت</th><th>جمع ردیف</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+564:     var td = 0, tc = 0, run = 0, idx = 0;
+565:     (rows || []).forEach(function(r) {
+566:       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0, line = qty * pr;
+567:       var d = isP ? 0 : line, c = isP ? line : 0;
+568:       td += d; tc += c; run += c - d; idx++;
+569:       _p.push('<tr><td>' + idx + '</td><td>' + _safeLedgerDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_invoice || '—') + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + toFaNum(qty) + '</td><td>' + fmt(pr) + '</td><td>' + fmt(line) + '</td><td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.account_holder || '—') + '</td><td>' + (r.account_holder_code || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td><td style="text-align:right">' + (r.description || '—') + '</td></tr>');
+570:     });
+571:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="10" style="text-align:left">جمع:</td><td style="color:#1e40af">' + fmt(td) + '</td><td style="color:#059669">' + fmt(tc) + '</td><td>' + fmt(Math.abs(td - tc)) + '</td><td colspan="6"></td></tr>');
+572:     _p.push('</table>');
+573:     var bal = td - tc;
+574:     var stTxt = bal > 0 ? 'ما بستانکاریم' : bal < 0 ? 'ما بدهکاریم' : 'تسویه';
+575:     var stCol = bal > 0 ? '#dc2626' : bal < 0 ? '#059669' : '#64748b';
+
+=== 4. بدنه پرینت HTML (اطراف خط 569) ===
+565:     (rows || []).forEach(function(r) {
+566:       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0, line = qty * pr;
+567:       var d = isP ? 0 : line, c = isP ? line : 0;
+568:       td += d; tc += c; run += c - d; idx++;
+569:       _p.push('<tr><td>' + idx + '</td><td>' + _safeLedgerDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_invoice || '—') + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + toFaNum(qty) + '</td><td>' + fmt(pr) + '</td><td>' + fmt(line) + '</td><td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.account_holder || '—') + '</td><td>' + (r.account_holder_code || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td><td style="text-align:right">' + (r.description || '—') + '</td></tr>');
+570:     });
+571:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="10" style="text-align:left">جمع:</td><td style="color:#1e40af">' + fmt(td) + '</td><td style="color:#059669">' + fmt(tc) + '</td><td>' + fmt(Math.abs(td - tc)) + '</td><td colspan="6"></td></tr>');
+572:     _p.push('</table>');
+573:     var bal = td - tc;
+574:     var stTxt = bal > 0 ? 'ما بستانکاریم' : bal < 0 ? 'ما بدهکاریم' : 'تسویه';
+575:     var stCol = bal > 0 ? '#dc2626' : bal < 0 ? '#059669' : '#64748b';
+576:     _p.push('<div style="margin-top:8px;padding:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;text-align:right"><div style="font-size:11px;font-weight:bold">💵 مانده: ' + fmt(Math.abs(bal)) + ' ' + curLabel + '</div><div style="font-size:10px;color:#475569">🔤 به حروف: ' + numToWords(Math.abs(bal)) + ' ' + curLabel + '</div><div style="font-size:11px;font-weight:bold;color:' + stCol + '">📌 وضعیت: ' + stTxt + '</div></div>');
+577:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+578:     _p.push(mizanComputerNoteHtml());
+579:     var html = buildStandardHtml('فاکتور', _p.join(''), '📄 فاکتور');
+580:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+
+=== 5. هدر _buildInvoiceDetailHtml (اطراف خط 518) ===
+514:     var _p = [];
+515:     _p.push('<div class="title">📄 فاکتور ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+516:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(invoiceDetailMeta?.date || '') + '</div>');
+517:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+518:     _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th><th>باربری</th></tr>');
+519:     var tot = 0, paid = 0;
+520:     (invoiceDetailRows || []).forEach(function(r: any, i: number) {
+521:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+522:       tot += line; paid += Number(r.payment) || 0;
+523:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity) || 0) + '</td><td>' + fmt(Number(r.price_unit) || 0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment) || 0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td></tr>');
+524:     });
+525:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td colspan="3"></td></tr>');
+526:     _p.push('</table>');
+527:     var _balD = (Number(td) || 0) - (Number(tc) || 0);
+528:     if (_balD !== 0) { _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(_balD)) + ' ' + curLabel + '</div>'); }
+529:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+530:     _p.push(mizanComputerNoteHtml());
+
+=== 6. بدنه _buildInvoiceDetailHtml (اطراف خط 523) ===
+519:     var tot = 0, paid = 0;
+520:     (invoiceDetailRows || []).forEach(function(r: any, i: number) {
+521:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+522:       tot += line; paid += Number(r.payment) || 0;
+523:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity) || 0) + '</td><td>' + fmt(Number(r.price_unit) || 0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment) || 0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td></tr>');
+524:     });
+525:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td colspan="3"></td></tr>');
+526:     _p.push('</table>');
+527:     var _balD = (Number(td) || 0) - (Number(tc) || 0);
+528:     if (_balD !== 0) { _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(_balD)) + ' ' + curLabel + '</div>'); }
+529:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+530:     _p.push(mizanComputerNoteHtml());
+531:     var _h = buildStandardHtml('فاکتور', _p.join(''), '📄 فاکتور');
+532:     _h = _h.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+533:     return _h;
+534:   };
+535:   const pdfInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await shareHtmlAsPdf(html, 'statement-' + (selectedParty?.code || 'party') + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };;;

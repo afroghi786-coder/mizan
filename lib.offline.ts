@@ -3016,8 +3016,24 @@ export async function getInventoryByModel(code: string) {
           purchases: p.map((r: any) => JSON.parse(r.data_json)),
           sales: s.map((r: any) => JSON.parse(r.data_json)),
           adjustments: a.map((r: any) => JSON.parse(r.data_json)),
-          salesReturns: allSR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c)),
-          purchaseReturns: allPR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c))
+          salesReturns: allSR.flatMap((x: any) => 
+            (x.items || []).filter((it: any) => String(it.modelCode || it.model_code || '').trim() === c).map((it: any) => ({
+              ...x,
+              model_code: it.modelCode || it.model_code,
+              model_name: it.modelName || it.model_name,
+              quantity: Number(it.returnQty || it.quantity) || 0,
+              price_unit: Number(it.priceUnit || it.price_unit) || 0
+            }))
+          ),
+          purchaseReturns: allPR.flatMap((x: any) => 
+            (x.items || []).filter((it: any) => String(it.modelCode || it.model_code || '').trim() === c).map((it: any) => ({
+              ...x,
+              model_code: it.modelCode || it.model_code,
+              model_name: it.modelName || it.model_name,
+              quantity: Number(it.returnQty || it.quantity) || 0,
+              price_unit: Number(it.priceUnit || it.price_unit) || 0
+            }))
+          )
         };
       }
     }
@@ -3056,8 +3072,24 @@ export async function getInventoryByModel(code: string) {
     purchases: filterByCode(allPurchases),
     sales: filterByCode(allSales),
     adjustments: filterByCode(allAdj),
-    salesReturns: allSR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c)),
-    purchaseReturns: allPR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c))
+    salesReturns: allSR.flatMap((x: any) => 
+            (x.items || []).filter((it: any) => String(it.modelCode || it.model_code || '').trim() === c).map((it: any) => ({
+              ...x,
+              model_code: it.modelCode || it.model_code,
+              model_name: it.modelName || it.model_name,
+              quantity: Number(it.returnQty || it.quantity) || 0,
+              price_unit: Number(it.priceUnit || it.price_unit) || 0
+            }))
+          ),
+          purchaseReturns: allPR.flatMap((x: any) => 
+            (x.items || []).filter((it: any) => String(it.modelCode || it.model_code || '').trim() === c).map((it: any) => ({
+              ...x,
+              model_code: it.modelCode || it.model_code,
+              model_name: it.modelName || it.model_name,
+              quantity: Number(it.returnQty || it.quantity) || 0,
+              price_unit: Number(it.priceUnit || it.price_unit) || 0
+            }))
+          )
   };
 }
 // ═══════════════════════════════════════════

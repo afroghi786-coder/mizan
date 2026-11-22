@@ -1,0 +1,55 @@
+=== تشخیص تابع loadModelKardex ===
+
+1. جستجوی تابع loadModelKardex:
+  5912: const [modelKardexData, setModelKardexData] = useState<any>(null);
+  6038: try { const r = await shareHtmlAsPdf(_mkHtml(modelKardexData), 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.pdf'); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e:
+  6044: try { const r = await printHtml(_mkHtml(modelKardexData)); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+  6050: var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف':
+  6051: var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.c
+  6052: var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || ''
+  6053: var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number ||
+  6054: var adjData = (modelKardexData.adjustments || []).map(function(r: any, i: number) {
+  6709: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexDat
+  6711: <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>🛒 خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+  6713: <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 11 }}>🛍️ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+  6714: <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>💵 جمع مبلغ خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.p
+  6715: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع مبلغ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price
+  6716: <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↩️ جمع برگشت فروش: {fmt((modelKardexData.salesReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number
+  6717: <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↪️ جمع برگشت خرید: {fmt((modelKardexData.purchaseReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Num
+  6718: <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>⚖️ جمع ارزش تعدیل: {fmt((modelKardexData.adjustments || []).reduce((a: number, r: any) => a + ((Number(r.adjustment) || 0) * (Numbe
+  6720: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit
+  6759: {modelKardexData.purchases.map((r: any, i: number) => (
+  6819: {modelKardexData.sales.map((r: any, i: number) => (
+  6867: {modelKardexData.salesReturns.map((r: any, i: number) => (
+  6900: {modelKardexData.purchaseReturns.map((r: any, i: number) => (
+  6933: {modelKardexData.adjustments.map((r: any, i: number) => {
+
+2. جستجوی getSalesReturns و getPurchaseReturns:
+  71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIP
+  8386: const data = type === 'sales' ? await getSalesReturns() : await getPurchaseReturns();
+
+3. جستجوی پردازش items در برگشت‌ها:
+  10829: const itemsRows = (invoice.current?.items || []).map((it: any, i: number) => { const _u = prods.find((p: any) => String(p.code || '') === String(it.modelCode || '')); const bU = it.base_unit || (_u ? 
+
+4. جستجوی ساختار salesReturns در کاردکس:
+
+5. جستجوی getSalesReturns در lib.offline.ts:
+  1195: const salesReturns = await getSalesReturns();
+    1197: for (const it of (r.items || [])) {
+    1201: const qty = Number(it.returnQty || it.quantity) || 0;
+    1212: for (const it of (r.items || [])) {
+  1210: const purchaseReturns = await getPurchaseReturns();
+    1212: for (const it of (r.items || [])) {
+    1216: const qty = Number(it.returnQty || it.quantity) || 0;
+    1227: if (!code) return;
+    1228: if (models[code]) return;
+  2879: try { salesReturns = await getSalesReturns(); } catch {}
+  2880: try { purchaseReturns = await getPurchaseReturns(); } catch {}
+  3560: const salesReturns = await getSalesReturns();
+  3589: const purchaseReturns = await getPurchaseReturns();
+  4931: export async function getSalesReturns() {
+    4932: const local = (await getLocal<any[]>('sales_returns')) || [];
+    4949: if (String(t.table || '') !== 'sales_returns') continue;
+  5057: export async function getPurchaseReturns() {
+    5058: const local = (await getLocal<any[]>('purchase_returns')) || [];
+    5075: if (String(t.table || '') !== 'purchase_returns') continue;

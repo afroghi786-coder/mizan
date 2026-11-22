@@ -1,0 +1,61 @@
+=== تشخیص دقیق ساختار ذخیره‌سازی برگشت‌ها ===
+
+1. Payload ذخیره‌سازی برگشت از فروش/خرید (خطوط 7850-7870):
+  7850:       const payload = {
+  7851:         return_number: returnNumber,
+  7852:         status: 'approved',
+  7853:         original_invoice_number: returnInvoice.invoice,
+  7854:         party_name: returnInvoice.name,
+  7855:         party_code: returnInvoice.code,
+  7856:         type: savedType,
+  7857:         date: new Date().toISOString(),
+  7858:         reason: returnReason || '',
+  7859:         shipping_cost: shipping,
+  7860:         settlement_method: returnSettlement,
+  7861:         settlement_amount: settlementAmount,
+  7862:         balance: balance,
+  7863:         bank: returnBank || '',
+  7864:         account_holder: returnHolder || '',
+  7865:         deposit_date: returnDepositDate || '',
+  7866:         note: returnNote || '',
+  7867:         subtotal,
+  7868:         total,
+  7869:         items,
+  7870:       };
+
+2. Payload ویرایش برگشت (خطوط 8420-8440):
+  8420:       modelCode: it.modelCode || it.model_code || '',
+  8421:       modelName: it.modelName || it.model_name || '',
+  8422:       quantity: Number(it.quantity) || 0,
+  8423:       priceUnit: Number(it.priceUnit || it.price_unit) || 0,
+  8424:       returnQty: Number(it.returnQty || it.quantity) || 0,
+  8425:     })));
+  8426:   };
+  8427: 
+  8428:   const saveEditReturn = async () => {
+  8429:     if (!editReturn) return;
+  8430:     const items = editItems.filter((r: any) => Number(r.returnQty) > 0);
+  8431:     if (!items.length) { showToast('تعداد برگشتی را وارد کنید', true); return; }
+  8432:     for (const it of items) {
+  8433:       if (Number(it.returnQty) > Number(it.quantity)) {
+  8434:         showToast('تعداد برگشتی برای ' + (it.modelName || it.modelCode) + ' بیشتر از تعداد اصلی است', true);
+  8435:         return;
+  8436:       }
+  8437:     }
+  8438:     setEditSaving(true);
+  8439:     try {
+  8440:       const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);
+
+3. توابع ذخیره‌سازی برگشت‌ها:
+  71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIP
+  7873: await createSalesReturn(payload);
+  7875: await createPurchaseReturn(payload);
+
+4. توابع ویرایش برگشت‌ها:
+  71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIP
+  8460: if (type === 'sales') await updateSalesReturn(id, payload);
+  8461: else await updatePurchaseReturn(id, payload);
+
+5. جستجوی ساختار جدول در lib.ts:
+
+6. جستجوی ساختار جدول در lib.offline.ts:

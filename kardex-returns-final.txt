@@ -1,0 +1,74 @@
+=== تشخیص دقیق کاردکس‌های مشکل‌دار ===
+
+1. کاردکس برگشت از فروش (UI):
+
+خط 6828: {(modelKardexData.salesReturns || []).length > 0 && (
+  6830: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>↩️ برگشت از فروش ({modelKardexData.sa
+  6834: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6835: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6836: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>برگشت</Text>
+  6837: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+  6838: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مشتری</Text>
+  6839: <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+  6840: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6841: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6845: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6846: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+  6847: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+  6848: <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+  6849: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+  6850: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text
+  6851: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = (Number(r.quanti
+  6852: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+  6853: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+
+
+2. کاردکس برگشت از خرید (UI):
+
+خط 6860: {(modelKardexData.purchaseReturns || []).length > 0 && (
+  6862: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>↪️ برگشت از خرید ({modelKardexData.pu
+  6866: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6867: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6868: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>برگشت</Text>
+  6869: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+  6870: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+  6871: <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+  6872: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6873: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6877: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6878: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+  6879: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+  6880: <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+  6881: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || '—'}</Text>
+  6882: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text
+  6883: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = (Number(r.quanti
+  6884: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+  6885: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+
+
+3. کاردکس تعدیلات (UI - محاسبات):
+  6906:         {modelKardexData.adjustments.map((r: any, i: number) => {
+  6907:           var adjVal = Number(r.adjustment) || 0;
+  6908:           var uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+  6909:           var totalVal = adjVal * uCost;
+  6915:               <Text style={{ width: 100, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: adjVal >= 0 ? '#059669' : '#dc2626' }}>{(adjVal >= 0 ? '+' : '') + fmt(adjVal)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text>
+  6916:               <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = Math.abs(adjVal) / Number(_u.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
+  6917:               <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(uCost)}</Text>
+  6918:               <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#d4af37' }}>{fmt(totalVal)}</Text>
+
+
+4. تاریخ در برگشت از فروش:
+  6846: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}</Text>
+
+
+5. استفاده از prodMap در کاردکس‌ها:
+  6748: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)
+  6749: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)); if (_u && 
+  6808: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)
+  6809: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (
+  6850: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)
+  6851: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (
+  6882: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)
+  6883: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (
+  6915: <Text style={{ width: 100, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: adjVal >= 0 ? '#059669' : '#dc2626' }}>{(adjVal >= 0 ? '+' : 
+  6916: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (

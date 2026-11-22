@@ -1,0 +1,20 @@
+=== تشخیص مشکلات تخفیف ===
+
+1. ستون قیمت در فرم فروش:
+   خط 4416: <EL textKey="قیمت" style={[s.miniLbl, { color: C.textMut }]} />
+   4417: 
+   4418: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.priceUnit || '')} onChangeText={
+   4419: 
+   4420: </View>
+   4421: <View style={{ flex: 1 }}>
+   4422: <EL textKey="تخفیف" style={[s.miniLbl, { color: C.textMut }]} />
+   4423: <View style={{ flexDirection: 'row', gap: 4 }}>
+   4424: <TextInput
+   4425: style={[s.miniInput, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]}
+
+2. ستون تخفیف در فرم خرید:
+
+3. فرمول محاسبه جمع در فرم خرید:
+   خط 7438: const lt = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+
+4. فرمول محاسبه جمع کل:

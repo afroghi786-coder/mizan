@@ -1,0 +1,17 @@
+=== جستجوی کاردکس‌ها در App.tsx ===
+
+1. توابع سازنده HTML کاردکس:
+  خط 6015: try { const r = await shareHtmlAsPdf(_mkHtml(modelKardexData), 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.pdf'); showToast(r.ok ? '✅ ' +
+
+2. هدرهای جدول کاردکس (<th>):
+  خط 5524: _p.push('<table><tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>خرید (میانگین)</th><th>فروش (میانگین)</th><th>سود هر واحد</th><th>تعداد فروش</th><th>جمع سود کل</th></tr>');
+  خط 5587: _p.push('<table><tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>خرید (میانگین)</th><th>فروش (میانگین)</th><th>سود هر واحد</th><th>تعداد فروش</th><th>جمع سود کل</th></tr>');
+
+3. استفاده از prodMap یا getPackForCodeGlobal در کاردکس‌ها:
+
+4. توابع پرینت کاردکس:
+  خط 6015: try { const r = await shareHtmlAsPdf(_mkHtml(modelKardexData), 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.pdf'); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e:
+
+5. مودال کاردکس (UI):
+  خط 5910: const [modelKardexModal, setModelKardexModal] = useState(false);
+  خط 6662: <Modal visible={modelKardexModal} transparent animationType="slide" onRequestClose={() => setModelKardexModal(false)}>

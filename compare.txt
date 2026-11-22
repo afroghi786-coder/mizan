@@ -1,0 +1,38 @@
+=== مقایسه ساختار خرید، فروش و برگشت‌ها ===
+
+۱. ساختار خرید در کاردکس:
+   خط 3016: purchases: p.map((r: any) => JSON.parse(r.data_json)),
+
+۲. ساختار فروش در کاردکس:
+   خط 3073: sales: filterByCode(allSales),
+
+۳. ساختار برگشت از فروش (مسیر SQLite):
+   خط 3019: salesReturns: allSR.flatMap((x: any) =>
+   خط 3020: (x.items || []).filter((it: any) => String(it.modelCode || it.model_code || '').trim() === c).map((it: any) => ({
+   خط 3021: ...x,
+   خط 3022: model_code: it.modelCode || it.model_code,
+   خط 3023: model_name: it.modelName || it.model_name,
+   خط 3024: quantity: Number(it.returnQty || it.quantity) || 0,
+   خط 3025: price_unit: Number(it.priceUnit || it.price_unit) || 0
+   خط 3026: }))
+
+۴. ساختار برگشت از فروش (مسیر جایگزین):
+   خط 3075: salesReturns: allSR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c)),
+   خط 3076: purchaseReturns: allPR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c))
+   خط 3077: };
+   خط 3078: }
+   خط 3079: // ═══════════════════════════════════════════
+   خط 3080: //  Stock Adjustments (offline + queue)
+   خط 3081: // ═══════════════════════════════════════════
+   خط 3082: export async function getStockAdjustments(code?: string) {
+
+۵. ساختار داده خرید (آیا items دارد؟):
+
+۶. ساختار داده فروش (آیا items دارد؟):
+
+۷. نحوه ذخیره‌سازی خرید (سطح بالا یا items؟):
+
+=== نتیجه‌گیری ===
+خرید و فروش احتمالاً مستقیماً quantity و price_unit دارند (بدون items).
+برگشت‌ها items[] دارند که داخلش returnQty و priceUnit است.
+برای همین کاردکس نمی‌تواند مستقیماً r.quantity را بخواند.

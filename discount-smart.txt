@@ -1,0 +1,18 @@
+🛡️ BACKUP: backup-discount-smart-1795267309364.tsx
+
+🔍 تشخیص دقیق + اصلاح نهایی...
+
+═══ مرحله 1: تشخیص ساختار ═══
+
+─── جستجوی توابع ذخیره‌سازی ───
+✅ saveDraft پیدا شد در موقعیت: 380888
+   saveDrafts = async () => {     if (!drafts.length) return;     for (const d of drafts) if (!d.name) { showToast('نام در همه ردیف‌ها الزامی است', tru
+✅ createProduct پیدا شد در موقعیت: 2345
+   createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpai
+
+─── جستجوی payload ذخیره‌سازی ───
+
+═══ مرحله 2: اصلاح ═══
+
+⚠️ هیچ تغییری انجام نشد.
+   لطفاً خروجی بالا را بفرستید تا ساختار دقیق را ببینم.

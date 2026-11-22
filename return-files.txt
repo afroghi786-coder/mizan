@@ -1,0 +1,342 @@
+=== جستجوی فایل‌های برگشت از فروش و برگشت از خرید ===
+
+1. فایل‌های موجود در components:
+
+4. جستجوی عمومی در تمام فایل‌ها:
+  ✅ backup-a4-return-1795130655991.tsx
+  ✅ backup-kardex-returns-adj-1795245818931.tsx
+
+5. بررسی ساختار داده در فایل‌های پیدا شده:
+
+=== backup-a4-return-1795130655991.tsx ===
+  335: quantity: 1,
+  375: quantity: Number(it.quantity) || 0,
+  409: const qty = Number(r.quantity) || 0;
+  413: grouped[r.invoice_number].sales += qty * price;
+  2809: if (f) { setCustomerStatus('✅ قبلی'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); }
+  2821: const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '
+  2827: const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0;
+  2831: const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  2833: const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+  2850: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '', shelf: '' }]);
+  2858: const invalidItem = items.find(it => it.modelName && (!it.quantity || !it.priceUnit));
+  2863: const valid = items.filter((it) => it.modelName && it.quantity > 0);
+  2864: const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  2876: finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: note }];
+  2916: quantity: x.quantity,
+  2918: total: x.quantity * x.price_unit,
+  2928: customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+  2958: finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: n2, shelf: '' }];
+  3002: quantity: x.quantity,
+  3004: total: x.quantity * x.price_unit,
+  3014: customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+  3064: quantity: x.quantity,
+  3066: total: x.quantity * x.price_unit,
+  3079: customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+  3292: const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+  3360: value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))}
+  3362: onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updItem(i, 'quantity', (u === 'pack' && Numbe
+  3372: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity)
+  3374: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || 'عدد'}</Tex
+  4229: const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }]);
+  4245: if (!sName && p.supplier_name) setSName(p.supplier_name);
+  4279: const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  4281: const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+  4292: const valid = items.filter((it) => it.modelName && it.quantity > 0);
+  4296: if (it.modelName && (!it.quantity || !it.priceUnit)) {
+  4300: const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  4307: const valid = items.filter((it) => it.modelName && it.quantity > 0);
+  4313: finalItems = [{ modelCode: '', modelName: 'پرداخت به تأمین‌کننده', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: note, sh
+  4367: <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...partySuppliers.filter(Boolean).filter(Boolean).filter(Boolean).map((p: a
+  4391: const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+  4431: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))} onChangeT
+  4432: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity)
+  4433: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || 'عدد'}</Tex
+  4542: ...prods.map((p: any) => p.payer_name || '').filter(Boolean),
+  4543: ...prods.map((p: any) => p.supplier_name || '').filter(Boolean),
+  4717: const name = salesAsCustomer?.[0]?.customer_name
+  4719: || purchasesAsSupplier?.[0]?.supplier_name
+  4735: qty: Number(r.quantity) || 0, priceUnit: Number(r.price_unit) || 0,
+  4737: total: (Number(r.quantity) || 0) * (Number(r.price_unit) || 0),
+  4761: qty: Number(r.quantity) || 0, priceUnit: Number(r.price_unit) || 0,
+  4763: total: (Number(r.quantity) || 0) * (Number(r.price_unit) || 0),
+  4783: fromName: r.customer_name, fromCode: r.customer_code, fromPhone: r.customer_phone,
+  4874: 'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+  4900: 'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+  5004: <td>${toFaNum(r.qty)}</td>
+  5032: <td>${toFaNum(r.qty)}</td>
+  5253: <Text style={{ width: 55, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{toFaNum(r.qty)} {(() => { const _u = prods.find((p: any) => String(p.code || '') === String(r.modelCode || '')); retur
+  5254: <Text style={{ width: 55, color: '#0891b2', fontSize: 11, textAlign: 'center' }}>{(() => { const _u = prods.find((p: any) => String(p.code || '') === String(r.modelCode || '')); if (_u && _u.pack_size
+  5335: <Text style={{ width: 40, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{toFaNum(r.qty)}</Text>
+  5954: var qty = Number(r.quantity) || 0;
+  5956: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '<
+  5956: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '<
+  5962: var qty = Number(r.quantity) || 0;
+  5964: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(
+  5964: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(
+  5970: var qty = Number(r.quantity) || 0;
+  5972: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || 
+  5972: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || 
+  5978: var qty = Number(r.quantity) || 0;
+  5980: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || 
+  5980: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || 
+  5986: var qty = Number(r.adjustment) || 0;
+  5988: var totalVal = qty * uCost;
+  5989: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty
+  5992: var totalP = (data.purchases || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+  5993: var totalS = (data.sales || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+  5994: var totalBoughtQty = (data.purchases || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+  5995: var totalSoldQty = (data.sales || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+  5996: var totalSRQty = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+  5997: var totalPRQty = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+  6002: var _totalSRVal = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+  6003: var _totalPRVal = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+  6037: var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف':
+  6037: var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف':
+  6038: var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.c
+  6038: var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.c
+  6039: var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || ''
+  6039: var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || ''
+  6040: var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number ||
+  6040: var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number ||
+  6042: var _qty = Number(r.adjustment) || 0;
+  6044: return { 'نوع': 'تعدیل', '#': i + 1, 'تاریخ': r.adjustment_date || r.created_at || '', 'دلیل': r.reason || '', 'مقدار': _qty, 'بهای واحد': _uCost, 'ارزش کل': _qty * _uCost, 'یادداشت': r.note || '' };
+  6613: const _qty = Number(r.adjustment) || 0;
+  6615: const _val = _qty * _cost;
+  6620: <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: _qty > 0 ? '#059669' : '#dc2626', textAlign: 'center' }}>{(_qty > 0 ? '+' : '') + fmt(_qty)}</Text>
+  6682: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexDat
+  6684: <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>🛒 خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+  6686: <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 11 }}>🛍️ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+  6687: <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>💵 جمع مبلغ خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.p
+  6688: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع مبلغ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price
+  6689: <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↩️ جمع برگشت فروش: {fmt((modelKardexData.salesReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number
+  6690: <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↪️ جمع برگشت خرید: {fmt((modelKardexData.purchaseReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Num
+  6693: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit
+  6742: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.payer_name || '—'}</Text>
+  6744: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = getPackForCodeGlobal(modelKardexCode); return _u ? _u.base_unit || 'عدد' : 'عدد'; })(
+  6745: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = getPackForCodeGlobal(modelKardexCode); if (_u && _u.pack_size > 0) { const packs = (Number(r.quant
+  6749: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  6801: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+  6803: <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+  6807: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  6843: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+  6844: <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+  6846: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  6874: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || '—'}</Text>
+  6875: <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+  6877: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  7231: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pa
+  7247: try { const f = await lookupCustomerByPhone(d); if (f) { setStatus('✅'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); } else { setStatus('🆕')
+  7253: const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder
+  7263: const grandTotal = items.reduce((a, r) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+  7265: const grandQty = items.reduce((a, r) => a + (Number(r.quantity) || 0), 0);
+  7277: const valid = items.filter((it) => it.modelName && it.quantity > 0);
+  7327: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pa
+  7369: const lt = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+  7393: <View style={{ flex: 1 }}><EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={St
+  7394: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { upd(i, 'entered_unit', 'base'); upd(i, 'entered_qty', it.quantity); }} sty
+  7395: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} پایه</Text>)}</View>
+  7562: quantity: r.quantity || 0,
+  7571: entered_qty: Number(r.quantity) || 0,
+  7596: name: _p?.name || (isSales ? rows[0].customer_name : rows[0].supplier_name),
+  7612: const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankNa
+  7626: quantity: Number(r.quantity) || 0,
+  7628: total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+  7704: const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+  7768: quantity: Number(r.quantity) || 0,
+  7775: name: isSales ? rows[0].customer_name : rows[0].supplier_name,
+  7797: if (Number(it.returnQty) > Number(it.quantity)) {
+  7817: party_name: returnInvoice.name,
+  7935: const lt = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
+  7968: updRow(i, 'entered_qty', Number(r.quantity) || 0);
+  7982: <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.entered_unit === 'pack' ? (r.entere
+  7984: {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'base'); updRow(i, 'entered
+  8024: ...prods.map((p: any) => p.supplier_name || '').filter(Boolean)
+  8266: <Text style={{ width: 60, fontSize: 10, textAlign: 'center', color: '#64748b' }}>{toFaNum(r.quantity)}</Text>
+  8385: quantity: Number(it.quantity) || 0,
+  8387: returnQty: Number(it.returnQty || it.quantity) || 0,
+  8396: if (Number(it.returnQty) > Number(it.quantity)) {
+  8448: _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.return_number || '—') + '</td><td>' + displayDateOnly(r.date || r.created_at || '') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="
+  8478: 'طرف‌حساب': r.party_name || '',
+  8539: <Text style={[s.tdCell, { width: 160, fontSize: 11 }]} numberOfLines={1}>{r.party_name || '—'}</Text>
+  8600: <Text style={{ width: 60, fontSize: 10, textAlign: 'center', color: '#64748b' }}>{toFaNum(r.quantity)}</Text>
+  8676: if (!map[code]) map[code] = { code, name: r.customer_name, phone: r.customer_phone, total: 0, paid: 0 };
+  8678: map[code].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+  8700: if (!map[code]) map[code] = { code, name: r.supplier_name, phone: r.supplier_phone, total: 0, paid: 0 };
+  8702: map[code].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+  8720: setData({ rows, total: rows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0), title: 'فروش ۲۴ ساعت', columns: ['فاکتور', 'نام', 'تلفن', 'مبلغ', 'پرداخت'] }
+  8728: setData({ rows, total: rows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0), title: 'خرید ۲۴ ساعت', columns: ['فاکتور', 'نام', 'تلفن', 'مبلغ', 'پرداخت'] }
+  8888: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.text, textAlign: 'right' }]} numberOfLines={1}>{r.customer_name || r.supplier_name}</Text>
+  8892: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  10798: '<td style="text-align:center">' + esc(it.quantity || 0) + ' ' + esc(bU) + '</td>' +
+  10799: '<td style="text-align:center;color:#0891b2;font-weight:bold">' + (pS > 0 ? ((Number(it.quantity) || 0) / pS).toFixed(2).replace(/\.00$/, '') + ' ' + esc(pU) : '—') + '</td>' +
+  11005: <Text style={[s.invTd, { flex: 0.5, textAlign: 'center' }]}>{Number(it.quantity) || 0} {it.base_unit || 'عدد'}</Text>
+  11006: <Text style={[s.invTd, { flex: 0.5, textAlign: 'center', color: '#0891b2', fontWeight: 'bold' }]}>{Number(it.pack_size) > 0 ? (((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\
+
+=== backup-kardex-returns-adj-1795245818931.tsx ===
+  335: quantity: 1,
+  375: quantity: Number(it.quantity) || 0,
+  409: const qty = Number(r.quantity) || 0;
+  413: grouped[r.invoice_number].sales += qty * price;
+  2784: if (f) { setCustomerStatus('✅ قبلی'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); }
+  2796: const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '
+  2802: const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0;
+  2806: const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  2808: const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+  2825: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '', shelf: '' }]);
+  2833: const invalidItem = items.find(it => it.modelName && (!it.quantity || !it.priceUnit));
+  2838: const valid = items.filter((it) => it.modelName && it.quantity > 0);
+  2839: const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  2851: finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: note }];
+  2891: quantity: x.quantity,
+  2893: total: x.quantity * x.price_unit,
+  2903: customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+  2933: finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: n2, shelf: '' }];
+  2977: quantity: x.quantity,
+  2979: total: x.quantity * x.price_unit,
+  2989: customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+  3039: quantity: x.quantity,
+  3041: total: x.quantity * x.price_unit,
+  3054: customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+  3267: const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+  3335: value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))}
+  3337: onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updItem(i, 'quantity', (u === 'pack' && Numbe
+  3347: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity)
+  3349: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || 'عدد'}</Tex
+  4204: const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }]);
+  4220: if (!sName && p.supplier_name) setSName(p.supplier_name);
+  4254: const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  4256: const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+  4267: const valid = items.filter((it) => it.modelName && it.quantity > 0);
+  4271: if (it.modelName && (!it.quantity || !it.priceUnit)) {
+  4275: const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  4282: const valid = items.filter((it) => it.modelName && it.quantity > 0);
+  4288: finalItems = [{ modelCode: '', modelName: 'پرداخت به تأمین‌کننده', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: note, sh
+  4342: <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new Set([...partySuppliers.filter(Boolean).filter(Boolean).filter(Boolean).map((p: a
+  4366: const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+  4406: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))} onChangeT
+  4407: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity)
+  4408: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || 'عدد'}</Tex
+  4517: ...prods.map((p: any) => p.payer_name || '').filter(Boolean),
+  4518: ...prods.map((p: any) => p.supplier_name || '').filter(Boolean),
+  4692: const name = salesAsCustomer?.[0]?.customer_name
+  4694: || purchasesAsSupplier?.[0]?.supplier_name
+  4710: qty: Number(r.quantity) || 0, priceUnit: Number(r.price_unit) || 0,
+  4712: total: (Number(r.quantity) || 0) * (Number(r.price_unit) || 0),
+  4736: qty: Number(r.quantity) || 0, priceUnit: Number(r.price_unit) || 0,
+  4738: total: (Number(r.quantity) || 0) * (Number(r.price_unit) || 0),
+  4758: fromName: r.customer_name, fromCode: r.customer_code, fromPhone: r.customer_phone,
+  4849: 'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+  4875: 'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+  4979: <td>${toFaNum(r.qty)}</td>
+  5007: <td>${toFaNum(r.qty)}</td>
+  5228: <Text style={{ width: 55, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{toFaNum(r.qty)} {(() => { const _u = prods.find((p: any) => String(p.code || '') === String(r.modelCode || '')); retur
+  5229: <Text style={{ width: 55, color: '#0891b2', fontSize: 11, textAlign: 'center' }}>{(() => { const _u = prods.find((p: any) => String(p.code || '') === String(r.modelCode || '')); if (_u && _u.pack_size
+  5310: <Text style={{ width: 40, color: '#1e3a5f', fontSize: 11, textAlign: 'center' }}>{toFaNum(r.qty)}</Text>
+  5944: var qty = Number(r.quantity) || 0;
+  5946: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '<
+  5946: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '<
+  5952: var qty = Number(r.quantity) || 0;
+  5954: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(
+  5954: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(
+  5960: var qty = Number(r.quantity) || 0;
+  5962: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || 
+  5962: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || 
+  5968: var qty = Number(r.quantity) || 0;
+  5970: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || 
+  5970: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || 
+  5976: var qty = Number(r.adjustment) || 0;
+  5978: var totalVal = qty * uCost;
+  5979: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty
+  5982: var totalP = (data.purchases || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+  5983: var totalS = (data.sales || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+  5984: var totalBoughtQty = (data.purchases || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+  5985: var totalSoldQty = (data.sales || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+  5986: var totalSRQty = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+  5987: var totalPRQty = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+  5992: var _totalSRVal = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+  5993: var _totalPRVal = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+  6027: var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف':
+  6027: var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف':
+  6028: var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.c
+  6028: var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.c
+  6029: var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || ''
+  6029: var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || ''
+  6030: var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number ||
+  6030: var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number ||
+  6032: var _qty = Number(r.adjustment) || 0;
+  6034: return { 'نوع': 'تعدیل', '#': i + 1, 'تاریخ': r.adjustment_date || r.created_at || '', 'دلیل': r.reason || '', 'مقدار': _qty, 'بهای واحد': _uCost, 'ارزش کل': _qty * _uCost, 'یادداشت': r.note || '' };
+  6617: const _qty = Number(r.adjustment) || 0;
+  6619: const _val = _qty * _cost;
+  6624: <Text style={{ flex: 1, fontSize: 10, fontWeight: 'bold', color: _qty > 0 ? '#059669' : '#dc2626', textAlign: 'center' }}>{(_qty > 0 ? '+' : '') + fmt(_qty)}</Text>
+  6686: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexDat
+  6688: <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>🛒 خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+  6690: <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 11 }}>🛍️ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+  6691: <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>💵 جمع مبلغ خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.p
+  6692: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع مبلغ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price
+  6693: <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↩️ جمع برگشت فروش: {fmt((modelKardexData.salesReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number
+  6694: <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↪️ جمع برگشت خرید: {fmt((modelKardexData.purchaseReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Num
+  6697: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit
+  6746: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.payer_name || '—'}</Text>
+  6748: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)); return _u ? _u.base_unit || 'عدد' : 'عدد'; })()
+  6749: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)); if (_u && _u.pack_size > 0) { const packs = (Number(r.quanti
+  6753: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  6806: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+  6808: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text
+  6809: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = (Number(r.quanti
+  6813: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  6849: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+  6850: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text
+  6851: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = (Number(r.quanti
+  6853: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  6881: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || '—'}</Text>
+  6882: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text
+  6883: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = (Number(r.quanti
+  6885: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  7240: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pa
+  7256: try { const f = await lookupCustomerByPhone(d); if (f) { setStatus('✅'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); } else { setStatus('🆕')
+  7262: const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder
+  7272: const grandTotal = items.reduce((a, r) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+  7274: const grandQty = items.reduce((a, r) => a + (Number(r.quantity) || 0), 0);
+  7286: const valid = items.filter((it) => it.modelName && it.quantity > 0);
+  7336: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pa
+  7378: const lt = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+  7402: <View style={{ flex: 1 }}><EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={St
+  7403: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { upd(i, 'entered_unit', 'base'); upd(i, 'entered_qty', it.quantity); }} sty
+  7404: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} پایه</Text>)}</View>
+  7571: quantity: r.quantity || 0,
+  7580: entered_qty: Number(r.quantity) || 0,
+  7605: name: _p?.name || (isSales ? rows[0].customer_name : rows[0].supplier_name),
+  7621: const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankNa
+  7635: quantity: Number(r.quantity) || 0,
+  7637: total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+  7713: const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+  7777: quantity: Number(r.quantity) || 0,
+  7784: name: isSales ? rows[0].customer_name : rows[0].supplier_name,
+  7806: if (Number(it.returnQty) > Number(it.quantity)) {
+  7826: party_name: returnInvoice.name,
+  7944: const lt = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
+  7977: updRow(i, 'entered_qty', Number(r.quantity) || 0);
+  7991: <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.entered_unit === 'pack' ? (r.entere
+  7993: {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'base'); updRow(i, 'entered
+  8033: ...prods.map((p: any) => p.supplier_name || '').filter(Boolean)
+  8275: <Text style={{ width: 60, fontSize: 10, textAlign: 'center', color: '#64748b' }}>{toFaNum(r.quantity)}</Text>
+  8394: quantity: Number(it.quantity) || 0,
+  8396: returnQty: Number(it.returnQty || it.quantity) || 0,
+  8405: if (Number(it.returnQty) > Number(it.quantity)) {
+  8457: _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.return_number || '—') + '</td><td>' + displayDateOnly(r.date || r.created_at || '') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="
+  8487: 'طرف‌حساب': r.party_name || '',
+  8548: <Text style={[s.tdCell, { width: 160, fontSize: 11 }]} numberOfLines={1}>{r.party_name || '—'}</Text>
+  8609: <Text style={{ width: 60, fontSize: 10, textAlign: 'center', color: '#64748b' }}>{toFaNum(r.quantity)}</Text>
+  8685: if (!map[code]) map[code] = { code, name: r.customer_name, phone: r.customer_phone, total: 0, paid: 0 };
+  8687: map[code].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+  8709: if (!map[code]) map[code] = { code, name: r.supplier_name, phone: r.supplier_phone, total: 0, paid: 0 };
+  8711: map[code].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+  8729: setData({ rows, total: rows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0), title: 'فروش ۲۴ ساعت', columns: ['فاکتور', 'نام', 'تلفن', 'مبلغ', 'پرداخت'] }
+  8737: setData({ rows, total: rows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0), title: 'خرید ۲۴ ساعت', columns: ['فاکتور', 'نام', 'تلفن', 'مبلغ', 'پرداخت'] }
+  8897: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.text, textAlign: 'right' }]} numberOfLines={1}>{r.customer_name || r.supplier_name}</Text>
+  8901: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  10806: '<td style="text-align:center">' + esc(it.quantity || 0) + ' ' + esc(bU) + '</td>' +
+  10807: '<td style="text-align:center;color:#0891b2;font-weight:bold">' + (pS > 0 ? ((Number(it.quantity) || 0) / pS).toFixed(2).replace(/\.00$/, '') + ' ' + esc(pU) : '—') + '</td>' +
+  11013: <Text style={[s.invTd, { flex: 0.5, textAlign: 'center' }]}>{Number(it.quantity) || 0} {it.base_unit || 'عدد'}</Text>
+  11014: <Text style={[s.invTd, { flex: 0.5, textAlign: 'center', color: '#0891b2', fontWeight: 'bold' }]}>{Number(it.pack_size) > 0 ? (((Number(it.quantity) || 0) / Number(it.pack_size)).toFixed(2).replace(/\

@@ -1,0 +1,104 @@
+=== تشخیص ساختار فرم کالا ===
+
+1. فیلدهای pack_size در state:
+
+2. TextInput برای pack_size:
+  4408: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.entered_unit === 'pack' ? (it.en
+    4408: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.entered_unit === 'pack' ? (it.en
+    4409: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit
+    4410: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {Stri
+    4411: 
+    4412: </View>
+    4413: 
+    4414: <View style={{ flex: 1 }}>
+    4415: 
+    4416: <EL textKey="قیمت" style={[s.miniLbl, { color: C.textMut }]} />
+    4417: 
+  ---
+  7432: <View style={{ flex: 1 }}><EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, 
+    7432: <View style={{ flex: 1 }}><EL textKey="تعداد" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, 
+    7433: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { upd(i, 'entered_unit', '
+    7434: {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: C.textMut, marginTop: 2, textAlign: 'center' }}>= {Stri
+    7435: 
+    7436: <View style={{ flex: 1 }}><EL textKey="قیمت" style={[s.miniLbl, { color: C.textMut }]} /><TextInput style={[s.miniInput, { backgroundColor: C.input, c
+    7437: 
+    7438: </View>
+    7439: 
+    7440: <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
+    7441: 
+  ---
+  8021: <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} v
+    8021: <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} v
+    8022: 
+    8023: {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { upd
+    8024: 
+    8025: <View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} 
+    8026: 
+    8027: <Text style={[s.tdCell, { width: 100, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{lt ? fmt(lt) : '—'}</Text>
+    8028: 
+    8029: <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} 
+    8030: 
+  ---
+  10733: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.uom_label || '')} onChangeText={(v:
+    10733: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.uom_label || '')} onChangeText={(v:
+    10734: </View>
+    10735: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10736: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_size || '')} onChangeText={(v:
+    10737: </View>
+    10738: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10739: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_unit || '')} onChangeText={(v:
+    10740: </View>
+    10741: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10742: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_unit || '')} onChangeText={(v:
+  ---
+  10736: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_size || '')} onChangeText={(v:
+    10736: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_size || '')} onChangeText={(v:
+    10737: </View>
+    10738: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10739: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_unit || '')} onChangeText={(v:
+    10740: </View>
+    10741: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10742: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_unit || '')} onChangeText={(v:
+    10743: </View>
+    10744: <View style={{ width: 140, paddingHorizontal: 2 }}>
+    10745: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: stri
+  ---
+  10766: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.uom_label || '')} onChangeTex
+    10766: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.uom_label || '')} onChangeTex
+    10767: </View>
+    10768: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10769: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_size || '')} onChangeTex
+    10770: </View>
+    10771: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10772: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.base_unit || '')} onChangeTex
+    10773: </View>
+    10774: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10775: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_unit || '')} onChangeTex
+  ---
+  10769: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_size || '')} onChangeTex
+    10769: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_size || '')} onChangeTex
+    10770: </View>
+    10771: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10772: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.base_unit || '')} onChangeTex
+    10773: </View>
+    10774: <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10775: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_unit || '')} onChangeTex
+    10776: </View>
+    10777: <View style={{ width: 140, paddingHorizontal: 2 }}>
+    10778: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.code || '')} onChangeText={(v
+  ---
+
+3. فیلدهای تخفیف اضافه شده:
+  2797: discount_base_unit: 0,
+  2798: discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+
+4. فرم ثبت/ویرایش کالا:
+  2804: const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0;
+  3349: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity)
+  4220: n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack
+  4409: {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity)
+  7298: const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0;
+  7651: const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankNa
+  8023: {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'base'); updRow(i, 'entered
+  10640: setDrafts((prev: any[]) => [...prev, { id: null, code: nextCode, name: '', price: 0, shelf: '', uom_label: 'عدد', pack_size: 0, base_unit: 'عدد', pack_unit: 'بسته' }]);
+  10831: const itemsRows = (invoice.current?.items || []).map((it: any, i: number) => { const _u = prods.find((p: any) => String(p.code || '') === String(it.modelCode || '')); const bU = it.base_unit || (_u ? 

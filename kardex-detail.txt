@@ -1,0 +1,119 @@
+=== تشخیص دقیق کاردکس‌ها ===
+
+1. جدول کاردکس اول (خط 5524):
+  5521:       _p.push('<div class="info"><b>🆔 شماره سند:</b> ' + _serial + ' &nbsp;|&nbsp; <b>🔑 کد رهگیری:</b> ' + _tracking + '<br><b>📅 تاریخ گزارش:</b> ' + displayDate(new Date()) + ' &nbsp;|&nbsp; <b>📊 بازه:</b> ' + (stats?.rangeLabel || 'ماه جاری') + '</div>');
+  5522: 
+  5523:       _p.push('<div class="title">💹 گزارش سود به تفکیک مدل</div>');
+  5524:       _p.push('<table><tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>خرید (میانگین)</th><th>فروش (میانگین)</th><th>سود هر واحد</th><th>تعداد فروش</th><th>جمع سود کل</th></tr>');
+  5525: 
+  5526:       var rows = models.map(function(m, i) {
+  5527:         var avgSale = m.totalQty ? (m.totalSales / m.totalQty) : 0;
+  5528:         var unitProfit = m.purchasePrice > 0 ? (avgSale - m.purchasePrice) : 0;
+  5529:         return '<tr>' +
+  5530:           '<td>' + (i + 1) + '</td>' +
+  5531:           '<td>' + (m.code || '—') + '</td>' +
+  5532:           '<td style="text-align:right">' + (m.name || '—') + '</td>' +
+  5533:           '<td>' + (m.purchasePrice > 0 ? fmt(Math.round(m.purchasePrice)) : '—') + '</td>' +
+  5534:           '<td>' + (avgSale ? fmt(Math.round(avgSale)) : '—') + '</td>' +
+  5535:           '<td style="color:' + (unitProfit > 0 ? '#059669' : '#dc2626') + ';font-weight:bold">' + (unitProfit ? fmt(Math.round(unitProfit)) : '—') + '</td>' +
+  5536:           '<td>' + fmt(m.totalQty) + '</td>' +
+  5537:           '<td style="color:' + (m.totalProfit >= 0 ? '#059669' : '#dc2626') + ';font-weight:bold">' + fmt(m.totalProfit) + '</td>' +
+  5538:           '</tr>';
+  5539:       }).join('');
+  5540: 
+
+2. جدول کاردکس دوم (خط 5587):
+  5584:       var _p = [];
+  5585:       _p.push('<div class="info"><b>📅 تاریخ گزارش:</b> ' + displayDate(new Date()) + ' &nbsp;|&nbsp; <b>📊 بازه:</b> ' + (stats?.rangeLabel || 'ماه جاری') + '</div>');
+  5586:       _p.push('<div class="title">💹 گزارش سود به تفکیک مدل</div>');
+  5587:       _p.push('<table><tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>خرید (میانگین)</th><th>فروش (میانگین)</th><th>سود هر واحد</th><th>تعداد فروش</th><th>جمع سود کل</th></tr>');
+  5588:       var rows = models.map(function(m, i) {
+  5589:         var avgSale = m.totalQty ? (m.totalSales / m.totalQty) : 0;
+  5590:         var unitProfit = m.purchasePrice > 0 ? (avgSale - m.purchasePrice) : 0;
+  5591:         return '<tr><td>' + (i + 1) + '</td><td>' + (m.code || '—') + '</td><td style="text-align:right">' + (m.name || '—') + '</td><td>' + (m.purchasePrice > 0 ? fmt(Math.round(m.purchasePrice)) : '—') + '</td><td>' + (avgSale ? fmt(Math.round(avgSale)) : '—') + '</td><td style="color:' + (unitProfit > 0 ? '#059669' : '#dc2626') + ';font-weight:bold">' + (unitProfit ? fmt(Math.round(unitProfit)) : '—') + '</td><td>' + fmt(m.totalQty) + '</td><td style="color:' + (m.totalProfit >= 0 ? '#059669' : '#dc2626') + ';font-weight:bold">' + fmt(m.totalProfit) + '</td></tr>';
+  5592:       }).join('');
+  5593:       _p.push(rows);
+  5594:       _p.push('<tr class="total"><td colspan="7" style="text-align:left;font-weight:bold">جمع کل سود:</td><td style="font-weight:bold;color:#059669;font-size:14px">' + fmt(total) + ' ' + curLabel + '</td></tr></table>');
+  5595:       _p.push('<div class="net-words">💵 جمع سود کل به حروف: ' + numToWords(total) + ' ' + curLabel + '</div>');
+  5596:       if (stats?.estimatedCount > 0) _p.push('<div style="font-size:10px;color:#dc2626;margin-top:10px;">📌 توجه: سود ' + stats.estimatedCount + ' مدل تخمینی است.</div>');
+  5597:       _p.push(mizanSignaturesHtml(['امضای مدیر فروش', 'امضای مدیر مالی', 'مهر شرکت']));
+  5598:       _p.push(mizanComputerNoteHtml());
+  5599:       var html = buildStandardHtml('گزارش سود و زیان — میزان', _p.join(''), '💹 گزارش سود');
+  5600:       html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+  5601:       var r = await printHtml(html);
+  5602:       showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+  5603:     } catch (e: any) { showToast(e.message, true); }
+
+3. تابع _mkHtml (خط 6015):
+  6011: 
+  6012: 
+  6013:   const _mkSharePdf = async () => {
+  6014: 
+  6015:     try { const r = await shareHtmlAsPdf(_mkHtml(modelKardexData), 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.pdf'); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+  6016: 
+  6017:   };
+  6018: 
+  6019:   const _mkPrint = async () => {
+  6020: 
+  6021:     try { const r = await printHtml(_mkHtml(modelKardexData)); showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+  6022: 
+  6023:   };
+  6024: 
+  6025:   const _mkExcel = async () => {
+  6026:     try {
+  6027:       var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.supplier_name || r.payer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+  6028:       var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+  6029:       var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+  6030:       var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.supplier_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+
+4. مودال UI کاردکس (خط 6662):
+  6662: <Modal visible={modelKardexModal} transparent animationType="slide" onRequestClose={() => setModelKardexModal(false)}>
+  6664: <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 10 }}>
+  6666: <View style={{ backgroundColor: '#ffffff', borderRadius: 12, maxHeight: '92%', overflow: 'hidden' }}>
+  6668: <View style={{ backgroundColor: '#0f2438', padding: 12, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' }}>
+  6670: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 14, flex: 1, textAlign: 'right' }}>📋 کاردکس مدل: {modelKardexData?.name || modelKardexCode}</Text>
+  6672: <TouchableOpacity onPress={() => setModelKardexModal(false)}><Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>×</Text></TouchableOpacity>
+  6676: {modelKardexLoading ? (
+  6678: <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color="#d4af37" size="large" /></View>
+  6680: ) : modelKardexData ? (
+  6684: <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, padding: 8, backgroundColor: '#f8fafc', borderRadius: 6, marginBottom: 8 }}>
+  6686: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 11 }}>📦 موجودی: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0) - (modelKardexDat
+  6688: <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>🛒 خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+  6690: <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 11 }}>🛍️ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + (Number(r.quantity) || 0), 0))}</Text>
+  6691: <Text style={{ color: '#0891b2', fontWeight: 'bold', fontSize: 11 }}>💵 جمع مبلغ خرید: {fmt((modelKardexData.purchases || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.p
+  6692: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع مبلغ فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price
+  6693: <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↩️ جمع برگشت فروش: {fmt((modelKardexData.salesReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number
+  6694: <Text style={{ color: '#b45309', fontWeight: 'bold', fontSize: 11 }}>↪️ جمع برگشت خرید: {fmt((modelKardexData.purchaseReturns || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Num
+  6695: <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>⚖️ جمع ارزش تعدیل: {fmt((modelKardexData.adjustments || []).reduce((a: number, r: any) => a + ((Number(r.adjustment) || 0) * (Numbe
+  6697: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a + ((Number(r.quantity) || 0) * (Number(r.price_unit
+  6701: <TouchableOpacity onPress={modelKardexMenu} style={{ backgroundColor: '#8e44ad', padding: 10, borderRadius: 8, alignItems: 'center', marginBottom: 10 }}>
+  6703: <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>📤 خروجی (PDF / چاپ / اکسل)</Text>
+  6707: {(modelKardexData.purchases || []).length > 0 && (
+  6709: <View style={{ marginBottom: 12 }}>
+  6711: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>🛒 خریدها ({modelKardexData.purchases
+  6715: <View>
+  6717: <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+  6719: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6721: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6723: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+  6725: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+  6727: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد (واحد پایه)</Text>
+  6728: <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
+  6730: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6732: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6736: {modelKardexData.purchases.map((r: any, i: number) => (
+  6738: <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+  6740: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6742: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+  6744: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+  6746: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.payer_name || '—'}</Text>
+  6748: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = getPackForCodeGlobal(modelKardexCode); return _u ? _u.base_unit || 'عدد' : 'عدد'; })(
+  6749: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = getPackForCodeGlobal(modelKardexCode); if (_u && _u.pack_size > 0) { const packs = (Number(r.quant
+  6751: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+  6753: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+  6767: {(modelKardexData.sales || []).length > 0 && (
+  6769: <View>
+  6771: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, marginBottom: 4 }}>🛍️ فروش‌ها ({modelKardexData.sales.l
+  6775: <View>
+  6777: <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+  6779: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>

@@ -1,0 +1,113 @@
+=== بدنه دقیق تعدیلات (خطوط 6906-6925) ===
+
+خط 6906:
+          <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>بهای واحد</Text>
+---
+خط 6907:
+          <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>ارزش کل</Text>
+---
+خط 6908:
+          <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>یادداشت</Text>
+---
+خط 6909:
+        </View>
+---
+خط 6910:
+        {modelKardexData.adjustments.map((r: any, i: number) => {
+---
+خط 6911:
+          var adjVal = Number(r.adjustment) || 0;
+---
+خط 6912:
+          var uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+---
+خط 6913:
+          var totalVal = adjVal * uCost;
+---
+خط 6914:
+          return (
+---
+خط 6915:
+            <View key={'adj' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+---
+خط 6916:
+              <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+---
+خط 6917:
+              <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.created_at || '').slice(0, 10)}</Text>
+---
+خط 6918:
+              <Text style={{ width: 140, fontSize: 10, textAlign: 'right' }}>{r.reason || '—'}</Text>
+---
+خط 6919:
+              <Text style={{ width: 100, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: adjVal >= 0 ? '#059669' : '#dc2626' }}>{(adjVal >= 0 ? '+' : '') + fmt(adjVal)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text>
+---
+خط 6920:
+              <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = Math.abs(adjVal) / Number(_u.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
+---
+خط 6921:
+              <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(uCost)}</Text>
+---
+خط 6922:
+              <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#d4af37' }}>{fmt(totalVal)}</Text>
+---
+خط 6923:
+              <Text style={{ width: 140, fontSize: 10, textAlign: 'right' }}>{r.note || '—'}</Text>
+---
+خط 6924:
+            </View>
+---
+خط 6925:
+          );
+---
+
+=== هدر دقیق تعدیلات (خطوط 6890-6905) ===
+
+خط 6890:
+      </View>
+---
+خط 6891:
+    </ScrollView>
+---
+خط 6892:
+  </View>
+---
+خط 6893:
+)}
+---
+خط 6894:
+{(modelKardexData.adjustments || []).length > 0 && (
+---
+خط 6895:
+  <View style={{ marginBottom: 12 }}>
+---
+خط 6896:
+    <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, marginBottom: 4 }}>⚖️ تعدیلات انبار ({modelKardexData.adjustments.length})</Text>
+---
+خط 6897:
+    <ScrollView horizontal>
+---
+خط 6898:
+      <View>
+---
+خط 6899:
+        <View style={{ flexDirection: 'row-reverse', backgroundColor: '#0f2438', paddingVertical: 6 }}>
+---
+خط 6900:
+          <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+---
+خط 6901:
+          <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+---
+خط 6902:
+          <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>دلیل</Text>
+---
+خط 6903:
+          <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+---
+خط 6904:
+          <Text style={{ width: 100, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعدیل (واحد پایه)</Text>
+---
+خط 6905:
+          <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
+---

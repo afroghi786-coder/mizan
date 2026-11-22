@@ -1,0 +1,15 @@
+=== بررسی ساختار داده کاردکس‌ها ===
+
+1. تابع loadModelKardex (ساختار داده):
+
+2. کوئری‌های Supabase برای برگشت‌ها:
+
+3. نگاشت فیلدها در کاردکس:
+  4692: const name = salesAsCustomer?.[0]?.customer_name
+  6028: var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.c
+  6029: var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || ''
+
+4. جستجوی فیلدهای احتمالی:
+  6027: var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف':
+  286: const { data } = await supabase.from('sales').select('*').eq('customer_code', customerCode);
+  2539: { i: '💵', l: 'پرداخت به تأمین‌کننده', v: stats?.supplierPaid || 0, c: '#34d399', show: filter !== 'sales' },

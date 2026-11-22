@@ -1,0 +1,276 @@
+=== شروع تشخیص ساده ===
+
+✅ هر دو فایل پیدا شدند
+
+=== 1. payload ثبت برگشت (App.tsx 7850-7870) ===
+7850:       const payload = {
+7851:         return_number: returnNumber,
+7852:         status: 'approved',
+7853:         original_invoice_number: returnInvoice.invoice,
+7854:         party_name: returnInvoice.name,
+7855:         party_code: returnInvoice.code,
+7856:         type: savedType,
+7857:         date: new Date().toISOString(),
+7858:         reason: returnReason || '',
+7859:         shipping_cost: shipping,
+7860:         settlement_method: returnSettlement,
+7861:         settlement_amount: settlementAmount,
+7862:         balance: balance,
+7863:         bank: returnBank || '',
+7864:         account_holder: returnHolder || '',
+7865:         deposit_date: returnDepositDate || '',
+7866:         note: returnNote || '',
+7867:         subtotal,
+7868:         total,
+7869:         items,
+7870:       };
+
+=== 2. ویرایش برگشت (App.tsx 8420-8465) ===
+8420:       modelCode: it.modelCode || it.model_code || '',
+8421:       modelName: it.modelName || it.model_name || '',
+8422:       quantity: Number(it.quantity) || 0,
+8423:       priceUnit: Number(it.priceUnit || it.price_unit) || 0,
+8424:       returnQty: Number(it.returnQty || it.quantity) || 0,
+8425:     })));
+8426:   };
+8427: 
+8428:   const saveEditReturn = async () => {
+8429:     if (!editReturn) return;
+8430:     const items = editItems.filter((r: any) => Number(r.returnQty) > 0);
+8431:     if (!items.length) { showToast('تعداد برگشتی را وارد کنید', true); return; }
+8432:     for (const it of items) {
+8433:       if (Number(it.returnQty) > Number(it.quantity)) {
+8434:         showToast('تعداد برگشتی برای ' + (it.modelName || it.modelCode) + ' بیشتر از تعداد اصلی است', true);
+8435:         return;
+8436:       }
+8437:     }
+8438:     setEditSaving(true);
+8439:     try {
+8440:       const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);
+8441:       const shipping = Number(editShipping) || 0;
+8442:       const total = subtotal + shipping;
+8443:       const settlementAmount = editSettlement === 'credit' ? 0 : total;
+8444:       const balance = total - settlementAmount;
+8445:       const payload = {
+8446:         reason: editReason || '',
+8447:         shipping_cost: shipping,
+8448:         settlement_method: editSettlement,
+8449:         settlement_amount: settlementAmount,
+8450:         balance,
+8451:         bank: editBank || '',
+8452:         account_holder: editHolder || '',
+8453:         deposit_date: editDepositDate || '',
+8454:         note: editNote || '',
+8455:         subtotal,
+8456:         total,
+8457:         items,
+8458:       };
+8459:       const id = editReturn.local_id || editReturn.id;
+8460:       if (type === 'sales') await updateSalesReturn(id, payload);
+8461:       else await updatePurchaseReturn(id, payload);
+8462:       showToast?.('✅ برگشت ویرایش شد');
+8463:       setEditReturn(null);
+8464:       load();
+8465:     } catch (e: any) {
+
+=== 3. getSalesReturns (lib.offline.ts) ===
+4931: export async function getSalesReturns() {
+4932:   const local = (await getLocal<any[]>('sales_returns')) || [];
+4933:   const q = await getQueue();
+4934: 
+4935:   const deletedIds = new Set<string>();
+4936:   for (const item of q) {
+4937:     if (item.op === 'deleteSalesReturn') {
+4938:       const id = String(item.payload || '').trim();
+4939:       if (id) deletedIds.add(id);
+4940:     }
+4941:   }
+4942:   try {
+4943:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+4944:     let arr: any[] = [];
+4945:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+4946:     if (Array.isArray(arr)) {
+4947:       for (const t of arr) {
+4948:         if (!t) continue;
+4949:         if (String(t.table || '') !== 'sales_returns') continue;
+4950:         const k = String(t.key || '').trim();
+4951:         if (k) deletedIds.add(k);
+4952:       }
+4953:     }
+4954:   } catch {}
+4955: 
+4956:   const pending = q
+4957:     .filter(x => x.op === 'createSalesReturn')
+4958:     .map(x => x.payload)
+4959:     .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+4960: 
+4961:   const cleaned = local.filter((x: any) => {
+4962:     const id = String(x.local_id || x.id || '');
+4963:     return id ? !deletedIds.has(id) : true;
+4964:   });
+4965: 
+4966:   const map = new Map<string, any>();
+4967:   for (const r of cleaned) {
+4968:     const key = String(r.local_id || r.id || r.return_number || '');
+4969:     if (key) map.set(key, r);
+4970:   }
+4971:   for (const p of pending) {
+4972:     const key = String(p.local_id || p.id || p.return_number || '');
+4973:     if (key) map.set(key, p);
+4974:   }
+4975:   return Array.from(map.values());
+4976: }
+4977: 
+4978: export async function updateSalesReturn(localId: string, payload: any) {
+4979:   _clearInvCache();
+4980:   const now = new Date().toISOString();
+4981:   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+4982:   const local = (await getLocal<any[]>('sales_returns')) || [];
+4983:   const idx = local.findIndex((x: any) => x.local_id === localId || x.id === localId);
+4984:   if (idx < 0) throw new Error('برگشت از فروش پیدا نشد');
+4985:   const item = {
+4986:     ...local[idx],
+4987:     ...payload,
+4988:     local_id: local[idx].local_id || localId,
+4989:     updated_at: now,
+4990:     device_id: dev,
+
+=== 4. getPurchaseReturns (lib.offline.ts) ===
+5057: export async function getPurchaseReturns() {
+5058:   const local = (await getLocal<any[]>('purchase_returns')) || [];
+5059:   const q = await getQueue();
+5060: 
+5061:   const deletedIds = new Set<string>();
+5062:   for (const item of q) {
+5063:     if (item.op === 'deletePurchaseReturn') {
+5064:       const id = String(item.payload || '').trim();
+5065:       if (id) deletedIds.add(id);
+5066:     }
+5067:   }
+5068:   try {
+5069:     const raw = await AsyncStorage.getItem('@mizan_tombstones');
+5070:     let arr: any[] = [];
+5071:     try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+5072:     if (Array.isArray(arr)) {
+5073:       for (const t of arr) {
+5074:         if (!t) continue;
+5075:         if (String(t.table || '') !== 'purchase_returns') continue;
+5076:         const k = String(t.key || '').trim();
+5077:         if (k) deletedIds.add(k);
+5078:       }
+5079:     }
+5080:   } catch {}
+5081: 
+5082:   const pending = q
+5083:     .filter(x => x.op === 'createPurchaseReturn')
+5084:     .map(x => x.payload)
+5085:     .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+5086: 
+5087:   const cleaned = local.filter((x: any) => {
+5088:     const id = String(x.local_id || x.id || '');
+5089:     return id ? !deletedIds.has(id) : true;
+5090:   });
+5091: 
+5092:   const map = new Map<string, any>();
+5093:   for (const r of cleaned) {
+5094:     const key = String(r.local_id || r.id || r.return_number || '');
+5095:     if (key) map.set(key, r);
+5096:   }
+5097:   for (const p of pending) {
+5098:     const key = String(p.local_id || p.id || p.return_number || '');
+5099:     if (key) map.set(key, p);
+5100:   }
+5101:   return Array.from(map.values());
+5102: }
+5103: 
+5104: export async function updatePurchaseReturn(localId: string, payload: any) {
+5105:   _clearInvCache();
+5106:   const now = new Date().toISOString();
+5107:   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+5108:   const local = (await getLocal<any[]>('purchase_returns')) || [];
+5109:   const idx = local.findIndex((x: any) => x.local_id === localId || x.id === localId);
+5110:   if (idx < 0) throw new Error('برگشت از خرید پیدا نشد');
+5111:   const item = {
+5112:     ...local[idx],
+5113:     ...payload,
+5114:     local_id: local[idx].local_id || localId,
+5115:     updated_at: now,
+5116:     device_id: dev,
+
+=== 5. منطق کاردکس (lib.offline.ts) ===
+3014:         const allPR = (await getLocal<any[]>('purchase_returns')) || [];
+3015:         return {
+3016:           purchases: p.map((r: any) => JSON.parse(r.data_json)),
+3017:           sales: s.map((r: any) => JSON.parse(r.data_json)),
+3018:           adjustments: a.map((r: any) => JSON.parse(r.data_json)),
+3019:           salesReturns: allSR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c)),
+3020:           purchaseReturns: allPR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c))
+3021:         };
+3022:       }
+3023:     }
+3024:   } catch (e) { console.log('Kardex SQLite err:', e); }
+3025: 
+3026:   // روش جایگزین (اگر SQLite آماده نبود)
+3027:   let allPurchases = (await getLocal<any[]>('purchases')) || [];
+3028:   let allSales = (await getLocal<any[]>('sales')) || [];
+3029:   const allAdj = (await getLocal<any[]>('stock_adjustments')) || [];
+3030:   const allSR = (await getLocal<any[]>('sales_returns')) || [];
+3031:   const allPR = (await getLocal<any[]>('purchase_returns')) || [];
+3032: 
+3033:   try {
+3034:     const _grpS = (await getLocal<any[]>('sales_grouped')) || [];
+3035:     const _grpP = (await getLocal<any[]>('purchases_grouped')) || [];
+3036:     const _haveS = new Set(allSales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+3037:     const _haveP = new Set(allPurchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+3038:     for (const _g of _grpS) {
+3039:       const _inv = String(_g.invoice || '').trim();
+3040:       if (!_inv || _haveS.has(_inv)) continue;
+3041:       for (const _it of (_g.items || [])) {
+3042:         allSales.push({ invoice_number: _inv, customer_name: _g.name || '', model_code: _it.modelCode || _it.model_code || '', model_name: _it.modelName || _it.model_name || '', quantity: Number(_it.quantity) || 0, price_unit: Number(_it.priceUnit) || 0, date_factor: _g.date || '' });
+3043:       }
+3044:     }
+3045:     for (const _g of _grpP) {
+3046:       const _inv = String(_g.invoice || '').trim();
+3047:       if (!_inv || _haveP.has(_inv)) continue;
+3048:       for (const _it of (_g.items || [])) {
+---
+3054:   const filterByCode = (arr: any[]) => arr.filter((x: any) => String(x.model_code || x.modelCode || '').trim() === c);
+3055:   return {
+3056:     purchases: filterByCode(allPurchases),
+3057:     sales: filterByCode(allSales),
+3058:     adjustments: filterByCode(allAdj),
+3059:     salesReturns: allSR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c)),
+3060:     purchaseReturns: allPR.filter((x: any) => (x.items || []).some((it: any) => String(it.modelCode || it.model_code || '').trim() === c))
+3061:   };
+3062: }
+3063: // ═══════════════════════════════════════════
+3064: //  Stock Adjustments (offline + queue)
+3065: // ═══════════════════════════════════════════
+3066: export async function getStockAdjustments(code?: string) {
+3067:   // BUSINESS_LOCAL_ONLY — فقط محلی، بدون Supabase (رفع کندی)
+3068:   let list = (await getLocal<any[]>('stock_adjustments')) || [];
+3069:   const q = await getQueue();
+3070:   const pending: any[] = [];
+3071:   for (const item of q) {
+3072:     if (item.op === 'createStockAdjustment' && item.payload) pending.push(item.payload);
+3073:   }
+3074:   // Tombstones — فیلتر تعدیل‌های حذف‌شده
+3075:   const _deletedAdj = new Set<string>();
+3076:   try {
+3077:     const _rawT = await AsyncStorage.getItem('@mizan_tombstones');
+3078:     let _arrT: any[] = [];
+3079:     try { _arrT = _rawT ? JSON.parse(_rawT) : []; } catch { _arrT = []; }
+3080:     if (Array.isArray(_arrT)) {
+3081:       for (const _t of _arrT) {
+3082:         if (!_t) continue;
+3083:         if (String(_t.table || '') !== 'stock_adjustments') continue;
+3084:         const _k = String(_t.key || '').trim();
+3085:         if (_k) _deletedAdj.add(_k);
+3086:       }
+3087:     }
+3088:   } catch {}
+---
+
+=== 6. محاسبات انبار با برگشت‌ها (lib.offline.ts) ===
+
+=== پایان تشخیص ===

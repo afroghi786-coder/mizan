@@ -1,0 +1,24 @@
+=== تشخیص دقیق فرم فروش و خرید ===
+
+1. فرم فروش (خطوط 4350 تا 4450):
+   الف) پیدا کردن فرمول محاسبه جمع سطر (lt):
+
+   ب) پیدا کردن View والد ردیف (برای بررسی flexDirection):
+   >>> خط 4366: {items.map((it, i) => {
+       4367: 
+       4368: const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+       4369: 
+       4370: return (
+       4371: 
+
+2. فرم خرید (خطوط 7400 تا 7500):
+   الف) پیدا کردن فرمول محاسبه جمع سطر (lt):
+   >>> خط 7438: const lt = ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
+
+   ب) پیدا کردن View والد ردیف:
+   >>> خط 7436: {items.map((it, i) => {
+       7437: 
+       7438: const lt = ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
+       7439: 
+       7440: const lb = lt - (Number(it.payment) || 0);
+       7441: 

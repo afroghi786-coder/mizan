@@ -1,0 +1,36 @@
+=== پیدا کردن خطوط دقیق UI برگشت‌ها ===
+
+1. جستجوی customer_name در برگشت از فروش:
+  خط 6850: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+
+2. جستجوی supplier_name در برگشت از خرید:
+  خط 6883: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.party_name || r.supplier || r.payer_name || '—'}</Text>
+
+3. محدوده کامل برگشت از فروش (6840-6855):
+  6840: <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
+  6841: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6842: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6846: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6847: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : String(r.date_factor || '').slice(0, 10)}</Text>
+  6848: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+  6849: <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+  6850: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+  6851: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text
+  6852: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = (Number(r.quanti
+  6853: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+  6854: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+
+4. محدوده کامل برگشت از خرید (6870-6885):
+  6870: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+  6871: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+  6872: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد (واحد پایه)</Text>
+  6873: <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
+  6874: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6875: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6879: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6880: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : String(r.date_factor || '').slice(0, 10)}</Text>
+  6881: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+  6882: <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+  6883: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || r.party_name || r.supplier || r.payer_name || '—'}</Text>
+  6884: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text
+  6885: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = (Number(r.quanti

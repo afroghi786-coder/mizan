@@ -1,0 +1,49 @@
+=== نمایش ساختار واقعی هدر جدول ===
+
+✅ ردیف لیست اصلی (p.pack_unit) در خط 10830 پیدا شد
+
+--- 40 خط قبل از ردیف لیست (محل هدر واقعی) ---
+
+    10790:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, pack_unit: v , discount_base_unit: Number(p.discount_base_unit) || 0, discount_pack_unit: Number(p.discount_pack_unit) || 0})} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
+    10791:                 </View>
+    10792:         {/* فیلدهای تخفیف - فقط در صورت تعریف pack_size */}
+    10793:         {Number(editing.pack_size) > 0 && (
+    10794:           <>
+    10795:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10796:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_base_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_base_unit: parseNum(v)})} keyboardType="numeric" placeholder="تخفیف واحد پایه" placeholderTextColor={C.textMut} />
+    10797:             </View>
+    10798:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10799:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_pack_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_pack_unit: parseNum(v)})} keyboardType="numeric" placeholder="تخفیف واحد بسته" placeholderTextColor={C.textMut} />
+    10800:             </View>
+    10801:                 {/* هدر ستون‌های تخفیف در جدول اصلی */}
+    10802:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10803:                   <Text style={[s.tdHeader, { color: '#0891b2', fontWeight: 'bold' }]}>تخفیف واحد پایه</Text>
+    10804:                 </View>
+    10805:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10806:                   <Text style={[s.tdHeader, { color: '#0891b2', fontWeight: 'bold' }]}>تخفیف واحد بسته</Text>
+    10807:                 </View>
+    10808:           </>
+    10809:         )}
+    10810: 
+    10811:                 <View style={{ width: 140, paddingHorizontal: 2 }}>
+    10812:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.code || '')} onChangeText={(v: string) => setEditing({ ...editing, code: v })} placeholder="کد" placeholderTextColor={C.textMut} />
+    10813:                 </View>
+    10814:                 <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
+    10815:                   <TouchableOpacity onPress={save} style={{ backgroundColor: '#059669', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>💾</Text></TouchableOpacity>
+    10816:                   <TouchableOpacity onPress={() => setEditing(null)} style={{ backgroundColor: '#64748b', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>✕</Text></TouchableOpacity>
+    10817:                 </View>
+    10818:               </View>
+    10819:             )}
+    10820: 
+    10821:             {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((p: any, i: number) => (
+    10822:               <View key={p.local_id || p.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+    10823:                 <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+    10824:                 <Text style={[s.tdCell, { width: 200, fontSize: 12, color: C.text, fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{p.name || '—'}</Text>
+    10825:                 <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(p.price || 0)}</Text>
+    10826:                 <Text style={[s.tdCell, { width: 120, fontSize: 12, color: C.text }]}>{p.shelf || '—'}</Text>
+    10827:                 <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0ea5e9', fontWeight: 'bold' }]}>{p.uom_label || p.base_unit || p.unit_label || 'عدد'}</Text>
+    10828:                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_size ? toFaNum(p.pack_size) : '—'}</Text>
+    10829:                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.base_unit || 'عدد'}</Text>
+>>> 10830:                 <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_unit || '—'}</Text>
+    10831:         {/* ستون‌های تخفیف در لیست اصلی */}
+    10832:         {Number(p.pack_size) > 0 && (

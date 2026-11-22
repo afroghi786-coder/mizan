@@ -1,0 +1,78 @@
+=== نمایش خطوط واقعی ===
+
+1. خطوط اطراف discount_base_unit:
+
+خط 2797:
+  2794: 
+  2795: 
+  2796:   const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '', pack_size: 0,
+  2797:         discount_base_unit: 0,
+  2798:         discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+  2799: 
+  2800:   const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
+
+خط 7651:
+  7648: 
+  7649:   const delRow = (i: number) => { const n = [...editRows]; n[i]._deleted = !n[i]._deleted; setEditRows(n); setDirty(true); };
+  7650: 
+  7651:   const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', shipping: '', base_unit: '', pack_unit: '', pack_size: 0, entered_unit: 'base', entered_qty: 0, _deleted: false, _new: true , discount_base_unit: Number(p.discount_base_unit) || 0, discount_pack_unit: Number(p.discount_pack_unit) || 0}]); setDirty(true); };
+  7652: 
+  7653:   const updRow = (i: number, f: string, v: any) => { const n = [...editRows]; (n[i] as any)[f] = v; setEditRows(n); setDirty(true); };
+  7654: 
+
+خط 10640:
+  10637: 
+  10638:   const startNew = () => {
+  10639:     const nextCode = getNextProductCode(list, drafts);
+  10640:     setDrafts((prev: any[]) => [...prev, { id: null, code: nextCode, name: '', price: 0, shelf: '', uom_label: 'عدد', pack_size: 0, base_unit: 'عدد', pack_unit: 'بسته', discount_base_unit: 0, discount_pack_unit: 0 }]);
+  10641:   };
+  10642: 
+  10643:   const updateDraft = (idx: number, field: string, value: any) => {
+
+خط 10748:
+  10745:         {Number(d.pack_size) > 0 && (
+  10746:           <>
+  10747:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10748:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_base_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'discount_base_unit', parseNum(v))} keyboardType="numeric" placeholder="0" />
+  10749:             </View>
+  10750:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10751:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_pack_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'discount_pack_unit', parseNum(v))} keyboardType="numeric" placeholder="0" />
+
+خط 10787:
+  10784:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.base_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, base_unit: v })} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
+  10785:                 </View>
+  10786:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10787:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, pack_unit: v , discount_base_unit: Number(p.discount_base_unit) || 0, discount_pack_unit: Number(p.discount_pack_unit) || 0})} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
+  10788:                 </View>
+  10789:         {/* فیلدهای تخفیف - فقط در صورت تعریف pack_size */}
+  10790:         {Number(editing.pack_size) > 0 && (
+
+خط 10793:
+  10790:         {Number(editing.pack_size) > 0 && (
+  10791:           <>
+  10792:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10793:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_base_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_base_unit: parseNum(v)})} keyboardType="numeric" placeholder="0" />
+  10794:             </View>
+  10795:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10796:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_pack_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_pack_unit: parseNum(v)})} keyboardType="numeric" placeholder="0" />
+
+
+2. خطوط اطراف tdHeader:
+
+
+3. خطوط اطراف saveDraft:
+
+خط 9632:
+  9632:   const saveDrafts = async () => {
+  9633:     if (!drafts.length) return;
+  9634:     for (const d of drafts) if (!d.name) { showToast('نام در همه ردیف‌ها الزامی است', true); return; }
+  9635: 
+  9636:     // چک تلفن تکراری
+  9637:     for (let i = 0; i < drafts.length; i++) {
+  9638:       const p = String(drafts[i].phone || '').replace(/[^0-9]/g, '');
+  9639:       if (!p) continue;
+  9640:       const existing = list.find((x: any) => String(x.phone || '').replace(/[^0-9]/g, '') === p);
+  9641:       if (existing) {
+  9642:         showToast('⚠️ شماره «' + p + '» قبلاً برای «' + (existing.name || '') + '» ثبت شده است', true);
+  9643:         return;
+  9644:       }

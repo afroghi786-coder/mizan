@@ -1,0 +1,74 @@
+=== تشخیص جامع فرم‌های برگشت از خرید و فروش ===
+
+1. فرم برگشت از فروش:
+  شروع: خط 8386
+
+  جستجوی عمومی فرم برگشت از فروش:
+  خط 2751: const [returnInvoice, setReturnInvoice] = useState<any>(null);
+  خط 7510: const [returnInvoice, setReturnInvoice] = useState<any>(null);
+  خط 7829: if (!returnInvoice) return;
+  خط 7841: const savedType = returnInvoice.type;
+  خط 7853: original_invoice_number: returnInvoice.invoice,
+  خط 7854: party_name: returnInvoice.name,
+  خط 7855: party_code: returnInvoice.code,
+  خط 8253: ↩️ ثبت برگشت {returnInvoice?.type === 'sales' ? 'از فروش' : 'از خرید'}
+  خط 8256: فاکتور {returnInvoice?.invoice} — {returnInvoice?.name}
+
+2. فرم برگشت از خرید:
+  جستجوی عمومی فرم برگشت از خرید:
+  خط 71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOn
+  خط 7875: await createPurchaseReturn(payload);
+  خط 8386: const data = type === 'sales' ? await getSalesReturns() : await getPurchaseReturns();
+  خط 8402: else await deletePurchaseReturn(id);
+  خط 8461: else await updatePurchaseReturn(id, payload);
+
+3. فیلدهای ذخیره‌سازی (insert/upsert) در برگشت‌ها:
+
+4. ساختار داده برگشت‌ها (فیلدهای ذخیره شده):
+  خط 5945: var _qty = function(r: any) { return Number(r.quantity || r.return_qty || r.qty || 0) || 0; };
+  خط 7807: returnQty: 0,
+  خط 7830: const items = returnRows.filter((r: any) => Number(r.returnQty) > 0);
+  خط 7834: if (Number(it.returnQty) > Number(it.quantity)) {
+  خط 7843: const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);
+  خط 8305: value={String(r.returnQty || '')}
+  خط 8308: n[i].returnQty = parseNum(v);
+  خط 8329: جمع کالای برگشتی: {fmt(returnRows.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0))}
+  خط 8335: جمع کل: {fmt(returnRows.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0) + (Number(returnShipping) || 0))}
+  خط 8424: returnQty: Number(it.returnQty || it.quantity) || 0,
+  خط 8430: const items = editItems.filter((r: any) => Number(r.returnQty) > 0);
+  خط 8433: if (Number(it.returnQty) > Number(it.quantity)) {
+  خط 8440: const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);
+  خط 8639: value={String(r.returnQty || '')}
+  خط 8642: n[i].returnQty = parseNum(v);
+
+5. منطق محاسبات انبار (تأثیر برگشت‌ها):
+  خط 6014: var summary = '<div class="info"><b>📪 موجودی:</b> ' + fmt(stock) + ' ' + _bU + ' &nbsp;|&nbsp; <b>⬇ خرید:</b> ' + fmt(totalBoughtQty) + ' &nbsp;|&nbsp; <b>⬆ فروش:</b> ' + fmt(totalSoldQty) + ' &nbsp;
+
+6. منطق محاسبات سود (تأثیر برگشت‌ها):
+  خط 2081: if (name === 'profit') return <ProfitScreen showToast={showToast} settings={settings} />;
+  خط 5608: if (!profitRef.current) return showToast('آماده‌سازی تصویر...', false);
+
+7. فرم‌های برگشت (خطوط 7200-8100):
+  خط 7240: function NewOrderSection({ showToast }: any) {
+  خط 7284: try { const f = await lookupCustomerByPhone(d); if (f) { setStatus('✅'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAdd
+  خط 7488: function SearchSection({ showToast, onReturnSaved }: any) {
+  خط 7509: const [returnModalOpen, setReturnModalOpen] = useState(false);
+  خط 7510: const [returnInvoice, setReturnInvoice] = useState<any>(null);
+  خط 7511: const [returnRows, setReturnRows] = useState<any[]>([]);
+  خط 7512: const [returnSaving, setReturnSaving] = useState(false);
+  خط 7789: const [returnReason, setReturnReason] = useState('');
+  خط 7790: const [returnShipping, setReturnShipping] = useState('');
+  خط 7791: const [returnSettlement, setReturnSettlement] = useState('credit');
+  خط 7792: const [returnBank, setReturnBank] = useState('');
+  خط 7793: const [returnHolder, setReturnHolder] = useState('');
+  خط 7794: const [returnDepositDate, setReturnDepositDate] = useState('');
+  خط 7795: const [returnNote, setReturnNote] = useState('');
+  خط 7797: const openReturn = async (inv: string, type: string) => {
+  خط 7828: const submitReturn = async () => {
+  خط 7834: if (Number(it.returnQty) > Number(it.quantity)) {
+
+8. فیلدهای فرم برگشت (items array):
+  خط 7807: returnQty: 0,
+  خط 7830: const items = returnRows.filter((r: any) => Number(r.returnQty) > 0);
+  خط 7834: if (Number(it.returnQty) > Number(it.quantity)) {
+  خط 7843: const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);

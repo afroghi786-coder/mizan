@@ -1,0 +1,22 @@
+=== بررسی دقیق وضعیت فعلی ===
+
+1. UI کاردکس فروش (خط 6806):
+                            <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || r.party_name || r.customer || r.payer_name || '—'}</Text>
+
+2. UI کاردکس برگشت از فروش (خط 6843):
+        </View>
+
+3. UI کاردکس برگشت از خرید (خط 6874):
+          <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+
+4. پرینت _mkHtml - فروش (خط 5954):
+      return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || r.party_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+
+5. پرینت _mkHtml - برگشت از فروش (خط 5962):
+      return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || r.party_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+
+6. پرینت _mkHtml - برگشت از خرید (خط 5970):
+      return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.party_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+
+7. تعداد دفعات party_name در فایل:
+   9 مورد

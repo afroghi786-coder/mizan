@@ -1,0 +1,42 @@
+=== تشخیص ساختار جدول لیست کالاها ===
+
+1. جستجوی رندر لیست کالاها (حدود خطوط 10600 تا 11000):
+
+✅ خط 10727: {drafts.map((d, idx) => (
+   --- 30 خط بعدی ---
+   10727: {drafts.map((d, idx) => (
+   10728: <View key={'draft-' + idx} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+   10729: <Text style={[s.tdCell, { width: 40, textAlign: 'center', color: '#d4af37', fontWeight: 'bold' }]}>D{idx + 1}</Text>
+   10730: <View style={{ width: 200, paddingHorizontal: 2 }}>
+   10731: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v: stri
+   10732: </View>
+   10733: <View style={{ width: 130, paddingHorizontal: 2 }}>
+   10734: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.price || '')} onChangeText={(v: str
+   10735: </View>
+   10736: <View style={{ width: 120, paddingHorizontal: 2 }}>
+   10737: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.shelf || '')} onChangeText={(v: str
+   10738: </View>
+   10739: <View style={{ width: 110, paddingHorizontal: 2 }}>
+   10740: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.uom_label || '')} onChangeText={(v:
+   10741: </View>
+   10742: <View style={{ width: 90, paddingHorizontal: 2 }}>
+   10743: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_size || '')} onChangeText={(v:
+   10744: </View>
+   10745: <View style={{ width: 90, paddingHorizontal: 2 }}>
+   10746: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_unit || '')} onChangeText={(v:
+   10747: </View>
+   10748: <View style={{ width: 90, paddingHorizontal: 2 }}>
+   10749: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_unit || '')} onChangeText={(v:
+   10750: </View>
+   10751: {/* فیلدهای تخفیف - فقط در صورت تعریف pack_size */}
+   10752: {Number(d.pack_size) > 0 && (
+   10753: <>
+   10754: <View style={{ width: 90, paddingHorizontal: 2 }}>
+   10755: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_base_unit || '')} onChange
+   10756: </View>
+   ------------------
+
+2. جستجوی نمایش pack_unit در لیست:
+   خط 10749: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_unit', v)} plac
+   خط 10827: <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_unit || '—'}</Text>
+   خط 10862: const itemsRows = (invoice.current?.items || []).map((it: any, i: number) => { const _u = prods.find((p: any) => String(p.code || '') === String(it.modelCode || '')); const bU = it.base_unit || (_u ? 

@@ -1,0 +1,65 @@
+=== تشخیص دقیق UI کاردکس فروش (خطوط 6795-6815) ===
+
+خط 6795:
+
+---
+خط 6796:
+                        {modelKardexData.sales.map((r: any, i: number) => (
+---
+خط 6797:
+
+---
+خط 6798:
+                          <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+---
+خط 6799:
+
+---
+خط 6800:
+                            <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+---
+خط 6801:
+
+---
+خط 6802:
+                            <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+---
+خط 6803:
+
+---
+خط 6804:
+                            <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+---
+خط 6805:
+
+---
+خط 6806:
+                            <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || r.party_name || r.customer || r.payer_name || '—'}</Text>
+---
+خط 6807:
+
+---
+خط 6808:
+                            <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; return _u.base_unit || 'عدد'; })()}</Text>
+---
+خط 6809:
+          <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = prodMap.get(String(modelKardexCode)) || {}; if (_u.pack_size > 0) { const packs = (Number(r.quantity) || 0) / Number(_u.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
+---
+خط 6810:
+
+---
+خط 6811:
+                            <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+---
+خط 6812:
+
+---
+خط 6813:
+                            <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+---
+خط 6814:
+
+---
+خط 6815:
+                          </View>
+---

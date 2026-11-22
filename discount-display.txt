@@ -1,0 +1,75 @@
+=== تشخیص مشکل نمایش فیلدهای تخفیف ===
+
+1. جستجوی discount_base_unit در فایل:
+  2797: discount_base_unit: 0,
+  2798: discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+  10748: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_base_unit || '')} onChange
+  10751: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_pack_unit || '')} onChange
+  10793: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_base_unit || '')} on
+  10796: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_pack_unit || '')} on
+
+  مجموع: 6 مورد یافت شد
+
+2. خطوط اطراف pack_unit در فرم ثبت (10735-10760):
+  10735:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10736:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_size || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_size', parseFloat(v) || 0)} keyboardType="numeric" placeholder="در بسته" placeholderTextColor={C.textMut} />
+  10737:                 </View>
+  10738:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10739:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'base_unit', v)} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
+  10740:                 </View>
+  10741:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10742:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_unit', v)} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
+  10743:                 </View>
+  10744:         {/* فیلدهای تخفیف - فقط در صورت تعریف pack_size */}
+  10745:         {Number(d.pack_size) > 0 && (
+  10746:           <>
+  10747:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10748:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_base_unit || '')} onChangeText={(v: string) => updateDraft(d.id, 'discount_base_unit', parseNum(v))} keyboardType="numeric" placeholder="0" />
+  10749:             </View>
+  10750:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10751:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_pack_unit || '')} onChangeText={(v: string) => updateDraft(d.id, 'discount_pack_unit', parseNum(v))} keyboardType="numeric" placeholder="0" />
+  10752:             </View>
+  10753:           </>
+  10754:         )}
+  10755: 
+  10756:                 <View style={{ width: 140, paddingHorizontal: 2 }}>
+  10757:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: string) => updateDraft(idx, 'code', v)} placeholder="کد" placeholderTextColor={C.textMut} />
+  10758:                 </View>
+  10759:                 <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
+  10760:                   <TouchableOpacity onPress={() => removeDraft(idx)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>✕</Text></TouchableOpacity>
+
+3. خطوط اطراف pack_unit در فرم ویرایش (10768-10795):
+  10768:                 <View style={{ width: 200, paddingHorizontal: 2 }}>
+  10769:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.name || '')} onChangeText={(v: string) => setEditing({ ...editing, name: v })} onEndEditing={autoProductCode} placeholder="نام *" placeholderTextColor={C.textMut} />
+  10770:                 </View>
+  10771:                 <View style={{ width: 130, paddingHorizontal: 2 }}>
+  10772:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.price || '')} onChangeText={(v: string) => setEditing({ ...editing, price: parseFloat(v) || 0 })} keyboardType="numeric" placeholder="قیمت" placeholderTextColor={C.textMut} />
+  10773:                 </View>
+  10774:                 <View style={{ width: 120, paddingHorizontal: 2 }}>
+  10775:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.shelf || '')} onChangeText={(v: string) => setEditing({ ...editing, shelf: v })} placeholder="قفسه" placeholderTextColor={C.textMut} />
+  10776:                 </View>
+  10777:                 <View style={{ width: 110, paddingHorizontal: 2 }}>
+  10778:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.uom_label || '')} onChangeText={(v: string) => setEditing({ ...editing, uom_label: v })} placeholder="واحد" placeholderTextColor={C.textMut} />
+  10779:                 </View>
+  10780:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10781:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_size || '')} onChangeText={(v: string) => setEditing({ ...editing, pack_size: parseFloat(v) || 0 })} keyboardType="numeric" placeholder="در بسته" placeholderTextColor={C.textMut} />
+  10782:                 </View>
+  10783:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10784:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.base_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, base_unit: v })} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
+  10785:                 </View>
+  10786:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10787:                   <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, pack_unit: v })} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
+  10788:                 </View>
+  10789:         {/* فیلدهای تخفیف - فقط در صورت تعریف pack_size */}
+  10790:         {Number(editing.pack_size) > 0 && (
+  10791:           <>
+  10792:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+  10793:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_base_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_base_unit: parseNum(v)})} keyboardType="numeric" placeholder="0" />
+  10794:             </View>
+  10795:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+
+4. جستجوی فیلدهای تخفیف بعد از pack_unit:
+  ✅ فیلد تخفیف در خط 10748 پیدا شد (بعد از pack_unit در خط 10742)
+  ✅ فیلد تخفیف در خط 10751 پیدا شد (بعد از pack_unit در خط 10751)
+  ✅ فیلد تخفیف در خط 10793 پیدا شد (بعد از pack_unit در خط 10787)
+  ✅ فیلد تخفیف در خط 10796 پیدا شد (بعد از pack_unit در خط 10796)

@@ -1,0 +1,44 @@
+=== بررسی دقیق UI تمام کاردکس‌ها ===
+
+
+=== کاردکس خرید ===
+خط 6711: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+  6719: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6721: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6723: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+  6725: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+  6727: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد (واحد پایه)</Text>
+  6728: <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
+  6730: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6732: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+
+=== کاردکس فروش ===
+خط 6771: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#fef3c7', padding: 6, borderRadius: 4, margin
+  6779: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6781: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6783: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور</Text>
+  6785: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مشتری</Text>
+  6787: <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+  6789: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6791: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+
+=== کاردکس برگشت از فروش ===
+خط 6029: var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor |
+
+=== کاردکس برگشت از خرید ===
+خط 6030: var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_facto
+
+=== کاردکس تعدیل ===
+خط 6695: <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 11 }}>⚖️ جمع ارزش تعدیل: {fmt((modelKardexData.adjustments || []).reduce((a: number, r:
+  6697: <Text style={{ color: '#d4af37', fontWeight: 'bold', fontSize: 11 }}>💰 جمع فروش: {fmt((modelKardexData.sales || []).reduce((a: number, r: any) => a +
+  6703: <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>📤 خروجی (PDF / چاپ / اکسل)</Text>
+  6711: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+  6719: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+
+=== بررسی _mkHtml (پرینت کاردکس) ===
+خط 5938: const _mkHtml = (data: any) => {
+  5946: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+  5954: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+  5962: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fm
+  5970: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fm
+  5979: return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty >= 0 ? '+' : '') + fmt(qty) + '</td><td>' + fmt(uCost) + '</td><td style="font-weight:bold">' + fmt

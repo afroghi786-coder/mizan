@@ -1,0 +1,41 @@
+=== پیدا کردن تمام هدرهای جدول (tdHeader) ===
+
+
+مورد 1 - خط 10803:
+    10793:         {Number(editing.pack_size) > 0 && (
+    10794:           <>
+    10795:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10796:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_base_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_base_unit: parseNum(v)})} keyboardType="numeric" placeholder="تخفیف واحد پایه" placeholderTextColor={C.textMut} />
+    10797:             </View>
+    10798:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10799:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_pack_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_pack_unit: parseNum(v)})} keyboardType="numeric" placeholder="تخفیف واحد بسته" placeholderTextColor={C.textMut} />
+    10800:             </View>
+    10801:                 {/* هدر ستون‌های تخفیف در جدول اصلی */}
+    10802:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+>>> 10803:                   <Text style={[s.tdHeader, { color: '#0891b2', fontWeight: 'bold' }]}>تخفیف واحد پایه</Text>
+    10804:                 </View>
+    10805:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10806:                   <Text style={[s.tdHeader, { color: '#0891b2', fontWeight: 'bold' }]}>تخفیف واحد بسته</Text>
+    10807:                 </View>
+    10808:           </>
+
+مورد 2 - خط 10806:
+    10796:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_base_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_base_unit: parseNum(v)})} keyboardType="numeric" placeholder="تخفیف واحد پایه" placeholderTextColor={C.textMut} />
+    10797:             </View>
+    10798:             <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10799:               <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_pack_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_pack_unit: parseNum(v)})} keyboardType="numeric" placeholder="تخفیف واحد بسته" placeholderTextColor={C.textMut} />
+    10800:             </View>
+    10801:                 {/* هدر ستون‌های تخفیف در جدول اصلی */}
+    10802:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+    10803:                   <Text style={[s.tdHeader, { color: '#0891b2', fontWeight: 'bold' }]}>تخفیف واحد پایه</Text>
+    10804:                 </View>
+    10805:                 <View style={{ width: 90, paddingHorizontal: 2 }}>
+>>> 10806:                   <Text style={[s.tdHeader, { color: '#0891b2', fontWeight: 'bold' }]}>تخفیف واحد بسته</Text>
+    10807:                 </View>
+    10808:           </>
+    10809:         )}
+    10810: 
+    10811:                 <View style={{ width: 140, paddingHorizontal: 2 }}>
+
+
+مجموع: 2 هدر پیدا شد

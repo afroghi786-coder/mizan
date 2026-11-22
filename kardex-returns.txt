@@ -1,0 +1,105 @@
+=== جستجوی UI کاردکس برگشت‌ها ===
+
+خط 6826: {(modelKardexData.salesReturns || []).length > 0 && (
+  6828: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+  6832: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6833: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6834: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>برگشت</Text>
+  6835: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+  6836: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مشتری</Text>
+  6837: <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+  6838: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6839: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6843: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6844: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}<
+  6845: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+خط 6828: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+  6832: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6833: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6834: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>برگشت</Text>
+  6835: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+  6836: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مشتری</Text>
+  6837: <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+  6838: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6839: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6843: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6844: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}<
+  6845: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+  6846: <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+  6847: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+خط 6841: {modelKardexData.salesReturns.map((r: any, i: number) => (
+  6843: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6844: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}<
+  6845: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+  6846: <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+  6847: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+  6848: <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+  6849: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+  6850: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_
+  6859: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+خط 6857: {(modelKardexData.purchaseReturns || []).length > 0 && (
+  6859: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+  6863: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6864: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6865: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>برگشت</Text>
+  6866: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+  6867: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+  6868: <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+  6869: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6870: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6874: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6875: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}<
+  6876: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+خط 6859: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+  6863: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6864: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6865: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>برگشت</Text>
+  6866: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>فاکتور اصلی</Text>
+  6867: <Text style={{ width: 130, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تأمین‌کننده</Text>
+  6868: <Text style={{ width: 60, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+  6869: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+  6870: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+  6874: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6875: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}<
+  6876: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+  6877: <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+  6878: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || '—'}</Text>
+خط 6872: {modelKardexData.purchaseReturns.map((r: any, i: number) => (
+  6874: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6875: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor) : String(r.date_factor || '').slice(0, 10)}<
+  6876: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.return_number || '—'}</Text>
+  6877: <Text style={{ width: 90, fontSize: 10, textAlign: 'center' }}>{r.original_invoice_number || '—'}</Text>
+  6878: <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.supplier_name || '—'}</Text>
+  6879: <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+  6880: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+  6881: <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_
+  6890: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+خط 6888: {(modelKardexData.adjustments || []).length > 0 && (
+  6890: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+  6894: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6895: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6896: <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>دلیل</Text>
+  6897: <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+  6898: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>بهای واحد</Text>
+  6899: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>ارزش کل</Text>
+  6900: <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>یادداشت</Text>
+خط 6890: <Text style={{ color: '#0f2438', fontWeight: 'bold', fontSize: 13, textAlign: 'right', backgroundColor: '#eff6ff', padding: 6, borderRadius: 4, margin
+  6894: <Text style={{ width: 30, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>#</Text>
+  6895: <Text style={{ width: 150, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>تاریخ</Text>
+  6896: <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>دلیل</Text>
+  6897: <Text style={{ width: 70, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>مقدار</Text>
+  6898: <Text style={{ width: 80, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>بهای واحد</Text>
+  6899: <Text style={{ width: 90, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>ارزش کل</Text>
+  6900: <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>یادداشت</Text>
+  6908: <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+  6909: <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.adjustment_date || r.created_at) : String(r.adjustment_da
+
+=== بررسی چرا کاردکس خرید خالی است ===
+خط 6748 (واحد پایه):
+                            <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = getPackForCodeGlobal(modelKardexCode); return _u ? _u.base_unit || 'عدد' : 'عدد'; })()}</Text>
+
+خط 6749 (واحد بسته):
+<Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = getPackForCodeGlobal(modelKardexCode); if (_u && _u.pack_size > 0) { const packs = (Number(r.quantity) || 0) / Number(_u.pack_size); return packs.toFixed(2).replace(/\.00$/, '') + ' ' + (_u.pack_unit || 'بسته'); } return '—'; })()}</Text>
+
+بررسی modelKardexCode:
+خط 6015: try { const r = await shareHtmlAsPdf(_mkHtml(modelKardexData), 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.pdf'); showToast(r.ok ? '✅ ' +

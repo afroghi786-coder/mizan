@@ -1,0 +1,189 @@
+
+=== _mkHtml کامل (هدرها + ردیف‌ها + colspan) ===
+5930:       showToast('خطا: ' + (e?.message || ''), true);
+5931:     } finally {
+5932:       setModelKardexLoading(false);
+5933:     }
+5934:   }, []);
+5935: 
+5936: 
+5937: 
+5938:   const _mkHtml = (data: any) => {
+5939:     var cur = getCurrencySync().label || 'افغانی';
+5940: 
+5941:     var pRows = (data.purchases || []).map(function(r: any, i: number) {
+5942:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5943:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5944:       var qty = Number(r.quantity) || 0;
+5945:       var price = Number(r.price_unit) || 0;
+5946:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || r.payer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5947:     }).join('');
+5948: 
+5949:     var sRows = (data.sales || []).map(function(r: any, i: number) {
+5950:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5951:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5952:       var qty = Number(r.quantity) || 0;
+5953:       var price = Number(r.price_unit) || 0;
+5954:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5955:     }).join('');
+5956: 
+5957:     var srRows = (data.salesReturns || []).map(function(r: any, i: number) {
+5958:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5959:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5960:       var qty = Number(r.quantity) || 0;
+5961:       var price = Number(r.price_unit) || 0;
+5962:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.customer_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5963:     }).join('');
+5964: 
+5965:     var prRows = (data.purchaseReturns || []).map(function(r: any, i: number) {
+5966:       var d = r.date_factor || r.date_reg || r.created_at || '';
+5967:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5968:       var qty = Number(r.quantity) || 0;
+5969:       var price = Number(r.price_unit) || 0;
+5970:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td>' + (r.return_number || '—') + '</td><td>' + (r.original_invoice_number || '—') + '</td><td style="text-align:right">' + (r.supplier_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + fmt(price) + '</td><td style="font-weight:bold">' + fmt(qty * price) + '</td></tr>';
+5971:     }).join('');
+5972: 
+5973:     var adjRows = (data.adjustments || []).map(function(r: any, i: number) {
+5974:       var d = r.adjustment_date || r.created_at || '';
+5975:       var dt = displayDate ? displayDate(d) : String(d).slice(0, 19);
+5976:       var qty = Number(r.adjustment) || 0;
+5977:       var uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+5978:       var totalVal = qty * uCost;
+5979:       return '<tr><td>' + (i + 1) + '</td><td>' + dt + '</td><td style="text-align:right">' + (r.reason || '—') + '</td><td style="font-weight:bold;color:' + (qty >= 0 ? '#059669' : '#dc2626') + '">' + (qty >= 0 ? '+' : '') + fmt(qty) + '</td><td>' + fmt(uCost) + '</td><td style="font-weight:bold">' + fmt(totalVal) + '</td><td style="text-align:right">' + (r.note || '') + '</td></tr>';
+5980:     }).join('');
+5981: 
+5982:     var totalP = (data.purchases || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+5983:     var totalS = (data.sales || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+5984:     var totalBoughtQty = (data.purchases || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5985:     var totalSoldQty = (data.sales || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5986:     var totalSRQty = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5987:     var totalPRQty = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + (Number(r.quantity) || 0); }, 0);
+5988:     var totalAdj = (data.adjustments || []).reduce(function(a: number, r: any) { return a + (Number(r.adjustment) || 0); }, 0);
+5989:     var stock = totalBoughtQty - totalSoldQty + totalSRQty - totalPRQty + totalAdj;
+5990: 
+5991:     var summary = '<div class="info"><b>📦 موجودی:</b> ' + fmt(stock) + ' &nbsp;|&nbsp; <b>⬇ خرید:</b> ' + fmt(totalBoughtQty) + ' &nbsp;|&nbsp; <b>⬆ فروش:</b> ' + fmt(totalSoldQty) + ' &nbsp;|&nbsp; <b>↩ برگشت فروش:</b> ' + fmt(totalSRQty) + ' &nbsp;|&nbsp; <b>↪ برگشت خرید:</b> ' + fmt(totalPRQty) + ' &nbsp;|&nbsp; <b>⚖ تعدیل:</b> ' + fmt(totalAdj) + '</div>';
+5992:     var _totalSRVal = (data.salesReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+5993:     var _totalPRVal = (data.purchaseReturns || []).reduce(function(a: number, r: any) { return a + ((Number(r.quantity) || 0) * (Number(r.price_unit) || 0)); }, 0);
+5994:     var _totalAdjVal = (data.adjustments || []).reduce(function(a: number, r: any) { return a + ((Number(r.adjustment) || 0) * (Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0)); }, 0);
+5995:     var summary2 = '<div class="info"><b>💵 جمع خرید:</b> ' + fmt(totalP) + ' ' + cur + ' &nbsp;|&nbsp; <b>💰 جمع فروش:</b> ' + fmt(totalS) + ' ' + cur + ' &nbsp;|&nbsp; <b>↩ جمع برگشت فروش:</b> ' + fmt(_totalSRVal) + ' ' + cur + ' &nbsp;|&nbsp; <b>↪ جمع برگشت خرید:</b> ' + fmt(_totalPRVal) + ' ' + cur + ' &nbsp;|&nbsp; <b>⚖ جمع ارزش تعدیل:</b> ' + fmt(_totalAdjVal) + ' ' + cur + '</div>';
+5996: 
+5997:     var serial = 'MK-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (data.model && data.model.code || '');
+5998:     var meta = '<div class="info"><b>📄 شماره سند:</b> ' + serial + ' &nbsp;|&nbsp; <b>📅 تاریخ:</b> ' + new Date().toLocaleDateString('fa-IR') + '</div>';
+5999: 
+6000:     var pTable = (data.purchases || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬇ خریدها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + pRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="4" style="text-align:right">جمع</td><td>' + fmt(totalBoughtQty) + '</td><td></td><td>' + fmt(totalP) + '</td></tr></table>' : '';
+6001:     var sTable = (data.sales || []).length > 0 ? '<h3 style="margin:8px 0;color:#0f2438">⬆ فروش‌ها</h3><table><tr><th>#</th><th>تاریخ</th><th>فاکتور</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + sRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="4" style="text-align:right">جمع</td><td>' + fmt(totalSoldQty) + '</td><td></td><td>' + fmt(totalS) + '</td></tr></table>' : '';
+6002:     var srTable = (data.salesReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↩ برگشت از فروش</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>مشتری</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + srRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="5" style="text-align:right">جمع</td><td>' + fmt(totalSRQty) + '</td><td></td><td>' + fmt(_totalSRVal) + '</td></tr></table>' : '';
+6003:     var prTable = (data.purchaseReturns || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">↪ برگشت از خرید</h3><table><tr><th>#</th><th>تاریخ</th><th>برگشت</th><th>فاکتور اصلی</th><th>تأمین‌کننده</th><th>تعداد</th><th>قیمت</th><th>جمع</th></tr>' + prRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="5" style="text-align:right">جمع</td><td>' + fmt(totalPRQty) + '</td><td></td><td>' + fmt(_totalPRVal) + '</td></tr></table>' : '';
+6004:     var adjTable = (data.adjustments || []).length > 0 ? '<h3 style="margin:8px 0;color:#b45309">⚖ تعدیلات انبار</h3><table><tr><th>#</th><th>تاریخ</th><th>دلیل</th><th>مقدار</th><th>بهای واحد</th><th>ارزش کل</th><th>یادداشت</th></tr>' + adjRows + '<tr style="font-weight:bold;background:#fef3c7"><td colspan="3" style="text-align:right">جمع</td><td>' + fmt(totalAdj) + '</td><td></td><td>' + fmt(_totalAdjVal) + '</td><td></td></tr></table>' : '';
+6005: 
+6006:     var signs = mizanSignaturesHtml(['امضای انباردار', 'امضای مدیر مالی', 'مهر شرکت']);
+6007:     var note = mizanComputerNoteHtml();
+6008:     return buildStandardHtml('کاردکس مدل: ' + data.name, meta + summary + summary2 + pTable + sTable + srTable + prTable + adjTable + signs + note, '📦 ' + (data.model && data.model.code || ''));
+6009:   };
+6010: 
+6011: 
+6012: 
+
+=== Excel کاردکس ===
+6025:   const _mkExcel = async () => {
+6026:     try {
+6027:       var pData = (modelKardexData.purchases || []).map(function(r: any, i: number) { return { 'نوع': 'خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.supplier_name || r.payer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+6028:       var sData = (modelKardexData.sales || []).map(function(r: any, i: number) { return { 'نوع': 'فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'فاکتور': r.invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+6029:       var srData = (modelKardexData.salesReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت فروش', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.customer_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+6030:       var prData = (modelKardexData.purchaseReturns || []).map(function(r: any, i: number) { return { 'نوع': 'برگشت خرید', '#': i + 1, 'تاریخ': r.date_factor || r.date_reg || '', 'برگشت': r.return_number || '', 'فاکتور اصلی': r.original_invoice_number || '', 'طرف': r.supplier_name || '', 'تعداد': Number(r.quantity) || 0, 'قیمت': Number(r.price_unit) || 0, 'جمع': (Number(r.quantity) || 0) * (Number(r.price_unit) || 0) }; });
+6031:       var adjData = (modelKardexData.adjustments || []).map(function(r: any, i: number) {
+6032:         var _qty = Number(r.adjustment) || 0;
+6033:         var _uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+6034:         return { 'نوع': 'تعدیل', '#': i + 1, 'تاریخ': r.adjustment_date || r.created_at || '', 'دلیل': r.reason || '', 'مقدار': _qty, 'بهای واحد': _uCost, 'ارزش کل': _qty * _uCost, 'یادداشت': r.note || '' };
+6035:       });
+6036:       var r = await exportExcel([{ name: 'خرید', data: pData }, { name: 'فروش', data: sData }, { name: 'برگشت فروش', data: srData }, { name: 'برگشت خرید', data: prData }, { name: 'تعدیلات', data: adjData }], 'model-kardex-' + modelKardexCode + '-' + Date.now() + '.xlsx');
+6037:       showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+6038:     } catch (e: any) { showToast('خطا: ' + (e?.message || ''), true); }
+6039:   };
+6040: 
+6041:   const modelKardexMenu = () => {
+6042: 
+6043:     if (Platform.OS === 'web') { _mkPrint(); return; }
+6044: 
+6045:     Alert.alert('خروجی کاردکس مدل', 'نوع خروجی:', [
+6046: 
+6047:       { text: '📄 PDF / اشتراک', onPress: _mkSharePdf },
+6048: 
+
+=== بدنه UI فروش ===
+6795:                         {modelKardexData.sales.map((r: any, i: number) => (
+6796: 
+6797:                           <View key={i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6798: 
+6799:                             <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6800: 
+6801:                             <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.date_factor || r.date_reg || r.created_at) : '—'}</Text>
+6802: 
+6803:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', color: '#7c3aed' }}>{r.invoice_number || '—'}</Text>
+6804: 
+6805:                             <Text style={{ width: 130, fontSize: 10, textAlign: 'right', fontWeight: 'bold' }}>{r.customer_name || '—'}</Text>
+6806: 
+6807:                             <Text style={{ width: 60, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)}</Text>
+6808: 
+6809:                             <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.price_unit) || 0)}</Text>
+6810: 
+6811:                             <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+6812: 
+6813:                           </View>
+6814: 
+6815:                         ))}
+6816: 
+6817:                       </View>
+6818: 
+6819:                     </ScrollView>
+6820: 
+6821:                   </View>
+6822: 
+6823:                 )}
+6824: 
+6825:                 
+
+=== بدنه UI تعدیل ===
+6900:           <Text style={{ width: 140, color: '#d4af37', fontSize: 10, fontWeight: 'bold', textAlign: 'center' }}>یادداشت</Text>
+6901:         </View>
+6902:         {modelKardexData.adjustments.map((r: any, i: number) => {
+6903:           var adjVal = Number(r.adjustment) || 0;
+6904:           var uCost = Number(r.unit_cost != null ? r.unit_cost : (r.unitCost != null ? r.unitCost : r.cost)) || 0;
+6905:           var totalVal = adjVal * uCost;
+6906:           return (
+6907:             <View key={'adj' + i} style={{ flexDirection: 'row-reverse', backgroundColor: i % 2 === 0 ? '#f8fafc' : '#ffffff', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' }}>
+6908:               <Text style={{ width: 30, fontSize: 10, textAlign: 'center' }}>{i + 1}</Text>
+6909:               <Text style={{ width: 150, fontSize: 10, textAlign: 'center' }}>{displayDate ? displayDate(r.adjustment_date || r.created_at) : String(r.adjustment_date || r.created_at || '').slice(0, 10)}</Text>
+6910:               <Text style={{ width: 140, fontSize: 10, textAlign: 'right' }}>{r.reason || '—'}</Text>
+6911:               <Text style={{ width: 70, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: adjVal >= 0 ? '#059669' : '#dc2626' }}>{(adjVal >= 0 ? '+' : '') + fmt(adjVal)}</Text>
+6912:               <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(uCost)}</Text>
+6913:               <Text style={{ width: 90, fontSize: 10, textAlign: 'center', fontWeight: 'bold', color: '#d4af37' }}>{fmt(totalVal)}</Text>
+6914:               <Text style={{ width: 140, fontSize: 10, textAlign: 'right' }}>{r.note || '—'}</Text>
+6915:             </View>
+6916:           );
+6917:         })}
+6918:       </View>
+6919:     </ScrollView>
+6920:   </View>
+6921: )}
+6922: {(modelKardexData.purchases || []).length === 0 && (modelKardexData.sales || []).length === 0 && (
+6923: 
+6924:                   <Text style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>هیچ تراکنشی برای این مدل ثبت نشده</Text>
+6925: 
+6926:                 )}
+6927: 
+6928:               </ScrollView>
+6929: 
+6930:             ) : null}
+
+=== prodMap / refreshPackMap در App.tsx ===
+74: import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+726: refreshPackMap();
+5793: const [prodMap, setProdMap] = useState(new Map());
+6289: const _u = prodMap.get(String(m.code || '')) || {};
+6379: }, [C, prodMap]);
+6748: <Text style={{ width: 80, fontSize: 10, textAlign: 'center' }}>{fmt(Number(r.quantity) || 0)} {(() => { const _u = getPackForCodeGlobal(modelKardexCode); return _u ? _u.base_unit |
+6749: <Text style={{ width: 70, fontSize: 10, textAlign: 'center', color: '#0891b2' }}>{(() => { const _u = getPackForCodeGlobal(modelKardexCode); if (_u && _u.pack_size > 0) { const pac
+7571: base_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).base_unit) || '',
+7572: pack_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).pack_unit) || '',
+7573: pack_size: (getPackForCodeGlobal(r.model_code) && Number(getPackForCodeGlobal(r.model_code).pack_size)) || 0,

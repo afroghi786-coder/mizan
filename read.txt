@@ -1,0 +1,484 @@
+=================== 1) مسیر ذخیره و خواندن دیتا (lib.offline.ts) ===================
+
+-------- export async function getSales --------
+export async function getSalesGrouped() {
+  let serverList: any[] = [];
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
+  serverList = (await getLocal<any[]>('sales_grouped')) || [];
+
+  // ادغام فروش‌های محلی که هنوز گروه‌بندی نشده‌اند
+  const localSalesRows = (await getLocal<any[]>('sales')) || [];
+  if (localSalesRows.length) {
+    const groupedFromSales = _groupSalesRows(localSalesRows);
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    const localUpMap: Record<string, number> = {};
+    for (const r of localSalesRows) {
+      const inv = String(r.invoice_number || '').trim();
+      if (!inv) continue;
+      const up = _tsLocal(r.updated_at || r.updatedAt);
+      if (!localUpMap[inv] || up > localUpMap[inv]) localUpMap[inv] = up;
+    }
+    const map: Record<string, any> = {};
+    for (const g of serverList) map[String(g.invoice || '')] = g;
+    for (const g of groupedFromSales) {
+      const k = String(g.invoice || '');
+      if (!k) continue;
+      const existing = map[k];
+      if (!existing) { map[k] = g; continue; }
+      const exUp = _tsLocal(existing.updated_at || existing.updatedAt);
+      const newUp = localUpMap[k] || 0;
+      if (newUp > exUp) map[k] = g;
+    }
+    serverList = Object.values(map);
+  }
+
+  const queue = await getQueue();
+  const deletedInvs = new Set<string>();
+  for (const item of queue) {
+    if (item.op === 'deleteSale') {
+      const inv = String(item.payload || '').trim();
+      if (inv) deletedInvs.add(inv);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (String(t.table || '') !== 'sales') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedInvs.add(k);
+      }
+    }
+  } catch {}
+
+  const pendingByInv: Record<string, any> = {};
+  for (const item of queue) {
+    if (item.op === 'createSale') {
+      const p = item.payload;
+      const inv = p.invoiceNumber;
+      if (deletedInvs.has(String(inv))) continue;
+      if (!pendingByInv[inv]) {
+        pendingByInv[inv] = {
+          invoice: inv, name: p.customerName, phone: p.customerPhone,
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      for (const it of p.items || []) {
+        pend
+
+-------- export async function getSalesGrouped --------
+export async function getSalesGrouped() {
+  let serverList: any[] = [];
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
+  serverList = (await getLocal<any[]>('sales_grouped')) || [];
+
+  // ادغام فروش‌های محلی که هنوز گروه‌بندی نشده‌اند
+  const localSalesRows = (await getLocal<any[]>('sales')) || [];
+  if (localSalesRows.length) {
+    const groupedFromSales = _groupSalesRows(localSalesRows);
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    const localUpMap: Record<string, number> = {};
+    for (const r of localSalesRows) {
+      const inv = String(r.invoice_number || '').trim();
+      if (!inv) continue;
+      const up = _tsLocal(r.updated_at || r.updatedAt);
+      if (!localUpMap[inv] || up > localUpMap[inv]) localUpMap[inv] = up;
+    }
+    const map: Record<string, any> = {};
+    for (const g of serverList) map[String(g.invoice || '')] = g;
+    for (const g of groupedFromSales) {
+      const k = String(g.invoice || '');
+      if (!k) continue;
+      const existing = map[k];
+      if (!existing) { map[k] = g; continue; }
+      const exUp = _tsLocal(existing.updated_at || existing.updatedAt);
+      const newUp = localUpMap[k] || 0;
+      if (newUp > exUp) map[k] = g;
+    }
+    serverList = Object.values(map);
+  }
+
+  const queue = await getQueue();
+  const deletedInvs = new Set<string>();
+  for (const item of queue) {
+    if (item.op === 'deleteSale') {
+      const inv = String(item.payload || '').trim();
+      if (inv) deletedInvs.add(inv);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (String(t.table || '') !== 'sales') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedInvs.add(k);
+      }
+    }
+  } catch {}
+
+  const pendingByInv: Record<string, any> = {};
+  for (const item of queue) {
+    if (item.op === 'createSale') {
+      const p = item.payload;
+      const inv = p.invoiceNumber;
+      if (deletedInvs.has(String(inv))) continue;
+      if (!pendingByInv[inv]) {
+        pendingByInv[inv] = {
+          invoice: inv, name: p.customerName, phone: p.customerPhone,
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      for (const it of p.items || []) {
+        pend
+
+-------- export async function createSale --------
+export async function createSale(payload: any) {
+  _clearInvCache();
+  await _localUpsertSale(payload);
+  if (await serverBusinessAllowed()) {
+    try {
+      const r = await lib.createSale(payload);
+        try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+      return r;
+    }
+    catch { await enqueue('createSale', payload); return payload.invoiceNumber; }
+  }
+  await enqueue('createSale', payload);
+  try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+  return payload.invoiceNumber;
+}
+async function hasActiveReturns(invoiceNumber: string, type: 'sales' | 'purchase'): Promise<boolean> {
+  const inv = String(invoiceNumber || '').trim();
+  if (!inv) return false;
+  const key = type === 'sales' ? 'sales_returns' : 'purchase_returns';
+  const local = (await getLocal<any[]>(key)) || [];
+  const q = await getQueue();
+
+  const deletedIds = new Set<string>();
+  for (const item of q) {
+    if (type === 'sales' && item.op === 'deleteSalesReturn') {
+      const id = String(item.payload || '').trim();
+      if (id) deletedIds.add(id);
+    }
+    if (type === 'purchase' && item.op === 'deletePurchaseReturn') {
+      const id = String(item.payload || '').trim();
+      if (id) deletedIds.add(id);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (type === 'sales' && String(t.table || '') !== 'sales_returns') continue;
+        if (type === 'purchase' && String(t.table || '') !== 'purchase_returns') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedIds.add(k);
+      }
+    }
+  } catch {}
+
+  const pending = q
+    .filter(x => (type === 'sales' ? x.op === 'createSalesReturn' : x.op === 'createPurchaseReturn'))
+    .map(x => x.payload)
+    .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+
+  const all = [...pending, ...local];
+  return all.some((r: any) => String(r.original_invoice_number || '').trim() === inv);
+}
+
+export async function deleteSale(inv: string) {
+  _clearInvCache();
+  if (await hasActiveReturns(inv, 'sales')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
+  await recordTombstone('sales', String(inv));
+  const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+  await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+  try { await _pushAudit({ type: 'sale_delete', table: 'sales', key: String(inv), at: new Date().toISOString(), device_id:
+
+-------- export async function updateSale --------
+export async function updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  _clearInvCache();
+  if (await hasActiveReturns(payload.invoiceNumber, 'sales')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
+  if (await serverBusinessAllowed()) {
+    try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
+  } else {
+    await enqueue('updateSale', payload);
+  }
+  const list = (await getLocal<any[]>('sales')) || [];
+  const meta = payload.meta || {};
+  const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+  const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const now = new Date().toISOString();
+  const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+    ...template,
+    invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    customer_name: meta.name || template.customer_name || '',
+    customer_code: _normCode(meta.code || template.customer_code),
+    customer_phone: meta.phone || template.customer_phone || '',
+    shipping: meta.shipping || template.shipping || '',
+    model_code: r.modelCode || '',
+    model_name: r.modelName || '',
+    quantity: Number(r.quantity) || 0,
+    price_unit: Number(r.priceUnit) || 0,
+    payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositDate || '',
+    bank_name: r.bankName || '',
+    account_holder: r.accountHolder || '',
+    account_holder_code: r.accountHolderCode || '',
+    shelf: r.shelf || '',
+    updated_at: now,
+    device_id: dev,
+  }));
+  const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
+  await recordInvoiceAudit('sales', payload.invoiceNumber, oldRows, newRows);
+  await setLocal('sales', [...filtered, ...newRows]);
+}
+
+export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  _clearInvCache();
+  if (await hasActiveReturns(payload.invoiceNumber, 'purchase')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
+  if (await serverBusinessAllowed()) {
+    try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
+  } else {
+    await enqueue('updatePurchase', payload);
+  }
+  const list = (await getLocal<any[]>('purchases')) || [];
+  const meta = payload.meta || {};
+  const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+  const filtered = list.filter((r: an
+
+-------- export async function getInvoiceDetail --------
+export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
+  // ۱. صف آفلاین
+  const queue = await getQueue();
+  for (const item of queue) {
+    if (item.op === 'createSale' && item.payload?.invoiceNumber === invoiceNumber) {
+      const p = item.payload;
+      return (p.items || []).map((it: any, idx: number) => ({
+        id: 'queued_' + idx,
+        invoice_number: p.invoiceNumber,
+        customer_code: _normCode(p.customerCode),
+        customer_name: p.customerName,
+        customer_phone: p.customerPhone,
+        customer_address: p.customerAddress,
+        receiver_name: p.receiverName || '',
+        receiver_code: p.receiverCode || '',
+        receiver_bank: p.receiverBank || '',
+        receiver_account: p.receiverAccount || '',
+        shipping: p.shipping,
+        model_code: it.modelCode,
+        model_name: it.modelName,
+        shelf: it.shelf || '',
+        quantity: it.quantity,
+        price_unit: it.priceUnit,
+        discount: Number(it.discount) || 0,
+        discount_enabled: it.discountEnabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+        payment: (() => {
+          const rowPay = Number(it.payment) || 0;
+          if (rowPay > 0) return rowPay;
+          if (idx !== 0) return 0;
+          return Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+        })(),
+        deposit_date: idx === 0 ? (p.payDate || p.depositDate || p.paymentDate || it.depositDate || '') : '',
+        bank_name: idx === 0 ? (p.receiverBank || p.bankName || p.bank || it.bankName || '') : '',
+        account_holder: idx === 0 ? (p.receiverName || p.holderName || p.accountHolder || it.accountHolder || '') : '',
+        account_holder_code: idx === 0 ? (p.receiverCode || p.holderCode || p.accountHolderCode || it.accountHolderCode || '') : '',
+        description: idx === 0 ? (p.note || it.description || '') : (it.description || ''),
+        date_factor: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 10).replace(/-/g, '/'),
+        date_reg: String(p.invoiceDate || p.date || new Date(item.ts).toISOString()).slice(0, 19).replace('T', ' ').replace(/-/g, '/'),
+        _pending: true,
+      }));
+    }
+    if (item.op === 'createPurchase') {
+      const pInv = item.payload?._pendingInvNumber || item.payload?.invoiceNumber;
+      if (pInv === invoiceNumber) {
+        const p = item.payload;
+        const items = (p.items && p.items.length) ? p.items : [{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, description: '' }];
+        return items.map((it: any, idx: number) => ({
+          id: 'queued_' + idx,
+          invoice_number: pInv,
+          supplier_code: p.supplierCode,
+          supplier_name: p.supplierName,
+          supplier_phone: p.supplierPhone,
+          payer_name: p.payerName || '',
+          payer_code: p.pay
+
+-------- export async function updateInvoiceInQueue --------
+export async function updateInvoiceInQueue_original(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+  const queue = await getQueue();
+  const op = type === 'sales' ? 'createSale' : 'createPurchase';
+  let found = false;
+
+  for (const item of queue) {
+    if (item.op !== op) continue;
+
+    let match = false;
+    if (type === 'sales') {
+      match = item.payload?.invoiceNumber === invoiceNumber;
+    } else {
+      match = (item.payload?._pendingInvNumber === invoiceNumber)
+        || (item.payload?.invoiceNumber === invoiceNumber);
+    }
+
+    if (match) {
+      found = true;
+      const validRows = rows.filter((r: any) => !r._deleted);
+      if (type === 'sales') {
+        item.payload.items = validRows.map((r: any) => ({
+          modelCode: r.modelCode,
+          modelName: r.modelName,
+          quantity: r.quantity,
+          priceUnit: r.priceUnit,
+          payment: r.payment,
+          depositDate: r.depositDate,
+          bankName: r.bankName,
+          accountHolder: r.accountHolder,
+          accountHolderCode: r.accountHolderCode,
+          description: r.description,
+        }));
+      } else {
+        item.payload.items = validRows.map((r: any) => ({
+          modelCode: r.modelCode,
+          modelName: r.modelName,
+          quantity: r.quantity,
+          priceUnit: r.priceUnit,
+          description: r.description,
+        }));
+        if (validRows[0]) {
+          item.payload.paymentAmount = validRows[0].payment || 0;
+          item.payload.paymentDate = validRows[0].depositDate || '';
+          item.payload.bankAccount = validRows[0].bankName || '';
+          item.payload.payerName = validRows[0].accountHolder || '';
+          item.payload.payerCode = validRows[0].accountHolderCode || '';
+        }
+      }
+
+      // BUSINESS_LOCAL_AND_SHEET_ONLY — به‌روزرسانی محلی تا دفتر معین فوراً تغییر را ببیند
+      const key = type === 'sales' ? 'sales' : 'purchases';
+      const list = (await getLocal<any[]>(key)) || [];
+      const template = list.find((r: any) => String(r.invoice_number || '') === invoiceNumber) || {};
+      const filtered = list.filter((r: any) => String(r.invoice_number || '') !== invoiceNumber);
+      const newRows = validRows.map((r: any) => ({
+        ...template,
+        invoice_number: invoiceNumber,
+        model_code: r.modelCode || '',
+        model_name: r.modelName || '',
+        quantity: Number(r.quantity) || 0,
+        price_unit: Number(r.priceUnit) || 0,
+        payment: Number(r.payment) || 0,
+        description: r.description || '',
+        deposit_date: r.depositDate || template.deposit_date || '',
+        bank_name: r.bankName || template.bank_name || '',
+        account_holder: r.accountHolder || template.account_holder || '',
+        account_holder_code: r.accountHolderCode || template.account_holder_code || '',
+      }));
+      await setLocal(key, [...filtered, ...newRows]);
+      break;
+    }
+  }
+
+  if (found) {
+    await AsyncStorage.setItem('@mizan_queue', JSON.stringify(qu
+
+-------- export async function deleteSale --------
+export async function deleteSale(inv: string) {
+  _clearInvCache();
+  if (await hasActiveReturns(inv, 'sales')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
+  await recordTombstone('sales', String(inv));
+  const grouped = (await getLocal<any[]>('sales_grouped')) || [];
+  await setLocal('sales_grouped', grouped.filter((g: any) => g.invoice !== inv));
+  try { await _pushAudit({ type: 'sale_delete', table: 'sales', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور فروش' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.deleteSale(inv); } catch { await enqueue('deleteSale', inv); }
+  } else {
+    await enqueue('deleteSale', inv);
+  }
+}
+
+export async function deletePurchase(inv: string) {
+  _clearInvCache();
+  if (await hasActiveReturns(inv, 'purchase')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
+  await recordTombstone('purchases', String(inv));
+  const grouped = (await getLocal<any[]>('purchases_grouped')) || [];
+  await setLocal('purchases_grouped', grouped.filter((g: any) => g.invoice !== inv));
+  try { await _pushAudit({ type: 'purchase_delete', table: 'purchases', key: String(inv), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'حذف فاکتور خرید' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.deletePurchase(inv); } catch { await enqueue('deletePurchase', inv); }
+  } else {
+    await enqueue('deletePurchase', inv);
+  }
+}
+
+export async function getSettings() {
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — تنظیمات فقط محلی
+  const local = await getLocal<any>('settings');
+  return local || {};
+}
+export async function updateSettings(s: any) {
+  await setLocal('settings', s);
+  try { await _pushAudit({ type: 'settings_update', table: 'settings', key: 'settings', at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ویرایش تنظیمات' }); } catch {}
+  if (await serverBusinessAllowed()) {
+    try { await lib.updateSettings(s); } catch { await enqueue('updateSettings', s); }
+  } else {
+    await enqueue('updateSettings', s);
+  }
+}
+
+async function computeLocalInventory() {
+  const [productsRaw, salesRaw, purchasesRaw, settingsRaw, adjRaw] = await Promise.all([
+    getLocal<any[]>('products'),
+    getLocal<any[]>('sales'),
+    getLocal<any[]>('purchases'),
+    getLocal<any>('settings'),
+    getLocal<any[]>('stock_adjustments'),
+  ]);
+  const products = productsRaw || [];
+  let sales = salesRaw || [];
+  let purchases = purchasesRaw || [];
+  const settings = (settingsRaw as any) || {};
+  const threshold = settings.inventory_threshold ?? 5;
+  let adjAll = (adjRaw || []).slice();
+
+  // BUSINESS_LOCAL_ONLY — Merge grouped (device 2) + apply tombstones
+  try {
+    const _grpS = (await getLocal<any[]>('sales_grouped')) || [];
+   
+
+
+=================== 2) تب جستجو و ویرایش (App.tsx) ===================
+L7051:     { k: 'search', l: '🔍 جستجو و ویرایش' },

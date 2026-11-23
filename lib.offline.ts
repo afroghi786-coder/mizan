@@ -754,6 +754,11 @@ async function _localUpsertSale(payload: any) {
       model_name: it.modelName || it.model_name || '',
       quantity: Number(it.quantity) || 0,
       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
       payment: (() => {
         const rowPay = Number(it.payment) || 0;
         if (rowPay > 0) return rowPay;
@@ -798,6 +803,11 @@ async function _localUpsertPurchase(payload: any) {
       model_name: it.modelName || it.model_name || '',
       quantity: Number(it.quantity) || 0,
       price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
       payment: (() => {
         const rowPay = Number(it.payment) || 0;
         if (rowPay > 0) return rowPay;
@@ -1574,6 +1584,52 @@ function _tsLocal(v: any): number {
   return isNaN(t) ? 0 : t;
 }
 
+// __MZ_DISC_NORM__ — همان الگوریتم ویرایش‌فرم برای تخفیف ردیفی و فاکتور
+function __mzApplyDiscounts(rows: any[]) {
+  if (!Array.isArray(rows) || !rows.length) return rows;
+  // گروه‌بندی بر اساس شماره فاکتور
+  const byInv: Record<string, any[]> = {};
+  for (const r of rows) {
+    const inv = String(r.invoice_number || r.invoice || '').trim();
+    if (!inv) continue;
+    (byInv[inv] = byInv[inv] || []).push(r);
+  }
+  for (const inv of Object.keys(byInv)) {
+    const list = byInv[inv];
+    const invDisc = Number(
+      list[0].invoice_discount != null ? list[0].invoice_discount :
+      (list[0].invoiceDiscount || 0)
+    ) || 0;
+    const remOf = (x: any) => {
+      const q = Number(x.quantity) || 0;
+      const p = Number(x.price_unit != null ? x.price_unit : x.priceUnit) || 0;
+      const d = Number(x.discount != null ? x.discount : (x.discount_base_unit || 0)) || 0;
+      const pay = Number(x.payment) || 0;
+      return Math.max(0, (q * p) - (q * d) - pay);
+    };
+    const sumRem = list.reduce((a, x) => a + remOf(x), 0);
+    for (const r of list) {
+      const q = Number(r.quantity) || 0;
+      const p = Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0;
+      const d = Number(r.discount != null ? r.discount : (r.discount_base_unit || 0)) || 0;
+      const gross = q * p;
+      const rowDiscAmt = Math.max(0, q * d);
+      const rowRem = remOf(r);
+      const share = sumRem > 0 ? (rowRem / sumRem) : (1 / Math.max(1, list.length));
+      const invAmt = Math.max(0, Math.round(invDisc * share));
+      const net = Math.max(0, Math.round(gross - rowDiscAmt - invAmt));
+      r.discount = d;
+      r.discount_enabled = (r.discount_enabled != null ? r.discount_enabled : (r.discountEnabled ? 1 : 0));
+      r.invoice_discount = invDisc;
+      r._row_discount_amount = rowDiscAmt;
+      r._invoice_discount_share = invAmt;
+      r.total = net;
+    }
+  }
+  return rows;
+}
+
+
 export async function getSalesGrouped() {
   let serverList: any[] = [];
   // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
@@ -1583,6 +1639,8 @@ export async function getSalesGrouped() {
   const localSalesRows = (await getLocal<any[]>('sales')) || [];
   if (localSalesRows.length) {
     const groupedFromSales = _groupSalesRows(localSalesRows);
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
     const localUpMap: Record<string, number> = {};
     for (const r of localSalesRows) {
       const inv = String(r.invoice_number || '').trim();
@@ -1635,7 +1693,7 @@ export async function getSalesGrouped() {
       if (!pendingByInv[inv]) {
         pendingByInv[inv] = {
           invoice: inv, name: p.customerName, phone: p.customerPhone,
-          total: 0, paid: 0, items: [],
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
           date: new Date(item.ts).toISOString(),
           _pending: true,
         };
@@ -1672,13 +1730,36 @@ export async function getSalesGrouped() {
 //  searchAllInvoices — با ادغام صف آفلاین
 // ═══════════════════════════════════════════
 export async function searchAllInvoices(q: string) {
-  const [sales, purchases] = await Promise.all([
+  const [sales, purchases, salesRowsRaw] = await Promise.all([
     getSalesGrouped(),
     getPurchasesGrouped(),
+    getLocal<any[]>('sales'),
   ]);
   const query = (q || '').toLowerCase().trim();
+
+  // مجموع تخفیف ردیفی هر فاکتور (از ردیف‌های محلی)
+  const __rowDiscByInv: Record<string, number> = {};
+  for (const r of (salesRowsRaw || [])) {
+    const inv = String(r && r.invoice_number || '').trim();
+    if (!inv) continue;
+    const qty = Number(r.quantity) || 0;
+    let per = Number(r.discount) || 0;
+    if (!per) per = Number(r.discount_base_unit) || 0;
+    const d = Math.abs(qty * per);
+    if (d) __rowDiscByInv[inv] = (__rowDiscByInv[inv] || 0) + d;
+  }
+
+  const __applyDisc = (r: any) => {
+    const inv = Number(r && (r.invoiceDiscount ?? r.invoice_discount)) || 0;
+    const rowDisc = __rowDiscByInv[String(r && r.invoice || '').trim()] || 0;
+    const t = Number(r.total) || 0;
+    const net = t - inv - rowDisc;
+    if (!inv && !rowDisc) return r;
+    return { ...r, total: net, invoiceDiscount: inv, rowDiscount: rowDisc };
+  };
+
   const filt = (arr: any[], type: string) =>
-    arr.map((r) => ({ ...r, type, sheetType: type }))
+    arr.map((r) => ({ ...__applyDisc(r), type, sheetType: type }))
       .filter((r) => !query ||
         (String(r.invoice) + ' ' + String(r.name || '') + ' ' + String(r.phone || '')).toLowerCase().includes(query));
   return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
@@ -1769,6 +1850,8 @@ export async function getPurchasesGrouped() {
   const localPurchaseRows = (await getLocal<any[]>('purchases')) || [];
   if (localPurchaseRows.length) {
     const groupedFromPurchases = _groupPurchaseRows(localPurchaseRows);
+    for (const _g of groupedFromPurchases) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localPurchaseRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromPurchases) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localPurchaseRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
     const localUpMapP: Record<string, number> = {};
     for (const r of localPurchaseRows) {
       const inv = String(r.invoice_number || '').trim();
@@ -1824,7 +1907,7 @@ export async function getPurchasesGrouped() {
           manual: p.manualInvoice || '',
           name: p.supplierName,
           phone: p.supplierPhone,
-          total: 0, paid: 0, items: [],
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
           date: new Date(item.ts).toISOString(),
           _pending: true,
         };
@@ -1877,6 +1960,11 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
         shelf: it.shelf || '',
         quantity: it.quantity,
         price_unit: it.priceUnit,
+        discount: Number(it.discount) || 0,
+        discount_enabled: it.discountEnabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
         payment: (() => {
           const rowPay = Number(it.payment) || 0;
           if (rowPay > 0) return rowPay;
@@ -3204,6 +3292,8 @@ export async function getSalesRowsForReport(code: string) {
       if (row.account_holder_code === c2) triang.push(row);
     }
   }
+  __mzApplyDiscounts(customer);
+  __mzApplyDiscounts(triang);
   return { customer: customer, triang: triang };
 }
 export async function getPurchasesRowsForReport(code: string) {
@@ -3226,6 +3316,7 @@ export async function getPurchasesRowsForReport(code: string) {
       if (row.supplier_code === c2) supplier.push(row);
     }
   }
+  __mzApplyDiscounts(supplier);
   return { supplier: supplier };
 }
 
@@ -3242,6 +3333,8 @@ export async function getLedgerData(): Promise<any[]> {
 
   if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
   if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
+
+  // __MZ_LEDGER_DISC__ (moved to after queue to fix speed)
 
   // BUSINESS_LOCAL_AND_SHEET_ONLY — اگر داده خام از pull نیامده، از grouped بساز
   try {
@@ -3358,6 +3451,11 @@ export async function getLedgerData(): Promise<any[]> {
           price_unit: price,
           payment: Number(r.payment) || 0,
           total: qty * price,
+          discount: Number(r.discount) || 0,
+          discount_enabled: r.discountEnabled ? 1 : 0,
+          discount_base_unit: Number(r.discount_base_unit) || 0,
+          discount_pack_unit: Number(r.discount_pack_unit) || 0,
+          invoice_discount: Number(meta.invoiceDiscount) || 0,
           model_code: r.modelCode || '',
           model_name: r.modelName || '',
           invoice_number: inv,
@@ -3393,6 +3491,11 @@ export async function getLedgerData(): Promise<any[]> {
           price_unit: price,
           payment: Number(r.payment) || 0,
           total: qty * price,
+          discount: Number(r.discount) || 0,
+          discount_enabled: r.discountEnabled ? 1 : 0,
+          discount_base_unit: Number(r.discount_base_unit) || 0,
+          discount_pack_unit: Number(r.discount_pack_unit) || 0,
+          invoice_discount: Number(meta.invoiceDiscount) || 0,
           model_code: r.modelCode || '',
           model_name: r.modelName || '',
           invoice_number: inv,
@@ -3425,6 +3528,11 @@ export async function getLedgerData(): Promise<any[]> {
           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
           payment: Number(r.payment) || 0,
           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+          discount: Number(r.discount) || 0,
+          discount_enabled: r.discountEnabled ? 1 : 0,
+          discount_base_unit: Number(r.discount_base_unit) || 0,
+          discount_pack_unit: Number(r.discount_pack_unit) || 0,
+          invoice_discount: Number(item.payload.invoiceDiscount || item.payload.invoice_discount) || 0,
           model_code: r.model_code || r.modelCode || '',
           model_name: r.model_name || r.modelName || '',
           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
@@ -3454,6 +3562,11 @@ export async function getLedgerData(): Promise<any[]> {
           price_unit: Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0,
           payment: Number(r.payment) || 0,
           total: (Number(r.quantity) || 0) * (Number(r.price_unit != null ? r.price_unit : r.priceUnit) || 0),
+          discount: Number(r.discount) || 0,
+          discount_enabled: r.discountEnabled ? 1 : 0,
+          discount_base_unit: Number(r.discount_base_unit) || 0,
+          discount_pack_unit: Number(r.discount_pack_unit) || 0,
+          invoice_discount: Number(item.payload.invoiceDiscount || item.payload.invoice_discount) || 0,
           model_code: r.model_code || r.modelCode || '',
           model_name: r.model_name || r.modelName || '',
           invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '',
@@ -3470,6 +3583,9 @@ export async function getLedgerData(): Promise<any[]> {
       }
     }
   }
+
+  // __MZ_LEDGER_DISC__ Apply discounts to queue rows too
+  try { __mzApplyDiscounts(allSales); __mzApplyDiscounts(allPurchases); } catch (_e) { console.log('__MZ_DISC_NORM__ ledger queue fail', _e); }
 
   const normPhone = function(p: any) { return String(p || '').replace(/[^\d]/g, ''); };
   const makeKey = function(name: string, code: string, phone: string): string | null {
@@ -3534,7 +3650,7 @@ export async function getLedgerData(): Promise<any[]> {
     };
 
     if (total > 0) {
-      acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0 });
+      acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0, discount: Number(s.discount) || 0, discount_amount: (Number(s._row_discount_amount) || 0) + (Number(s._invoice_discount_share) || 0), invoice_discount: Number(s.invoice_discount) || 0 });
     }
     if (payment > 0) {
       acc.transactions.push({ ...common, type: 'payment_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: 0, credit: payment, description: 'دریافت وجه' });
@@ -3580,7 +3696,7 @@ export async function getLedgerData(): Promise<any[]> {
     };
 
     if (total > 0) {
-      acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit: total });
+      acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit: total, discount: Number(p.discount) || 0, discount_amount: (Number(p._row_discount_amount) || 0) + (Number(p._invoice_discount_share) || 0), invoice_discount: Number(p.invoice_discount) || 0 });
     }
     if (payment > 0) {
       acc.transactions.push({ ...common, type: 'payment_sent', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0, description: 'پرداخت به تأمین‌کننده' });
@@ -4710,6 +4826,7 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
   const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
     ...template,
     invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
     customer_name: meta.name || template.customer_name || '',
     customer_code: _normCode(meta.code || template.customer_code),
     customer_phone: meta.phone || template.customer_phone || '',
@@ -4719,6 +4836,10 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
     quantity: Number(r.quantity) || 0,
     price_unit: Number(r.priceUnit) || 0,
     payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
     description: r.description || '',
     deposit_date: r.depositDate || '',
     bank_name: r.bankName || '',
@@ -4752,6 +4873,7 @@ export async function updatePurchase(payload: { invoiceNumber: string; rows: any
   const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
     ...template,
     invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
     supplier_name: meta.name || template.supplier_name || '',
     supplier_code: meta.code || template.supplier_code || '',
     supplier_phone: meta.phone || template.supplier_phone || '',
@@ -4763,6 +4885,10 @@ export async function updatePurchase(payload: { invoiceNumber: string; rows: any
     quantity: Number(r.quantity) || 0,
     price_unit: Number(r.priceUnit) || 0,
     payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
     description: r.description || '',
     deposit_date: r.depositDate || '',
     bank_name: r.bankName || '',

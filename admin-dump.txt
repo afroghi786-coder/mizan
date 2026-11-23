@@ -1,0 +1,516 @@
+
+
+########## AdminTab / مدیریت ##########
+-- not found: function AdminTab
+
+
+########## function SalesScreen (header) ##########
+
+===== @62940 (line 2641) =====
+function SalesScreen({ showToast }: any) {
+  const [shippingsList, setShippingsList] = useState<any[]>([]);
+  useEffect(() => { getShippings().then(setShippingsList).catch(()=>{}); }, []);
+
+
+  const S = getS();
+
+  const [view, setView] = useState<'list' | 'form' | 'invoice' | 'reprint'>('list');
+
+  useEffect(() => {
+
+    const g = globalThis as any;
+
+    const h = () => setView('form');
+
+    g.__newFormHandlers = g.__newFormHandlers || {};
+
+    g.__newFormHandlers['order'] = h;
+
+    if (g.__openNewPending === 'order') { g.__openNewPending = null; h(); }
+
+    return () => { try { delete g.__newFormHandlers['order']; } catch {} };
+
+  }, []);
+
+  useEffect(() => {
+
+    const g = globalThis as any;
+
+    const h = () => setView('form');
+
+    g.__newFormHandlers = g.__newFormHandlers || {};
+
+    g.__newFormHandlers.order = h;
+
+    if (g.__openNewPending === 'order') { g.__openNewPending = null;
+
+
+########## function PurchaseScreen (header) ##########
+
+===== @108250 (line 4074) =====
+function PurchaseScreen({ showToast }: any) {
+  const [pendingConfirm, setPendingConfirm] = useState<any>(null);
+  const [banksList, setBanksList] = useState<any[]>([]);
+  const [partnersList, setPartnersList] = useState<any[]>([]);
+  useEffect(() => { getPartners().then(setPartnersList).catch(()=>{}); }, []);
+  useEffect(() => { getBanks().then(setBanksList).catch(()=>{}); }, []);
+
+
+  const [view, setView] = useState<'list' | 'form'>('list');
+
+  useEffect(() => {
+
+    const g = globalThis as any;
+
+    const h = () => setView('form');
+
+    g.__newFormHandlers = g.__newFormHandlers || {};
+
+    g.__newFormHandlers['purchase'] = h;
+
+    if (g.__openNewPending === 'purchase') { g.__openNewPending = null; h(); }
+
+    return () => { try { delete g.__newFormHandlers['purchase']; } catch {} };
+
+  }, []);
+
+  useEffect(() => {
+
+    const g = globalThis as any;
+
+    const h = () => setView('form');
+
+
+########## tab list / مدیریت label ##########
+
+===== @31299 (line 1408) =====
+مد':        () => setTab('profit'),
+
+      'بانک':         () => setTab('bankMatch'),
+
+      'پیامک':        () => setTab('bankMatch'),
+
+      'آموزش':        () => setTab('botLearning'),
+
+      'دستیار':       () => setTab('manualEntry'),
+
+      'ربات':         () => setTab('aiAssistant'),
+
+      'مدیریت':       () => setTab('mgr'),
+
+      'پرینت':        () => setTab('print'),
+
+    });
+
+  }, []);
+
+  const [botInnerView, setBotInnerView] = useState<string>('bot');
+
+
+
+  // 🌉 ثبت Navigator برای ربات
+
+  useEffect(() => {
+
+    try {
+
+      
+
+    } catch {}
+
+    /* cleanup __nav حذف شد */
+
+  }, [tab]);
+
+
+
+  const navRef = React.useMemo(() => ({
+
+    setTab: (t: string) => setTab(t as any),
+
+    setSub: (s: string) => { try { (globalThis as any).__exchangeSetSub?.(s); } catch {} },
+
+    openModal: (name: string, data?: any) => { try { (globalThis as any).__openModal?.(name, data); } catch {}
+
+===== @44718 (line 1961) =====
+rtical: 8, borderRadius: 8, backgroundColor: '#334155' }}>
+                    <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>← بازگشت به داشبورد</Text>
+                  </TouchableOpacity>
+                  <Text style={{ color: '#d4af37', fontSize: 14, fontWeight: 'bold' }}>📁 مدیریت</Text>
+                </View>
+                <ManagementScreen showToast={showToast} settings={settings} setSettings={setSettings} reload={reloadSettings} tabPins={tabPins} />
+              </View>
+            )}
+
+      {tab === 'assistant' && (
+        <ScrollView style={{ flex: 1, backgroundColor: '#0a1628' }} contentContainerStyle={{ padding: 12, paddingBottom: 120 }}>
+          <AssistantHome showToast={showToast} />
+        </ScrollView>
+      )}
+
+      {tab === 'settings' && (
+        <View style={{ flex: 1, backgroundColor: '#0a1628' }}>
+          <View style={{ flexDirection: 
+
+===== @360297 (line 9391) =====
+}" style={s.secT} />
+          <EL textKey="مثال: پین پیش‌فرض = 4242. برای غیرفعال کردن، خالی بگذارید." style={[s.lblS, { color: C.textMut, marginBottom: 8 }]} />
+          {[
+            { k: 'purchase', l: '🛒 خرید' },
+            { k: 'print', l: '🖨 چاپ فاکتور' },
+            { k: 'mgr', l: '📁 مدیریت' },
+            { k: 'profit', l: '📈 سود' },
+            { k: 'inventory', l: '📦 موجودی' },
+            { k: 'settings', l: '⚙️ تنظیمات' },
+          ].map((t) => (
+            <View key={t.k} style={{ marginBottom: 8 }}>
+              <Text style={[s.lblS, { color: C.textMut }]}>{t.l}</Text>
+              <TextInput accessibilityLabel="4242"
+                style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]}
+                value={String(pins[t.k] ?? '4242')}
+                onChangeText={(v) =>
+                  setSettings({ ...settings, tab_pins: { 
+
+
+########## updateSale ##########
+
+===== @3300 (line 71) =====
+rty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
+
+import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+
+import SuperAssistant from './SuperAssistant';
+
+import BotUI from './BotUI';
+
+import GlobalVoice from './GlobalVoice';
+
+import { registerCommands } from './CommandBus';
+
+import ResetPasswordScreen from './ResetPasswordScreen';
+
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+import Sett
+
+===== @3539 (line 71) =====
+tions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
+
+import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+
+import SuperAssistant from './SuperAssistant';
+
+import BotUI from './BotUI';
+
+import GlobalVoice from './GlobalVoice';
+
+import { registerCommands } from './CommandBus';
+
+import ResetPasswordScreen from './ResetPasswordScreen';
+
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+import SettingsSheets from './SettingsSheets';
+import SettingsAssistant from './SettingsAssistant';
+import AssistantHome from './AssistantHome';
+import SupportSection from './SupportSection';
+import RecoveryPanel from './RecoveryPanel';
+import { sync
+
+===== @290245 (line 7821) =====
+ editing.type === 'sales'
+          ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '' }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '' };
+        if (editing.type === 'sales') {
+          await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        } else {
+          await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        }
+        alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+        setEditing(null); setEditRows([]); setDirty(false); load();
+        return;
+      }
+
+      // ═══ ذخیره فاکتور سینک‌شده (آفلاین یا آنلاین) ═══
+      const validRows = editRows.filter((r: any) => !r._deleted);
+      const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+      const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+      const meta: any = editing.type === 'sales'
+        ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '' }
+        : { name: editing.name, co
+
+
+########## updatePurchase ##########
+
+===== @3312 (line 71) =====
+arty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
+
+import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+
+import SuperAssistant from './SuperAssistant';
+
+import BotUI from './BotUI';
+
+import GlobalVoice from './GlobalVoice';
+
+import { registerCommands } from './CommandBus';
+
+import ResetPasswordScreen from './ResetPasswordScreen';
+
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+import SettingsSheets f
+
+===== @3558 (line 71) =====
+rTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
+
+import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+
+import SuperAssistant from './SuperAssistant';
+
+import BotUI from './BotUI';
+
+import GlobalVoice from './GlobalVoice';
+
+import { registerCommands } from './CommandBus';
+
+import ResetPasswordScreen from './ResetPasswordScreen';
+
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+import SettingsSheets from './SettingsSheets';
+import SettingsAssistant from './SettingsAssistant';
+import AssistantHome from './AssistantHome';
+import SupportSection from './SupportSection';
+import RecoveryPanel from './RecoveryPanel';
+import { syncByDestination } fro
+
+===== @290362 (line 7823) =====
+ows[0]?.shipping || '' }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '' };
+        if (editing.type === 'sales') {
+          await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        } else {
+          await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        }
+        alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+        setEditing(null); setEditRows([]); setDirty(false); load();
+        return;
+      }
+
+      // ═══ ذخیره فاکتور سینک‌شده (آفلاین یا آنلاین) ═══
+      const validRows = editRows.filter((r: any) => !r._deleted);
+      const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+      const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+      const meta: any = editing.type === 'sales'
+        ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '' }
+        : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', pa
+
+
+########## getInvoiceDetail ##########
+
+===== @2455 (line 71) =====
+ABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPa
+
+===== @71711 (line 2888) =====
+e, 
+        note, 
+        receiverName, 
+        receiverCode, 
+        receiverBank, 
+        receiverAccount 
+      });
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const rows = await getInvoiceDetail(inv, 'sales');
+      if (rows.length > 0) {
+        const r = rows[0];
+        const its = rows.map((x: any) => {
+                  const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+                  return {
+                    modelName: x.model_name,
+                    modelCode: x.model_code,
+                    shelf: x.shelf || '',
+                    quantity: x.quantity,
+                    priceUnit: x.price_unit,
+                    total: x.quantity * x.price_unit,
+                    base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+                    pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+                    pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+                  };
+                });
+        const tot = its.reduce((a: number, it: any) => a 
+
+===== @76026 (line 2974) =====
+uto] sales deposit ثبت شد:', partner.name, payAmt);
+        }
+      } catch (e) { console.log('[partner auto sales]', e); }
+
+      await new Promise(r => setTimeout(r, 100));
+      const rows = await getInvoiceDetail(inv, 'sales');
+      if (rows.length > 0) {
+        const r = rows[0];
+        const its = rows.map((x: any) => {
+                  const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+                  return {
+                    modelName: x.model_name,
+                    modelCode: x.model_code,
+                    shelf: x.shelf || '',
+                    quantity: x.quantity,
+                    priceUnit: x.price_unit,
+                    total: x.quantity * x.price_unit,
+                    base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+                    pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+                    pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+                  };
+                });
+        const tot = its.reduce((a: number, it: any) => a 
+
+
+########## edit invoice / ویرایش فاکتور ##########
+-- not found: ویرایش فاکتور
+
+
+########## search / جستجو ##########
+
+===== @56964 (line 2393) =====
+تخاب'}</Text>
+
+              <TouchableOpacity onPress={() => setShow(false)}>
+
+                <Text style={{ color: '#fff', fontSize: 26 }}>×</Text>
+
+              </TouchableOpacity>
+
+            </View>
+
+            <View style={{ padding: 12 }}>
+
+              <TextInput accessibilityLabel="🔍 جستجو..."
+
+                style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, marginBottom: 8 }]}
+
+                value={query}
+
+                onChangeText={setQuery}
+
+                placeholder="🔍 جستجو..."
+
+                placeholderTextColor={C.textMut}
+
+                autoFocus
+
+              />
+
+              <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+
+                {filtered.length === 0 && (
+
+     
+
+===== @57197 (line 2401) =====
+{ padding: 12 }}>
+
+              <TextInput accessibilityLabel="🔍 جستجو..."
+
+                style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, marginBottom: 8 }]}
+
+                value={query}
+
+                onChangeText={setQuery}
+
+                placeholder="🔍 جستجو..."
+
+                placeholderTextColor={C.textMut}
+
+                autoFocus
+
+              />
+
+              <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+
+                {filtered.length === 0 && (
+
+                  <EL textKey="موردی یافت نشد" style={{ textAlign: 'center', color: C.textMut, padding: 20 }} />
+
+                )}
+
+                {filtered.map((opt: string) => (
+
+                  <TouchableOpacity
+
+                 
+
+===== @224248 (line 6491) =====
+]} onPress={saveThreshold}><Text style={s.btnTxt}>💾</Text></TouchableOpacity>
+
+          <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#8e44ad' }]} onPress={invExportMenu}><Text style={s.btnTxt}>📤</Text></TouchableOpacity>
+
+        </View>
+
+      </View>
+
+
+
+      {/* جستجو و فیلتر */}
+
+      <TextInput accessibilityLabel="🔍 جستجو: کد، نام، قفسه..." style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو: کد، نام، قفسه..." placeholderTextColor={C.textMut} />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
+
+        {[{ k: 'all', l: '📋 همه' }, { k: 'negative', l: '⚫ منفی' }, { k: 'out', l: 
+
+===== @224307 (line 6493) =====
+</TouchableOpacity>
+
+          <TouchableOpacity style={[s.btn, { paddingHorizontal: 20, backgroundColor: '#8e44ad' }]} onPress={invExportMenu}><Text style={s.btnTxt}>📤</Text></TouchableOpacity>
+
+        </View>
+
+      </View>
+
+
+
+      {/* جستجو و فیلتر */}
+
+      <TextInput accessibilityLabel="🔍 جستجو: کد، نام، قفسه..." style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو: کد، نام، قفسه..." placeholderTextColor={C.textMut} />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
+
+        {[{ k: 'all', l: '📋 همه' }, { k: 'negative', l: '⚫ منفی' }, { k: 'out', l: '🔴 ناموجود' }, { k: 'low', l: '⚠️ کمبود' }, { k: 'ok', l: 
+
+===== @224477 (line 6493) =====
+/Text></TouchableOpacity>
+
+        </View>
+
+      </View>
+
+
+
+      {/* جستجو و فیلتر */}
+
+      <TextInput accessibilityLabel="🔍 جستجو: کد، نام، قفسه..." style={[s.inp, { marginTop: 10, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو: کد، نام، قفسه..." placeholderTextColor={C.textMut} />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8, gap: 6 }}>
+
+        {[{ k: 'all', l: '📋 همه' }, { k: 'negative', l: '⚫ منفی' }, { k: 'out', l: '🔴 ناموجود' }, { k: 'low', l: '⚠️ کمبود' }, { k: 'ok', l: '✅ سالم' }].map((f) => (
+
+          <TouchableOpacity key={f.k} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}><Text style={[s.chipTxt, f
+
+
+########## EXPORTED / FUNCTION NAMES ##########
+getCustomerPreviousBalance, App, getTabPins, MainApp, PinModal, Autocomplete, CellAutocomplete, DigitalDashboard, DCard, SalesScreen, getS, PurchaseScreen, PrintScreen, ProfitScreen, LocalInput, InventoryScreen, ManagementScreen, UnpaidSection, NewOrderSection, SearchSection, ReturnsSection, ReportsSection, PresetSection, SettingsSection, PartiesSection, PartnersSection, BanksSection, ShippingsSection, SourcesSection, ProductsSection, InvoiceView, EL, LoginScreen
+
+
+########## COMPONENTS ##########
+App, MainApp, PinModal, Autocomplete, CellAutocomplete, DigitalDashboard, DCard, SalesScreen, PurchaseScreen, PrintScreen, ProfitScreen, LocalInput, InventoryScreen, ManagementScreen, UnpaidSection, NewOrderSection, SearchSection, ReturnsSection, ReportsSection, PresetSection, SettingsSection, PartiesSection, PartnersSection, BanksSection, ShippingsSection, SourcesSection, ProductsSection, InvoiceView, EL, LoginScreen

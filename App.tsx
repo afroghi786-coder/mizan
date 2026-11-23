@@ -2717,6 +2717,7 @@ function SalesScreen({ showToast }: any) {
 
   const [shipping, setShipping] = useState('');
   const [paymentAmount, setPaymentAmount] = useState(0);
+  const [invoiceDiscount, setInvoiceDiscount] = useState(0);
   const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
   const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
   const [note, setNote] = useState('');
@@ -2805,7 +2806,10 @@ function SalesScreen({ showToast }: any) {
 
 
 
-  const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  const grandTotal = items.reduce((a, it) => a + Math.max(0, ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0))), 0);
+
+  const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+  const balanceDue = Math.max(0, payableAmount - (Number(paymentAmount) || 0));
 
   const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
 
@@ -2816,7 +2820,7 @@ function SalesScreen({ showToast }: any) {
     setName('');
     setAddress('');
     setShipping('');
-    setPaymentAmount(0);
+    setPaymentAmount(0); setInvoiceDiscount(0);
     setInvoiceDate(toStorageDateFull(new Date()));
     setPayDate(toStorageDateFull(new Date()));
     setNote('');
@@ -2840,7 +2844,7 @@ function SalesScreen({ showToast }: any) {
     const valid = items.filter((it) => it.modelName && it.quantity > 0);
     const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
     
-    setPendingConfirm({ name, phone, count: valid.length, total, paymentAmount, valid, note });
+    setPendingConfirm({ name, phone, count: valid.length, total: grandTotal, paymentAmount, invoiceDiscount, valid, note });
     return;
 
     if (!mode) return;
@@ -2860,10 +2864,11 @@ function SalesScreen({ showToast }: any) {
       const customerLocalId = pr.localId;
       const inv = await generateInvoiceNumber();
       
-      await createSale({ 
-        invoiceNumber: inv, 
+      await createSale({
+        invoiceNumber: inv,
         customerCode,
-        customerLocalId, 
+        customerLocalId,
+        invoiceDiscount: Number(invoiceDiscount) || 0, 
         customerName: name, 
         customerPhone: phone, 
         customerAddress: address, 
@@ -2909,7 +2914,7 @@ function SalesScreen({ showToast }: any) {
           timeString: displayDate(r.date_reg),
         });
         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
-        setPaymentAmount(0); setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
+        setPaymentAmount(0); setInvoiceDiscount(0); setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
         setNote(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount('');
         setView('invoice');
       } else {
@@ -2921,7 +2926,7 @@ function SalesScreen({ showToast }: any) {
   }
   const confirmSubmit = async (mode: string) => {
     if (!pendingConfirm) return;
-    const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2 } = pendingConfirm;
+    const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2, invoiceDiscount: _invDisc } = pendingConfirm as any;
     setPendingConfirm(null);
     setSaving(true);
     try {
@@ -2939,6 +2944,7 @@ function SalesScreen({ showToast }: any) {
         invoiceNumber: inv, customerCode, customerLocalId, customerName: n, customerPhone: p,
         customerAddress: address, shipping, items: finalItems,
         paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+        invoiceDiscount: Number(_invDisc) || 0,
         receiverName, receiverCode, receiverBank, receiverAccount
       });
 
@@ -3393,10 +3399,17 @@ function SalesScreen({ showToast }: any) {
           <DateField value={payDate} onChange={setPayDate} compact defaultToToday />
           <EL text={t('💵 مبلغ پرداخت‌شده')} style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(paymentAmount || '')} onChangeText={(v) => setPaymentAmount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+          <EL textKey="🏷️ تخفیف فاکتور" style={[s.lbl, { color: '#b45309' }]} />
+          <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
+            <TextInput style={[s.inp, { flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+            <TouchableOpacity onPress={() => setInvoiceDiscount(0)} style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 6, paddingHorizontal: 10, justifyContent: 'center' }}><Text style={{ color: '#b45309', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>
+          </View>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 10, padding: 8, backgroundColor: C.cardAlt, borderRadius: 6 }}>
-            <Text style={{ color: C.text, fontSize: 12 }}>جمع کل: {fmt(grandTotal)}</Text>
+            <Text style={{ color: C.text, fontSize: 12 }}>جمع اقلام: {fmt(grandTotal)}</Text>
+            <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text>
+            <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text>
             <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(paymentAmount)}</Text>
-            <Text style={{ color: grandTotal - paymentAmount > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(grandTotal - paymentAmount)}</Text>
+            <Text style={{ color: balanceDue > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(balanceDue)}</Text>
           </View>
           <EL text={t('📝 شرح')} style={[s.lbl, { color: C.textMut }]} />
           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder="توضیحات..." placeholderTextColor={C.textMut} />
@@ -3494,9 +3507,20 @@ function SalesScreen({ showToast }: any) {
                   <Text style={{ color: C.textMut }}>💵 پرداخت:</Text>
                   <Text style={{ color: '#059669', fontWeight: 'bold' }}>{fmt(pendingConfirm.paymentAmount)}</Text>
                 </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>🏷️ تخفیف فاکتور:</Text>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
                   <Text style={{ color: C.textMut }}>📉 مانده:</Text>
-                  <Text style={{ color: pendingConfirm.total - pendingConfirm.paymentAmount > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }}>{fmt(pendingConfirm.total - pendingConfirm.paymentAmount)}</Text>
+                  {(() => {
+  const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.paymentAmount || 0);
+  return (
+    <Text style={{ color: _bal > 0 ? '#dc2626' : _bal < 0 ? '#2563eb' : '#059669', fontWeight: 'bold' }}>
+      {_bal < 0 ? 'بستانکاری ' + fmt(Math.abs(_bal)) : fmt(_bal)}
+    </Text>
+  );
+})()}
                 </View>
               </View>
 
@@ -4129,6 +4153,7 @@ function PurchaseScreen({ showToast }: any) {
 
   const [items, setItems] = useState<PurchaseItem[]>([]);
 
+  const [invoiceDiscount, setInvoiceDiscount] = useState(0);
   const [payAmt, setPayAmt] = useState('');
 
   const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
@@ -4214,13 +4239,15 @@ function PurchaseScreen({ showToast }: any) {
 
 
 
-  const grandTotal = items.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+  const grandTotal = items.reduce((a, it) => a + Math.max(0, ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0))), 0);
 
   const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
 
   const paidAmt = parseNum(payAmt);
 
-  const remaining = grandTotal - paidAmt;
+  const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+
+  const remaining = payableAmount - paidAmt;
 
 
 
@@ -4235,8 +4262,8 @@ function PurchaseScreen({ showToast }: any) {
         return alertMsg('⚠️ خطا', 'مدل «' + it.modelName + '» تعداد یا قیمت ندارد.');
       }
     }
-    const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
-    setPendingConfirm({ name: sName, inv: manualInv, count: valid.length, total, payAmt: amt });
+    const total = grandTotal;
+    setPendingConfirm({ name: sName, inv: manualInv, count: valid.length, total, payAmt: amt, invoiceDiscount });
   };
 
   const confirmSubmit = async (mode: string) => {
@@ -4250,7 +4277,7 @@ function PurchaseScreen({ showToast }: any) {
       if (mode === 'payment') {
         finalItems = [{ modelCode: '', modelName: 'پرداخت به تأمین‌کننده', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: note, shelf: '' }];
       }
-      const inv = await createPurchase({ invoiceNumber: '', manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: finalItems, paymentAmount: amt, paymentDate: payDate, invoiceDate: invoiceDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
+      const inv = await createPurchase({ invoiceNumber: '', manualInvoice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: finalItems, invoiceDiscount: Number(invoiceDiscount) || 0, paymentAmount: amt, paymentDate: payDate, invoiceDate: invoiceDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
 
       // ═══ اگر پرداخت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
       try {
@@ -4326,7 +4353,7 @@ function PurchaseScreen({ showToast }: any) {
 
         {items.map((it, i) => {
 
-          const lineTotal = (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+          const lineTotal = ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
 
           return (
 
@@ -4466,6 +4493,12 @@ function PurchaseScreen({ showToast }: any) {
 
         <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={payAmt} onChangeText={setPayAmt} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
 
+        <EL text={t('🏷️ تخفیف فاکتور')} style={[s.lbl, { color: '#b45309' }]} />
+        <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
+          <TextInput style={[s.inp, { flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+          <TouchableOpacity onPress={() => setInvoiceDiscount(0)} style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 6, paddingHorizontal: 10, justifyContent: 'center' }}><Text style={{ color: '#b45309', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>
+        </View>
+
 
 
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
@@ -4568,9 +4601,20 @@ function PurchaseScreen({ showToast }: any) {
                   <Text style={{ color: C.textMut }}>💵 پرداخت:</Text>
                   <Text style={{ color: '#059669', fontWeight: 'bold' }}>{fmt(pendingConfirm.payAmt)}</Text>
                 </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>🏷️ تخفیف فاکتور:</Text>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
-                  <Text style={{ color: C.textMut }}>📉 مانده:</Text>
-                  <Text style={{ color: pendingConfirm.total - pendingConfirm.payAmt > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }}>{fmt(pendingConfirm.total - pendingConfirm.payAmt)}</Text>
+                  <Text style={{ color: C.textMut }}>📉 مانده / بستانکاری:</Text>
+                  {(() => {
+                    const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.payAmt || 0);
+                    return (
+                      <Text style={{ color: _bal > 0 ? '#dc2626' : _bal < 0 ? '#2563eb' : '#059669', fontWeight: 'bold' }}>
+                        {_bal < 0 ? 'بستانکاری ' + fmt(Math.abs(_bal)) : fmt(_bal)}
+                      </Text>
+                    );
+                  })()}
                 </View>
               </View>
               <TouchableOpacity onPress={() => confirmSubmit('full')} style={{ backgroundColor: '#059669', padding: 14, borderRadius: 8, marginBottom: 8 }}>
@@ -7281,6 +7325,7 @@ function NewOrderSection({ showToast }: any) {
   };
 
   const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pack_size: 0, uom_label: '' }]);
+const addEditRow = () => setEditRows([...editRows, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, discount: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountCode: '', _new: true }]);
 
   const upd = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
 
@@ -7290,7 +7335,7 @@ function NewOrderSection({ showToast }: any) {
 
 
 
-  const grandTotal = items.reduce((a, r) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+  const grandTotal = items.reduce((a, r) => a + Math.max(0, ((Number(r.quantity) || 0) * (Number(r.priceUnit) || 0)) - ((Number(r.quantity) || 0) * (Number(r.discount) || 0))), 0);
 
   const grandQty = items.reduce((a, r) => a + (Number(r.quantity) || 0), 0);
 
@@ -7398,7 +7443,7 @@ const inv = await generateInvoiceNumber();
 
         const lt = ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
 
-        const lb = lt - (Number(it.payment) || 0);
+        const lb = Math.max(0, lt - (Number(it.payment) || 0) - (__invDisc * __share));
 
         return (
 
@@ -7528,7 +7573,7 @@ const inv = await generateInvoiceNumber();
 
       })}
 
-      <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
+      <TouchableOpacity style={s.addBtn2} onPress={addEditRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
 
       <View style={s.grandSummary}>
 
@@ -7674,6 +7719,10 @@ function SearchSection({ showToast, onReturnSaved }: any) {
         priceUnit: r.price_unit || 0,
 
         payment: r.payment || 0,
+        discount: Number(r.discount) || 0,
+        discountEnabled: r.discount_enabled ? true : false,
+        discount_base_unit: Number(r.discount_base_unit) || 0,
+        discount_pack_unit: Number(r.discount_pack_unit) || 0,
         base_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).base_unit) || '',
         pack_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).pack_unit) || '',
         pack_size: (getPackForCodeGlobal(r.model_code) && Number(getPackForCodeGlobal(r.model_code).pack_size)) || 0,
@@ -7707,6 +7756,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
         code: _code,
         phone: _p?.phone || (isSales ? (rows[0].customer_phone || '') : (rows[0].supplier_phone || '')),
         manualInv: isSales ? '' : (rows[0].manual_invoice || ''),
+        invoiceDiscount: Math.max(0, ...rows.map((r: any) => Number(r.invoice_discount) || 0)),
       });
 
       setDirty(false);
@@ -7719,9 +7769,21 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
   const delRow = (i: number) => { const n = [...editRows]; n[i]._deleted = !n[i]._deleted; setEditRows(n); setDirty(true); };
 
-  const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', shipping: '', base_unit: '', pack_unit: '', pack_size: 0, entered_unit: 'base', entered_qty: 0, _deleted: false, _new: true, discount: 0, discountEnabled: false , discount_base_unit: Number(p.discount_base_unit) || 0, discount_pack_unit: Number(p.discount_pack_unit) || 0}]); setDirty(true); };
+  const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', shipping: '', base_unit: '', pack_unit: '', pack_size: 0, entered_unit: 'base', entered_qty: 0, _deleted: false, _new: true, discount: 0, discountEnabled: false, discount_base_unit: 0, discount_pack_unit: 0}]); setDirty(true); };
 
   const updRow = (i: number, f: string, v: any) => { const n = [...editRows]; (n[i] as any)[f] = v; setEditRows(n); setDirty(true); };
+
+  // __editCalc: محاسبات زنده‌ی فاکتور در ویرایش (فقط نمایش)
+  const __editRowsLive = editRows.filter((r: any) => !r._deleted);
+  const editItemsTotal = __editRowsLive.reduce((a: number, r: any) =>
+    a + Math.max(0,
+      (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0) -
+      (Number(r.quantity) || 0) * (Number(r.discount) || 0)
+    ), 0);
+  const editDiscount = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+  const editPayable = Math.max(0, editItemsTotal - editDiscount);
+  const editPaid = __editRowsLive.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+  const editBalance = editPayable - editPaid; // منفی = بستانکاری
 
 
 
@@ -7790,15 +7852,18 @@ function SearchSection({ showToast, onReturnSaved }: any) {
       
 
       if (anyPending) {
-        const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows);
+        const _metaQ: any = editing.type === 'sales'
+          ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
+        const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows, _metaQ);
         if (ok) {
           alertMsg('✅ موفق', 'تغییرات روی فاکتور آفلاین ذخیره شد');
           setEditing(null); setEditRows([]); setDirty(false); load();
           return;
         }
         const metaFallback: any = editing.type === 'sales'
-          ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '' }
-          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '' };
+          ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
         if (editing.type === 'sales') {
           await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
         } else {
@@ -7814,8 +7879,8 @@ function SearchSection({ showToast, onReturnSaved }: any) {
       const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
       const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
       const meta: any = editing.type === 'sales'
-        ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '' }
-        : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '' };
+        ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+        : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
 
       if (editing.type === 'sales') {
         await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta });
@@ -8042,9 +8107,16 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
             {editRows.map((r, i) => {
 
-              const lt = (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0);
-
-              const lb = lt - (Number(r.payment) || 0);
+              const lt = ((Number(r.quantity) || 0) * (Number(r.priceUnit) || 0)) - ((Number(r.quantity) || 0) * (Number(r.discount) || 0));
+              // __rowBal: تخفیف فاکتور روی آخرین ردیف (یا ردیف تکی) اعمال می‌شود
+              const __liveRows = editRows.filter((x: any) => !x._deleted);
+              const __invDisc = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+              const __iLive = __liveRows.indexOf(r);
+              const __remOf = (x: any) => Math.max(0, (((Number(x.quantity) || 0) * (Number(x.priceUnit) || 0)) - ((Number(x.quantity) || 0) * (Number(x.discount) || 0))) - (Number(x.payment) || 0));
+              const __rowRem = __remOf(r);
+              const __sumRem = __liveRows.reduce((a2: number, x: any) => a2 + __remOf(x), 0);
+              const __share = __sumRem > 0 ? (__rowRem / __sumRem) : (1 / Math.max(1, __liveRows.length));
+              const lb = Math.max(0, Math.round(lt - (Number(r.payment) || 0) - (__invDisc * __share)));
 
               return (
 
@@ -8094,6 +8166,8 @@ function SearchSection({ showToast, onReturnSaved }: any) {
                   {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'base'); updRow(i, 'entered_qty', r.quantity); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.base_unit || 'عدد'}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'pack'); updRow(i, 'entered_qty', Number(r.pack_size) > 0 ? r.quantity / Number(r.pack_size) : 0); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.pack_unit || 'بسته'}</Text></TouchableOpacity></View>)}
 
 <View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+
+                  <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(r.discount || '')} onChangeText={(v) => updRow(i, 'discount', parseNum(v))} keyboardType="numeric" placeholder="تخفیف" placeholderTextColor={C.textMut} editable={!r._deleted} /></View>
 
                   <Text style={[s.tdCell, { width: 100, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{lt ? fmt(lt) : '—'}</Text>
 
@@ -8176,6 +8250,21 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
 
         <TouchableOpacity style={s.addBtn2} onPress={addRow}><Text style={s.btnTxt}>{t('➕ افزودن ردیف')}</Text></TouchableOpacity>
+
+        <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 12, padding: 10, backgroundColor: '#fffbeb', borderRadius: 8, borderWidth: 1, borderColor: '#f59e0b' }}>
+          <Text style={{ color: '#b45309', fontSize: 12, fontWeight: 'bold' }}>🏷️ تخفیف فاکتور:</Text>
+          <TextInput style={[s.tdInput, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String((editing && editing.invoiceDiscount) || '')} onChangeText={(v) => { if (editing) { setDirty(true); setEditing({ ...editing, invoiceDiscount: parseNum(v) }); setDirty(true); } }} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+          <TouchableOpacity onPress={() => { if (editing) { setEditing({ ...editing, invoiceDiscount: 0 }); setDirty(true); } }} style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 }}><Text style={{ color: '#b45309', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>
+        </View>
+
+        {/* __editSummary */}
+        <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 10, padding: 8, backgroundColor: C.cardAlt, borderRadius: 6 }}>
+          <Text style={{ color: C.text, fontSize: 12 }}>جمع اقلام: {fmt(editItemsTotal)}</Text>
+          <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {editDiscount ? '−' + fmt(editDiscount) : '—'}</Text>
+          <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(editPayable)}</Text>
+          <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(editPaid)}</Text>
+          <Text style={{ color: editBalance > 0 ? '#dc2626' : editBalance < 0 ? '#2563eb' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {editBalance < 0 ? 'بستانکاری ' + fmt(Math.abs(editBalance)) : fmt(editBalance)}</Text>
+        </View>
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
 

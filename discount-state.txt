@@ -1,0 +1,366 @@
+=== App.tsx scan ===
+
+-- "__editSummary" #1 @312004 --
+l: 6 }}><Text style={{ color: '#b45309', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>
+        </View>
+        {/* __editSummary */}
+        <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 10, padding: 8, backgroundColor: C.cardAlt, borderRadius: 6 }}>
+          <Text style={{ color: C.text, fontSize: 12 }}>جمع اقلام: {fmt(editItemsTotal)}</Text>
+          <Text style={{ color: '#b45309', fo
+
+>>> total "__editSummary": 1
+
+
+-- "⚖️ مانده" #1 @175391 --
+: 6, color: totals.net > 0 ? '#991b1b' : totals.net < 0 ? '#065f46' : '#475569' }}>
+                {totals.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : totals.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
+              </Text>
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
+                <EL textKey="بدهی ایشان به ما:" style={{ fontSize: 10, color: '
+
+-- "⚖️ مانده" #2 @281842 --
+on: 'row-reverse', gap: 6, marginTop: 6 }}>
+                <View style={{ flex: 1 }}>
+                  <EL textKey="⚖️ مانده" style={[s.miniLbl, { color: C.textMut }]} />
+                  <View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lb > 0 ? '#dc2626' : '#059669' }]}>
+                    <Text style={[s.miniValueTxt, { color: lb > 0 ? '#dc2626' : '#059669' }]}>{lt ? fmt(lb) : '—'}</Text>
+             
+
+-- "⚖️ مانده" #3 @490277 --
+>
+            </>
+          )}
+          {/* مانده نهایی */}
+          <SumRow
+            l={tot.balance > 0 ? '⚖️ مانده نهایی قابل پرداخت' : tot.balance < 0 ? '💰 بستانکاری نهایی' : '✅ تسویه کامل'}
+            v={tot.balance !== 0 ? fmt(Math.abs(tot.balance)) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '') : 'بدون بدهی'}
+            highlight
+          />
+        </View>
+        <Vi
+
+>>> total "⚖️ مانده": 3
+
+
+-- "const lb" #1 @276213 --
+it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
+        const lb = lt - (Number(it.payment) || 0);
+        return (
+          <View key={i} style={[s.itemCard, { backgroundColor: C.card, borderColor: C.border }]}>
+            <View style={[s.itemHeader, { backgroundColor: C.cardAlt }]}>
+              <Text style={s.itemN}>#{i + 1}</Text>
+              <TouchableOpacity
+
+-- "const lb" #2 @302713 --
+quantity) || 0) * (Number(r.priceUnit) || 0)) - ((Number(r.quantity) || 0) * (Number(r.discount) || 0));
+              const lb = lt - (Number(r.payment) || 0);
+              return (
+                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, r._deleted && { opacity: 0.4 }, r._new && { backgroundColor: C.isDark ? '#2e1065' : '#f5f3ff' }]}>
+                  <Text 
+
+-- "const lb" #3 @493495 --
+ = text || textKey || '';
+  const [showEdit, setShowEdit] = useState(false);
+  const [tmp, setTmp] = useState('');
+  const lbl = cl(_raw);
+  const openEditor = () => { setTmp(lbl); setShowEdit(true); };
+  return (
+    <>
+      <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+        <Text style={style}>{lbl}{children}</Text>
+        {showIcon && (
+          <TouchableOpacity onPre
+
+>>> total "const lb": 3
+
+
+-- "const lt" #1 @276073 --
+ce} editable={false} />
+      <EL text="{t('📦 اقلام')}" style={s.secT} />
+      {items.map((it, i) => {
+        const lt = ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
+        const lb = lt - (Number(it.payment) || 0);
+        return (
+          <View key={i} style={[s.itemCard, { backgroundColor: C.card, borderColor: C.border }]}>
+            <View s
+
+-- "const lt" #2 @302571 --
+ell, { width: 56, textAlign: 'center' }]} />
+            </View>
+            {editRows.map((r, i) => {
+              const lt = ((Number(r.quantity) || 0) * (Number(r.priceUnit) || 0)) - ((Number(r.quantity) || 0) * (Number(r.discount) || 0));
+              const lb = lt - (Number(r.payment) || 0);
+              return (
+                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundCo
+
+>>> total "const lt": 2
+
+
+-- "editBalance" #1 @290508 --
+ditDiscount);
+  const editPaid = __editRowsLive.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+  const editBalance = Math.max(0, editPayable - editPaid);
+  const previewInvoice = async () => {
+    const validRows = editRows.filter((r: any) => !r._deleted);
+    if (!validRows.length) { showToast('هیچ ردیفی برای نمایش نیست', true); return; }
+    const items = validRows.map((r: any) => {
+      const _u = prods.find((p: 
+
+-- "editBalance" #2 @312640 --
+
+          <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(editPaid)}</Text>
+          <Text style={{ color: editBalance > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(editBalance)}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => { setEditing(null); s
+
+-- "editBalance" #3 @312729 --
+         <Text style={{ color: editBalance > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(editBalance)}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => { setEditing(null); setEditRows([]); }}><Text style={s.btnTxt}>{t('↩️ برگشت')}</Text></TouchableOpacity>
+    
+
+>>> total "editBalance": 3
+
+
+-- invoiceDiscount @64954 --
+ing, setShipping] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+  const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+  const [payDate, setPayDate] = useState(toStorageDateFull(new Date
+
+-- invoiceDiscount @69066 --
+|| 0) * (Number(it.discount) || 0))), 0);
+  const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+  const balanceDue = Math.max(0, payableAmount - (Number(paymentAmount) || 0));
+  const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+  const rese
+
+-- invoiceDiscount @70547 --
+);
+    
+    setPendingConfirm({ name, phone, count: valid.length, total: grandTotal, paymentAmount, invoiceDiscount, valid, note });
+    return;
+    if (!mode) return;
+    if (mode === 'full' && !valid.length) {
+      return alertMsg('⚠️ خطا', 'برای ثبت فاکتور، حداقل یک مدل با تعداد معتبر وارد کنید
+
+-- invoiceDiscount @71314 --
+ait createSale({
+        invoiceNumber: inv,
+        customerCode,
+        customerLocalId,
+        invoiceDiscount: Number(invoiceDiscount) || 0, 
+        customerName: name, 
+        customerPhone: phone, 
+        customerAddress: address, 
+        shipping, 
+        items: finalItems, 
+        pa
+
+-- invoiceDiscount @71338 --
+ invoiceNumber: inv,
+        customerCode,
+        customerLocalId,
+        invoiceDiscount: Number(invoiceDiscount) || 0, 
+        customerName: name, 
+        customerPhone: phone, 
+        customerAddress: address, 
+        shipping, 
+        items: finalItems, 
+        paymentAmount, 
+        in
+
+-- invoiceDiscount @74140 --
+ndingConfirm) return;
+    const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2, invoiceDiscount: _invDisc } = pendingConfirm as any;
+    setPendingConfirm(null);
+    setSaving(true);
+    try {
+      const pr = await resolvePartyForInvoice({ name: n, phone: p, address, type: 'cust
+
+-- invoiceDiscount @74926 --
+shipping, items: finalItems,
+        paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+        invoiceDiscount: Number(_invDisc) || 0,
+        invoiceDiscount: Number(_invDisc) || 0,
+        receiverName, receiverCode, receiverBank, receiverAccount
+      });
+      // ═══ اگر دریافت‌کننده یکی ا
+
+-- invoiceDiscount @74974 --
+nt: payAmt, invoiceDate, payDate, note: n2,
+        invoiceDiscount: Number(_invDisc) || 0,
+        invoiceDiscount: Number(_invDisc) || 0,
+        receiverName, receiverCode, receiverBank, receiverAccount
+      });
+      // ═══ اگر دریافت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+      try {
+  
+
+-- invoiceDiscount @91108 --
+inp, { flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+            <TouchableOpacity onPress={() => se
+
+-- invoiceDiscount @91908 --
+fmt(grandTotal)}</Text>
+            <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text>
+            <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text>
+            <Text styl
+
+-- invoiceDiscount @91936 --
+        <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text>
+            <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text>
+            <Text style={{ color: C.text, fontSize
+
+-- invoiceDiscount @97971 --
+ور:</Text>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+     
+
+-- invoiceDiscount @98014 --
+ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                  <Text style={{ color: C.textMu
+
+-- invoiceDiscount @98325 --
+ده:</Text>
+                  {(() => {
+  const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.paymentAmount || 0);
+  return (
+    <Text style={{ color: _bal > 0 ? '#dc2626' : _bal < 0 ? '#2563eb' : '#059669', fontWeight: 'bold' }}>
+      {_bal < 0 ? 'بست
+
+-- invoiceDiscount @110834 --
+ setManualInv] = useState('');
+  const [items, setItems] = useState<PurchaseItem[]>([]);
+  const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+  const [payAmt, setPayAmt] = useState('');
+  const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
+  const [invoiceDate, setInvoi
+
+-- invoiceDiscount @114237 --
+ 0);
+  const paidAmt = parseNum(payAmt);
+  const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+  const remaining = payableAmount - paidAmt;
+    const submit = async () => {
+    if (!sName || sName.length < 2) return alertMsg('⚠️ خطا', 'نام تأمین‌کننده الزامی است');
+
+
+-- invoiceDiscount @115039 --
+otal;
+    setPendingConfirm({ name: sName, inv: manualInv, count: valid.length, total, payAmt: amt, invoiceDiscount });
+  };
+  const confirmSubmit = async (mode: string) => {
+    if (!pendingConfirm) return;
+    setPendingConfirm(null);
+    const valid = items.filter((it) => it.modelName && it.quan
+
+-- invoiceDiscount @115775 --
+ice: manualInv, supplierName: sName, supplierCode: sCode, supplierPhone: sPhone, items: finalItems, invoiceDiscount: Number(invoiceDiscount) || 0, paymentAmount: amt, paymentDate: payDate, invoiceDate: invoiceDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
+ 
+
+-- invoiceDiscount @115799 --
+Name: sName, supplierCode: sCode, supplierPhone: sPhone, items: finalItems, invoiceDiscount: Number(invoiceDiscount) || 0, paymentAmount: amt, paymentDate: payDate, invoiceDate: invoiceDate, bankAccount: bankAcc, payerName, payerCode, receiverAccount: receiverAcc, note });
+      // ═══ اگر پرداخت‌ک
+
+-- invoiceDiscount @127083 --
+inp, { flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+          <TouchableOpacity onPress={() => setI
+
+-- invoiceDiscount @134078 --
+ور:</Text>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+     
+
+-- invoiceDiscount @134121 --
+ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                  <Text style={{ color: C.textMu
+
+-- invoiceDiscount @134462 --
+           {(() => {
+                    const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.payAmt || 0);
+                    return (
+                      <Text style={{ color: _bal > 0 ? '#dc2626' : _bal < 0 ? '#2563eb' : '#059669', fontWeight: 'bol
+
+-- invoiceDiscount @288972 --
+].supplier_phone || '')),
+        manualInv: isSales ? '' : (rows[0].manual_invoice || ''),
+        invoiceDiscount: Number(rows[0].invoice_discount) || 0,
+      });
+      setDirty(false);
+    } catch (e: any) { showToast(e.message || 'خطا در باز کردن فاکتور', true); }
+  };
+  const delRow = (i
+
+-- invoiceDiscount @290312 --
+* (Number(r.discount) || 0)
+    ), 0);
+  const editDiscount = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+  const editPayable = Math.max(0, editItemsTotal - editDiscount);
+  const editPaid = __editRowsLive.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+  const edit
+
+-- invoiceDiscount @293236 --
+ame: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder 
+
+-- invoiceDiscount @293268 --
+.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.a
+
+-- invoiceDiscount @293492 --
+lInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
+        if (editing.type === 'sales') {
+          await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+   
+
+-- invoiceDiscount @293524 --
+countHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
+        if (editing.type === 'sales') {
+          await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        } else {
+          await up
+
+-- invoiceDiscount @294470 --
+ame: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+        : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder ||
+
+-- invoiceDiscount @294502 --
+.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+        : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.acc
+
+-- invoiceDiscount @294724 --
+lInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
+      if (editing.type === 'sales') {
+        await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta });
+      } else {
+     
+
+-- invoiceDiscount @294756 --
+countHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
+      if (editing.type === 'sales') {
+        await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta });
+      } else {
+        await updatePurchase({ invoic
+
+-- invoiceDiscount @311407 --
+ackgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String((editing && editing.invoiceDiscount) || '')} onChangeText={(v) => { if (editing) { setEditing({ ...editing, invoiceDiscount: parseNum(v) }); setDirty(true); } }} keyboardType="numeric" placeholder="0" placeholderTextColo
+
+-- invoiceDiscount @311495 --
+ && editing.invoiceDiscount) || '')} onChangeText={(v) => { if (editing) { setEditing({ ...editing, invoiceDiscount: parseNum(v) }); setDirty(true); } }} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+          <TouchableOpacity onPress={() => { if (editing) { setEditing(
+
+-- invoiceDiscount @311709 --
+{C.textMut} />
+          <TouchableOpacity onPress={() => { if (editing) { setEditing({ ...editing, invoiceDiscount: 0 }); setDirty(true); } }} style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 }}><Text style={{ co

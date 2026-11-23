@@ -1,0 +1,79 @@
+=== 1) خطوطی که search دارند ===
+L71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, 
+L752: const search = ((window as any)?.location?.search || '') || '';
+L758: search.includes('type=recovery') ||
+L914: const search = ((window as any)?.location?.search || '') || '';
+L916: if (hash.includes('type=recovery') || search.includes('type=recovery') || hash.includes('access_token=')) {
+L7051: { k: 'search', l: '🔍 جستجو و ویرایش' },
+L7089: {sub === 'search' && <SearchSection showToast={showToast} onReturnSaved={(t: string) => setSub(t === 'sales' ? 'salesReturns' : 'purchaseReturns')} />}
+L7602: //  SEARCH SECTION — جدول ۱۲ ستونه (مثل وب)
+L7606: function SearchSection({ showToast, onReturnSaved }: any) {
+L7656: const load = async () => { setLoading(true); try { setList(await searchAllInvoices('')); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+L11986: // Search
+L11988: searchCard: { borderRadius: 12, padding: 12, marginBottom: 10, borderRightWidth: 4, borderRightColor: '#1e3a8a' },
+L11990: searchRowNum: { color: '#d4af37', fontSize: 12, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+L11992: searchInvoice: { color: '#1e3a5f', fontSize: 15, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+L11994: searchTypeBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+L11996: searchTypeTxt: { fontSize: 11, fontWeight: 'bold' },
+L11998: searchInfoGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', marginBottom: 8 },
+L12000: searchInfoCell: { width: '50%', paddingVertical: 4 },
+L12002: searchInfoLbl: { color: '#94a3b8', fontSize: 10, fontWeight: 'bold', marginBottom: 2, textAlign: 'right' },
+L12004: searchInfoVal: { color: '#1a2332', fontSize: 12, fontWeight: 'bold', textAlign: 'right' },
+L12006: searchMoneyBox: { flexDirection: 'row-reverse', borderRadius: 8, padding: 10, marginTop: 4, borderWidth: 1 },
+L12008: searchMoneyLbl: { color: '#64748b', fontSize: 10, fontWeight: 'bold', marginBottom: 4 },
+L12010: searchMoneyVal: { color: '#1e3a5f', fontSize: 14, fontWeight: 'bold', fontFamily: 'ShareTechMono_400Regular' },
+L12012: searchStatusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+L12014: searchStatusTxt: { fontSize: 11, fontWeight: 'bold' },
+L12016: searchActionBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#dbeafe', borderRadius: 8 },
+L12018: searchActionTxt: { color: '#1e40af', fontSize: 12, fontWeight: 'bold' },
+
+=== 2) function/const با نام *Search* ===
+L7606: function SearchSection
+
+=== 3) شرط رندر تب search ===
+L7089: {sub === 'search' && <SearchSection showToast={showToast} onReturnSaved={(t: string) => setSub(t === 'sales' ? 'salesReturns' : 'purchaseReturns')} />}
+
+=== 4) فرمول‌های مانده ===
+L3064: current: { invoiceNumber: r.invoice_number, items: its, sales: total, payments: paid, balance: total - paid },
+L3068: totals: { sales: total, payments: paid, balance: total - paid },
+L3412: <Text style={{ color: balanceDue > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(balanceDue)}</Text>
+L3515: <Text style={{ color: C.textMut }}>📉 مانده:</Text>
+L4508: <View style={{ flex: 1 }}><EL textKey="📌 مانده" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? fmt(remaining) : '—'}</Text></View></View>
+L4609: <Text style={{ color: C.textMut }}>📉 مانده / بستانکاری:</Text>
+L4888: 'پرداخت': r.payment, 'مانده': r.total - r.payment,
+L4896: data.push({ 'نام مدل': 'جمع فروش', 'جمع': totals.totalSales, 'پرداخت': totals.paidByCustomer, 'مانده': totals.customerOwes } as any);
+L4914: 'پرداخت': r.payment, 'مانده': r.total - r.payment,
+L4922: data.push({ 'نام مدل': 'جمع خرید', 'جمع': totals.totalPurchases, 'پرداخت': totals.paidToSupplier, 'مانده': totals.weOwe + totals.totalTriang } as any);
+L5075: .total-row { background-color: #e2e8f0 !important; font-weight: bold; font-size: 11px; }
+L5076: .total-row td { border-top: 2px solid #0f2438; }
+L5109: <th>#</th><th>تاریخ و زمان</th><th>فاکتور</th><th>کد مدل</th><th>نام مدل</th><th>تعداد (واحد پایه)</th><th>واحد بسته</th><th>قیمت</th><th>جمع</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>تاریخ واریز</th><th>شرح</th><th>وضعیت</th>
+L5114: <tr class="total-row">
+L5132: <th>#</th><th>تاریخ و زمان</th><th>فاکتور</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>تاریخ واریز</th><th>شرح</th><th>وضعیت</th>
+L5137: <tr class="total-row">
+L5154: <span>مانده نهایی:</span>
+L5242: <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+L5324: <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+L5460: {totals.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : totals.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
+L7548: <EL textKey="⚖️ مانده" style={[s.miniLbl, { color: C.textMut }]} />
+L7985: const balance = total - settlementAmount;
+L8090: <EL textKey="مانده" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+L8266: <Text style={{ color: editBalance > 0 ? '#dc2626' : editBalance < 0 ? '#2563eb' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {editBalance < 0 ? 'بستانکاری ' + fmt(Math.abs(editBalance)) : fmt(editBalance)}</Text>
+L8352: <EL textKey="مانده" style={[s.thCell, { width: 130 }]} />
+L8386: <Text style={[s.tdCell, { width: 130, fontSize: 12, color: r.total - r.paid > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{fmt(r.total - r.paid)}</Text>
+L8606: const balance = total - settlementAmount;
+L8883: const rows = Object.values(map).map((m: any) => ({ ...m, balance: m.total - m.paid })).filter((r: any) => r.balance > 0);
+L8907: const rows = Object.values(map).map((m: any) => ({ ...m, balance: m.total - m.paid })).filter((r: any) => r.balance > 0);
+L11093: '<div class="sum-row"><span>مانده این فاکتور:</span><b>' + fmt(invoice.current?.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+L11094: (invoice.previous ? '<div class="sum-row"><span>مانده قبلی:</span><b>' + fmt(invoice.previous.balance || 0) + ' ' + esc(curLabel) + '</b></div>' : '') +
+L11095: '<div class="sum-row"><span>مانده نهایی قابل پرداخت:</span><b>' + fmt(tot.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+L11305: {/* مانده نهایی */}
+L11309: l={tot.balance > 0 ? '⚖️ مانده نهایی قابل پرداخت' : tot.balance < 0 ? '💰 بستانکاری نهایی' : '✅ تسویه کامل'}
+
+=== 5) نام کامپوننت‌های List/Screen/Tab/Panel ===
+L2641: SalesScreen
+L4080: PurchaseScreen
+L4691: PrintScreen
+L5523: ProfitScreen
+L5808: InventoryScreen
+L7029: ManagementScreen
+L11456: LoginScreen

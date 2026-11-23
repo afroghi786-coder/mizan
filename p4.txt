@@ -1,0 +1,306 @@
+=== lib.offline.ts :: getSalesRowsForReport ===
+export async function getSalesRowsForReport(code: string) {
+  const c2 = String(code || '').trim();
+  if (!c2) return { customer: [], triang: [] };
+  if (MODE === 'online') {
+    try {
+      const [r1, r2] = await Promise.all([
+        lib.supabase.from('sales').select('*').eq('customer_code', c2).order('created_at'),
+        lib.supabase.from('sales').select('*').eq('account_holder_code', c2).order('created_at'),
+      ]);
+      return { customer: r1.data || [], triang: r2.data || [] };
+    } catch (e) { console.log('[getSalesRowsForReport] online fail:', e); }
+  }
+  const cachedSales = (await getLocal<any[]>('sales')) || [];
+  const customer = cachedSales.filter(function(r: any) { return r.customer_code === c2; });
+  const triang = cachedSales.filter(function(r: any) { return r.account_holder_code === c2; });
+  const q = await getQueue();
+  for (const item of q) {
+    if (item.op !== 'createSale') continue;
+    const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+    for (const r of rows) {
+      const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', customer_name: item.payload.customerName || '', customer_code: item.payload.customerCode || '', customer_phone: item.payload.customerPhone || '', account_holder: item.payload.holderName || '', account_holder_code: item.payload.holderCode || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+      if (row.customer_code === c2) customer.push(row);
+      if (row.account_holder_code === c2) triang.push(row);
+    }
+  }
+  return { customer: customer, triang: triang };
+}
+export async function getPurchasesRowsForReport(code: string) {
+  const c2 = String(code || '').trim();
+  if (!c2) return { supplier: [] };
+  if (MODE === 'online') {
+    try {
+      const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+      return { supplier: r.data || [] };
+    } catch (e) { console.log('[getPurchasesRowsForReport] online fail:', e); }
+  }
+  const cached = (await getLocal<any[]>('purchases')) || [];
+  const supplier = cached.filter(function(r: any) { return r.supplier_code === c2; });
+  const q = await getQueue();
+  for (const item of q) {
+    if (item.op !== 'createPurchase') continue;
+    const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+    for (const r of rows) {
+      const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', supplier_name: item.payload.supplierName || '', supplier_code: item.payload.supplierCode || '', supplier_phone: item.payload.supplierPhone || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+      if (row.supplier_code === c2) supplier.push(row);
+    }
+  }
+  return { supplier: supplier };
+}
+
+
+// ═══════════════════════════════════════════
+//  getLedgerData — ترازنامه یکپارچه با مثلثی
+// ═══════════════════════════════════════════
+export async function getLedgerData(): Promise<any[]> {
+  const _pda = (lib && (lib as any).parseDateAny) ? (lib as any).parseDateAny : function(d: any) { return d ? new Date(d) : null; };
+  let allSales: any[] = [];
+  let allPurchases: any[] = [];
+
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — دفتر معین فقط محلی + صف
+
+  if (!allSales.length) allSales = (await getLocal<any[]>('sales')) || [];
+  if (!allPurchases.length) allPurchases = (await getLocal<any[]>('purchases')) || [];
+
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — اگر داده خام از pull نیامده، از grouped بساز
+  try {
+    const _salesHave = new Set(allSales.map((s: any) => String(s.invoice_number || '').trim()).filter(Boolean));
+    const _sg = (await getLocal<any[]>('sales_grouped')) || [];
+    for (const _g of _sg) {
+      const _inv = String(_g.invoice || '').trim();
+      if (!_inv) continue;
+      if (_salesHave.has(_inv)) continue;
+      for (const _it of (_g.items || [])) {
+        allSales.push({
+          invoice_number: _inv,
+          customer_code: _normCode(_g.customerCode || _g.code),
+          customer_name: _g.name || '',
+          customer_phone: _g.phone || '',
+          account_holder: _g.holder || _g.account_holder || '',
+          account_holder_code: _g.holderCode || _g.account_holder_code || '',
+          quantity: Number(_it.quantity) || 0,
+          price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
+          payment: Number(_it.payment) || 0,
+          total: (Number(_it.quantity) || 0) * (Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0),
+          model_code: _it.modelCode || _it.model_code || '',
+          model_name: _it.modelName || _it.model_name || '',
+          date_factor: _g.date || '',
+          date_reg: _g.date || '',
+          manual_invoice: _g.manual || _g.manual_invoice || '',
+          bank_name: _g.bank || _g.bank_name || '',
+          deposit_date: _g.depositDate || _g.deposit_date || '',
+          shipping: _g.shipping || '',
+          description: _it.description || '',
+        });
+      }
+    }
+  } catch {}
+
+  try {
+    const _purchHave = new Set(allPurchases.map((p: any) => String(p.invoice_number || '').trim()).filter(Boolean));
+    const _pg = (await getLocal<any[]>('purchases_grouped')) || [];
+    for (const _g of _pg) {
+      const _inv = String(_g.invoice || '').trim();
+      if (!_inv) continue;
+      if (_purchHave.has(_inv)) continue;
+      for (const _it of (_g.items || [])) {
+        allPurchases.push({
+          invoice_number: _inv,
+          supplier_code: _g.supplierCode || _g.code || '',
+          supplier_name: _g.name || '',
+          supplier_phone: _g.phone || '',
+          account_holder: _g.holder || _g.account_holder || _g.payerName || '',
+          payer_code: _g.holderCode || _g.account_holder_code || _g.payerCode || '',
+          quantity: Number(_it.quantity) || 0,
+          price_unit: Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0,
+          payment: Number(_it.payment) || 0,
+          total: (Number(_it.quantity) || 0) * (Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0),
+          model_code: _it.modelCode || _it.model_code || '',
+          model_name: _it.modelName || _it.model_name || '',
+          date_factor: _g.date || '',
+          date_reg: _g.date || '',
+          manual_invoice: _g.manual || _g.manual_invoice || '',
+          bank_name: _g.bank || _g.bank_name || '',
+          deposit_date: _g.depositDate || _g.deposit_date || '',
+          shipping: _g.shipping || '',
+          description: _it.description || '',
+        });
+      }
+    }
+  } catch {}
+
+  // BUSINESS_LOCAL_ONLY — Apply tombstones (sales/purchases)
+  try {
+    const _tombL = await getTombstones();
+    const _deadSL = new Set<string>();
+    const _deadPL = new Set<string>();
+    for (const _t of _tombL) {
+      if (String(_t.table || '') === 'sales') _deadSL.add(String(_t.key || '').trim());
+      if (String(_t.table || '') === 'purchases') _deadPL.add(String(_t.key || '').trim());
+    }
+    if (_deadSL.size) allSales = allSales.filter((s: any) => !_deadSL.has(String(s.invoice_number || '').trim()));
+    if (_deadPL.size) allPurchases = allPurchases.filter((p: any) => !_deadPL.has(String(p.invoice_number || '').trim()));
+  } catch {}
+
+  const q = await getQueue();
+  for (const item of q) {
+    // حذف آفلاین فروش
+    if (item.op === 'deleteSale' && item.payload) {
+      const inv = typeof item.payload === 'string' ? item.payload : (item.payload.invoiceNumber || item.payload.invoice_number || '');
+      if (inv) allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== inv);
+      continue;
+    }
+    // حذف آفلاین خرید
+    if (item.op === 'deletePurchase' && item.payload) {
+      const inv = typeof
+
+=== lib.offline.ts :: _groupSalesRows ===
+function _groupSalesRows(rows: any[]) {
+  const groups: Record<string, any> = {};
+  for (const r of rows || []) {
+    const inv = String(r.invoice_number || '').trim();
+    if (!inv) continue;
+    if (!groups[inv]) {
+      groups[inv] = {
+        invoice: inv,
+        local_id: 'grp_sale_' + inv,
+        name: r.customer_name || '',
+        phone: r.customer_phone || '',
+        customerCode: r.customer_code || '',
+        manual: r.manual_invoice || '',
+        bank: r.bank_name || '',
+        holder: r.account_holder || '',
+        holderCode: r.account_holder_code || '',
+        depositDate: r.deposit_date || '',
+        shipping: r.shipping || '',
+        total: 0, paid: 0, items: [],
+        date: r.date_reg || r.date_factor || r.created_at || '',
+        updated_at: r.updated_at || r.updatedAt || '',
+        device_id: r.device_id || '',
+      };
+    }
+    const g = groups[inv];
+    const qty = Number(r.quantity) || 0;
+    const price = Number(r.price_unit) || 0;
+    g.total += qty * price;
+    g.paid += Number(r.payment) || 0;
+    g.items.push(r);
+    if (r.customer_name) g.name = r.customer_name;
+    if (r.customer_phone) g.phone = r.customer_phone;
+    if (!g.customerCode && r.customer_code) g.customerCode = r.customer_code;
+    if (!g.manual && r.manual_invoice) g.manual = r.manual_invoice;
+    if (!g.bank && r.bank_name) g.bank = r.bank_name;
+    if (!g.holder && r.account_holder) g.holder = r.account_holder;
+    if (!g.holderCode && r.account_holder_code) g.holderCode = r.account_holder_code;
+    if (!g.depositDate && r.deposit_date) g.depositDate = r.deposit_date;
+    if (!g.shipping && r.shipping) g.shipping = r.shipping;
+    const rUpd = String(r.updated_at || r.updatedAt || '');
+    if (rUpd && (!g.updated_at || rUpd > g.updated_at)) g.updated_at = rUpd;
+    if (r.device_id && !g.device_id) g.device_id = r.device_id;
+  }
+  return Object.values(groups);
+}
+
+function _groupPurchaseRows(rows: any[]) {
+  const groups: Record<string, any> = {};
+  for (const r of rows || []) {
+    const inv = String(r.invoice_number || '').trim();
+    if (!inv) continue;
+    if (!groups[inv]) {
+      groups[inv] = {
+        invoice: inv,
+        local_id: 'grp_purchase_' + inv,
+        manual: r.manual_invoice || '',
+        name: r.supplier_name || '',
+        phone: r.supplier_phone || '',
+        supplierCode: r.supplier_code || '',
+        bank: r.bank_name || '',
+        holder: r.account_holder || '',
+        holderCode: r.payer_code || r.account_holder_code || '',
+        depositDate: r.deposit_date || '',
+        shipping: r.shipping || '',
+        total: 0, paid: 0, items: [],
+        date: r.date_reg || r.date_factor || r.created_at || '',
+        updated_at: r.updated_at || r.updatedAt || '',
+        device_id: r.device_id || '',
+      };
+    }
+    const g = groups[inv];
+    const qty = Number(r.quantity) || 0;
+    const price = Number(r.price_unit) || 0;
+    g.total += qty * price;
+    g.paid += Number(r.payment) || 0;
+    g.items.push(r);
+    if (r.supplier_name) g.name = r.supplier_name;
+    if (r.supplier_phone) g.phone = r.supplier_phone;
+    if (!g.supplierCode && r.supplier_code) g.supplierCode = r.supplier_code;
+    if (!g.manual && r.manual_invoice) g.manual = r.manual_invoice;
+    if (!g.bank && r.bank_name) g.bank = r.bank_name;
+    if (!g.holder && r.account_holder) g.holder = r.account_holder;
+    if (!g.holderCode && (r.payer_code || r.account_holder_code)) g.holderCode = r.payer_code || r.account_holder_code;
+    if (!g.depositDate && r.deposit_date) g.depositDate = r.deposit_date;
+    if (!g.shipping && r.shipping) g.shipping = r.shipping;
+    const rUpdP = String(r.updated_at || r.updatedAt || '');
+    if (rUpdP && (!g.updated_at || rUpdP > g.updated_at)) g.updated_at = rUpdP;
+    if (r.device_id && !g.device_id) g.device_id = r.device_id;
+  }
+  return Object.values(groups);
+}
+
+function _tsLocal(v: any): number {
+  const t = Date.parse(String(v || ''));
+  return isNaN(t) ? 0 : t;
+}
+
+export async function getSalesGrouped() {
+  let serverList: any[] = [];
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
+  serverList = (await getLocal<any[]>('sales_grouped')) || [];
+
+  // ادغام فروش‌های محلی که هنوز گروه‌بندی نشده‌اند
+  const localSalesRows = (await getLocal<any[]>('sales')) || [];
+  if (localSalesRows.length) {
+    const groupedFromSales = _groupSalesRows(localSalesRows);
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    const localUpMap: Record<string, number> = {};
+    for (const r of localSalesRows) {
+   
+
+=== App.tsx: function ها (همه) ===
+  App  @char 15124
+  getTabPins  @char 27810
+  MainApp  @char 28010
+  PinModal  @char 51301
+  Autocomplete  @char 52981
+  CellAutocomplete  @char 54994
+  DigitalDashboard  @char 58483
+  DCard  @char 62557
+  SalesScreen  @char 62939
+  getS  @char 101332
+  PurchaseScreen  @char 108763
+  PrintScreen  @char 137276
+  ProfitScreen  @char 177853
+  LocalInput  @char 191017
+  InventoryScreen  @char 191505
+  ManagementScreen  @char 262138
+  UnpaidSection  @char 264935
+  NewOrderSection  @char 269639
+  SearchSection  @char 283617
+  ReturnsSection  @char 327963
+  ReportsSection  @char 345114
+  PresetSection  @char 355811
+  SettingsSection  @char 358111
+  PartiesSection  @char 379275
+  PartnersSection  @char 399602
+  BanksSection  @char 438025
+  ShippingsSection  @char 446540
+  SourcesSection  @char 455161
+  ProductsSection  @char 457340
+  InvoiceView  @char 476911
+  EL  @char 494710
+  LoginScreen  @char 495520
+
+=== App.tsx: خطوط معین/حساب/ایکن چشم ===
+L4665: <Text style={{ fontSize: 18 }}>👁️</Text>

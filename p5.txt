@@ -1,0 +1,122 @@
+gBottom: 60 }} keyboardShouldPersistTaps="handled">
+
+        <View style={[s.mgrHead, { backgroundColor: '#c0392b' }]}>
+
+          <TouchableOpacity onPress={async () => { if (dirty) { const ok = await confirmMsg('خروج', 'تغییرات ذخیره نشده — خارج شوی؟'); if (!ok) return; } setEditing(null); setEditRows([]); setDirty(false); }}>
+
+            <EL textKey="← بازگشت" style={{ color: '#fff', fontSize: 16 }} />
+
+          </TouchableOpacity>
+
+          <View style={{ flex: 1, marginRight: 10 }}>
+
+            <Text style={s.mgrHeadTxt}>✏️ {editing.invoice}</Text>
+
+            <Text style={{ color: '#fff', fontSize: 11, opacity: 0.9 }}>{editing.name} | {editing.code} | {toFaNum(editRows.length)} ردیف</Text>
+
+          </View>
+
+        </View>
+
+
+
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+
+          <View>
+
+            <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+
+              <Text style={[s.thCell, { width: 36, fontSize: 12, fontWeight: 'bold', textAlign: 'center' }]}>#</Text>
+
+              <EL textKey="کد" style={[s.thCell, { width: 90, textAlign: 'center' }]} />
+
+              <EL textKey="نام مدل" style={[s.thCell, { width: 180, textAlign: 'center' }]} />
+
+              <EL textKey="تعداد" style={[s.thCell, { width: 80, textAlign: 'center' }]} />
+              <EL textKey="واحد بسته" style={[s.thCell, { width: 70, textAlign: 'center' }]} />
+
+              <EL textKey="قیمت" style={[s.thCell, { width: 110, textAlign: 'center' }]} />
+
+              <EL textKey="مبلغ" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="پرداخت" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="مانده" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+             <EL textKey="تاریخ واریز" style={[s.thCell, { width: 340, textAlign: 'center' }]} />
+
+              <EL textKey="بانک" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="صاحب حساب" style={[s.thCell, { width: 130, textAlign: 'center' }]} />
+
+              <EL textKey="کد صاحب حساب" style={[s.thCell, { width: 110, textAlign: 'center' }]} />
+
+              <EL textKey="شرح" style={[s.thCell, { width: 140, textAlign: 'center' }]} />
+
+              {editing.type === 'sales' && <EL textKey="باربری" style={[s.thCell, { width: 130, textAlign: 'center' }]} />}
+
+              <EL textKey="حذف" style={[s.thCell, { width: 56, textAlign: 'center' }]} />
+
+            </View>
+
+            {editRows.map((r, i) => {
+
+              const lt = ((Number(r.quantity) || 0) * (Number(r.priceUnit) || 0)) - ((Number(r.quantity) || 0) * (Number(r.discount) || 0));
+              // __rowBal: تخفیف فاکتور روی آخرین ردیف (یا ردیف تکی) اعمال می‌شود
+              const __liveRows = editRows.filter((x: any) => !x._deleted);
+              const __invDisc = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+              const __iLive = __liveRows.indexOf(r);
+              const __remOf = (x: any) => Math.max(0, (((Number(x.quantity) || 0) * (Number(x.priceUnit) || 0)) - ((Number(x.quantity) || 0) * (Number(x.discount) || 0))) - (Number(x.payment) || 0));
+              const __rowRem = __remOf(r);
+              const __sumRem = __liveRows.reduce((a2: number, x: any) => a2 + __remOf(x), 0);
+              const __share = __sumRem > 0 ? (__rowRem / __sumRem) : (1 / Math.max(1, __liveRows.length));
+              const lb = Math.max(0, Math.round(lt - (Number(r.payment) || 0) - (__invDisc * __share)));
+
+              return (
+
+                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, r._deleted && { opacity: 0.4 }, r._new && { backgroundColor: C.isDark ? '#2e1065' : '#f5f3ff' }]}>
+
+                  <Text style={[s.tdCell, { width: 36, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+
+                  <View style={{ width: 90, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelCode} onChangeText={(v) => updRow(i, 'modelCode', v)} editable={!r._deleted} /></View>
+
+                                  <View style={{ width: 180, paddingHorizontal: 3 }}>
+
+                    <CellAutocomplete
+
+                      value={r.modelName}
+
+                      onChange={(v: string) => updRow(i, 'modelName', v)}
+
+                      onSelect={(v: string) => {
+
+                        const p = prods.find((x: any) => x.name === v);
+
+                        if (p) {
+
+                          updRow(i, 'modelCode', p.code || '');
+
+                          updRow(i, 'priceUnit', p.price || 0);
+                          updRow(i, 'base_unit', p.base_unit || '');
+                          updRow(i, 'pack_unit', p.pack_unit || '');
+                          updRow(i, 'pack_size', Number(p.pack_size) || 0);
+                          updRow(i, 'entered_unit', 'base');
+                          updRow(i, 'entered_qty', Number(r.quantity) || 0);
+
+                        }
+
+                      }}
+
+                      options={prods.map(p => p.name).filter(Boolean)}
+
+                      placeholder={term('product') + '...'}
+
+                    />
+
+                  </View>
+
+                  <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.entered_unit === 'pack' ? (r.entered_qty || '') : (r.quantity || ''))} onChangeText={(v) => { const raw = parseNum(v); const u = r.entered_unit || 'base'; updRow(i, 'entered_unit', u); updRow(i, 'entered_qty', raw); updRow(i, 'quantity', (u === 'pack' && Number(r.pack_size) > 0) ? Math.round(raw * Number(r.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" editable={!r._deleted} /></View>
+
+                  {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'base'); updRow(i, 'entered_qty', r.quantity); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.base_unit || 'عدد'}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'pack'); updRow(i, 'entered_qty', Number(r.pack_size) > 0 ? r.quantity / Number(r.pack_size) : 0); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.pack_unit || 'بسته'}</Text></TouchableOpacity></View>)}
+
+<View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardTyp

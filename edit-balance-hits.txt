@@ -1,0 +1,754 @@
+total "مانده" hits: 24
+
+===== @92290 (line 3413) =====
+ style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 10, padding: 8, backgroundColor: C.cardAlt, borderRadius: 6 }}>
+            <Text style={{ color: C.text, fontSize: 12 }}>جمع اقلام: {fmt(grandTotal)}</Text>
+            <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text>
+            <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text>
+            <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(paymentAmount)}</Text>
+            <Text style={{ color: balanceDue > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(balanceDue)}</Text>
+          </View>
+          <EL text={t('📝 شرح')} style={[s.lbl, { color: C.textMut }]} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder="توضیحات..." placeholderTextColor={C.textMut} />
+        </View>
+
+      
+
+===== @98222 (line 3516) =====
+extMut }}>💵 پرداخت:</Text>
+                  <Text style={{ color: '#059669', fontWeight: 'bold' }}>{fmt(pendingConfirm.paymentAmount)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>🏷️ تخفیف فاکتور:</Text>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                  <Text style={{ color: C.textMut }}>📉 مانده:</Text>
+                  {(() => {
+  const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.paymentAmount || 0);
+  return (
+    <Text style={{ color: _bal > 0 ? '#dc2626' : _bal < 0 ? '#2563eb' : '#059669', fontWeight: 'bold' }}>
+      {_bal < 0 ? 'بستانکاری ' + fmt(Math.abs(_bal)) : fmt(_bal)}
+    </Text>
+  );
+})()}
+                </View>
+      
+
+===== @127969 (line 4509) =====
+ss={() => setInvoiceDiscount(0)} style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 6, paddingHorizontal: 10, justifyContent: 'center' }}><Text style={{ color: '#b45309', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>
+        </View>
+
+
+
+        <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+
+          <View style={{ flex: 1 }}><EL textKey="💵 پرداخت" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: '#059669' }]}><Text style={[s.miniValueTxt, { color: '#059669' }]}>{paidAmt ? fmt(paidAmt) : '—'}</Text></View></View>
+
+          <View style={{ flex: 1 }}><EL textKey="📌 مانده" style={[s.miniLbl, { color: C.textMut }]} /><View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: remaining > 0 ? '#dc2626' : '#059669' }]}><Text style={[s.miniValueTxt, { color: remaining > 0 ? '#dc2626' : '#059669' }]}>{grandTotal ? fmt(remaining) : '—'}</Text></View></View>
+
+        </View>
+
+
+
+        <EL text="{t('📅 تاریخ فاکتور')}" style={[s.lbl, { color: C.textMut 
+
+===== @134329 (line 4610) =====
+or: C.textMut }}>💵 پرداخت:</Text>
+                  <Text style={{ color: '#059669', fontWeight: 'bold' }}>{fmt(pendingConfirm.payAmt)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>🏷️ تخفیف فاکتور:</Text>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                  <Text style={{ color: C.textMut }}>📉 مانده / بستانکاری:</Text>
+                  {(() => {
+                    const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.payAmt || 0);
+                    return (
+                      <Text style={{ color: _bal > 0 ? '#dc2626' : _bal < 0 ? '#2563eb' : '#059669', fontWeight: 'bold' }}>
+                        {_bal < 0 ? 'بستانکاری ' + fmt(Math.
+
+===== @142501 (line 4889) =====
+
+
+      if (mode === 'print') await Print.printAsync({ uri });
+
+      else if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+
+    } catch (e: any) { showToast(e.message, true); }
+
+  };
+
+
+
+  const exportExcel = async () => {
+
+    if (!report) return;
+
+    try {
+
+      const wb = XLSX.utils.book_new();
+
+      const t = report.totals;
+
+
+
+      if (report.salesRows.length) {
+
+        const data = report.salesRows.map((r: any, i: number) => ({
+
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice,
+
+          'کد مدل': r.modelCode, 'نام مدل': r.modelName,
+
+          'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+
+          'پرداخت': r.payment, 'مانده': r.total - r.payment,
+
+          'بانک': r.bank, 'صاحب حساب': r.holder, 'کد صاحب حساب': r.holderCode,
+
+          'تاریخ واریز': displayDateOnly(r.depositDate), 'باربری': r.shipping, 'شرح': r.desc,
+
+        }));
+
+        data.push({ 'نام مدل': 'جمع فروش', 'جمع': totals.totalSales, 'پرداخت': totals.paidByCustomer, 'مانده': totals.customerOwes } as any);
+
+        XLSX.utils.book_append_sheet(w
+
+===== @142823 (line 4897) =====
+      const t = report.totals;
+
+
+
+      if (report.salesRows.length) {
+
+        const data = report.salesRows.map((r: any, i: number) => ({
+
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice,
+
+          'کد مدل': r.modelCode, 'نام مدل': r.modelName,
+
+          'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+
+          'پرداخت': r.payment, 'مانده': r.total - r.payment,
+
+          'بانک': r.bank, 'صاحب حساب': r.holder, 'کد صاحب حساب': r.holderCode,
+
+          'تاریخ واریز': displayDateOnly(r.depositDate), 'باربری': r.shipping, 'شرح': r.desc,
+
+        }));
+
+        data.push({ 'نام مدل': 'جمع فروش', 'جمع': totals.totalSales, 'پرداخت': totals.paidByCustomer, 'مانده': totals.customerOwes } as any);
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'فروش');
+
+      }
+
+
+
+      if (report.purchaseRows.length) {
+
+        const data = report.purchaseRows.map((r: any, i: number) => ({
+
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'فاکتور دستی': r.manualInv,
+
+          'کد مدل': r.modelCode, 'نام مدل': r.m
+
+===== @143335 (line 4915) =====
+ displayDateOnly(r.depositDate), 'باربری': r.shipping, 'شرح': r.desc,
+
+        }));
+
+        data.push({ 'نام مدل': 'جمع فروش', 'جمع': totals.totalSales, 'پرداخت': totals.paidByCustomer, 'مانده': totals.customerOwes } as any);
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'فروش');
+
+      }
+
+
+
+      if (report.purchaseRows.length) {
+
+        const data = report.purchaseRows.map((r: any, i: number) => ({
+
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'فاکتور دستی': r.manualInv,
+
+          'کد مدل': r.modelCode, 'نام مدل': r.modelName,
+
+          'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+
+          'پرداخت': r.payment, 'مانده': r.total - r.payment,
+
+          'بانک': r.bank, 'صاحب حساب': r.holder, 'کد پرداخت‌کننده': r.payerCode,
+
+          'تاریخ واریز': displayDateOnly(r.depositDate), 'شرح': r.desc,
+
+        }));
+
+        data.push({ 'نام مدل': 'جمع خرید', 'جمع': totals.totalPurchases, 'پرداخت': totals.paidToSupplier, 'مانده': totals.weOwe + totals.totalTriang } as any);
+
+        XLSX.utils.book_append_sheet(wb,
+
+===== @143641 (line 4923) =====
+');
+
+      }
+
+
+
+      if (report.purchaseRows.length) {
+
+        const data = report.purchaseRows.map((r: any, i: number) => ({
+
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور': r.invoice, 'فاکتور دستی': r.manualInv,
+
+          'کد مدل': r.modelCode, 'نام مدل': r.modelName,
+
+          'تعداد': r.qty, 'قیمت واحد': r.priceUnit, 'جمع': r.total,
+
+          'پرداخت': r.payment, 'مانده': r.total - r.payment,
+
+          'بانک': r.bank, 'صاحب حساب': r.holder, 'کد پرداخت‌کننده': r.payerCode,
+
+          'تاریخ واریز': displayDateOnly(r.depositDate), 'شرح': r.desc,
+
+        }));
+
+        data.push({ 'نام مدل': 'جمع خرید', 'جمع': totals.totalPurchases, 'پرداخت': totals.paidToSupplier, 'مانده': totals.weOwe + totals.totalTriang } as any);
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'خرید');
+
+      }
+
+
+
+      if (report.triangRows.length) {
+
+        const data = report.triangRows.map((r: any, i: number) => ({
+
+          '#': i + 1, 'تاریخ': displayDateOnly(r.date), 'فاکتور فروش': r.invoice,
+
+          'فرستنده': r.fromName, 'کد فرستنده': r.fromCode, '
+
+===== @151358 (line 5110) =====
+حساب)</div>
+    </div>
+    <div class="meta">
+      <div>📅 تاریخ: ${report.timeString}</div>
+      <div>🆔 شماره سند: <b>${report.serial}</b></div>
+      <div>🔑 کد رهگیری: <b>${report.tracking}</b></div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <div><b>👤 طرف حساب:</b> ${report.name}</div>
+    <div><b>🆔 کد حساب:</b> ${report.code}</div>
+    <div><b>📞 تلفن:</b> ${report.phone}</div>
+  </div>
+
+  ${report.salesRows.length > 0 ? `
+    <h3>🛒 بخش فروش</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>تاریخ و زمان</th><th>فاکتور</th><th>کد مدل</th><th>نام مدل</th><th>تعداد (واحد پایه)</th><th>واحد بسته</th><th>قیمت</th><th>جمع</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>تاریخ واریز</th><th>شرح</th><th>وضعیت</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sRows}
+        <tr class="total-row">
+          <td colspan="7" style="text-align: left;">جمع کل فروش:</td>
+          <td>${fmt(t.totalSales)}</td>
+          <td>${fmt(t.totalSales)}</td>
+          <td>${fmt(t.paidByCustomer)}</td>
+          <td>${fmt(Math.ab
+
+===== @152309 (line 5133) =====
+        <td>${fmt(t.totalSales)}</td>
+          <td>${fmt(t.totalSales)}</td>
+          <td>${fmt(t.paidByCustomer)}</td>
+          <td>${fmt(Math.abs(t.customerOwes))}</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td style="color:${t.customerOwes < 0 ? '#dc2626' : '#059669'}">${t.customerOwes > 0 ? 'بدهکار' : t.customerOwes < 0 ? 'بستانکار' : 'تسویه'}</td>
+        </tr>
+      </tbody>
+    </table>
+  ` : ''}
+
+  ${report.purchaseRows.length > 0 ? `
+    <h3>🛍️ بخش خرید</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>تاریخ و زمان</th><th>فاکتور</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>تاریخ واریز</th><th>شرح</th><th>وضعیت</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${pRows}
+        <tr class="total-row">
+          <td colspan="7" style="text-align: left;">جمع کل خرید:</td>
+          <td>${fmt(t.totalPurchases)}</td>
+          <td>${fmt(t.paidToSupplier)}</td>
+          <td>${fmt(t.totalPurchases)}</td>
+          <td>${fmt
+
+===== @153287 (line 5155) =====
+rchases)}</td>
+          <td>${fmt(t.paidToSupplier)}</td>
+          <td>${fmt(t.totalPurchases)}</td>
+          <td>${fmt(Math.abs(t.weOwe))}</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td style="color:${t.weOwe < 0 ? '#dc2626' : '#059669'}">${t.weOwe > 0 ? 'بستانکار' : t.weOwe < 0 ? 'بدهکار' : 'تسویه'}</td>
+        </tr>
+      </tbody>
+    </table>
+  ` : ''}
+
+  <div class="summary-box">
+    <div class="summary-row"><span>جمع بدهی ایشان به ما:</span><span>${fmt(t.customerOwes)} ${curLabel}</span></div>
+    <div class="summary-row"><span>جمع بدهی ما به ایشان:</span><span>${fmt(t.weOwe + t.totalTriang)} ${curLabel}</span></div>
+    <div class="summary-row">
+      <span>مانده نهایی:</span>
+      <span>${t.net > 0 ? 'ایشان بدهکارند' : t.net < 0 ? 'ما بدهکاریم' : 'تسویه'} - ${fmt(Math.abs(t.net))} ${curLabel}</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="sign-box"><div class="sign-line"></div>امضای طرف حساب</div>
+    <div class="sign-box"><div class="sign-line"></div>مدیر مالی</div>
+    <div class="sign-box"><div class="sign-line"></div>مهر و ا
+
+===== @158005 (line 5243) =====
+yle={{ width: 55, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>واحد بسته</Text>
+          <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+          <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+          <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بدهکار</Text>
+          <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بستانکار</Text>
+          <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+          <Text style={{ width: 70, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+          <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>صاحب حساب</Text>
+          <Text style={{ width: 120, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
+          <Tex
+
+===== @165647 (line 5325) =====
+t style={{ width: 40, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تعداد</Text>
+          <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>قیمت</Text>
+          <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>جمع</Text>
+          <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بدهکار</Text>
+          <Text style={{ width: 80, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بستانکار</Text>
+          <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>مانده</Text>
+          <Text style={{ width: 70, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>بانک</Text>
+          <Text style={{ width: 90, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>صاحب حساب</Text>
+          <Text style={{ width: 120, color: '#fff', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>تاریخ واریز</Text>
+          <Tex
+
+===== @175394 (line 5461) =====
+0b981' }}>
+
+                  جمع دریافتی مثلثی: {fmt(totals.totalTriang)} {(typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')}
+
+                </Text>
+
+              </View>
+
+            )}
+
+
+
+            <View style={{ backgroundColor: totals.net > 0 ? '#fef2f2' : totals.net < 0 ? '#f0fdf4' : '#f3f4f6', borderRadius: 8, padding: 10, marginTop: 8, borderWidth: 2, borderColor: totals.net > 0 ? '#dc2626' : totals.net < 0 ? '#059669' : '#94a3b8' }}>
+
+              <Text style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6, color: totals.net > 0 ? '#991b1b' : totals.net < 0 ? '#065f46' : '#475569' }}>
+
+                {totals.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : totals.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
+
+              </Text>
+
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
+
+                <EL textKey="بدهی ایشان به ما:" style={{ fontSize: 10, color: '#64748b' }} />
+
+                <Text style={{ fontSize: 10, fontWeight: 'bold', co
+
+===== @175447 (line 5461) =====
+(totals.totalTriang)} {(typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')}
+
+                </Text>
+
+              </View>
+
+            )}
+
+
+
+            <View style={{ backgroundColor: totals.net > 0 ? '#fef2f2' : totals.net < 0 ? '#f0fdf4' : '#f3f4f6', borderRadius: 8, padding: 10, marginTop: 8, borderWidth: 2, borderColor: totals.net > 0 ? '#dc2626' : totals.net < 0 ? '#059669' : '#94a3b8' }}>
+
+              <Text style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'right', marginBottom: 6, color: totals.net > 0 ? '#991b1b' : totals.net < 0 ? '#065f46' : '#475569' }}>
+
+                {totals.net > 0 ? '⚖️ مانده نهایی — ایشان بدهکارند' : totals.net < 0 ? '💰 مانده نهایی — ما بدهکاریم' : '✅ تسویه کامل'}
+
+              </Text>
+
+              <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', paddingVertical: 2 }}>
+
+                <EL textKey="بدهی ایشان به ما:" style={{ fontSize: 10, color: '#64748b' }} />
+
+                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#1e3a5f' }}>{fmt(Math.max(0, totals.customerOwe
+
+===== @281845 (line 7549) =====
+t ? fmt(lt) : '—'}</Text>
+
+                  </View>
+
+                </View>
+
+                <View style={{ flex: 1 }}>
+
+                  <EL textKey="پرداخت" style={[s.miniLbl, { color: C.textMut }]} />
+
+                  <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.payment || '')} onChangeText={(v) => upd(i, 'payment', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+
+                </View>
+
+              </View>
+
+              <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
+
+                <View style={{ flex: 1 }}>
+
+                  <EL textKey="⚖️ مانده" style={[s.miniLbl, { color: C.textMut }]} />
+
+                  <View style={[s.miniValueBox, { backgroundColor: C.cardAlt, borderColor: lb > 0 ? '#dc2626' : '#059669' }]}>
+
+                    <Text style={[s.miniValueTxt, { color: lb > 0 ? '#dc2626' : '#059669' }]}>{lt ? fmt(lb) : '—'}</Text>
+
+                  </View>
+
+                </View>
+
+                <View style={{ flex: 1 }}>
+
+
+
+===== @301731 (line 8088) =====
+r' }]}>#</Text>
+
+              <EL textKey="کد" style={[s.thCell, { width: 90, textAlign: 'center' }]} />
+
+              <EL textKey="نام مدل" style={[s.thCell, { width: 180, textAlign: 'center' }]} />
+
+              <EL textKey="تعداد" style={[s.thCell, { width: 80, textAlign: 'center' }]} />
+              <EL textKey="واحد بسته" style={[s.thCell, { width: 70, textAlign: 'center' }]} />
+
+              <EL textKey="قیمت" style={[s.thCell, { width: 110, textAlign: 'center' }]} />
+
+              <EL textKey="مبلغ" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="پرداخت" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="مانده" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+             <EL textKey="تاریخ واریز" style={[s.thCell, { width: 340, textAlign: 'center' }]} />
+
+              <EL textKey="بانک" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="صاحب حساب" style={[s.thCell, { width: 130, textAlign: 'center' }]} />
+
+              <EL textKey="کد صاحب حساب" st
+
+===== @312717 (line 8257) =====
+ */}
+        <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 10, padding: 8, backgroundColor: C.cardAlt, borderRadius: 6 }}>
+          <Text style={{ color: C.text, fontSize: 12 }}>جمع اقلام: {fmt(editItemsTotal)}</Text>
+          <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {editDiscount ? '−' + fmt(editDiscount) : '—'}</Text>
+          <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(editPayable)}</Text>
+          <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(editPaid)}</Text>
+          <Text style={{ color: editBalance > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(editBalance)}</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+
+          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => { setEditing(null); setEditRows([]); }}><Text style={s.btnTxt}>{t('↩️ برگشت')}</Text></TouchableOpacity>
+
+          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '
+
+===== @316050 (line 8343) =====
+w-reverse' }]}>
+
+            <Text style={[s.thCell, { width: 40, fontSize: 12, fontWeight: 'bold' }]}>#</Text>
+
+            <EL textKey="فاکتور" style={[s.thCell, { width: 150 }]} />
+
+            <EL textKey="نوع" style={[s.thCell, { width: 100 }]} />
+
+            <EL textKey="نام" style={[s.thCell, { width: 150 }]} />
+
+            <EL textKey="تلفن" style={[s.thCell, { width: 120 }]} />
+
+            <EL textKey="تاریخ" style={[s.thCell, { width: 130 }]} />
+
+            <EL textKey="ردیف" style={[s.thCell, { width: 70 }]} />
+
+            <EL textKey="مبلغ" style={[s.thCell, { width: 130 }]} />
+
+            <EL textKey="پرداخت" style={[s.thCell, { width: 130 }]} />
+
+            <EL textKey="مانده" style={[s.thCell, { width: 130 }]} />
+
+            <EL textKey="وضعیت" style={[s.thCell, { width: 130 }]} />
+
+            <EL textKey="عملیات" style={[s.thCell, { width: 120 }]} />
+
+          </View>
+
+          {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.slice(0, 200).map((r: any, i: number) => (
+
+            <View key={i} style={[s.tblRow, { flexDi
+
+===== @481233 (line 11084) =====
+><thead><tr>' +
+          '<th style="width:5%">#</th><th style="width:15%">کد مدل</th><th style="width:30%">نام مدل</th><th style="width:8%">قفسه</th><th style="width:8%">واحد پایه</th><th style="width:8%">واحد بسته</th><th style="width:16%">قیمت واحد</th><th style="width:18%">جمع</th>' +
+          '</tr></thead><tbody>' + itemsRows + '</tbody></table>' +
+          '<div class="sum-box">' +
+          '<div class="sum-row"><span>جمع فروش:</span><b>' + fmt(invoice.current?.sales || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '<div class="sum-row"><span>پرداخت:</span><b>' + fmt(invoice.current?.payments || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '<div class="sum-row"><span>مانده این فاکتور:</span><b>' + fmt(invoice.current?.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          (invoice.previous ? '<div class="sum-row"><span>مانده قبلی:</span><b>' + fmt(invoice.previous.balance || 0) + ' ' + esc(curLabel) + '</b></div>' : '') +
+          '<div class="sum-row"><span>مانده نهایی قابل پرداخت:</span><b>' + fmt(tot.balance || 0) + ' ' + esc(curLabel) + '</b></div
+
+===== @481396 (line 11085) =====
+idth:8%">واحد پایه</th><th style="width:8%">واحد بسته</th><th style="width:16%">قیمت واحد</th><th style="width:18%">جمع</th>' +
+          '</tr></thead><tbody>' + itemsRows + '</tbody></table>' +
+          '<div class="sum-box">' +
+          '<div class="sum-row"><span>جمع فروش:</span><b>' + fmt(invoice.current?.sales || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '<div class="sum-row"><span>پرداخت:</span><b>' + fmt(invoice.current?.payments || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '<div class="sum-row"><span>مانده این فاکتور:</span><b>' + fmt(invoice.current?.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          (invoice.previous ? '<div class="sum-row"><span>مانده قبلی:</span><b>' + fmt(invoice.previous.balance || 0) + ' ' + esc(curLabel) + '</b></div>' : '') +
+          '<div class="sum-row"><span>مانده نهایی قابل پرداخت:</span><b>' + fmt(tot.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '</div>' +
+          (words ? '<div class="words">مبلغ به حروف: ' + esc(words) + ' ' + esc(curLabel) + '</div>' : '') +
+          '<div class="foote
+
+===== @481539 (line 11086) =====
+></thead><tbody>' + itemsRows + '</tbody></table>' +
+          '<div class="sum-box">' +
+          '<div class="sum-row"><span>جمع فروش:</span><b>' + fmt(invoice.current?.sales || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '<div class="sum-row"><span>پرداخت:</span><b>' + fmt(invoice.current?.payments || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '<div class="sum-row"><span>مانده این فاکتور:</span><b>' + fmt(invoice.current?.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          (invoice.previous ? '<div class="sum-row"><span>مانده قبلی:</span><b>' + fmt(invoice.previous.balance || 0) + ' ' + esc(curLabel) + '</b></div>' : '') +
+          '<div class="sum-row"><span>مانده نهایی قابل پرداخت:</span><b>' + fmt(tot.balance || 0) + ' ' + esc(curLabel) + '</b></div>' +
+          '</div>' +
+          (words ? '<div class="words">مبلغ به حروف: ' + esc(words) + ' ' + esc(curLabel) + '</div>' : '') +
+          '<div class="footer">میزان — سند رسمی فاکتور</div>' +
+          '</body></html>';
+        const r = await printHtml(html);
+        showToast(r.ok ? '✅ ' + r.mess
+
+===== @490207 (line 11296) =====
+cySync === 'function' ? (getCurrencySync().label || '') : '')} />
+
+              <SumRow l="💳 جمع پرداخت‌های قبلی" v={fmt(invoice.previous.payments) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} green />
+
+              <SumRow
+
+                l={invoice.previous.balance > 0 ? '⚖️ بدهی از قبل' : invoice.previous.balance < 0 ? '💰 بستانکاری از قبل' : '✅ تسویه شده از قبل'}
+
+                v={invoice.previous.balance !== 0 ? fmt(Math.abs(invoice.previous.balance)) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '') : 'بدون بدهی'}
+
+                prev
+
+              />
+
+            </>
+
+          )}
+
+
+
+          {/* مانده نهایی */}
+
+          <SumRow
+
+            l={tot.balance > 0 ? '⚖️ مانده نهایی قابل پرداخت' : tot.balance < 0 ? '💰 بستانکاری نهایی' : '✅ تسویه کامل'}
+
+            v={tot.balance !== 0 ? fmt(Math.abs(tot.balance)) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '') : 'بدون بدهی'}
+
+            highlight
+
+          />
+
+        </View>
+
+
+
+        <View style={
+
+===== @490280 (line 11300) =====
+        <SumRow l="💳 جمع پرداخت‌های قبلی" v={fmt(invoice.previous.payments) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '')} green />
+
+              <SumRow
+
+                l={invoice.previous.balance > 0 ? '⚖️ بدهی از قبل' : invoice.previous.balance < 0 ? '💰 بستانکاری از قبل' : '✅ تسویه شده از قبل'}
+
+                v={invoice.previous.balance !== 0 ? fmt(Math.abs(invoice.previous.balance)) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '') : 'بدون بدهی'}
+
+                prev
+
+              />
+
+            </>
+
+          )}
+
+
+
+          {/* مانده نهایی */}
+
+          <SumRow
+
+            l={tot.balance > 0 ? '⚖️ مانده نهایی قابل پرداخت' : tot.balance < 0 ? '💰 بستانکاری نهایی' : '✅ تسویه کامل'}
+
+            v={tot.balance !== 0 ? fmt(Math.abs(tot.balance)) + ' ' + (typeof getCurrencySync === 'function' ? (getCurrencySync().label || '') : '') : 'بدون بدهی'}
+
+            highlight
+
+          />
+
+        </View>
+
+
+
+        <View style={s.invFooter}>
+
+          <EL textKey="📞 کفش تاج: ________________" style
+
+
+##### newTotal / newPaid #####
+
+-- const newTotal @294091 (line 7877) --
+: metaFallback });
+        }
+        alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+        setEditing(null); setEditRows([]); setDirty(false); load();
+        return;
+      }
+
+      // ═══ ذخیره فاکتور سینک‌شده (آفلاین یا آنلاین) ═══
+      const validRows = editRows.filter((r: any) => !r._deleted);
+      const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+      const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+      const meta: any = editing.type === 'sales'
+        ? { name: editing.name, co
+
+-- editItemsTotal @290035 (line 7779) --
+: 0}]); setDirty(true); };
+
+  const updRow = (i: number, f: string, v: any) => { const n = [...editRows]; (n[i] as any)[f] = v; setEditRows(n); setDirty(true); };
+
+  // __editCalc: محاسبات زنده‌ی فاکتور در ویرایش (فقط نمایش)
+  const __editRowsLive = editRows.filter((r: any) => !r._deleted);
+  const editItemsTotal = __editRowsLive.reduce((a: number, r: any) =>
+    a + Math.max(0,
+      (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0) -
+      (Number(r.quantity) || 0) * (Number(r.discount) || 0)
+    ), 0);
+  const editDiscount = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+
+-- editItemsTotal @290370 (line 7785) --
+uce((a: number, r: any) =>
+    a + Math.max(0,
+      (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0) -
+      (Number(r.quantity) || 0) * (Number(r.discount) || 0)
+    ), 0);
+  const editDiscount = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+  const editPayable = Math.max(0, editItemsTotal - editDiscount);
+  const editPaid = __editRowsLive.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+  const editBalance = Math.max(0, editPayable - editPaid);
+
+
+
+  const previewInvoice = async () => {
+    const validRows = editRows.filter((r: any) => !r._deleted);
+    i
+
+-- editItemsTotal @312255 (line 8253) --
+</TouchableOpacity>
+        </View>
+
+        {/* __editSummary */}
+        <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 10, padding: 8, backgroundColor: C.cardAlt, borderRadius: 6 }}>
+          <Text style={{ color: C.text, fontSize: 12 }}>جمع اقلام: {fmt(editItemsTotal)}</Text>
+          <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {editDiscount ? '−' + fmt(editDiscount) : '—'}</Text>
+          <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(editPayable)}</Text>
+          <Text style={{ color: C.
+
+-- editBalance @290508 (line 7787) --
+ 0) * (Number(r.discount) || 0)
+    ), 0);
+  const editDiscount = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+  const editPayable = Math.max(0, editItemsTotal - editDiscount);
+  const editPaid = __editRowsLive.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+  const editBalance = Math.max(0, editPayable - editPaid);
+
+
+
+  const previewInvoice = async () => {
+    const validRows = editRows.filter((r: any) => !r._deleted);
+    if (!validRows.length) { showToast('هیچ ردیفی برای نمایش نیست', true); return; }
+    const items = validRows.map((r: any) => {
+      const 
+
+-- editBalance @312640 (line 8257) --
+فیف فاکتور: {editDiscount ? '−' + fmt(editDiscount) : '—'}</Text>
+          <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(editPayable)}</Text>
+          <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(editPaid)}</Text>
+          <Text style={{ color: editBalance > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(editBalance)}</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+
+          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => {
+
+-- editBalance @312729 (line 8257) --
+{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(editPayable)}</Text>
+          <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(editPaid)}</Text>
+          <Text style={{ color: editBalance > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(editBalance)}</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
+
+          <TouchableOpacity style={[s.btn, { flex: 1, backgroundColor: '#64748b' }]} onPress={() => { setEditing(null); setEditRows([]); }}><Text style={s.btnTxt}>{t('↩️ برگشت')}</Text></Tou
+
+-- newPaid @294224 (line 7878) --
+e); load();
+        return;
+      }
+
+      // ═══ ذخیره فاکتور سینک‌شده (آفلاین یا آنلاین) ═══
+      const validRows = editRows.filter((r: any) => !r._deleted);
+      const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+      const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+      const meta: any = editing.type === 'sales'
+        ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 
+
+-- newPaid @295169 (line 7891) --
+.invoice, rows: editRows, meta });
+      } else {
+        await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta });
+      }
+
+      // آپدیت فوری لیست محلی
+      setList((prev: any[]) => prev.map((x: any) => x.invoice === editing.invoice
+        ? { ...x, total: newTotal, paid: newPaid, name: editing.name, phone: editing.phone }
+        : x));
+
+      
+
+      
+
+      alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+
+      setEditing(null); setEditRows([]); setDirty(false); load();
+
+    } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+    finally { savingRef.current =

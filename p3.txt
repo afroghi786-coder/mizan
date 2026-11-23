@@ -1,0 +1,96 @@
+
+=== محل استفاده getSalesRowsForReport ===
+ardAvoidingView, Platform, Modal, Switch, FlatList  } from 'react-native';
+
+import { useFonts, Orbitron_900Black, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
+
+import { ShareTechMono_400Regular } from '@expo-google-fonts/share-tech-mono';
+
+import * as Print from 'expo-print';
+
+import * as Sharing from 'expo-sharing';
+
+import { captureRef } from 'react-native-view-shot';
+
+import * as XLSX from 'xlsx';
+
+import * as FileSystem from 'expo-file-system';
+
+import SmsMatchScreen from './SmsMatchScreen';
+
+import ManualEntryScreen from './ManualEntryScreen';
+
+import LocalBotScreen from './LocalBotScreen';
+
+import LearningScreen from './LearningScreen';
+
+import DateField from './lib.datefield';
+
+
+
+import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDate, displayDate, displayDateOnly, jalaliDisplay, g2j, j2g, g2h, h2g, BANKS, SHIPPINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
+
+import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+
+import SuperAssistant from './SuperAssistant';
+
+import BotUI from './BotUI';
+
+import GlobalVoice from './GlobalVoice';
+
+import { registerCommands } from './CommandBus';
+
+import ResetPasswordScreen from './ResetPasswordScreen';
+
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+import SettingsSheets from './SettingsSheets';
+import SettingsAssistant from './SettingsAssistant';
+import AssistantHome from './AssistantHome';
+import SupportSection from './SupportSection';
+import RecoveryPanel from './RecoveryPanel';
+import { syncByDestination } from './lib.sheets';
+
+import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, currencyLabel, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
+
+import CurrencyField from './lib.currencyfield';
+import { setStorageUserId, canUseDevice, setDeviceLock } from './lib.storage';
+import { AppState as RNAppState } from 'react-native';
+import Storage from './lib.storage';// Safely load expo-notifications (fix for Expo Go)
+
+import { hydrateFromSettings, getCurrencySync } from './lib.currency';let Notifications: any = null;
+import { startAdsWorker } from './lib.ads.worker';
+
+try {
+
+  Notifications = require('expo-notifications');
+
+} catch (e) {
+
+  console.warn('⚠️ expo-notifications native module not found (Expo Go). Using mock.');
+
+  Notifications = {
+
+    setNotificationHandler: () => {},
+
+    getPermissionsAsync: async () => ({ status: 'undetermined' }),
+
+    requestPermissionsAsync: async () => ({ status: 'denied' }),
+
+    getExpoPushTokenAsync: async () => ({ data: '' }),
+
+    addNotificationReceivedListener: () => ({ remove: () => {} }),
+
+    addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+
+    setNotificationChannelAsync: async () => {},
+
+    scheduleNotificationAsync: async () => {},
+
+    dismissAllNotificationsAsync: async () => {},
+
+    cancelAllScheduledNotificationsAsync: async () => {},
+
+  };

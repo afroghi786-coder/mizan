@@ -1,0 +1,516 @@
+
+
+======== lib.offline.ts ========
+
+--- updateSale #1 @9047 ---
+updateSale','deleteSale',
+  'createPurchase','updatePurchase','deletePurchase',
+  'createSalesReturn','updateSalesReturn','deleteSalesReturn',
+  'createPurchaseReturn','updatePurchaseReturn','deletePurchaseReturn',
+  'createExpense','updateExpense','deleteExpense',
+  'createEmployee','updateEmployee
+
+--- updateSale #2 @9150 ---
+updateSalesReturn','deleteSalesReturn',
+  'createPurchaseReturn','updatePurchaseReturn','deletePurchaseReturn',
+  'createExpense','updateExpense','deleteExpense',
+  'createEmployee','updateEmployee','deleteEmployee',
+  'createAttendance','updateAttendance','deleteAttendance',
+  'createSalaryPayment'
+
+--- updateSale #3 @44211 ---
+updateSale' && item.payload) {
+      const inv = item.payload.invoiceNumber;
+      const oldRows = sales.filter((s: any) => s.invoice_number === inv);
+      if (oldRows.length > 0) {
+        const template = oldRows[0];
+        sales = sales.filter((s: any) => s.invoice_number !== inv);
+        for 
+
+--- updateSale #4 @116020 ---
+updateSale' : 'updatePurchase';
+  const hasCreate = q.some((item: any) => item.op === createOp && item.payload?.invoiceNumber === invoiceNumber);
+  const hasUpdate = q.some((item: any) => item.op === updateOp && item.payload?.invoiceNumber === invoiceNumber);
+  if (!hasCreate && !hasUpdate) {
+    co
+
+--- updateSale #5 @149461 ---
+updateSale' && item.payload) {
+      const inv = item.payload.invoiceNumber || item.payload.invoice_number || '';
+      if (!inv) continue;
+      const meta = item.payload.meta || {};
+      const baseDate = item.payload.invoiceDate || meta.date || new Date(item.ts || Date.now()).toISOString();
+     
+
+--- updateSale #6 @207112 ---
+updateSale / updatePurchase
+// ═══════════════════════════════════════════
+const AUDIT_KEY = '@mizan_audit_events';
+const AUDIT_MAX = 500;
+async function _pushAudit(ev: any) {
+  try {
+    const raw = await AsyncStorage.getItem(AUDIT_KEY);
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(ra
+
+--- updateSale #7 @211677 ---
+updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  _clearInvCache();
+  if (await hasActiveReturns(payload.invoiceNumber, 'sales')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
+  if (await serverBusinessAllowed()) {
+    try {
+
+--- updateSale #8 @211988 ---
+updateSale(payload); } catch { await enqueue('updateSale', payload); }
+  } else {
+    await enqueue('updateSale', payload);
+  }
+  const list = (await getLocal<any[]>('sales')) || [];
+  const meta = payload.meta || {};
+  const template = list.find((r: any) => String(r.invoice_number) === payload.invo
+
+--- updateSale #9 @212034 ---
+updateSale', payload); }
+  } else {
+    await enqueue('updateSale', payload);
+  }
+  const list = (await getLocal<any[]>('sales')) || [];
+  const meta = payload.meta || {};
+  const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+  const filtered = list.filt
+
+--- updateSale #10 @212089 ---
+updateSale', payload);
+  }
+  const list = (await getLocal<any[]>('sales')) || [];
+  const meta = payload.meta || {};
+  const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+  const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.inv
+
+--- updateSale #11 @224649 ---
+updateSalesReturn(localId: string, payload: any) {
+  _clearInvCache();
+  const now = new Date().toISOString();
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const local = (await getLocal<any[]>('sales_returns')) || [];
+  const idx = local.findIndex((x: any) => x.local_id ==
+
+--- updateSale #12 @225527 ---
+updateSalesReturn', item);
+  return item;
+}
+export async function deleteSalesReturn(localId: string) {
+  _clearInvCache();
+  await recordTombstone('sales_returns', String(localId));
+  const local = (await getLocal<any[]>('sales_returns')) || [];
+  await setLocal('sales_returns', local.filter((x: an
+
+--- _localUpsertSale #1 @30461 ---
+_localUpsertSale(payload: any) {
+  try {
+    const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+    if (!inv) return;
+    const items = payload.items || payload.rows || [];
+    const old = (await getLocal<any[]>('sales')) || [];
+    const filtered = old.filter((r: any)
+
+--- _localUpsertSale #2 @35991 ---
+_localUpsertSale(payload);
+  if (await serverBusinessAllowed()) {
+    try {
+      const r = await lib.createSale(payload);
+        try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@
+
+--- updateInvoiceInQueue #1 @74270 ---
+updateInvoiceInQueue — ویرایش فاکتور آفلاین
+// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  شماره فاکتور خرید آفلاین با P-
+// ═══════════════════════════════════════════
+async function genPurchaseInvoiceNumber() {
+  const today = new Date();
+  const
+
+--- updateInvoiceInQueue #2 @88984 ---
+updateInvoiceInQueue — ویرایش آفلاین
+// ═══════════════════════════════════════════
+export async function updateInvoiceInQueue_original(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+  const queue = await getQueue();
+  const op = type === 'sales' ? 'createSale' : 'createPurchase'
+
+--- updateInvoiceInQueue #3 @89090 ---
+updateInvoiceInQueue_original(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+  const queue = await getQueue();
+  const op = type === 'sales' ? 'createSale' : 'createPurchase';
+  let found = false;
+  for (const item of queue) {
+    if (item.op !== op) continue;
+    let match = f
+
+--- updateInvoiceInQueue #4 @115512 ---
+updateInvoiceInQueue — wrapper با fallback برای synced
+// ═══════════════════════════════════════════
+export async function updateInvoiceInQueue(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+  try {
+    await updateInvoiceInQueue_original(invoiceNumber, type, rows);
+  } catch (e
+
+--- updateInvoiceInQueue #5 @115636 ---
+updateInvoiceInQueue(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
+  try {
+    await updateInvoiceInQueue_original(invoiceNumber, type, rows);
+  } catch (e) {
+    console.log('updateInvoiceInQueue_original error:', e);
+  }
+  const q = await getQueue();
+  const createOp = type ==
+
+--- updateInvoiceInQueue #6 @115742 ---
+updateInvoiceInQueue_original(invoiceNumber, type, rows);
+  } catch (e) {
+    console.log('updateInvoiceInQueue_original error:', e);
+  }
+  const q = await getQueue();
+  const createOp = type === 'sales' ? 'createSale' : 'createPurchase';
+  const updateOp = type === 'sales' ? 'updateSale' : 'updateP
+
+--- updateInvoiceInQueue #7 @115833 ---
+updateInvoiceInQueue_original error:', e);
+  }
+  const q = await getQueue();
+  const createOp = type === 'sales' ? 'createSale' : 'createPurchase';
+  const updateOp = type === 'sales' ? 'updateSale' : 'updatePurchase';
+  const hasCreate = q.some((item: any) => item.op === createOp && item.payload?.i
+
+--- createSale #1 @9034 ---
+createSale','updateSale','deleteSale',
+  'createPurchase','updatePurchase','deletePurchase',
+  'createSalesReturn','updateSalesReturn','deleteSalesReturn',
+  'createPurchaseReturn','updatePurchaseReturn','deletePurchaseReturn',
+  'createExpense','updateExpense','deleteExpense',
+  'createEmployee','u
+
+--- createSale #2 @9130 ---
+createSalesReturn','updateSalesReturn','deleteSalesReturn',
+  'createPurchaseReturn','updatePurchaseReturn','deletePurchaseReturn',
+  'createExpense','updateExpense','deleteExpense',
+  'createEmployee','updateEmployee','deleteEmployee',
+  'createAttendance','updateAttendance','deleteAttendance',
+  '
+
+--- createSale #3 @11840 ---
+createSale: { table: 'sales', type: 'sale_create', summary: 'ثبت فاکتور فروش' },
+  deleteSale: { table: 'sales', type: 'sale_delete', summary: 'حذف فاکتور فروش' },
+  createPurchase: { table: 'purchases', type: 'purchase_create', summary: 'ثبت فاکتور خرید' },
+  deletePurchase: { table: 'purchases', t
+
+--- createSale #4 @35936 ---
+createSale(payload: any) {
+  _clearInvCache();
+  await _localUpsertSale(payload);
+  if (await serverBusinessAllowed()) {
+    try {
+      const r = await lib.createSale(payload);
+        try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().t
+
+--- createSale #5 @36093 ---
+createSale(payload);
+        try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+      return r;
+    }
+    catch { 
+
+--- createSale #6 @36408 ---
+createSale', payload); return payload.invoiceNumber; }
+  }
+  await enqueue('createSale', payload);
+  try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summ
+
+--- createSale #7 @36484 ---
+createSale', payload);
+  try { await _pushAudit({ type: 'sale_create', table: 'sales', key: String(payload.invoiceNumber), at: new Date().toISOString(), device_id: (await AsyncStorage.getItem('@mizan_device_id')) || '', summary: 'ثبت فاکتور فروش' }); } catch {}
+  return payload.invoiceNumber;
+}
+asyn
+
+--- createSale #8 @38099 ---
+createSalesReturn' : x.op === 'createPurchaseReturn'))
+    .map(x => x.payload)
+    .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+  const all = [...pending, ...local];
+  return all.some((r: any) => String(r.original_invoice_number || '').trim() === inv);
+}
+export asy
+
+--- createSale #9 @46123 ---
+createSale' && item.payload) {
+      const rows = item.payload.rows || item.payload.items || [];
+      const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
+      const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.
+
+--- createSale #10 @64073 ---
+createSale' && item.payload?.invoiceNumber) allInvs.add(String(item.payload.invoiceNumber)); });
+    let maxN = 1000;
+    for (const inv of allInvs) {
+      const m = String(inv).match(/^(\d{6})-(\d+)$/);
+      if (m && m[1] === ds) {
+        const n = parseInt(m[2], 10);
+        if (n > maxN) maxN 
+
+--- createSale #11 @65063 ---
+createSale').map((q: any) => q.payload?.customerCode || ''),
+  ];
+  for (const ccode of all) {
+    const m = String(ccode).match(/^M_(\d+)$/);
+    if (m) { const n = +m[1]; if (n > maxN) maxN = n; }
+  }
+  return 'M_' + (maxN + 1);
+}
+// ═══════════════════════════════════════════
+//  getSalesGroupe
+
+--- createSale #12 @71883 ---
+createSale') {
+      const p = item.payload;
+      const inv = p.invoiceNumber;
+      if (deletedInvs.has(String(inv))) continue;
+      if (!pendingByInv[inv]) {
+        pendingByInv[inv] = {
+          invoice: inv, name: p.customerName, phone: p.customerPhone,
+          total: 0, paid: 0, items: []
+
+--- createSale #13 @81078 ---
+createSale' && item.payload?.invoiceNumber === invoiceNumber) {
+      const p = item.payload;
+      return (p.items || []).map((it: any, idx: number) => ({
+        id: 'queued_' + idx,
+        invoice_number: p.invoiceNumber,
+        customer_code: _normCode(p.customerCode),
+        customer_name: p
+
+--- createSale #14 @89254 ---
+createSale' : 'createPurchase';
+  let found = false;
+  for (const item of queue) {
+    if (item.op !== op) continue;
+    let match = false;
+    if (type === 'sales') {
+      match = item.payload?.invoiceNumber === invoiceNumber;
+    } else {
+      match = (item.payload?._pendingInvNumber === invoi
+
+--- createSale #15 @92373 ---
+createSale' && item.payload?.invoiceNumber === invoiceNumber)
+  );
+  await AsyncStorage.setItem('@mizan_queue', JSON.stringify(filtered));
+}
+export async function deletePurchaseFromQueue(invoiceNumber: string) {
+  const queue = await getQueue();
+  const filtered = queue.filter((item: any) => {
+    
+
+--- createSale #16 @93742 ---
+createSale') {
+      const itemPhone = String(item.payload?.customerPhone || '').replace(/[^0-9]/g, '');
+      if (itemPhone === p) {
+        return {
+          customer_name: item.payload?.customerName || '',
+          customer_address: item.payload?.customerAddress || '',
+          customer_code: 
+
+--- createSale #17 @115949 ---
+createSale' : 'createPurchase';
+  const updateOp = type === 'sales' ? 'updateSale' : 'updatePurchase';
+  const hasCreate = q.some((item: any) => item.op === createOp && item.payload?.invoiceNumber === invoiceNumber);
+  const hasUpdate = q.some((item: any) => item.op === updateOp && item.payload?.inv
+
+--- createSale #18 @121809 ---
+createSale") continue;
+    var target = item.op === "createPurchase" ? queuePurchases : queueSales;
+    var baseDate = item.payload.date || new Date(item.ts || Date.now()).toISOString();
+    for (var ii = 0; ii < item.payload.items.length; ii++) {
+      var it = item.payload.items[ii];
+      var qty
+
+--- createSale #19 @142069 ---
+createSale') continue;
+    const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+    for (const r of rows) {
+      const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', customer_name: item.payload.customerName || '', customer_c
+
+--- createSale #20 @152525 ---
+createSale' && item.payload) {
+      const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
+      if (inv && allSales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+      const rows = item.payload.rows || item.paylo
+
+--- createSale #21 @222412 ---
+createSalesReturn(payload: any) {
+  _clearInvCache();
+  const now = new Date().toISOString();
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const local = (await getLocal<any[]>('sales_returns')) || [];
+  const item = {
+    ...payload,
+    local_id: payload.local_id || ('sr_
+
+--- createSale #22 @223159 ---
+createSalesReturn', item);
+  return item;
+}
+export async function getSalesReturns() {
+  const local = (await getLocal<any[]>('sales_returns')) || [];
+  const q = await getQueue();
+  const deletedIds = new Set<string>();
+  for (const item of q) {
+    if (item.op === 'deleteSalesReturn') {
+      con
+
+--- createSale #23 @224015 ---
+createSalesReturn')
+    .map(x => x.payload)
+    .filter((p: any) => p && p.local_id && !deletedIds.has(String(p.local_id)));
+  const cleaned = local.filter((x: any) => {
+    const id = String(x.local_id || x.id || '');
+    return id ? !deletedIds.has(id) : true;
+  });
+  const map = new Map<string
+
+>>> lib.offline.ts: clamp-with-payment hits = 0
+
+
+
+======== App.tsx ========
+
+--- updateSale #1 @3300 ---
+updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache
+
+--- updateSale #2 @3539 ---
+updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
+import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+import SuperAssistant from '.
+
+--- updateSale #3 @293589 ---
+updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        } else {
+          await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        }
+        alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+        setEditing(null); setEditRows
+
+--- updateSale #4 @294818 ---
+updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta });
+      } else {
+        await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta });
+      }
+      // آپدیت فوری لیست محلی
+      setList((prev: any[]) => prev.map((x: any) => x.invoice === editing.invoice
+      
+
+--- updateSale #5 @330497 ---
+updateSalesReturn(id, payload);
+      else await updatePurchaseReturn(id, payload);
+      showToast?.('✅ برگشت ویرایش شد');
+      setEditReturn(null);
+      load();
+    } catch (e: any) {
+      showToast?.(e?.message || 'خطا در ویرایش برگشت', true);
+    } finally {
+      setEditSaving(false);
+    }
+
+
+--- updateInvoiceInQueue #1 @2677 ---
+updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestPr
+
+--- updateInvoiceInQueue #2 @292799 ---
+updateInvoiceInQueue(editing.invoice, editing.type, editRows);
+        if (ok) {
+          alertMsg('✅ موفق', 'تغییرات روی فاکتور آفلاین ذخیره شد');
+          setEditing(null); setEditRows([]); setDirty(false); load();
+          return;
+        }
+        const metaFallback: any = editing.type === 's
+
+--- createSale #1 @2388 ---
+createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoi
+
+--- createSale #2 @3420 ---
+createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
+import { getCalType, parseDateAn
+
+--- createSale #3 @10099 ---
+createSale' && item.payload?.customerCode === customerCode) {
+          const p = item.payload;
+          for (const it of (p.items || [])) {
+            allSales.push({
+              invoice_number: p.invoiceNumber,
+              customer_code: customerCode,
+              quantity: Number(it.
+
+--- createSale #4 @71218 ---
+createSale({
+        invoiceNumber: inv,
+        customerCode,
+        customerLocalId,
+        invoiceDiscount: Number(invoiceDiscount) || 0, 
+        customerName: name, 
+        customerPhone: phone, 
+        customerAddress: address, 
+        shipping, 
+        items: finalItems, 
+        paymen
+
+--- createSale #5 @74685 ---
+createSale({
+        invoiceNumber: inv, customerCode, customerLocalId, customerName: n, customerPhone: p,
+        customerAddress: address, shipping, items: finalItems,
+        paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+        invoiceDiscount: Number(_invDisc) || 0,
+        receiverNam
+
+--- createSale #6 @273814 ---
+createSale({ invoiceNumber: inv, customerCode: code, customerLocalId: partyLocalId, customerName: name, customerPhone: phone, customerAddress: address, shipping, items: valid, receiverName, receiverCode, receiverBank, receiverAccount });
+      alertMsg('✅ موفق', 'ثبت شد: ' + inv);
+      setPhone('
+
+--- createSale #7 @299102 ---
+createSalesReturn(payload);
+      } else {
+        await createPurchaseReturn(payload);
+      }
+      showToast('✅ برگشت ثبت شد — ' + returnNumber);
+      setReturnModalOpen(false);
+      setReturnInvoice(null);
+      setReturnRows([]);
+      if (onReturnSaved) onReturnSaved(savedType);
+      else
+
+-- CLAMP @69112 --
+t) || 0))), 0);
+  const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+  const balanceDue = Math.max(0, payableAmount - (Number(paymentAmount) || 0));
+  const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+  const resetForm = () => {
+    setPhone('');
+    setName(
+
+-- CLAMP @290506 --
+  const editPaid = __editRowsLive.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+  const editBalance = Math.max(0, editPayable - editPaid);
+  const previewInvoice = async () => {
+    const validRows = editRows.filter((r: any) => !r._deleted);
+    if (!validRows.length) { showToast('هیچ ردیفی برای نم
+
+-- CLAMP @303093 --
+.indexOf(r);
+              const __isLast = __iLive >= 0 && __iLive === __liveRows.length - 1;
+              const lb = Math.max(0, lt - (Number(r.payment) || 0) - (__isLast ? __invDisc : 0));
+              return (
+                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { bac
+
+>>> App.tsx: clamp-with-payment hits = 3

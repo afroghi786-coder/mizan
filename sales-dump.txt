@@ -1,0 +1,1433 @@
+function SalesScreen({ showToast }: any) {
+  const [shippingsList, setShippingsList] = useState<any[]>([]);
+  useEffect(() => { getShippings().then(setShippingsList).catch(()=>{}); }, []);
+
+
+  const S = getS();
+
+  const [view, setView] = useState<'list' | 'form' | 'invoice' | 'reprint'>('list');
+
+  useEffect(() => {
+
+    const g = globalThis as any;
+
+    const h = () => setView('form');
+
+    g.__newFormHandlers = g.__newFormHandlers || {};
+
+    g.__newFormHandlers['order'] = h;
+
+    if (g.__openNewPending === 'order') { g.__openNewPending = null; h(); }
+
+    return () => { try { delete g.__newFormHandlers['order']; } catch {} };
+
+  }, []);
+
+  useEffect(() => {
+
+    const g = globalThis as any;
+
+    const h = () => setView('form');
+
+    g.__newFormHandlers = g.__newFormHandlers || {};
+
+    g.__newFormHandlers.order = h;
+
+    if (g.__openNewPending === 'order') { g.__openNewPending = null; h(); }
+
+    return () => { try { delete g.__newFormHandlers.order; } catch {} };
+
+  }, []);
+
+  useEffect(() => {
+
+    const open = (t: string) => { if (t === 'order') setView('form'); };
+
+    (globalThis as any).__openNewForm = open;
+
+    const pending = (globalThis as any).__openNewPending;
+
+    if (pending === 'order') { (globalThis as any).__openNewPending = null; setView('form'); }
+
+    return () => { try { delete (globalThis as any).__openNewForm; } catch {} };
+
+  }, []);
+
+
+
+  const [settings, setSettings] = useState<Settings>({});
+
+  const [list, setList] = useState<any[]>([]);
+
+  const [loading, setLoading] = useState(false);
+
+  const [hiddenSales, setHiddenSales] = useState<string[]>([]);
+
+  const [prods, setProds] = useState<Product[]>([]);
+
+  const [reprintInv, setReprintInv] = useState('');
+
+  const [invoice, setInvoice] = useState<any>(null);
+
+  const [phone, setPhone] = useState('');
+
+  const [name, setName] = useState('');
+
+  const [address, setAddress] = useState('');
+
+  const [shipping, setShipping] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+  const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+  const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
+  const [note, setNote] = useState('');
+  const [receiverName, setReceiverName] = useState('');
+  const [receiverCode, setReceiverCode] = useState('');
+  const [receiverBank, setReceiverBank] = useState('');
+  const [receiverAccount, setReceiverAccount] = useState('');
+  const [partnersList, setPartnersList] = useState<any[]>([]);
+  const [partiesList, setPartiesList] = useState<any[]>([]);
+  const [banksList, setBanksList] = useState<any[]>([]);
+  useEffect(() => {
+    getPartners().then(setPartnersList).catch(()=>{});
+    getParties().then(setPartiesList).catch(()=>{});
+    getBanks().then(setBanksList).catch(()=>{});
+  }, []);
+
+  const onReceiverPick = async (v: string) => {
+    try {
+      const f = await lookupPayerUniversal(v);
+      if (f) {
+        setReceiverCode(f.code || '');
+        if (f.bank) setReceiverBank(f.bank);
+        if (f.account) setReceiverAccount(f.account);
+      }
+    } catch {}
+  };
+
+  const [items, setItems] = useState<SaleItem[]>([]);
+
+  const [saving, setSaving] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnInvoice, setReturnInvoice] = useState<any>(null);
+  const [returnRows, setReturnRows] = useState<any[]>([]);
+  const [returnSaving, setReturnSaving] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<any>(null);
+
+  const [customerStatus, setCustomerStatus] = useState('');
+
+
+
+  useEffect(() => { getSettings().then(setSettings).catch(() => {}); }, []);
+
+  const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+
+  const load = async () => { setLoading(true); try { setList(await getSalesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+
+  useEffect(() => { load(); loadProds(); }, []);
+
+
+
+  const onPhone = async (v: string) => {
+
+    const d = v.replace(/\D/g, '').slice(0, 11);
+
+    setPhone(d); setCustomerStatus('');
+
+    if (d.length === 11) {
+
+      setCustomerStatus('⏳');
+
+      try {
+
+        const f = await lookupCustomerByPhone(d, 'customer');
+
+        if (f) { setCustomerStatus('✅ قبلی'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); }
+
+        else { setCustomerStatus('🆕 جدید'); setName(''); setAddress(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount(''); }
+
+      } catch { setCustomerStatus(''); }
+
+    }
+
+  };
+
+
+
+  const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '', pack_size: 0, discount: 0, discountEnabled: false,
+        discount_base_unit: 0,
+        discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+
+  const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
+
+  const delItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+
+  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack_unit || ''; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].shelf = p.shelf || ''; n[i].entered_unit = 'base'; n[i].entered_qty = n[i].quantity || 0; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
+
+
+
+  const grandTotal = items.reduce((a, it) => a + Math.max(0, ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0))), 0);
+
+  const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+  const balanceDue = Math.max(0, payableAmount - (Number(paymentAmount) || 0));
+
+  const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+
+
+
+  const resetForm = () => {
+    setPhone('');
+    setName('');
+    setAddress('');
+    setShipping('');
+    setPaymentAmount(0); setInvoiceDiscount(0);
+    setInvoiceDate(toStorageDateFull(new Date()));
+    setPayDate(toStorageDateFull(new Date()));
+    setNote('');
+    setReceiverName('');
+    setReceiverCode('');
+    setReceiverBank('');
+    setReceiverAccount('');
+    setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '', shelf: '' }]);
+    setView('form');
+  };
+
+  const submit = async () => {
+    if (!/^09\d{9}$/.test(phone)) return alertMsg('⚠️ خطا', 'شماره معتبر نیست');
+    if (!name || name.length < 2) return alertMsg('⚠️ خطا', 'نام الزامی است');
+    
+    const invalidItem = items.find(it => it.modelName && (!it.quantity || !it.priceUnit));
+    if (invalidItem) {
+      return alertMsg('⚠️ خطا', 'مدل «' + invalidItem.modelName + '» تعداد یا قیمت ندارد. لطفاً تکمیل کنید.');
+    }
+
+    const valid = items.filter((it) => it.modelName && it.quantity > 0);
+    const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+    
+    setPendingConfirm({ name, phone, count: valid.length, total: grandTotal, paymentAmount, invoiceDiscount, valid, note });
+    return;
+
+    if (!mode) return;
+    if (mode === 'full' && !valid.length) {
+      return alertMsg('⚠️ خطا', 'برای ثبت فاکتور، حداقل یک مدل با تعداد معتبر وارد کنید.');
+    }
+
+    let finalItems = valid;
+    if (mode === 'payment') {
+      finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: note }];
+    }
+
+    setSaving(true);
+    try {
+      const pr = await resolvePartyForInvoice({ name: name, phone: phone, address, type: 'customer' });
+      const customerCode = pr.code;
+      const customerLocalId = pr.localId;
+      const inv = await generateInvoiceNumber();
+      
+      await createSale({ 
+        invoiceNumber: inv, 
+        customerCode,
+        customerLocalId, 
+        customerName: name, 
+        customerPhone: phone, 
+        customerAddress: address, 
+        shipping, 
+        items: finalItems, 
+        paymentAmount, 
+        invoiceDate, 
+        payDate, 
+        note, 
+        receiverName, 
+        receiverCode, 
+        receiverBank, 
+        receiverAccount 
+      });
+
+      await new Promise(r => setTimeout(r, 100));
+
+      const rows = await getInvoiceDetail(inv, 'sales');
+      if (rows.length > 0) {
+        const r = rows[0];
+        const its = rows.map((x: any) => {
+                  const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+                  return {
+                    modelName: x.model_name,
+                    modelCode: x.model_code,
+                    shelf: x.shelf || '',
+                    quantity: x.quantity,
+                    priceUnit: x.price_unit,
+                    total: x.quantity * x.price_unit,
+                    base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+                    pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+                    pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+                  };
+                });
+        const tot = its.reduce((a: number, it: any) => a + it.total, 0);
+        const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+        const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
+        setInvoice({
+          customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+          current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+          previous: prev,
+          totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
+          timeString: displayDate(r.date_reg),
+        });
+        setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
+        setPaymentAmount(0); setInvoiceDiscount(0); setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
+        setNote(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount('');
+        setView('invoice');
+      } else {
+        showToast('✅ فروش ثبت شد');
+        setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+      }
+    } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+    finally { setSaving(false); }
+  }
+  const confirmSubmit = async (mode: string) => {
+    if (!pendingConfirm) return;
+    const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2 } = pendingConfirm;
+    setPendingConfirm(null);
+    setSaving(true);
+    try {
+      const pr = await resolvePartyForInvoice({ name: n, phone: p, address, type: 'customer' });
+      const customerCode = pr.code;
+      const customerLocalId = pr.localId;
+      const inv = await generateInvoiceNumber();
+
+      let finalItems = valid;
+      if (mode === 'payment') {
+        finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: n2, shelf: '' }];
+      }
+
+      await createSale({
+        invoiceNumber: inv, customerCode, customerLocalId, customerName: n, customerPhone: p,
+        customerAddress: address, shipping, items: finalItems,
+        paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+        receiverName, receiverCode, receiverBank, receiverAccount
+      });
+
+      // ═══ اگر دریافت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+      try {
+        const partner = await findPartnerByNameOrCode(receiverName || receiverCode);
+        if (partner && payAmt > 0) {
+          const cur = (typeof getCurrencySync === 'function' ? ((getCurrencySync() as any).code || 'AFN') : 'AFN');
+          await createPartnerAutoTx({
+            partner_code: partner.code,
+            partner_name: partner.name,
+            type: 'deposit',
+            amount: payAmt,
+            currency: cur,
+            account_type: 'current',
+            counterpart_type: 'customer',
+            counterpart_code: customerCode,
+            source_type: 'sales',
+            source_id: inv,
+            transaction_date: invoiceDate || new Date().toISOString(),
+            note: 'فروش به ' + n + ' - فاکتور ' + inv,
+            bank_account_local_id: '',
+          });
+          console.log('[partner auto] sales deposit ثبت شد:', partner.name, payAmt);
+        }
+      } catch (e) { console.log('[partner auto sales]', e); }
+
+      await new Promise(r => setTimeout(r, 100));
+      const rows = await getInvoiceDetail(inv, 'sales');
+      if (rows.length > 0) {
+        const r = rows[0];
+        const its = rows.map((x: any) => {
+                  const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+                  return {
+                    modelName: x.model_name,
+                    modelCode: x.model_code,
+                    shelf: x.shelf || '',
+                    quantity: x.quantity,
+                    priceUnit: x.price_unit,
+                    total: x.quantity * x.price_unit,
+                    base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+                    pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+                    pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+                  };
+                });
+        const tot = its.reduce((a: number, it: any) => a + it.total, 0);
+        const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+        const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
+        setInvoice({
+          customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+          current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+          previous: prev,
+          totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
+          timeString: displayDate(r.date_reg),
+        });
+        setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
+        setView('invoice');
+      } else {
+        alertMsg('✅ موفق', 'فاکتور فروش ثبت شد:\n' + inv);
+        setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+      }
+    } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+    finally { setSaving(false); }
+  };;
+
+
+
+  const remove = async (inv: string) => {
+
+    const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
+
+    if (!ok) return;
+
+    setHiddenSales([...hiddenSales, inv]);
+
+    showToast('✅ از لیست پنهان شد');
+
+  };
+
+
+
+  const doReprint = async () => {
+
+    if (!reprintInv.trim()) return showToast('شماره فاکتور را وارد کن', true);
+
+    try {
+
+      const rows = await getInvoiceDetail(reprintInv.trim());
+
+      if (!rows.length) return showToast('فاکتور پیدا نشد', true);
+
+      const r = rows[0];
+
+      const its = rows.map((x: any) => {
+                const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+                return {
+                  modelName: x.model_name,
+                  modelCode: x.model_code,
+                  shelf: x.shelf || '',
+                  quantity: x.quantity,
+                  priceUnit: x.price_unit,
+                  total: x.quantity * x.price_unit,
+                  base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+                  pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+                  pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+                };
+              });
+
+      const total = its.reduce((a: number, it: any) => a + it.total, 0);
+
+      const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+
+      setInvoice({
+
+        customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+
+        current: { invoiceNumber: r.invoice_number, items: its, sales: total, payments: paid, balance: total - paid },
+
+        previous: { sales: 0, payments: 0, balance: 0, invoiceCount: 0 },
+
+        totals: { sales: total, payments: paid, balance: total - paid },
+
+        timeString: displayDate(r.date_reg),
+
+      });
+
+      setView('invoice');
+
+    } catch (e: any) { showToast(e.message, true); }
+
+  };
+
+
+
+  if (view === 'invoice' && invoice) return <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView invoice={invoice} prods={prods} onBack={() => { setView('list'); setInvoice(null); load(); }} showToast={showToast} onNew={resetForm} /></View>;
+
+
+
+  // ═══════════════ حالت پرینت مجدد ═══════════════
+
+  if (view === 'reprint') return (
+
+    <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 40 }}>
+
+      {/* کارت پرینت مجدد */}
+
+      <View style={S.card}>
+
+        <View style={S.cardHeader}>
+
+          <Text style={S.cardHeaderIcon}>🖨️</Text>
+
+          <EL textKey="پرینت مجدد فاکتور" style={[S.cardHeaderTitle, { color: S.order }]} />
+
+        </View>
+
+        <View style={{ padding: 16 }}>
+
+          <EL text="{t('شماره فاکتور قدیمی')}" style={S.label} />
+
+          <TextInput accessibilityLabel="مثلاً 14050612-1001"
+
+            style={S.input}
+
+            value={reprintInv}
+
+            onChangeText={setReprintInv}
+
+            placeholder="مثلاً 14050612-1001"
+
+            placeholderTextColor="#94a3b8"
+
+          />
+
+          <TouchableOpacity style={[S.btnPrimary, { marginTop: 10 }]} onPress={doReprint}>
+
+            <Text style={S.btnPrimaryTxt}>{t('🔍 نمایش فاکتور')}</Text>
+
+          </TouchableOpacity>
+
+        </View>
+
+      </View>
+
+
+
+      {/* دکمه برگشت */}
+
+      <TouchableOpacity style={[S.btnSecondary, { marginTop: 12 }]} onPress={() => setView('list')}>
+
+        <Text style={S.btnSecondaryTxt}>{t('↩️ برگشت به لیست')}</Text>
+
+      </TouchableOpacity>
+
+    </ScrollView>
+
+  );
+
+
+
+  // ═══════════════ حالت فرم ═══════════════
+
+  if (view === 'form') return (
+
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
+      <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+
+
+
+        {/* ─── کارت اطلاعات مشتری ─── */}
+
+        <View style={S.card}>
+
+          <View style={S.cardHeader}>
+
+            <Text style={S.cardHeaderIcon}>📞</Text>
+
+            <EL textKey="اطلاعات مشتری" style={[S.cardHeaderTitle, { color: S.order }]} />
+
+          </View>
+
+          <View style={{ padding: 16 }}>
+
+            <Text style={S.label}>
+
+              تلفن همراه <Text style={S.required}>*</Text>
+
+              {customerStatus ? <Text style={S.statusBadge}> {customerStatus}</Text> : null}
+
+            </Text>
+
+            <TextInput accessibilityLabel="09121234567"
+
+              style={S.input}
+
+              value={phone}
+
+              onChangeText={onPhone}
+
+              keyboardType="phone-pad"
+
+              maxLength={11}
+
+              placeholder="09121234567"
+
+              placeholderTextColor="#94a3b8"
+
+            />
+
+
+
+            <EL text="{t('نام و نام خانوادگی')}" style={S.label}><Text style={S.required}>*</Text></EL>
+
+            <TextInput
+
+              style={S.input}
+
+              value={name}
+
+              onChangeText={setName}
+
+              placeholder={term('customer')}
+
+              placeholderTextColor="#94a3b8"
+
+            />
+
+
+
+            <EL text="{t('آدرس')}" style={S.label} />
+
+            <TextInput accessibilityLabel="اختیاری"
+
+              style={S.input}
+
+              value={address}
+
+              onChangeText={setAddress}
+
+              placeholder="اختیاری"
+
+              placeholderTextColor="#94a3b8"
+
+            />
+
+
+
+            <EL text="{t('باربری')}" style={S.label}><Text style={S.required}>*</Text></EL>
+
+            <Autocomplete
+
+              value={shipping}
+
+              onChange={setShipping}
+
+              options={[...new Set([...shippingsList.filter(Boolean).filter(Boolean).map((s:any)=>s.name), ...prods.map(p => p.shipping_name || '').filter(Boolean)])]}
+
+              placeholder="تایپ یا انتخاب..."
+
+            />
+        
+        
+
+
+          </View>
+
+        </View>
+
+
+
+        {/* ─── کارت اقلام ─── */}
+
+        <View style={S.card}>
+
+          <View style={S.cardHeader}>
+
+            <Text style={S.cardHeaderIcon}>📦</Text>
+
+            <EL textKey="اقلام فروش" style={[S.cardHeaderTitle, { color: S.order }]} />
+
+          </View>
+
+          <View style={{ padding: 16 }}>
+
+            {items.map((it, i) => {
+
+              const lineTotal = ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
+
+              return (
+
+                <View key={i} style={S.itemRow}>
+
+                  <View style={S.itemRowHeader}>
+
+                    <View style={S.itemRowNumBadge}>
+
+                      <Text style={S.itemRowNumTxt}>#{i + 1}</Text>
+
+                    </View>
+
+                    <TouchableOpacity onPress={() => delItem(i)} style={S.itemRemoveBtn}>
+
+                      <Text style={S.itemRemoveTxt}>🗑</Text>
+
+                    </TouchableOpacity>
+
+                  </View>
+
+                  <View style={{ padding: 10 }}>
+
+                    <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={term('product') + '...'} />
+
+                    <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+
+                      <View style={{ flex: 1 }}>
+
+                        <EL textKey={"کد مدل" + (it.shelf ? " | 📍 قفسه: " + it.shelf : '')} style={S.miniLabel} />
+
+                        <View style={S.miniValue}>
+
+                          <Text style={S.miniValueTxt}>{it.modelCode || "—"}</Text>
+
+                        </View>
+
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+
+                        <EL textKey="تعداد" style={S.miniLabel}><Text style={S.required}>*</Text></EL>
+
+                        <TextInput style={S.miniInput} value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))} onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updItem(i, 'quantity', (u === 'pack' && Number(it.pack_size) > 0) ? Math.round(raw * Number(it.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
+
+                        {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.base_unit || "عدد"}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'pack'); updItem(i, 'entered_qty', Number(it.pack_size) > 0 ? it.quantity / Number(it.pack_size) : 0); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.pack_unit || "بسته"}</Text></TouchableOpacity></View>)}
+
+                        {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || "عدد"}</Text>)}
+
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+
+                        <EL textKey="قیمت" style={S.miniLabel}><Text style={S.required}>*</Text></EL>
+
+                        <TextInput style={S.miniInput} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
+
+                      </View>
+
+                    </View>
+
+                    <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
+
+                      <View style={{ flex: 1 }}>
+
+                        <EL textKey="تخفیف" style={S.miniLabel} />
+
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+
+                          <TextInput style={[S.miniInput, { flex: 1 }]} value={String(it.discount || '')} onChangeText={(v) => updItem(i, 'discount', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
+
+                          <TouchableOpacity onPress={() => { const p = prods.find(x => x.code === it.modelCode); const d = p ? (it.entered_unit === 'pack' ? p.discount_pack_unit : p.discount_base_unit) : 0; updItem(i, 'discount', d || 0); updItem(i, 'discountEnabled', true); }} style={{ backgroundColor: it.discountEnabled ? '#0891b2' : '#e2e8f0', padding: 6, borderRadius: 4, justifyContent: 'center', alignItems: 'center', width: 30 }}>
+
+                            <Text style={{ fontSize: 12 }}>💰</Text>
+
+                          </TouchableOpacity>
+
+                        </View>
+
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+
+                        <EL textKey="مبلغ کل" style={S.miniLabel} />
+
+                        <View style={S.miniValue}>
+
+                          <Text style={[S.miniValueTxt, { color: lineTotal ? S.order : '#94a3b8' }]}>{lineTotal ? fmt(lineTotal) : "—"}</Text>
+
+                        </View>
+
+                      </View>
+
+                      <View style={{ flex: 1 }} />
+
+                    </View>
+
+                  </View>
+
+                </View>
+
+              );
+
+            })}
+
+
+            <TouchableOpacity style={S.addModelBtn} onPress={addItem}>
+
+              <EL textKey="➕ افزودن مدل" style={S.addModelBtnTxt} />
+
+            </TouchableOpacity>
+
+          </View>
+
+        </View>
+
+
+
+        <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border, marginTop: 12 }]}>
+          <EL textKey="💳 اطلاعات پرداخت" style={[s.customerCardTitle, { color: C.text }]} />
+          <EL text={t('📅 تاریخ فاکتور')} style={[s.lbl, { color: C.textMut }]} />
+          <DateField value={invoiceDate} onChange={setInvoiceDate} compact defaultToToday />
+          <EL text={t('📅 تاریخ پرداخت')} style={[s.lbl, { color: C.textMut }]} />
+          <DateField value={payDate} onChange={setPayDate} compact defaultToToday />
+          <EL text={t('💵 مبلغ پرداخت‌شده')} style={[s.lbl, { color: C.textMut }]} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(paymentAmount || '')} onChangeText={(v) => setPaymentAmount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+          <EL textKey="🏷️ تخفیف فاکتور" style={[s.lbl, { color: '#b45309' }]} />
+          <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
+            <TextInput style={[s.inp, { flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+            <TouchableOpacity onPress={() => setInvoiceDiscount(0)} style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 6, paddingHorizontal: 10, justifyContent: 'center' }}><Text style={{ color: '#b45309', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 10, padding: 8, backgroundColor: C.cardAlt, borderRadius: 6 }}>
+            <Text style={{ color: C.text, fontSize: 12 }}>جمع اقلام: {fmt(grandTotal)}</Text>
+            <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text>
+            <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text>
+            <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(paymentAmount)}</Text>
+            <Text style={{ color: balanceDue > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(balanceDue)}</Text>
+          </View>
+          <EL text={t('📝 شرح')} style={[s.lbl, { color: C.textMut }]} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder="توضیحات..." placeholderTextColor={C.textMut} />
+        </View>
+
+        {/* --- بلوک اطلاعات دریافت‌کننده --- */}
+        <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border, marginTop: 12 }]}>
+          <EL textKey="👤 اطلاعات دریافت‌کننده" style={[s.customerCardTitle, { color: C.text }]} />
+          <Autocomplete
+            label="👤 نام دریافت‌کننده"
+            value={receiverName}
+            onChange={setReceiverName}
+            onSelect={onReceiverPick}
+            options={Array.from(new Set([
+              ...partiesList.filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean),
+              ...partnersList.filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean),
+            ]))}
+            placeholder="تایپ یا انتخاب..."
+          />
+          <EL text="{t('🆔 کد دریافت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
+          <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={receiverCode} editable={false} placeholder="خودکار" placeholderTextColor={C.textMut} />
+          <EL text="🏦 حساب دریافت‌کننده (بانک)" style={[s.lbl, { color: C.textMut }]} />
+          <Autocomplete value={receiverBank} onChange={setReceiverBank} options={banksList.filter(Boolean).filter(Boolean).map((b: any) => b.name)} placeholder="انتخاب بانک..." />
+          <EL text="{t('🏦 شماره حساب دریافت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
+          <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAccount} onChangeText={setReceiverAccount} placeholder="اختیاری" placeholderTextColor={C.textMut} />
+        </View>
+
+      {/* ─── خلاصه کل ─── */}
+
+        <View style={S.summaryCard}>
+
+          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+
+            <EL textKey="💰 جمع مبلغ کل" style={S.summaryLbl} />
+
+            <Text style={S.summaryVal}>{fmt(grandTotal)}</Text>
+
+          </View>
+
+          <View style={{ alignItems: 'flex-start' }}>
+
+            <EL textKey="📦 تعداد اقلام" style={S.summaryLbl} />
+
+            <Text style={S.summaryCnt}>{String(grandQty).replace(/[۰-۹]/g, d => '0123456789'['۰۱۲۳۴۵۶۷۸۹'.indexOf(d)])} مدل</Text>
+
+          </View>
+
+        </View>
+
+
+
+        {/* ─── دکمه‌های ثبت/برگشت ─── */}
+
+        <View style={S.btnRowBottom}>
+
+          <TouchableOpacity style={[S.btnSecondary, { flex: 1 }]} onPress={() => setView('list')}>
+
+            <Text style={S.btnSecondaryTxt}>{t('↩️ برگشت')}</Text>
+
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[S.btnSubmit, { flex: 2 }]} onPress={submit} disabled={saving}>
+
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={S.btnSubmitTxt}>{t('✅ ثبت نهایی فروش')}</Text>}
+
+          </TouchableOpacity>
+
+        </View>
+
+      
+      {pendingConfirm && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setPendingConfirm(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 20 }}>
+            <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 20, maxWidth: 500, alignSelf: 'center', width: '100%' }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: C.text, textAlign: 'center', marginBottom: 16 }}>📋 تأیید فاکتور فروش</Text>
+              
+              <View style={{ backgroundColor: C.cardAlt, padding: 12, borderRadius: 8, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>👤 مشتری:</Text>
+                  <Text style={{ color: C.text, fontWeight: 'bold' }}>{pendingConfirm.name}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>📞 تلفن:</Text>
+                  <Text style={{ color: C.text }}>{pendingConfirm.phone}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>📦 تعداد اقلام:</Text>
+                  <Text style={{ color: C.text, fontWeight: 'bold' }}>{toFaNum(pendingConfirm.count)} مدل</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>💰 جمع کل:</Text>
+                  <Text style={{ color: '#00ff88', fontWeight: 'bold' }}>{fmt(pendingConfirm.total)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ color: C.textMut }}>💵 پرداخت:</Text>
+                  <Text style={{ color: '#059669', fontWeight: 'bold' }}>{fmt(pendingConfirm.paymentAmount)}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                  <Text style={{ color: C.textMut }}>📉 مانده:</Text>
+                  {(() => {
+  const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.paymentAmount || 0);
+  return (
+    <Text style={{ color: _bal > 0 ? '#dc2626' : _bal < 0 ? '#2563eb' : '#059669', fontWeight: 'bold' }}>
+      {_bal < 0 ? 'بستانکاری ' + fmt(Math.abs(_bal)) : fmt(_bal)}
+    </Text>
+  );
+})()}
+                </View>
+              </View>
+
+              <TouchableOpacity onPress={() => confirmSubmit('full')} style={{ backgroundColor: '#059669', padding: 14, borderRadius: 8, marginBottom: 8 }}>
+                <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: 14 }}>✅ ثبت کامل فاکتور</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => confirmSubmit('payment')} style={{ backgroundColor: '#d97706', padding: 14, borderRadius: 8, marginBottom: 8 }}>
+                <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: 14 }}>💵 ثبت فقط پرداخت</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setPendingConfirm(null)} style={{ backgroundColor: '#64748b', padding: 12, borderRadius: 8 }}>
+                <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>لغو</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+</ScrollView>
+
+    </KeyboardAvoidingView>
+
+  );
+
+
+
+  // ═══════════════ حالت لیست ═══════════════
+
+  return (
+
+    <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+
+      <View style={{ flexDirection: 'row-reverse', gap: 8, marginVertical: 8 }}>
+
+        <TouchableOpacity style={[S.btnPrimary, { flex: 1 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
+
+          <Text style={S.btnPrimaryTxt}>{t('➕ فاکتور جدید')}</Text>
+
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[S.btnSecondary, { flex: 1 }]} onPress={() => setView('reprint')}>
+
+          <Text style={S.btnSecondaryTxt}>{t('🖨️ پرینت مجدد')}</Text>
+
+        </TouchableOpacity>
+
+      </View>
+
+
+
+      <Text style={S.sectionTitle}>📄 فاکتورها ({list.length})</Text>
+
+
+
+                   {loading ? <ActivityIndicator color={S.order} /> : list.filter((inv: any) => !hiddenSales.includes(inv.invoice)).map((inv: any) => (
+
+        <View key={inv.invoice} style={S.listCard}>
+
+          <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+
+            <Text style={S.listCardInvoice}>{inv.invoice}</Text>
+
+            <TouchableOpacity onPress={() => remove(inv.invoice)}>
+
+              <Text style={{ fontSize: 18 }}>🗑</Text>
+
+            </TouchableOpacity>
+
+          </View>
+
+          <Text style={S.listCardCust}>👤 {inv.name} — {inv.phone}</Text>
+
+          <Text style={S.listCardStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
+
+        </View>
+
+      ))}
+
+    </ScrollView>
+
+  );
+
+}
+
+
+
+
+
+// ══════════════════════════════════════════════════════════
+
+//  استایل‌های صفحه فروش (داینامیک بر اساس تم)
+
+// ══════════════════════════════════════════════════════════
+
+function getS() {
+
+  const dark = THEME_MODE === 'dark';
+
+  const pageBg = dark ? '#0f2438' : '#f5f7fa';
+
+  const cardBg = dark ? '#1a2332' : '#ffffff';
+
+  const cardAltBg = dark ? '#0a1628' : '#fafbfc';
+
+  const textClr = dark ? '#ffffff' : '#1a2332';
+
+  const textMutClr = dark ? '#94a3b8' : '#64748b';
+
+  const borderClr = dark ? '#334155' : '#e2e8f0';
+
+  const inputBg = dark ? '#1a2332' : '#fafbfc';
+
+  const badgeBg = dark ? '#334155' : '#e8eef5';
+
+  const badgeTxt = dark ? '#e2e8f0' : '#1e3a5f';
+
+  const valueBg = dark ? '#0a1628' : '#f0f4f8';
+
+  const valueTxt = dark ? '#93c5fd' : '#1e3a5f';
+
+  const removeBg = dark ? '#3b1219' : '#fef2f2';
+
+  const removeBrd = dark ? '#7f1d1d' : '#fecaca';
+
+  const removeTxt = dark ? '#fca5a5' : '#b91c1c';
+
+  const btnSecBg = dark ? '#334155' : '#f1f5f9';
+
+  const btnSecBrd = dark ? '#475569' : '#cbd5e1';
+
+  const addModelBrd = dark ? '#475569' : '#cbd2d8';
+
+
+
+  return {
+
+    bg: pageBg,
+
+    card: cardBg,
+
+    text: textClr,
+
+    muted: textMutClr,
+
+    border: borderClr,
+
+    inputBg,
+
+    inputBorder: borderClr,
+
+    primary: '#1e3a5f',
+
+    order: '#1d4ed8',
+
+    orderDark: '#1e3a8a',
+
+    orderLight: '#3b82f6',
+
+    gold: '#d4af37',
+
+    goldLight: '#f4d47a',
+
+    itemBg: cardAltBg,
+
+    badgeBg,
+
+    badgeText: badgeTxt,
+
+    removeBg,
+
+    removeText: removeTxt,
+
+    valueBg,
+
+    valueText: valueTxt,
+
+
+
+    page: { flex: 1, backgroundColor: pageBg } as any,
+
+    card: {
+
+      backgroundColor: cardBg,
+
+      borderRadius: 14,
+
+      marginBottom: 12,
+
+      borderWidth: 1,
+
+      borderColor: borderClr,
+
+      shadowColor: '#0f2438',
+
+      shadowOpacity: 0.08,
+
+      shadowRadius: 8,
+
+      shadowOffset: { width: 0, height: 4 },
+
+      elevation: 2,
+
+      overflow: 'hidden',
+
+    } as any,
+
+    cardHeader: {
+
+      flexDirection: 'row-reverse',
+
+      alignItems: 'center',
+
+      gap: 8,
+
+      paddingHorizontal: 16,
+
+      paddingVertical: 12,
+
+      borderBottomWidth: 2,
+
+      borderBottomColor: borderClr,
+
+      backgroundColor: cardBg,
+
+    } as any,
+
+    cardHeaderIcon: { fontSize: 18 } as any,
+
+    cardHeaderTitle: { fontSize: 15, fontWeight: 'bold', textAlign: 'right' } as any,
+
+    label: {
+
+      fontSize: 12,
+
+      fontWeight: 'bold',
+
+      color: textClr,
+
+      marginBottom: 5,
+
+      marginTop: 10,
+
+      textAlign: 'right',
+
+    } as any,
+
+    required: { color: '#d4af37', fontWeight: 'bold' } as any,
+
+    input: {
+
+      backgroundColor: inputBg,
+
+      borderWidth: 2,
+
+      borderColor: borderClr,
+
+      borderRadius: 8,
+
+      paddingHorizontal: 12,
+
+      paddingVertical: 10,
+
+      fontSize: 13,
+
+      color: textClr,
+
+      textAlign: 'right',
+
+    } as any,
+
+    statusBadge: { fontSize: 11, color: '#059669', fontWeight: 'bold' } as any,
+
+    itemRow: { flexDirection: 'column', width: '100%', alignItems: 'stretch', gap: 4,
+
+      backgroundColor: cardAltBg,
+
+      borderWidth: 1.5,
+
+      borderColor: borderClr,
+
+      borderRadius: 12,
+
+      padding: 12,
+
+      marginBottom: 10,
+
+    } as any,
+
+    itemRowHeader: {
+
+      flexDirection: 'row-reverse',
+
+      justifyContent: 'space-between',
+
+      alignItems: 'center',
+
+      marginBottom: 8,
+
+    } as any,
+
+    itemRowNumBadge: {
+
+      backgroundColor: badgeBg,
+
+      paddingHorizontal: 10,
+
+      paddingVertical: 3,
+
+      borderRadius: 6,
+
+    } as any,
+
+    itemRowNumTxt: { color: badgeTxt, fontSize: 11, fontWeight: 'bold' } as any,
+
+    itemRemoveBtn: {
+
+      backgroundColor: removeBg,
+
+      borderWidth: 1,
+
+      borderColor: removeBrd,
+
+      borderRadius: 6,
+
+      paddingHorizontal: 10,
+
+      paddingVertical: 4,
+
+    } as any,
+
+    itemRemoveTxt: { color: removeTxt, fontSize: 12, fontWeight: 'bold' } as any,
+
+    threeColRow: { flexDirection: 'row-reverse', gap: 6, marginTop: 6 } as any,
+
+    threeColCell: { flex: 1 } as any,
+
+    miniLabel: {
+
+      fontSize: 10,
+
+      color: textMutClr,
+
+      marginBottom: 3,
+
+      fontWeight: 'bold',
+
+      textAlign: 'right',
+
+    } as any,
+
+    miniInput: {
+
+      backgroundColor: cardBg,
+
+      borderWidth: 1.5,
+
+      borderColor: borderClr,
+
+      borderRadius: 6,
+
+      paddingHorizontal: 8,
+
+      paddingVertical: 8,
+
+      fontSize: 12,
+
+      color: textClr,
+
+      textAlign: 'center',
+
+    } as any,
+
+    miniValue: {
+
+      backgroundColor: valueBg,
+
+      borderRadius: 6,
+
+      paddingHorizontal: 8,
+
+      paddingVertical: 8,
+
+      alignItems: 'center',
+
+      justifyContent: 'center',
+
+      minHeight: 34,
+
+    } as any,
+
+    miniValueTxt: { color: valueTxt, fontSize: 12, fontWeight: 'bold' } as any,
+
+    addModelBtn: {
+
+      backgroundColor: cardBg,
+
+      borderWidth: 2,
+
+      borderColor: addModelBrd,
+
+      borderStyle: 'dashed',
+
+      borderRadius: 10,
+
+      paddingVertical: 12,
+
+      alignItems: 'center',
+
+      marginTop: 8,
+
+    } as any,
+
+    addModelBtnTxt: { color: textClr, fontSize: 13, fontWeight: 'bold' } as any,
+
+    summaryCard: {
+
+      backgroundColor: '#1e3a8a',
+
+      borderRadius: 14,
+
+      paddingHorizontal: 20,
+
+      paddingVertical: 16,
+
+      marginBottom: 12,
+
+      flexDirection: 'row-reverse',
+
+      justifyContent: 'space-between',
+
+      alignItems: 'center',
+
+      borderRightWidth: 4,
+
+      borderRightColor: '#d4af37',
+
+    } as any,
+
+    summaryLbl: { color: '#cbd5e1', fontSize: 12, marginBottom: 4, textAlign: 'right' } as any,
+
+    summaryVal: { color: '#f4d47a', fontSize: 22, fontWeight: 'bold' } as any,
+
+    summaryCnt: { color: '#ffffff', fontSize: 15, fontWeight: 'bold' } as any,
+
+    btnRowBottom: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 } as any,
+
+    btnSubmit: {
+
+      backgroundColor: '#1e3a8a',
+
+      borderRadius: 12,
+
+      paddingVertical: 15,
+
+      alignItems: 'center',
+
+      justifyContent: 'center',
+
+    } as any,
+
+    btnSubmitTxt: { color: '#fff', fontSize: 15, fontWeight: 'bold' } as any,
+
+    btnPrimary: {
+
+      backgroundColor: '#1e3a8a',
+
+      borderRadius: 10,
+
+      paddingVertical: 12,
+
+      alignItems: 'center',
+
+      justifyContent: 'center',
+
+    } as any,
+
+    btnPrimaryTxt: { color: '#fff', fontSize: 14, fontWeight: 'bold' } as any,
+
+    btnSecondary: {
+
+      backgroundColor: btnSecBg,
+
+      borderWidth: 1,
+
+      borderColor: btnSecBrd,
+
+      borderRadius: 10,
+
+      paddingVertical: 12,
+
+      alignItems: 'center',
+
+      justifyContent: 'center',
+
+    } as any,
+
+    btnSecondaryTxt: { color: textClr, fontSize: 14, fontWeight: 'bold' } as any,
+
+    sectionTitle: {
+
+      fontSize: 14,
+
+      fontWeight: 'bold',
+
+      color: textClr,
+
+      marginTop: 12,
+
+      marginBottom: 8,
+
+      textAlign: 'right',
+
+    } as any,
+
+    listCard: {
+
+      backgroundColor: cardBg,
+
+      borderRadius: 10,
+
+      padding: 12,
+
+      marginBottom: 8,
+
+      borderRightWidth: 4,
+
+      borderRightColor: '#1e3a8a',
+
+      borderTopWidth: 1,
+
+      borderBottomWidth: 1,
+
+      borderLeftWidth: 1,
+
+      borderTopColor: borderClr,
+
+      borderBottomColor: borderClr,
+
+      borderLeftColor: borderClr,
+
+    } as any,
+
+    listCardInvoice: { fontSize: 13, fontWeight: 'bold', color: textClr } as any,
+
+    listCardCust: { fontSize: 11, color: textMutClr, marginBottom: 6, textAlign: 'right' } as any,
+
+    listCardStat: { fontSize: 11, color: textClr } as any,
+
+  };
+
+}
+
+// ══════════════════════════════════════════════════════════
+
+//  PURCHASE SCREEN — کارت‌های عمودی
+
+// ══════════════════════════════════════════════════════════
+

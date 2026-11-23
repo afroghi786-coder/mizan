@@ -1,0 +1,846 @@
+1: function SalesScreen({ showToast }: any) {
+2:   const [shippingsList, setShippingsList] = useState<any[]>([]);
+3:   useEffect(() => { getShippings().then(setShippingsList).catch(()=>{}); }, []);
+6:   const S = getS();
+8:   const [view, setView] = useState<'list' | 'form' | 'invoice' | 'reprint'>('list');
+10:   useEffect(() => {
+12:     const g = globalThis as any;
+14:     const h = () => setView('form');
+16:     g.__newFormHandlers = g.__newFormHandlers || {};
+18:     g.__newFormHandlers['order'] = h;
+20:     if (g.__openNewPending === 'order') { g.__openNewPending = null; h(); }
+22:     return () => { try { delete g.__newFormHandlers['order']; } catch {} };
+24:   }, []);
+26:   useEffect(() => {
+28:     const g = globalThis as any;
+30:     const h = () => setView('form');
+32:     g.__newFormHandlers = g.__newFormHandlers || {};
+34:     g.__newFormHandlers.order = h;
+36:     if (g.__openNewPending === 'order') { g.__openNewPending = null; h(); }
+38:     return () => { try { delete g.__newFormHandlers.order; } catch {} };
+40:   }, []);
+42:   useEffect(() => {
+44:     const open = (t: string) => { if (t === 'order') setView('form'); };
+46:     (globalThis as any).__openNewForm = open;
+48:     const pending = (globalThis as any).__openNewPending;
+50:     if (pending === 'order') { (globalThis as any).__openNewPending = null; setView('form'); }
+52:     return () => { try { delete (globalThis as any).__openNewForm; } catch {} };
+54:   }, []);
+58:   const [settings, setSettings] = useState<Settings>({});
+60:   const [list, setList] = useState<any[]>([]);
+62:   const [loading, setLoading] = useState(false);
+64:   const [hiddenSales, setHiddenSales] = useState<string[]>([]);
+66:   const [prods, setProds] = useState<Product[]>([]);
+68:   const [reprintInv, setReprintInv] = useState('');
+70:   const [invoice, setInvoice] = useState<any>(null);
+72:   const [phone, setPhone] = useState('');
+74:   const [name, setName] = useState('');
+76:   const [address, setAddress] = useState('');
+78:   const [shipping, setShipping] = useState('');
+79:   const [paymentAmount, setPaymentAmount] = useState(0);
+80:   const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+81:   const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+82:   const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
+83:   const [note, setNote] = useState('');
+84:   const [receiverName, setReceiverName] = useState('');
+85:   const [receiverCode, setReceiverCode] = useState('');
+86:   const [receiverBank, setReceiverBank] = useState('');
+87:   const [receiverAccount, setReceiverAccount] = useState('');
+88:   const [partnersList, setPartnersList] = useState<any[]>([]);
+89:   const [partiesList, setPartiesList] = useState<any[]>([]);
+90:   const [banksList, setBanksList] = useState<any[]>([]);
+91:   useEffect(() => {
+92:     getPartners().then(setPartnersList).catch(()=>{});
+93:     getParties().then(setPartiesList).catch(()=>{});
+94:     getBanks().then(setBanksList).catch(()=>{});
+95:   }, []);
+97:   const onReceiverPick = async (v: string) => {
+98:     try {
+99:       const f = await lookupPayerUniversal(v);
+100:       if (f) {
+101:         setReceiverCode(f.code || '');
+102:         if (f.bank) setReceiverBank(f.bank);
+103:         if (f.account) setReceiverAccount(f.account);
+104:       }
+105:     } catch {}
+106:   };
+108:   const [items, setItems] = useState<SaleItem[]>([]);
+110:   const [saving, setSaving] = useState(false);
+111:   const [returnModalOpen, setReturnModalOpen] = useState(false);
+112:   const [returnInvoice, setReturnInvoice] = useState<any>(null);
+113:   const [returnRows, setReturnRows] = useState<any[]>([]);
+114:   const [returnSaving, setReturnSaving] = useState(false);
+115:   const [pendingConfirm, setPendingConfirm] = useState<any>(null);
+117:   const [customerStatus, setCustomerStatus] = useState('');
+121:   useEffect(() => { getSettings().then(setSettings).catch(() => {}); }, []);
+123:   const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+125:   const load = async () => { setLoading(true); try { setList(await getSalesGrouped()); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+127:   useEffect(() => { load(); loadProds(); }, []);
+131:   const onPhone = async (v: string) => {
+133:     const d = v.replace(/\D/g, '').slice(0, 11);
+135:     setPhone(d); setCustomerStatus('');
+137:     if (d.length === 11) {
+139:       setCustomerStatus('⏳');
+141:       try {
+143:         const f = await lookupCustomerByPhone(d, 'customer');
+145:         if (f) { setCustomerStatus('✅ قبلی'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); }
+147:         else { setCustomerStatus('🆕 جدید'); setName(''); setAddress(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount(''); }
+149:       } catch { setCustomerStatus(''); }
+151:     }
+153:   };
+157:   const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '', pack_size: 0, discount: 0, discountEnabled: false,
+158:         discount_base_unit: 0,
+159:         discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+161:   const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
+163:   const delItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+165:   const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack_unit || ''; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].shelf = p.shelf || ''; n[i].entered_unit = 'base'; n[i].entered_qty = n[i].quantity || 0; if (p.shipping_name && !shipping) setShipping(p.shipping_name); } setItems(n); };
+169:   const grandTotal = items.reduce((a, it) => a + Math.max(0, ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0))), 0);
+171:   const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+172:   const balanceDue = Math.max(0, payableAmount - (Number(paymentAmount) || 0));
+174:   const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+178:   const resetForm = () => {
+179:     setPhone('');
+180:     setName('');
+181:     setAddress('');
+182:     setShipping('');
+183:     setPaymentAmount(0); setInvoiceDiscount(0);
+184:     setInvoiceDate(toStorageDateFull(new Date()));
+185:     setPayDate(toStorageDateFull(new Date()));
+186:     setNote('');
+187:     setReceiverName('');
+188:     setReceiverCode('');
+189:     setReceiverBank('');
+190:     setReceiverAccount('');
+191:     setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountHolder: '', accountHolderCode: '', description: '', shelf: '' }]);
+192:     setView('form');
+193:   };
+195:   const submit = async () => {
+196:     if (!/^09\d{9}$/.test(phone)) return alertMsg('⚠️ خطا', 'شماره معتبر نیست');
+197:     if (!name || name.length < 2) return alertMsg('⚠️ خطا', 'نام الزامی است');
+198:     
+199:     const invalidItem = items.find(it => it.modelName && (!it.quantity || !it.priceUnit));
+200:     if (invalidItem) {
+201:       return alertMsg('⚠️ خطا', 'مدل «' + invalidItem.modelName + '» تعداد یا قیمت ندارد. لطفاً تکمیل کنید.');
+202:     }
+204:     const valid = items.filter((it) => it.modelName && it.quantity > 0);
+205:     const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+206:     
+207:     setPendingConfirm({ name, phone, count: valid.length, total: grandTotal, paymentAmount, invoiceDiscount, valid, note });
+208:     return;
+210:     if (!mode) return;
+211:     if (mode === 'full' && !valid.length) {
+212:       return alertMsg('⚠️ خطا', 'برای ثبت فاکتور، حداقل یک مدل با تعداد معتبر وارد کنید.');
+213:     }
+215:     let finalItems = valid;
+216:     if (mode === 'payment') {
+217:       finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: note }];
+218:     }
+220:     setSaving(true);
+221:     try {
+222:       const pr = await resolvePartyForInvoice({ name: name, phone: phone, address, type: 'customer' });
+223:       const customerCode = pr.code;
+224:       const customerLocalId = pr.localId;
+225:       const inv = await generateInvoiceNumber();
+226:       
+227:       await createSale({ 
+228:         invoiceNumber: inv, 
+229:         customerCode,
+230:         customerLocalId, 
+231:         customerName: name, 
+232:         customerPhone: phone, 
+233:         customerAddress: address, 
+234:         shipping, 
+235:         items: finalItems, 
+236:         paymentAmount, 
+237:         invoiceDate, 
+238:         payDate, 
+239:         note, 
+240:         receiverName, 
+241:         receiverCode, 
+242:         receiverBank, 
+243:         receiverAccount 
+244:       });
+246:       await new Promise(r => setTimeout(r, 100));
+248:       const rows = await getInvoiceDetail(inv, 'sales');
+249:       if (rows.length > 0) {
+250:         const r = rows[0];
+251:         const its = rows.map((x: any) => {
+252:                   const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+253:                   return {
+254:                     modelName: x.model_name,
+255:                     modelCode: x.model_code,
+256:                     shelf: x.shelf || '',
+257:                     quantity: x.quantity,
+258:                     priceUnit: x.price_unit,
+259:                     total: x.quantity * x.price_unit,
+260:                     base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+261:                     pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+262:                     pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+263:                   };
+264:                 });
+265:         const tot = its.reduce((a: number, it: any) => a + it.total, 0);
+266:         const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+267:         const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
+268:         setInvoice({
+269:           customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+270:           current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+271:           previous: prev,
+272:           totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
+273:           timeString: displayDate(r.date_reg),
+274:         });
+275:         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
+276:         setPaymentAmount(0); setInvoiceDiscount(0); setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
+277:         setNote(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount('');
+278:         setView('invoice');
+279:       } else {
+280:         showToast('✅ فروش ثبت شد');
+281:         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+282:       }
+283:     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+284:     finally { setSaving(false); }
+285:   }
+286:   const confirmSubmit = async (mode: string) => {
+287:     if (!pendingConfirm) return;
+288:     const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2 } = pendingConfirm;
+289:     setPendingConfirm(null);
+290:     setSaving(true);
+291:     try {
+292:       const pr = await resolvePartyForInvoice({ name: n, phone: p, address, type: 'customer' });
+293:       const customerCode = pr.code;
+294:       const customerLocalId = pr.localId;
+295:       const inv = await generateInvoiceNumber();
+297:       let finalItems = valid;
+298:       if (mode === 'payment') {
+299:         finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: n2, shelf: '' }];
+300:       }
+302:       await createSale({
+303:         invoiceNumber: inv, customerCode, customerLocalId, customerName: n, customerPhone: p,
+304:         customerAddress: address, shipping, items: finalItems,
+305:         paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+306:         receiverName, receiverCode, receiverBank, receiverAccount
+307:       });
+309:       // ═══ اگر دریافت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+310:       try {
+311:         const partner = await findPartnerByNameOrCode(receiverName || receiverCode);
+312:         if (partner && payAmt > 0) {
+313:           const cur = (typeof getCurrencySync === 'function' ? ((getCurrencySync() as any).code || 'AFN') : 'AFN');
+314:           await createPartnerAutoTx({
+315:             partner_code: partner.code,
+316:             partner_name: partner.name,
+317:             type: 'deposit',
+318:             amount: payAmt,
+319:             currency: cur,
+320:             account_type: 'current',
+321:             counterpart_type: 'customer',
+322:             counterpart_code: customerCode,
+323:             source_type: 'sales',
+324:             source_id: inv,
+325:             transaction_date: invoiceDate || new Date().toISOString(),
+326:             note: 'فروش به ' + n + ' - فاکتور ' + inv,
+327:             bank_account_local_id: '',
+328:           });
+329:           console.log('[partner auto] sales deposit ثبت شد:', partner.name, payAmt);
+330:         }
+331:       } catch (e) { console.log('[partner auto sales]', e); }
+333:       await new Promise(r => setTimeout(r, 100));
+334:       const rows = await getInvoiceDetail(inv, 'sales');
+335:       if (rows.length > 0) {
+336:         const r = rows[0];
+337:         const its = rows.map((x: any) => {
+338:                   const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+339:                   return {
+340:                     modelName: x.model_name,
+341:                     modelCode: x.model_code,
+342:                     shelf: x.shelf || '',
+343:                     quantity: x.quantity,
+344:                     priceUnit: x.price_unit,
+345:                     total: x.quantity * x.price_unit,
+346:                     base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+347:                     pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+348:                     pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+349:                   };
+350:                 });
+351:         const tot = its.reduce((a: number, it: any) => a + it.total, 0);
+352:         const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+353:         const prev = await getCustomerPreviousBalance(r.customer_code, r.invoice_number);
+354:         setInvoice({
+355:           customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+356:           current: { invoiceNumber: r.invoice_number, items: its, sales: tot, payments: paid, balance: tot - paid },
+357:           previous: prev,
+358:           totals: { sales: prev.sales + tot, payments: prev.payments + paid, balance: prev.balance + (tot - paid) },
+359:           timeString: displayDate(r.date_reg),
+360:         });
+361:         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]);
+362:         setView('invoice');
+363:       } else {
+364:         alertMsg('✅ موفق', 'فاکتور فروش ثبت شد:\n' + inv);
+365:         setPhone(''); setName(''); setAddress(''); setShipping(''); setItems([]); setView('list'); load();
+366:       }
+367:     } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+368:     finally { setSaving(false); }
+369:   };;
+373:   const remove = async (inv: string) => {
+375:     const ok = await confirmMsg('پنهان کردن', `فاکتور ${inv} از لیست پنهان شود؟\n\n(در دیتابیس باقی می‌ماند)`);
+377:     if (!ok) return;
+379:     setHiddenSales([...hiddenSales, inv]);
+381:     showToast('✅ از لیست پنهان شد');
+383:   };
+387:   const doReprint = async () => {
+389:     if (!reprintInv.trim()) return showToast('شماره فاکتور را وارد کن', true);
+391:     try {
+393:       const rows = await getInvoiceDetail(reprintInv.trim());
+395:       if (!rows.length) return showToast('فاکتور پیدا نشد', true);
+397:       const r = rows[0];
+399:       const its = rows.map((x: any) => {
+400:                 const _u = prods.find((p: any) => String(p.code || '') === String(x.model_code || ''));
+401:                 return {
+402:                   modelName: x.model_name,
+403:                   modelCode: x.model_code,
+404:                   shelf: x.shelf || '',
+405:                   quantity: x.quantity,
+406:                   priceUnit: x.price_unit,
+407:                   total: x.quantity * x.price_unit,
+408:                   base_unit: x.base_unit || (_u ? _u.base_unit : 'عدد'),
+409:                   pack_unit: x.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+410:                   pack_size: x.pack_size !== undefined ? Number(x.pack_size) : (_u ? Number(_u.pack_size) : 0),
+411:                 };
+412:               });
+414:       const total = its.reduce((a: number, it: any) => a + it.total, 0);
+416:       const paid = rows.reduce((a: number, x: any) => a + (Number(x.payment) || 0), 0);
+418:       setInvoice({
+420:         customer: { code: r.customer_code, name: r.customer_name, phone: r.customer_phone, address: r.customer_address, shipping: r.shipping },
+422:         current: { invoiceNumber: r.invoice_number, items: its, sales: total, payments: paid, balance: total - paid },
+424:         previous: { sales: 0, payments: 0, balance: 0, invoiceCount: 0 },
+426:         totals: { sales: total, payments: paid, balance: total - paid },
+428:         timeString: displayDate(r.date_reg),
+430:       });
+432:       setView('invoice');
+434:     } catch (e: any) { showToast(e.message, true); }
+436:   };
+440:   if (view === 'invoice' && invoice) return <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView invoice={invoice} prods={prods} onBack={() => { setView('list'); setInvoice(null); load(); }} showToast={showToast} onNew={resetForm} /></View>;
+444:   // ═══════════════ حالت پرینت مجدد ═══════════════
+446:   if (view === 'reprint') return (
+448:     <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 40 }}>
+450:       {/* کارت پرینت مجدد */}
+452:       <View style={S.card}>
+454:         <View style={S.cardHeader}>
+456:           <Text style={S.cardHeaderIcon}>🖨️</Text>
+458:           <EL textKey="پرینت مجدد فاکتور" style={[S.cardHeaderTitle, { color: S.order }]} />
+460:         </View>
+462:         <View style={{ padding: 16 }}>
+464:           <EL text="{t('شماره فاکتور قدیمی')}" style={S.label} />
+466:           <TextInput accessibilityLabel="مثلاً 14050612-1001"
+468:             style={S.input}
+470:             value={reprintInv}
+472:             onChangeText={setReprintInv}
+474:             placeholder="مثلاً 14050612-1001"
+476:             placeholderTextColor="#94a3b8"
+478:           />
+480:           <TouchableOpacity style={[S.btnPrimary, { marginTop: 10 }]} onPress={doReprint}>
+482:             <Text style={S.btnPrimaryTxt}>{t('🔍 نمایش فاکتور')}</Text>
+484:           </TouchableOpacity>
+486:         </View>
+488:       </View>
+492:       {/* دکمه برگشت */}
+494:       <TouchableOpacity style={[S.btnSecondary, { marginTop: 12 }]} onPress={() => setView('list')}>
+496:         <Text style={S.btnSecondaryTxt}>{t('↩️ برگشت به لیست')}</Text>
+498:       </TouchableOpacity>
+500:     </ScrollView>
+502:   );
+506:   // ═══════════════ حالت فرم ═══════════════
+508:   if (view === 'form') return (
+510:     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+512:       <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+516:         {/* ─── کارت اطلاعات مشتری ─── */}
+518:         <View style={S.card}>
+520:           <View style={S.cardHeader}>
+522:             <Text style={S.cardHeaderIcon}>📞</Text>
+524:             <EL textKey="اطلاعات مشتری" style={[S.cardHeaderTitle, { color: S.order }]} />
+526:           </View>
+528:           <View style={{ padding: 16 }}>
+530:             <Text style={S.label}>
+532:               تلفن همراه <Text style={S.required}>*</Text>
+534:               {customerStatus ? <Text style={S.statusBadge}> {customerStatus}</Text> : null}
+536:             </Text>
+538:             <TextInput accessibilityLabel="09121234567"
+540:               style={S.input}
+542:               value={phone}
+544:               onChangeText={onPhone}
+546:               keyboardType="phone-pad"
+548:               maxLength={11}
+550:               placeholder="09121234567"
+552:               placeholderTextColor="#94a3b8"
+554:             />
+558:             <EL text="{t('نام و نام خانوادگی')}" style={S.label}><Text style={S.required}>*</Text></EL>
+560:             <TextInput
+562:               style={S.input}
+564:               value={name}
+566:               onChangeText={setName}
+568:               placeholder={term('customer')}
+570:               placeholderTextColor="#94a3b8"
+572:             />
+576:             <EL text="{t('آدرس')}" style={S.label} />
+578:             <TextInput accessibilityLabel="اختیاری"
+580:               style={S.input}
+582:               value={address}
+584:               onChangeText={setAddress}
+586:               placeholder="اختیاری"
+588:               placeholderTextColor="#94a3b8"
+590:             />
+594:             <EL text="{t('باربری')}" style={S.label}><Text style={S.required}>*</Text></EL>
+596:             <Autocomplete
+598:               value={shipping}
+600:               onChange={setShipping}
+602:               options={[...new Set([...shippingsList.filter(Boolean).filter(Boolean).map((s:any)=>s.name), ...prods.map(p => p.shipping_name || '').filter(Boolean)])]}
+604:               placeholder="تایپ یا انتخاب..."
+606:             />
+607:         
+608:         
+611:           </View>
+613:         </View>
+617:         {/* ─── کارت اقلام ─── */}
+619:         <View style={S.card}>
+621:           <View style={S.cardHeader}>
+623:             <Text style={S.cardHeaderIcon}>📦</Text>
+625:             <EL textKey="اقلام فروش" style={[S.cardHeaderTitle, { color: S.order }]} />
+627:           </View>
+629:           <View style={{ padding: 16 }}>
+631:             {items.map((it, i) => {
+633:               const lineTotal = ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
+635:               return (
+637:                 <View key={i} style={S.itemRow}>
+639:                   <View style={S.itemRowHeader}>
+641:                     <View style={S.itemRowNumBadge}>
+643:                       <Text style={S.itemRowNumTxt}>#{i + 1}</Text>
+645:                     </View>
+647:                     <TouchableOpacity onPress={() => delItem(i)} style={S.itemRemoveBtn}>
+649:                       <Text style={S.itemRemoveTxt}>🗑</Text>
+651:                     </TouchableOpacity>
+653:                   </View>
+655:                   <View style={{ padding: 10 }}>
+657:                     <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={prods.map(p => p.name)} placeholder={term('product') + '...'} />
+659:                     <View style={{ flexDirection: 'row-reverse', gap: 6 }}>
+661:                       <View style={{ flex: 1 }}>
+663:                         <EL textKey={"کد مدل" + (it.shelf ? " | 📍 قفسه: " + it.shelf : '')} style={S.miniLabel} />
+665:                         <View style={S.miniValue}>
+667:                           <Text style={S.miniValueTxt}>{it.modelCode || "—"}</Text>
+669:                         </View>
+671:                       </View>
+673:                       <View style={{ flex: 1 }}>
+675:                         <EL textKey="تعداد" style={S.miniLabel}><Text style={S.required}>*</Text></EL>
+677:                         <TextInput style={S.miniInput} value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))} onChangeText={(v) => { const raw = parseFloat(v) || 0; const u = it.entered_unit || 'base'; updItem(i, 'entered_unit', u); updItem(i, 'entered_qty', raw); updItem(i, 'quantity', (u === 'pack' && Number(it.pack_size) > 0) ? Math.round(raw * Number(it.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
+679:                         {Number(it.pack_size) > 0 && (<View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'base'); updItem(i, 'entered_qty', it.quantity); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.base_unit || "عدد"}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updItem(i, 'entered_unit', 'pack'); updItem(i, 'entered_qty', Number(it.pack_size) > 0 ? it.quantity / Number(it.pack_size) : 0); }} style={{ flex: 1, padding: 2, borderRadius: 3, backgroundColor: (it.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 9, textAlign: 'center' }}>{it.pack_unit || "بسته"}</Text></TouchableOpacity></View>)}
+681:                         {it.entered_unit === 'pack' && Number(it.pack_size) > 0 && (<Text style={{ fontSize: 9, color: '#94a3b8', marginTop: 2, textAlign: 'center' }}>= {String(it.quantity || 0)} {it.base_unit || "عدد"}</Text>)}
+683:                       </View>
+685:                       <View style={{ flex: 1 }}>
+687:                         <EL textKey="قیمت" style={S.miniLabel}><Text style={S.required}>*</Text></EL>
+689:                         <TextInput style={S.miniInput} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
+691:                       </View>
+693:                     </View>
+695:                     <View style={{ flexDirection: 'row-reverse', gap: 6, marginTop: 6 }}>
+697:                       <View style={{ flex: 1 }}>
+699:                         <EL textKey="تخفیف" style={S.miniLabel} />
+701:                         <View style={{ flexDirection: 'row', gap: 4 }}>
+703:                           <TextInput style={[S.miniInput, { flex: 1 }]} value={String(it.discount || '')} onChangeText={(v) => updItem(i, 'discount', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
+705:                           <TouchableOpacity onPress={() => { const p = prods.find(x => x.code === it.modelCode); const d = p ? (it.entered_unit === 'pack' ? p.discount_pack_unit : p.discount_base_unit) : 0; updItem(i, 'discount', d || 0); updItem(i, 'discountEnabled', true); }} style={{ backgroundColor: it.discountEnabled ? '#0891b2' : '#e2e8f0', padding: 6, borderRadius: 4, justifyContent: 'center', alignItems: 'center', width: 30 }}>
+707:                             <Text style={{ fontSize: 12 }}>💰</Text>
+709:                           </TouchableOpacity>
+711:                         </View>
+713:                       </View>
+715:                       <View style={{ flex: 1 }}>
+717:                         <EL textKey="مبلغ کل" style={S.miniLabel} />
+719:                         <View style={S.miniValue}>
+721:                           <Text style={[S.miniValueTxt, { color: lineTotal ? S.order : '#94a3b8' }]}>{lineTotal ? fmt(lineTotal) : "—"}</Text>
+723:                         </View>
+725:                       </View>
+727:                       <View style={{ flex: 1 }} />
+729:                     </View>
+731:                   </View>
+733:                 </View>
+735:               );
+737:             })}
+740:             <TouchableOpacity style={S.addModelBtn} onPress={addItem}>
+742:               <EL textKey="➕ افزودن مدل" style={S.addModelBtnTxt} />
+744:             </TouchableOpacity>
+746:           </View>
+748:         </View>
+752:         <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border, marginTop: 12 }]}>
+753:           <EL textKey="💳 اطلاعات پرداخت" style={[s.customerCardTitle, { color: C.text }]} />
+754:           <EL text={t('📅 تاریخ فاکتور')} style={[s.lbl, { color: C.textMut }]} />
+755:           <DateField value={invoiceDate} onChange={setInvoiceDate} compact defaultToToday />
+756:           <EL text={t('📅 تاریخ پرداخت')} style={[s.lbl, { color: C.textMut }]} />
+757:           <DateField value={payDate} onChange={setPayDate} compact defaultToToday />
+758:           <EL text={t('💵 مبلغ پرداخت‌شده')} style={[s.lbl, { color: C.textMut }]} />
+759:           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(paymentAmount || '')} onChangeText={(v) => setPaymentAmount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+760:           <EL textKey="🏷️ تخفیف فاکتور" style={[s.lbl, { color: '#b45309' }]} />
+761:           <View style={{ flexDirection: 'row-reverse', gap: 8 }}>
+762:             <TextInput style={[s.inp, { flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+763:             <TouchableOpacity onPress={() => setInvoiceDiscount(0)} style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 6, paddingHorizontal: 10, justifyContent: 'center' }}><Text style={{ color: '#b45309', fontWeight: 'bold' }}>✕</Text></TouchableOpacity>
+764:           </View>
+765:           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 10, padding: 8, backgroundColor: C.cardAlt, borderRadius: 6 }}>
+766:             <Text style={{ color: C.text, fontSize: 12 }}>جمع اقلام: {fmt(grandTotal)}</Text>
+767:             <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text>
+768:             <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text>
+769:             <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {fmt(paymentAmount)}</Text>
+770:             <Text style={{ color: balanceDue > 0 ? '#dc2626' : '#059669', fontSize: 12, fontWeight: 'bold' }}>مانده: {fmt(balanceDue)}</Text>
+771:           </View>
+772:           <EL text={t('📝 شرح')} style={[s.lbl, { color: C.textMut }]} />
+773:           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVertical: 'top' }]} value={note} onChangeText={setNote} multiline placeholder="توضیحات..." placeholderTextColor={C.textMut} />
+774:         </View>
+776:         {/* --- بلوک اطلاعات دریافت‌کننده --- */}
+777:         <View style={[s.customerCard, { backgroundColor: C.card, borderColor: C.border, marginTop: 12 }]}>
+778:           <EL textKey="👤 اطلاعات دریافت‌کننده" style={[s.customerCardTitle, { color: C.text }]} />
+779:           <Autocomplete
+780:             label="👤 نام دریافت‌کننده"
+781:             value={receiverName}
+782:             onChange={setReceiverName}
+783:             onSelect={onReceiverPick}
+784:             options={Array.from(new Set([
+785:               ...partiesList.filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean),
+786:               ...partnersList.filter(Boolean).filter(Boolean).map((p: any) => p.name || '').filter(Boolean),
+787:             ]))}
+788:             placeholder="تایپ یا انتخاب..."
+789:           />
+790:           <EL text="{t('🆔 کد دریافت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
+791:           <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={receiverCode} editable={false} placeholder="خودکار" placeholderTextColor={C.textMut} />
+792:           <EL text="🏦 حساب دریافت‌کننده (بانک)" style={[s.lbl, { color: C.textMut }]} />
+793:           <Autocomplete value={receiverBank} onChange={setReceiverBank} options={banksList.filter(Boolean).filter(Boolean).map((b: any) => b.name)} placeholder="انتخاب بانک..." />
+794:           <EL text="{t('🏦 شماره حساب دریافت‌کننده')}" style={[s.lbl, { color: C.textMut }]} />
+795:           <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAccount} onChangeText={setReceiverAccount} placeholder="اختیاری" placeholderTextColor={C.textMut} />
+796:         </View>
+798:       {/* ─── خلاصه کل ─── */}
+800:         <View style={S.summaryCard}>
+802:           <View style={{ flex: 1, alignItems: 'flex-end' }}>
+804:             <EL textKey="💰 جمع مبلغ کل" style={S.summaryLbl} />
+806:             <Text style={S.summaryVal}>{fmt(grandTotal)}</Text>
+808:           </View>
+810:           <View style={{ alignItems: 'flex-start' }}>
+812:             <EL textKey="📦 تعداد اقلام" style={S.summaryLbl} />
+814:             <Text style={S.summaryCnt}>{String(grandQty).replace(/[۰-۹]/g, d => '0123456789'['۰۱۲۳۴۵۶۷۸۹'.indexOf(d)])} مدل</Text>
+816:           </View>
+818:         </View>
+822:         {/* ─── دکمه‌های ثبت/برگشت ─── */}
+824:         <View style={S.btnRowBottom}>
+826:           <TouchableOpacity style={[S.btnSecondary, { flex: 1 }]} onPress={() => setView('list')}>
+828:             <Text style={S.btnSecondaryTxt}>{t('↩️ برگشت')}</Text>
+830:           </TouchableOpacity>
+832:           <TouchableOpacity style={[S.btnSubmit, { flex: 2 }]} onPress={submit} disabled={saving}>
+834:             {saving ? <ActivityIndicator color="#fff" /> : <Text style={S.btnSubmitTxt}>{t('✅ ثبت نهایی فروش')}</Text>}
+836:           </TouchableOpacity>
+838:         </View>
+840:       
+841:       {pendingConfirm && (
+842:         <Modal visible transparent animationType="fade" onRequestClose={() => setPendingConfirm(null)}>
+843:           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 20 }}>
+844:             <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 20, maxWidth: 500, alignSelf: 'center', width: '100%' }}>
+845:               <Text style={{ fontSize: 18, fontWeight: 'bold', color: C.text, textAlign: 'center', marginBottom: 16 }}>📋 تأیید فاکتور فروش</Text>
+846:               
+847:               <View style={{ backgroundColor: C.cardAlt, padding: 12, borderRadius: 8, marginBottom: 16 }}>
+848:                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+849:                   <Text style={{ color: C.textMut }}>👤 مشتری:</Text>
+850:                   <Text style={{ color: C.text, fontWeight: 'bold' }}>{pendingConfirm.name}</Text>
+851:                 </View>
+852:                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+853:                   <Text style={{ color: C.textMut }}>📞 تلفن:</Text>
+854:                   <Text style={{ color: C.text }}>{pendingConfirm.phone}</Text>
+855:                 </View>
+856:                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+857:                   <Text style={{ color: C.textMut }}>📦 تعداد اقلام:</Text>
+858:                   <Text style={{ color: C.text, fontWeight: 'bold' }}>{toFaNum(pendingConfirm.count)} مدل</Text>
+859:                 </View>
+860:                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+861:                   <Text style={{ color: C.textMut }}>💰 جمع کل:</Text>
+862:                   <Text style={{ color: '#00ff88', fontWeight: 'bold' }}>{fmt(pendingConfirm.total)}</Text>
+863:                 </View>
+864:                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+865:                   <Text style={{ color: C.textMut }}>💵 پرداخت:</Text>
+866:                   <Text style={{ color: '#059669', fontWeight: 'bold' }}>{fmt(pendingConfirm.paymentAmount)}</Text>
+867:                 </View>
+868:                 <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+869:                   <Text style={{ color: C.textMut }}>📉 مانده:</Text>
+870:                   {(() => {
+871:   const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.paymentAmount || 0);
+872:   return (
+873:     <Text style={{ color: _bal > 0 ? '#dc2626' : _bal < 0 ? '#2563eb' : '#059669', fontWeight: 'bold' }}>
+874:       {_bal < 0 ? 'بستانکاری ' + fmt(Math.abs(_bal)) : fmt(_bal)}
+875:     </Text>
+876:   );
+877: })()}
+878:                 </View>
+879:               </View>
+881:               <TouchableOpacity onPress={() => confirmSubmit('full')} style={{ backgroundColor: '#059669', padding: 14, borderRadius: 8, marginBottom: 8 }}>
+882:                 <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: 14 }}>✅ ثبت کامل فاکتور</Text>
+883:               </TouchableOpacity>
+884:               <TouchableOpacity onPress={() => confirmSubmit('payment')} style={{ backgroundColor: '#d97706', padding: 14, borderRadius: 8, marginBottom: 8 }}>
+885:                 <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: 14 }}>💵 ثبت فقط پرداخت</Text>
+886:               </TouchableOpacity>
+887:               <TouchableOpacity onPress={() => setPendingConfirm(null)} style={{ backgroundColor: '#64748b', padding: 12, borderRadius: 8 }}>
+888:                 <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>لغو</Text>
+889:               </TouchableOpacity>
+890:             </View>
+891:           </View>
+892:         </Modal>
+893:       )}
+894: </ScrollView>
+896:     </KeyboardAvoidingView>
+898:   );
+902:   // ═══════════════ حالت لیست ═══════════════
+904:   return (
+906:     <ScrollView style={S.page} contentContainerStyle={{ padding: 12, paddingBottom: 60 }}>
+908:       <View style={{ flexDirection: 'row-reverse', gap: 8, marginVertical: 8 }}>
+910:         <TouchableOpacity style={[S.btnPrimary, { flex: 1 }]} onPress={() => { setView('form'); if (!items.length) addItem(); }}>
+912:           <Text style={S.btnPrimaryTxt}>{t('➕ فاکتور جدید')}</Text>
+914:         </TouchableOpacity>
+916:         <TouchableOpacity style={[S.btnSecondary, { flex: 1 }]} onPress={() => setView('reprint')}>
+918:           <Text style={S.btnSecondaryTxt}>{t('🖨️ پرینت مجدد')}</Text>
+920:         </TouchableOpacity>
+922:       </View>
+926:       <Text style={S.sectionTitle}>📄 فاکتورها ({list.length})</Text>
+930:                    {loading ? <ActivityIndicator color={S.order} /> : list.filter((inv: any) => !hiddenSales.includes(inv.invoice)).map((inv: any) => (
+932:         <View key={inv.invoice} style={S.listCard}>
+934:           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 6 }}>
+936:             <Text style={S.listCardInvoice}>{inv.invoice}</Text>
+938:             <TouchableOpacity onPress={() => remove(inv.invoice)}>
+940:               <Text style={{ fontSize: 18 }}>🗑</Text>
+942:             </TouchableOpacity>
+944:           </View>
+946:           <Text style={S.listCardCust}>👤 {inv.name} — {inv.phone}</Text>
+948:           <Text style={S.listCardStat}>💰 {fmt(inv.total)} | 💳 {fmt(inv.paid)}</Text>
+950:         </View>
+952:       ))}
+954:     </ScrollView>
+956:   );
+958: }
+964: // ══════════════════════════════════════════════════════════
+966: //  استایل‌های صفحه فروش (داینامیک بر اساس تم)
+968: // ══════════════════════════════════════════════════════════
+970: function getS() {
+972:   const dark = THEME_MODE === 'dark';
+974:   const pageBg = dark ? '#0f2438' : '#f5f7fa';
+976:   const cardBg = dark ? '#1a2332' : '#ffffff';
+978:   const cardAltBg = dark ? '#0a1628' : '#fafbfc';
+980:   const textClr = dark ? '#ffffff' : '#1a2332';
+982:   const textMutClr = dark ? '#94a3b8' : '#64748b';
+984:   const borderClr = dark ? '#334155' : '#e2e8f0';
+986:   const inputBg = dark ? '#1a2332' : '#fafbfc';
+988:   const badgeBg = dark ? '#334155' : '#e8eef5';
+990:   const badgeTxt = dark ? '#e2e8f0' : '#1e3a5f';
+992:   const valueBg = dark ? '#0a1628' : '#f0f4f8';
+994:   const valueTxt = dark ? '#93c5fd' : '#1e3a5f';
+996:   const removeBg = dark ? '#3b1219' : '#fef2f2';
+998:   const removeBrd = dark ? '#7f1d1d' : '#fecaca';
+1000:   const removeTxt = dark ? '#fca5a5' : '#b91c1c';
+1002:   const btnSecBg = dark ? '#334155' : '#f1f5f9';
+1004:   const btnSecBrd = dark ? '#475569' : '#cbd5e1';
+1006:   const addModelBrd = dark ? '#475569' : '#cbd2d8';
+1010:   return {
+1012:     bg: pageBg,
+1014:     card: cardBg,
+1016:     text: textClr,
+1018:     muted: textMutClr,
+1020:     border: borderClr,
+1022:     inputBg,
+1024:     inputBorder: borderClr,
+1026:     primary: '#1e3a5f',
+1028:     order: '#1d4ed8',
+1030:     orderDark: '#1e3a8a',
+1032:     orderLight: '#3b82f6',
+1034:     gold: '#d4af37',
+1036:     goldLight: '#f4d47a',
+1038:     itemBg: cardAltBg,
+1040:     badgeBg,
+1042:     badgeText: badgeTxt,
+1044:     removeBg,
+1046:     removeText: removeTxt,
+1048:     valueBg,
+1050:     valueText: valueTxt,
+1054:     page: { flex: 1, backgroundColor: pageBg } as any,
+1056:     card: {
+1058:       backgroundColor: cardBg,
+1060:       borderRadius: 14,
+1062:       marginBottom: 12,
+1064:       borderWidth: 1,
+1066:       borderColor: borderClr,
+1068:       shadowColor: '#0f2438',
+1070:       shadowOpacity: 0.08,
+1072:       shadowRadius: 8,
+1074:       shadowOffset: { width: 0, height: 4 },
+1076:       elevation: 2,
+1078:       overflow: 'hidden',
+1080:     } as any,
+1082:     cardHeader: {
+1084:       flexDirection: 'row-reverse',
+1086:       alignItems: 'center',
+1088:       gap: 8,
+1090:       paddingHorizontal: 16,
+1092:       paddingVertical: 12,
+1094:       borderBottomWidth: 2,
+1096:       borderBottomColor: borderClr,
+1098:       backgroundColor: cardBg,
+1100:     } as any,
+1102:     cardHeaderIcon: { fontSize: 18 } as any,
+1104:     cardHeaderTitle: { fontSize: 15, fontWeight: 'bold', textAlign: 'right' } as any,
+1106:     label: {
+1108:       fontSize: 12,
+1110:       fontWeight: 'bold',
+1112:       color: textClr,
+1114:       marginBottom: 5,
+1116:       marginTop: 10,
+1118:       textAlign: 'right',
+1120:     } as any,
+1122:     required: { color: '#d4af37', fontWeight: 'bold' } as any,
+1124:     input: {
+1126:       backgroundColor: inputBg,
+1128:       borderWidth: 2,
+1130:       borderColor: borderClr,
+1132:       borderRadius: 8,
+1134:       paddingHorizontal: 12,
+1136:       paddingVertical: 10,
+1138:       fontSize: 13,
+1140:       color: textClr,
+1142:       textAlign: 'right',
+1144:     } as any,
+1146:     statusBadge: { fontSize: 11, color: '#059669', fontWeight: 'bold' } as any,
+1148:     itemRow: { flexDirection: 'column', width: '100%', alignItems: 'stretch', gap: 4,
+1150:       backgroundColor: cardAltBg,
+1152:       borderWidth: 1.5,
+1154:       borderColor: borderClr,
+1156:       borderRadius: 12,
+1158:       padding: 12,
+1160:       marginBottom: 10,
+1162:     } as any,
+1164:     itemRowHeader: {
+1166:       flexDirection: 'row-reverse',
+1168:       justifyContent: 'space-between',
+1170:       alignItems: 'center',
+1172:       marginBottom: 8,
+1174:     } as any,
+1176:     itemRowNumBadge: {
+1178:       backgroundColor: badgeBg,
+1180:       paddingHorizontal: 10,
+1182:       paddingVertical: 3,
+1184:       borderRadius: 6,
+1186:     } as any,
+1188:     itemRowNumTxt: { color: badgeTxt, fontSize: 11, fontWeight: 'bold' } as any,
+1190:     itemRemoveBtn: {
+1192:       backgroundColor: removeBg,
+1194:       borderWidth: 1,
+1196:       borderColor: removeBrd,
+1198:       borderRadius: 6,
+1200:       paddingHorizontal: 10,
+1202:       paddingVertical: 4,
+1204:     } as any,
+1206:     itemRemoveTxt: { color: removeTxt, fontSize: 12, fontWeight: 'bold' } as any,
+1208:     threeColRow: { flexDirection: 'row-reverse', gap: 6, marginTop: 6 } as any,
+1210:     threeColCell: { flex: 1 } as any,
+1212:     miniLabel: {
+1214:       fontSize: 10,
+1216:       color: textMutClr,
+1218:       marginBottom: 3,
+1220:       fontWeight: 'bold',
+1222:       textAlign: 'right',
+1224:     } as any,
+1226:     miniInput: {
+1228:       backgroundColor: cardBg,
+1230:       borderWidth: 1.5,
+1232:       borderColor: borderClr,
+1234:       borderRadius: 6,
+1236:       paddingHorizontal: 8,
+1238:       paddingVertical: 8,
+1240:       fontSize: 12,
+1242:       color: textClr,
+1244:       textAlign: 'center',
+1246:     } as any,
+1248:     miniValue: {
+1250:       backgroundColor: valueBg,
+1252:       borderRadius: 6,
+1254:       paddingHorizontal: 8,
+1256:       paddingVertical: 8,
+1258:       alignItems: 'center',
+1260:       justifyContent: 'center',
+1262:       minHeight: 34,
+1264:     } as any,
+1266:     miniValueTxt: { color: valueTxt, fontSize: 12, fontWeight: 'bold' } as any,
+1268:     addModelBtn: {
+1270:       backgroundColor: cardBg,
+1272:       borderWidth: 2,
+1274:       borderColor: addModelBrd,
+1276:       borderStyle: 'dashed',
+1278:       borderRadius: 10,
+1280:       paddingVertical: 12,
+1282:       alignItems: 'center',
+1284:       marginTop: 8,
+1286:     } as any,
+1288:     addModelBtnTxt: { color: textClr, fontSize: 13, fontWeight: 'bold' } as any,
+1290:     summaryCard: {
+1292:       backgroundColor: '#1e3a8a',
+1294:       borderRadius: 14,
+1296:       paddingHorizontal: 20,
+1298:       paddingVertical: 16,
+1300:       marginBottom: 12,
+1302:       flexDirection: 'row-reverse',
+1304:       justifyContent: 'space-between',
+1306:       alignItems: 'center',
+1308:       borderRightWidth: 4,
+1310:       borderRightColor: '#d4af37',
+1312:     } as any,
+1314:     summaryLbl: { color: '#cbd5e1', fontSize: 12, marginBottom: 4, textAlign: 'right' } as any,
+1316:     summaryVal: { color: '#f4d47a', fontSize: 22, fontWeight: 'bold' } as any,
+1318:     summaryCnt: { color: '#ffffff', fontSize: 15, fontWeight: 'bold' } as any,
+1320:     btnRowBottom: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 } as any,
+1322:     btnSubmit: {
+1324:       backgroundColor: '#1e3a8a',
+1326:       borderRadius: 12,
+1328:       paddingVertical: 15,
+1330:       alignItems: 'center',
+1332:       justifyContent: 'center',
+1334:     } as any,
+1336:     btnSubmitTxt: { color: '#fff', fontSize: 15, fontWeight: 'bold' } as any,
+1338:     btnPrimary: {
+1340:       backgroundColor: '#1e3a8a',
+1342:       borderRadius: 10,
+1344:       paddingVertical: 12,
+1346:       alignItems: 'center',
+1348:       justifyContent: 'center',
+1350:     } as any,
+1352:     btnPrimaryTxt: { color: '#fff', fontSize: 14, fontWeight: 'bold' } as any,
+1354:     btnSecondary: {
+1356:       backgroundColor: btnSecBg,
+1358:       borderWidth: 1,
+1360:       borderColor: btnSecBrd,
+1362:       borderRadius: 10,
+1364:       paddingVertical: 12,
+1366:       alignItems: 'center',
+1368:       justifyContent: 'center',
+1370:     } as any,
+1372:     btnSecondaryTxt: { color: textClr, fontSize: 14, fontWeight: 'bold' } as any,
+1374:     sectionTitle: {
+1376:       fontSize: 14,
+1378:       fontWeight: 'bold',
+1380:       color: textClr,
+1382:       marginTop: 12,
+1384:       marginBottom: 8,
+1386:       textAlign: 'right',
+1388:     } as any,
+1390:     listCard: {
+1392:       backgroundColor: cardBg,
+1394:       borderRadius: 10,
+1396:       padding: 12,
+1398:       marginBottom: 8,
+1400:       borderRightWidth: 4,
+1402:       borderRightColor: '#1e3a8a',
+1404:       borderTopWidth: 1,
+1406:       borderBottomWidth: 1,
+1408:       borderLeftWidth: 1,
+1410:       borderTopColor: borderClr,
+1412:       borderBottomColor: borderClr,
+1414:       borderLeftColor: borderClr,
+1416:     } as any,
+1418:     listCardInvoice: { fontSize: 13, fontWeight: 'bold', color: textClr } as any,
+1420:     listCardCust: { fontSize: 11, color: textMutClr, marginBottom: 6, textAlign: 'right' } as any,
+1422:     listCardStat: { fontSize: 11, color: textClr } as any,
+1424:   };
+1426: }
+1428: // ══════════════════════════════════════════════════════════
+1430: //  PURCHASE SCREEN — کارت‌های عمودی
+1432: // ══════════════════════════════════════════════════════════

@@ -1,0 +1,42 @@
+ALL FUNCTIONS (32):
+  getCustomerPreviousBalance @line 271
+  getTabPins @line 1275
+  MainApp @line 1287
+  PinModal @line 2186
+  Autocomplete @line 2238
+  CellAutocomplete @line 2298
+  DigitalDashboard @line 2466
+  DCard @line 2626
+  SalesScreen @line 2640
+  getS @line 3609
+  PurchaseScreen @line 4073
+  PrintScreen @line 4664
+  ProfitScreen @line 5496
+  LocalInput @line 5764
+  InventoryScreen @line 5781
+  ManagementScreen @line 7002
+  UnpaidSection @line 7112
+  NewOrderSection @line 7250
+  SearchSection @line 7579
+  ReturnsSection @line 8459
+  ReportsSection @line 8761
+  PresetSection @line 9082
+  SettingsSection @line 9208
+  PartiesSection @line 9589
+  PartnersSection @line 9913
+  BanksSection @line 10397
+  ShippingsSection @line 10508
+  SourcesSection @line 10619
+  ProductsSection @line 10649
+  InvoiceView @line 10955
+  EL @line 11341
+  LoginScreen @line 11385
+
+
+[x] NOT FOUND: DashboardScreen
+
+
+[x] NOT FOUND: SearchScreen
+
+
+[x] NOT FOUND: EditScreen

@@ -1,0 +1,113 @@
+
+
+export async function getSalesGrouped() {
+  let serverList: any[] = [];
+  // BUSINESS_LOCAL_AND_SHEET_ONLY — فروش فقط محلی + صف
+  serverList = (await getLocal<any[]>('sales_grouped')) || [];
+
+  // ادغام فروش‌های محلی که هنوز گروه‌بندی نشده‌اند
+  const localSalesRows = (await getLocal<any[]>('sales')) || [];
+  if (localSalesRows.length) {
+    const groupedFromSales = _groupSalesRows(localSalesRows);
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    const localUpMap: Record<string, number> = {};
+    for (const r of localSalesRows) {
+      const inv = String(r.invoice_number || '').trim();
+      if (!inv) continue;
+      const up = _tsLocal(r.updated_at || r.updatedAt);
+      if (!localUpMap[inv] || up > localUpMap[inv]) localUpMap[inv] = up;
+    }
+    const map: Record<string, any> = {};
+    for (const g of serverList) map[String(g.invoice || '')] = g;
+    for (const g of groupedFromSales) {
+      const k = String(g.invoice || '');
+      if (!k) continue;
+      const existing = map[k];
+      if (!existing) { map[k] = g; continue; }
+      const exUp = _tsLocal(existing.updated_at || existing.updatedAt);
+      const newUp = localUpMap[k] || 0;
+      if (newUp > exUp) map[k] = g;
+    }
+    serverList = Object.values(map);
+  }
+
+  const queue = await getQueue();
+  const deletedInvs = new Set<string>();
+  for (const item of queue) {
+    if (item.op === 'deleteSale') {
+      const inv = String(item.payload || '').trim();
+      if (inv) deletedInvs.add(inv);
+    }
+  }
+  try {
+    const raw = await AsyncStorage.getItem('@mizan_tombstones');
+    let arr: any[] = [];
+    try { arr = raw ? JSON.parse(raw) : []; } catch { arr = []; }
+    if (Array.isArray(arr)) {
+      for (const t of arr) {
+        if (!t) continue;
+        if (String(t.table || '') !== 'sales') continue;
+        const k = String(t.key || '').trim();
+        if (k) deletedInvs.add(k);
+      }
+    }
+  } catch {}
+
+  const pendingByInv: Record<string, any> = {};
+  for (const item of queue) {
+    if (item.op === 'createSale') {
+      const p = item.payload;
+      const inv = p.invoiceNumber;
+      if (deletedInvs.has(String(inv))) continue;
+      if (!pendingByInv[inv]) {
+        pendingByInv[inv] = {
+          invoice: inv, name: p.customerName, phone: p.customerPhone,
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      for (const it of p.items || []) {
+        pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+        pendingByInv[inv].paid += Number(it.payment) || 0;
+        pendingByInv[inv].items.push(it);
+      }
+      if (!pendingByInv[inv].paid) {
+        pendingByInv[inv].paid = Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
+      }
+    }
+  }
+
+  const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
+  const finalMap: Record<string, any> = {};
+  for (const g of cleanedServer) {
+    const k = String(g.invoice || '');
+    if (k) finalMap[k] = g;
+  }
+  for (const g of Object.values(pendingByInv)) {
+    const k = String((g as any).invoice || '');
+    if (k) finalMap[k] = g;
+  }
+  return Object.values(finalMap);
+}
+
+// ═══════════════════════════════════════════
+//  getPurchasesGrouped — با ادغام صف
+// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════════
+//  searchAllInvoices — با ادغام صف آفلاین
+// ═══════════════════════════════════════════
+export async function searchAllInvoices(q: string) {
+  const [sales, purchases] = await Promise.all([
+    getSalesGrouped(),
+    getPurchasesGrouped(),
+  ]);
+  const query = (q || '').toLowerCase().trim();
+  const filt = (arr: any[], type: string) =>
+    arr.map((r) => ({ ...r, type, sheetType: type }))
+      .filter((r) => !query ||
+        (String(r.invoice) + ' ' + String(r.name || '') + ' ' + String(r.phone || '')).toLowerCase().includes(query));
+  return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
+}

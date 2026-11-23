@@ -1,0 +1,56 @@
+=== ReportsSection — ستون‌های جدول ===
+L44: if (!map[code]) map[code] = { code, name: r.customer_name, phone: r.customer_phone, total: 0, paid: 0 };
+L46: map[code].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+L48: map[code].paid += Number(r.payment) || 0;
+L52: const rows = Object.values(map).map((m: any) => ({ ...m, balance: m.total - m.paid })).filter((r: any) => r.balance > 0);
+L56: setData({ rows, total: rows.reduce((a: number, r: any) => a + r.balance, 0), title: 'بدهکاران', columns: ['کد', 'نام', 'تلفن', 'جمع', 'پرداخت', 'بدهی'] });
+L68: if (!map[code]) map[code] = { code, name: r.supplier_name, phone: r.supplier_phone, total: 0, paid: 0 };
+L70: map[code].total += (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+L72: map[code].paid += Number(r.payment) || 0;
+L76: const rows = Object.values(map).map((m: any) => ({ ...m, balance: m.total - m.paid })).filter((r: any) => r.balance > 0);
+L80: setData({ rows, total: rows.reduce((a: number, r: any) => a + r.balance, 0), title: 'طلبکاران', columns: ['کد', 'نام', 'تلفن', 'جمع', 'پرداخت', 'طلب'] });
+L88: setData({ rows, total: rows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0), title: 'فروش ۲۴ ساعت', columns: ['فاکتور', 'نام', 'تلفن', 'مبلغ', 'پرداخت'] });
+L96: setData({ rows, total: rows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.price_unit) || 0), 0), title: 'خرید ۲۴ ساعت', columns: ['فاکتور', 'نام', 'تلفن', 'مبلغ', 'پرداخت'] });
+L104: setData({ rows, total: rows.reduce((a: number, r: any) => a + r.currentQty, 0), title: 'موجودی انبار', columns: ['کد', 'نام', 'خرید', 'فروش', 'موجودی', 'قفسه'] });
+L190: <Text style={s.statsVal}>{fmt(data.total)}</Text>
+L202: <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+L204: <Text style={[s.thCell, { width: 40, fontSize: 12, fontWeight: 'bold' }]}>#</Text>
+L208: <Text key={j} style={[s.thCell, { width: 140 }]}>{c}</Text>
+L216: <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+L218: <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+L222: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#7c3aed', fontWeight: 'bold' }]}>{r.code}</Text>
+L224: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.text, textAlign: 'right' }]} numberOfLines={1}>{r.name}</Text>
+L226: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.textMut }]}>{r.phone || '—'}</Text>
+L228: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(r.total)}</Text>
+L230: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.paid)}</Text>
+L232: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#dc2626', fontWeight: 'bold' }]}>{fmt(r.balance)}</Text>
+L238: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#7c3aed', fontWeight: 'bold' }]}>{r.code}</Text>
+L240: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.text, textAlign: 'right' }]} numberOfLines={1}>{r.name}</Text>
+L242: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.textMut }]}>{r.phone || '—'}</Text>
+L244: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(r.total)}</Text>
+L246: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.paid)}</Text>
+L248: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#dc2626', fontWeight: 'bold' }]}>{fmt(r.balance)}</Text>
+L254: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#7c3aed', fontWeight: 'bold' }]}>{r.invoice_number}</Text>
+L256: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.text, textAlign: 'right' }]} numberOfLines={1}>{r.customer_name || r.supplier_name}</Text>
+L258: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.textMut }]}>{r.customer_phone || r.supplier_phone || '—'}</Text>
+L260: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt((Number(r.quantity) || 0) * (Number(r.price_unit) || 0))}</Text>
+L262: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#059669', fontWeight: 'bold' }]}>{fmt(r.payment || 0)}</Text>
+L268: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: '#7c3aed', fontWeight: 'bold' }]}>{r.code}</Text>
+L270: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.text, textAlign: 'right' }]} numberOfLines={1}>{r.name}</Text>
+L272: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.text }]}>{fmt(r.bought)}</Text>
+L274: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.text }]}>{fmt(r.sold)}</Text>
+L276: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: r.currentQty < 0 ? '#dc2626' : '#00ff88', fontWeight: 'bold' }]}>{fmt(r.currentQty)}</Text>
+L278: <Text style={[s.tdCell, { width: 140, fontSize: 12, color: C.textMut }]}>{r.shelf || '—'}</Text>
+L1022: <View style={[s.tblHeader, { flexDirection: 'row-reverse', position: 'relative', zIndex: 10 }]}>
+L1023: <Text style={[s.thCell, { width: 40 }]}>#</Text>
+L1024: <Text style={[s.thCell, { width: 180 }]}>نام</Text>
+L1025: <Text style={[s.thCell, { width: 130 }]}>تلفن</Text>
+L1026: <Text style={[s.thCell, { width: 120 }]}>کد</Text>
+L1027: <Text style={[s.thCell, { width: 110 }]}>نوع</Text>
+L1028: <Text style={[s.thCell, { width: 90 }]}>وضعیت</Text>
+L1029: <Text style={[s.thCell, { width: 200 }]}>آدرس</Text>
+L1030: <Text style={[s.thCell, { width: 130 }]}>شخص تماس</Text>
+L1031: <Text style={[s.thCell, { width: 160 }]}>یادداشت</Text>
+L1032: <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
+L1037: <View key={'draft-' + idx} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+L1038: <Text style={[s.tdCell, { width: 40, textAlign: 'center', color: '#d4af37', fontWeight: 'bold' }]}>D{idx + 1}</Text>

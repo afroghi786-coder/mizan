@@ -1,0 +1,88 @@
+=== AUDIT: SalesScreen ===
+sale lines: 1434
+
+OK   1. state invoiceDiscount
+OK   2a. payableAmount defined in SalesScreen
+OK   2b. balanceDue defined in SalesScreen
+OK   2c. payableAmount NOT in PurchaseScreen
+OK   3. invoice discount field present
+FAIL 3b. field inserted before DateField (invoiceDiscount in 1600 chars before)
+OK   4a. جمع اقلام row
+OK   4b. تخفیف فاکتور row
+OK   4c. قابل پرداخت row
+FAIL 4d. قدیمی "جمع کل" حذف شده
+OK   5a. مانده uses balanceDue
+OK   5b. مانده با grandTotal - paymentAmount قدیمی نمانده
+OK   6a. invoiceDiscount در payload pendingConfirm
+OK   6b. modal balance uses pendingConfirm.invoiceDiscount
+OK   7a. setPaymentAmount(0) count in SalesScreen -> 2 vs with-discount 2
+
+--- submit payload context ---
+const submit = async () => {
+    if (!/^09\d{9}$/.test(phone)) return alertMsg('⚠️ خطا', 'شماره معتبر نیست');
+    if (!name || name.length < 2) return alertMsg('⚠️ خطا', 'نام الزامی است');
+    
+    const invalidItem = items.find(it => it.modelName && (!it.quantity || !it.priceUnit));
+    if (invalidItem) {
+      return alertMsg('⚠️ خطا', 'مدل «' + invalidItem.modelName + '» تعداد یا قیمت ندارد. لطفاً تکمیل کنید.');
+    }
+
+    const valid = items.filter((it) => it.modelName && it.quantity > 0);
+    const total = valid.reduce((a, it) => a + (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0), 0);
+    
+    setPendingConfirm({ name, phone, count: valid.length, total: grandTotal, paymentAmount, invoiceDiscount, valid, note });
+    return;
+
+    if (!mode) return;
+    if (mode === 'full' && !valid.length) {
+      return alertMsg('⚠️ خطا', 'برای ثبت فاکتور، حداقل یک مدل با تعداد معتبر وارد کنید.');
+    }
+
+    let finalItems = valid;
+    if (mode === 'payment') {
+      finalItems = [{ modelName: 'پرداخت مشتری', modelCode: '', quantity: 0, priceUnit: 0, description: note }];
+    }
+
+    setSaving(true);
+    try {
+      const pr = await resolvePartyForInvoice({ name: name, phone: phone, address, type: 'customer' });
+      const customerCode = pr.code;
+      const customerLocalId = pr.localId;
+      const inv = await generateInvoiceNumber();
+      
+      await createSale({ 
+        invoiceNumber: inv, 
+        customerCode,
+        customerLocalId, 
+        customerName: name, 
+        customerPhone: phone, 
+        customerAddress: address, 
+        shipping, 
+        items: finalItems, 
+        paymentAmount, 
+        invoiceDate, 
+        payDate, 
+        note, 
+        receiverName, 
+        receiverCode, 
+        receiverBank, 
+        receiverAccount 
+      });
+
+      aw
+
+--- payableAmount occurrences (sale) ---
+@6077: ceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0))), 0); ⏎  ⏎   const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0)); ⏎   const balanceD
+@6184: ath.max(0, grandTotal - (Number(invoiceDiscount) || 0)); ⏎   const balanceDue = Math.max(0, payableAmount - (Number(paymentAmount) || 0)); ⏎  ⏎   const grandQty = items.reduce((a, it) =>
+@28940:       <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text> ⏎             <Text style={{ color: C.text, fontSize: 12 }}>پرداخت: {
+
+--- invoiceDiscount occurrences (whole file) ---
+@64954: useState(''); ⏎   const [paymentAmount, setPaymentAmount] = useState(0); ⏎   const [invoiceDiscount, setInvoiceDiscount] = useState(0); ⏎   const [invoiceDate, setInv
+@69066: iscount) || 0))), 0); ⏎  ⏎   const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0)); ⏎   const balanceDue = Math.max(0, payableAmount - (Numbe
+@70547: ngConfirm({ name, phone, count: valid.length, total: grandTotal, paymentAmount, invoiceDiscount, valid, note }); ⏎     return; ⏎  ⏎     if (!mode) return; ⏎     if (mod
+@90925: groundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} ke
+@91725: xt> ⏎             <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text> ⏎             <Text sty
+@91753: {{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text> ⏎             <Text style={{ color: C.text, fontSiz
+@97763:          {(() => { ⏎   const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.paymentAmount || 0); ⏎   return ( ⏎     <Tex
+
+OK   syntax

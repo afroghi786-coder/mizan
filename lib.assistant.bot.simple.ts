@@ -1,7 +1,7 @@
 import AsyncStorage from './lib.storage';
 import { Platform } from 'react-native';
 import { getBotConfig } from './lib.assistant';
-import { generateInvoiceNumber, getSalesGrouped, findCustomerByPhoneOffline, generateCustomerCode, getProducts } from './lib.offline';
+import { getProducts, generateInvoiceNumber, getSalesGrouped, findCustomerByPhoneOffline, generateCustomerCode } from './lib.offline';
 
 const RUBIKA_BASE = Platform.OS === 'web'
   ? 'https://mizan-rubika-proxy.mizan1740.workers.dev'
@@ -27,6 +27,7 @@ async function botSend(t: string, chatId: string, text: string, keypad?: any): P
         .filter((row: any) => row.buttons.length > 0);
       if (cleanRows.length > 0) {
         body.chat_keypad = { rows: cleanRows };
+        body.chat_keypad_type = 'NEW';
         body.keypad = { rows: cleanRows };
       }
     }
@@ -98,12 +99,32 @@ async function showProducts(t: string, chatId: string) {
   try {
     const prods = await getProducts() || [];
     if (!prods.length) { await botSend(t, chatId, '⚠️ هیچ محصولی ثبت نشده است.'); return; }
-    let text = '🛍️ لیست محصولات:\n\n';
-    prods.slice(0, 20).forEach((p: any) => { text += 'کد ' + p.code + ': ' + p.name + ' - ' + fmt(p.price) + ' افغانی\n'; });
+
+    const pageKey = '@mizan_bot_prodpage_' + chatId;
+    let page = 1;
+    try { const p = await AsyncStorage.getItem(pageKey); if (p) page = parseInt(p, 10) || 1; } catch {}
+    const perPage = 20;
+    const totalPages = Math.max(1, Math.ceil(prods.length / perPage));
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+
+    const start = (page - 1) * perPage;
+    const slice = prods.slice(start, start + perPage);
+
+    let text = '🛍️ لیست محصولات (صفحه ' + page + ' از ' + totalPages + '):\n\n';
+    slice.forEach((p: any) => { text += 'کد ' + p.code + ': ' + p.name + ' - ' + fmt(p.price) + ' افغانی\n'; });
     text += '\nبرای انتخاب، روی کد محصول کلیک کنید یا کد را تایپ کنید.';
+
     const rows: any[] = [];
-    for (const p of prods.slice(0, 20)) rows.push({ buttons: [{ button_text: String(p.code) }] });
+    for (const p of slice) rows.push({ buttons: [{ button_text: String(p.code) }] });
+
+    const navRow: any[] = [];
+    if (page > 1) navRow.push({ button_text: '⬅️ قبلی' });
+    if (page < totalPages) navRow.push({ button_text: 'بعدی ➡️' });
+    if (navRow.length) rows.push({ buttons: navRow });
+
     rows.push({ buttons: [{ button_text: '🏠 منوی اصلی' }] });
+
     await botSend(t, chatId, text, { rows });
   } catch (e: any) { await botSend(t, chatId, '❌ خطا: ' + (e?.message || '')); }
 }
@@ -220,7 +241,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
           const replyTo = String(msg?.reply_to_message_id || u.reply_to_message_id || '');
           const action = cbData || msgText;
 
-          // پرداخت ادمین
           if (adminChat && chatId === adminChat && replyTo) {
             const map = await getAdminInv(replyTo);
             if (map && map.invoice_number) {
@@ -246,13 +266,24 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             }
           }
 
-          // منو
           if (action === 'menu' || action === 'menu_back' || msgText === '/start' || msgText === '🏠 منوی اصلی' || msgText === 'منو') {
             await clearState(chatId);
             await showMainMenu(t, chatId);
             totalProcessed++; continue;
           }
-          if (msgText.includes('مشاهده محصولات')) {
+          
+          if (msgText === 'بعدی ➡️' || msgText === '⬅️ قبلی') {
+            const pageKey = '@mizan_bot_prodpage_' + chatId;
+            let page = 1;
+            try { const p = await AsyncStorage.getItem(pageKey); if (p) page = parseInt(p, 10) || 1; } catch {}
+            if (msgText === 'بعدی ➡️') page += 1;
+            if (msgText === '⬅️ قبلی') page -= 1;
+            if (page < 1) page = 1;
+            try { await AsyncStorage.setItem(pageKey, String(page)); } catch {}
+            await showProducts(t, chatId);
+            totalProcessed++; continue;
+          }
+if (msgText.includes('مشاهده محصولات')) {
             await clearState(chatId);
             await showProducts(t, chatId);
             totalProcessed++; continue;
@@ -277,12 +308,11 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
           if (msgText.includes('نهایی سازی سفارش') || msgText.includes('پایان انتخاب محصولات')) {
             const c = await getCart(chatId);
             if (!c.length) { await botSend(t, chatId, '⚠️ سبد خرید شما خالی است.'); totalProcessed++; continue; }
-            await setState(chatId, { step: 'waiting_name' });
-            await botSend(t, chatId, '👤 لطفاً نام و نام خانوادگی خود را وارد کنید:');
+            await setState(chatId, { step: 'waiting_details' });
+            await botSend(t, chatId, '📝 لطفاً مشخصات خود را در یک پیام و هر مورد در یک خط بفرستید:\n\n1) نام و نام خانوادگی\n2) شماره تماس\n3) آدرس\n4) نام باربری');
             totalProcessed++; continue;
           }
 
-          // حذف آیتم از سبد
           if (msgText.startsWith('🗑️ حذف ')) {
             const name = msgText.replace('🗑️ حذف ', '').trim();
             const c = await getCart(chatId);
@@ -291,7 +321,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             totalProcessed++; continue;
           }
 
-          // تایید/انصراف
           if (msgText === '✅ تأیید سفارش' || msgText === '✅ تأیید' || action === 'confirm_yes') {
             const state = await getState(chatId);
             const cart = await getCart(chatId);
@@ -360,7 +389,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             totalProcessed++; continue;
           }
 
-          // State machine
           const state = await getState(chatId);
           if (state && state.step) {
             if (state.step === 'waiting_qty') {
@@ -378,18 +406,26 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
               ] });
               totalProcessed++; continue;
             }
-            if (state.step === 'waiting_name') { state.name = msgText; state.step = 'waiting_phone'; await setState(chatId, state); await botSend(t, chatId, '📞 شماره تماس خود را وارد کنید:'); totalProcessed++; continue; }
-            if (state.step === 'waiting_phone') { state.phone = msgText; state.step = 'waiting_address'; await setState(chatId, state); await botSend(t, chatId, '📍 آدرس دقیق خود را وارد کنید:'); totalProcessed++; continue; }
-            if (state.step === 'waiting_address') { state.address = msgText; state.step = 'waiting_shipping'; await setState(chatId, state); await botSend(t, chatId, '🚚 نام باربری را وارد کنید:'); totalProcessed++; continue; }
-            if (state.step === 'waiting_shipping') {
-              state.shipping = msgText; state.step = 'confirm'; await setState(chatId, state);
+
+            if (state.step === 'waiting_details') {
+              const lines = msgText.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+              if (lines.length < 4) {
+                await botSend(t, chatId, '⚠️ لطفاً دقیقاً ۴ خط بفرستید:\n1) نام\n2) تلفن\n3) آدرس\n4) باربری');
+                totalProcessed++; continue;
+              }
+              const name = lines[0];
+              const phone = lines[1];
+              const address = lines[2];
+              const shipping = lines.slice(3).join(' ');
               const cart = await getCart(chatId);
-              let total = 0; const lines: string[] = [];
-              cart.forEach((it: any, i: number) => { total += Number(it.price || 0) * Number(it.qty || 0); lines.push((i + 1) + '. ' + it.name + ' (' + it.code + ') × ' + it.qty + ' = ' + fmt(Number(it.price || 0) * Number(it.qty || 0))); });
-              const reply = '🧾 پیش‌فاکتور سفارش\n\n👤 ' + state.name + '\n📞 ' + state.phone + '\n📍 ' + state.address + '\n🚚 ' + state.shipping + '\n\n' + lines.join('\n') + '\n\n💰 مبلغ کل: ' + fmt(total) + ' افغانی\n\nآیا سفارش را تأیید می‌کنید؟';
+              let total = 0; const lines2: string[] = [];
+              cart.forEach((it: any, i: number) => { total += Number(it.price || 0) * Number(it.qty || 0); lines2.push((i + 1) + '. ' + it.name + ' (' + it.code + ') × ' + it.qty + ' = ' + fmt(Number(it.price || 0) * Number(it.qty || 0))); });
+              const reply = '🧾 پیش‌فاکتور سفارش\n\n👤 ' + name + '\n📞 ' + phone + '\n📍 ' + address + '\n🚚 ' + shipping + '\n\n' + lines2.join('\n') + '\n\n💰 مبلغ کل: ' + fmt(total) + ' افغانی\n\nآیا سفارش را تأیید می‌کنید؟';
+              await setState(chatId, { step: 'confirm', name, phone, address, shipping });
               await botSend(t, chatId, reply, { rows: [{ buttons: [{ button_text: '✅ تأیید سفارش' }, { button_text: '❌ انصراف' }] }] });
               totalProcessed++; continue;
             }
+
             if (state.step === 'waiting_payment') {
               if (adminChat) {
                 const amount = Number(String(msgText).replace(/[^0-9]/g, '')) || 0;
@@ -404,7 +440,6 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             }
           }
 
-          // کد محصول
           const catalog = await getProducts() || [];
           const p = (catalog || []).find((x: any) => String(x.code).trim() === action.trim() || String(x.code).trim() === msgText.trim());
           if (p) {

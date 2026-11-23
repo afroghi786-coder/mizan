@@ -1,0 +1,787 @@
+=== SearchSection ===
+function SearchSection({ showToast, onReturnSaved }: any) {
+
+  const [list, setList] = useState<any[]>([]);
+
+  const [prods, setProds] = useState<Product[]>([]);
+
+  const [q, setQ] = useState('');
+
+  const [filter, setFilter] = useState('all');
+
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const [loading, setLoading] = useState(true);
+
+  const [editing, setEditing] = useState<any>(null);
+
+  const [editRows, setEditRows] = useState<any[]>([]);
+
+  const [dirty, setDirty] = useState(false);
+  const [showInvoice, setShowInvoice] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnInvoice, setReturnInvoice] = useState<any>(null);
+  const [returnRows, setReturnRows] = useState<any[]>([]);
+  const [returnSaving, setReturnSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [banksList, setBanksList] = useState<any[]>([]);
+  const [shippingsList, setShippingsList] = useState<any[]>([]);
+  const [partiesList, setPartiesList] = useState<any[]>([]);
+  const [partnersList, setPartnersList] = useState<any[]>([]);
+  useEffect(() => {
+    getBanks().then(setBanksList).catch(()=>{});
+    getShippings().then(setShippingsList).catch(()=>{});
+    getParties().then(setPartiesList).catch(()=>{});
+    getPartners().then(setPartnersList).catch(()=>{});
+  }, []);
+
+  const onHolderPick = async (i: number, v: string) => {
+    updRow(i, 'accountHolder', v);
+    try {
+      const f = await lookupPayerUniversal(v);
+      if (f) {
+        updRow(i, 'accountHolderCode', f.code || '');
+        if (f.bank) updRow(i, 'bankName', f.bank);
+      }
+    } catch {}
+  };
+
+
+
+  const load = async () => { setLoading(true); try { setList(await searchAllInvoices('')); } catch (e: any) { showToast(e.message, true); } finally { setLoading(false); } };
+
+  const loadProds = async () => { try { setProds(await getProducts()); } catch {} };
+
+  const enrichedList = useMemo(() => {
+    if (!partiesList || !partiesList.length) return list;
+    return list.map((r: any) => {
+      const code = r.customer_code || r.supplier_code || r.customerCode || r.supplierCode || '';
+      const p = partiesList.find((x: any) => String(x.code) === String(code));
+      if (p) {
+        return { ...r, name: p.name || r.name, phone: p.phone || r.phone };
+      }
+      return r;
+    });
+  }, [list, partiesList]);
+
+
+  useEffect(() => { load(); loadProds(); }, []);
+
+
+
+  const filtered = enrichedList.filter((r) => {
+
+    if (filter !== 'all' && r.type !== filter) return false;
+
+    const balance = (r.total || 0) - (r.paid || 0);
+
+    let st = 'unpaid';
+
+    if (r.paid >= r.total && r.total > 0) st = 'paid';
+
+    else if (r.paid > 0) st = 'partial';
+
+    if (statusFilter !== 'all' && st !== statusFilter) return false;
+
+    if (q) { const h = `${r.invoice} ${r.name || ''} ${r.phone || ''}`.toLowerCase(); if (!h.includes(q.toLowerCase())) return false; }
+
+    return true;
+
+  });
+
+
+
+  const openEdit = async (inv: string, type: string) => {
+
+    try {
+
+      const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+
+      if (!rows.length) { showToast('فاکتور پیدا نشد', true); return; }
+
+      const isSales = type === 'sales';
+
+      setEditRows(rows.map((r: any) => ({
+
+        rowId: r.id,
+
+        modelCode: r.model_code || '',
+
+        modelName: r.model_name || '',
+
+        quantity: r.quantity || 0,
+
+        priceUnit: r.price_unit || 0,
+
+        payment: r.payment || 0,
+        discount: Number(r.discount) || 0,
+        discountEnabled: r.discount_enabled ? true : false,
+        discount_base_unit: Number(r.discount_base_unit) || 0,
+        discount_pack_unit: Number(r.discount_pack_unit) || 0,
+        base_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).base_unit) || '',
+        pack_unit: (getPackForCodeGlobal(r.model_code) && getPackForCodeGlobal(r.model_code).pack_unit) || '',
+        pack_size: (getPackForCodeGlobal(r.model_code) && Number(getPackForCodeGlobal(r.model_code).pack_size)) || 0,
+        entered_unit: 'base',
+        entered_qty: Number(r.quantity) || 0,
+
+        description: r.description || '',
+
+        depositDate: r.deposit_date || '',
+
+        bankName: r.bank_name || r.receiver_bank || '',
+        accountHolder: r.account_holder || r.receiver_name || '',
+        accountHolderCode: isSales ? (r.account_holder_code || r.receiver_code || '') : (r.payer_code || ''),
+
+        shipping: isSales ? (r.shipping || '') : '',
+
+        _deleted: false,
+
+      })));
+
+      const _code = isSales ? rows[0].customer_code : rows[0].supplier_code;
+      const _oldPhone = isSales ? rows[0].customer_phone : rows[0].supplier_phone;
+      const _p = (partiesList || []).find((x: any) =>
+        String(x.code || '') === String(_code || '') ||
+        (String(x.phone || '').replace(/[^0-9]/g, '') && String(x.phone || '').replace(/[^0-9]/g, '') === String(_oldPhone || '').replace(/[^0-9]/g, ''))
+      );
+      setEditing({
+        invoice: inv,
+        type,
+        name: _p?.name || (isSales ? rows[0].customer_name : rows[0].supplier_name),
+        code: _code,
+        phone: _p?.phone || (isSales ? (rows[0].customer_phone || '') : (rows[0].supplier_phone || '')),
+        manualInv: isSales ? '' : (rows[0].manual_invoice || ''),
+        invoiceDiscount: Math.max(0, ...rows.map((r: any) => Number(r.invoice_discount) || 0)),
+      });
+
+      setDirty(false);
+
+    } catch (e: any) { showToast(e.message || 'خطا در باز کردن فاکتور', true); }
+
+  };
+
+
+
+  const delRow = (i: number) => { const n = [...editRows]; n[i]._deleted = !n[i]._deleted; setEditRows(n); setDirty(true); };
+
+  const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', shipping: '', base_unit: '', pack_unit: '', pack_size: 0, entered_unit: 'base', entered_qty: 0, _deleted: false, _new: true, discount: 0, discountEnabled: false, discount_base_unit: 0, discount_pack_unit: 0}]); setDirty(true); };
+
+  const updRow = (i: number, f: string, v: any) => { const n = [...editRows]; (n[i] as any)[f] = v; setEditRows(n); setDirty(true); };
+
+  // __editCalc: محاسبات زنده‌ی فاکتور در ویرایش (فقط نمایش)
+  const __editRowsLive = editRows.filter((r: any) => !r._deleted);
+  const editItemsTotal = __editRowsLive.reduce((a: number, r: any) =>
+    a + Math.max(0,
+      (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0) -
+      (Number(r.quantity) || 0) * (Number(r.discount) || 0)
+    ), 0);
+  const editDiscount = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+  const editPayable = Math.max(0, editItemsTotal - editDiscount);
+  const editPaid = __editRowsLive.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+  const editBalance = editPayable - editPaid; // منفی = بستانکاری
+
+
+
+  const previewInvoice = async () => {
+    const validRows = editRows.filter((r: any) => !r._deleted);
+    if (!validRows.length) { showToast('هیچ ردیفی برای نمایش نیست', true); return; }
+    const items = validRows.map((r: any) => {
+      const _u = prods.find((p: any) => String(p.code || '') === String(r.modelCode || ''));
+      return {
+        modelName: r.modelName || '',
+        modelCode: r.modelCode || '',
+        quantity: Number(r.quantity) || 0,
+        priceUnit: Number(r.priceUnit) || 0,
+        total: (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0),
+        base_unit: r.base_unit || (_u ? _u.base_unit : 'عدد'),
+        pack_unit: r.pack_unit || (_u ? _u.pack_unit : 'بسته'),
+        pack_size: r.pack_size !== undefined ? Number(r.pack_size) : (_u ? Number(_u.pack_size) : 0),
+      };
+    });
+    const sales = items.reduce((a: number, it: any) => a + it.total, 0);
+    const payments = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+    let prev: any = { sales: 0, payments: 0, balance: 0, invoiceCount: 0 };
+    try { prev = await getCustomerPreviousBalance(editing.code, editing.invoice); } catch {}
+    setShowInvoice({
+      customer: {
+        code: editing.code,
+        name: editing.name,
+        phone: editing.phone || '',
+        address: '',
+        shipping: validRows[0]?.shipping || '',
+      },
+      current: {
+        invoiceNumber: editing.invoice,
+        items,
+        sales,
+        payments,
+        balance: sales - payments,
+      },
+      previous: prev,
+      totals: {
+        sales: (prev.sales || 0) + sales,
+        payments: (prev.payments || 0) + payments,
+        balance: (prev.balance || 0) + (sales - payments),
+      },
+      timeString: displayDate(new Date().toISOString()),
+    });
+  };
+
+  const save = async () => {
+
+    if (!dirty) return showToast('تغییری نیست', true);
+
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+
+      const tbl = editing.type === 'sales' ? 'sales' : 'purchases';
+
+      
+
+      // چک کن اگه فاکتور توی صف آفلاین هست
+
+      const anyPending = editRows.some((r: any) => r.rowId && String(r.rowId).startsWith('queued_'));
+
+      
+
+      if (anyPending) {
+        const _metaQ: any = editing.type === 'sales'
+          ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
+        const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows, _metaQ);
+        if (ok) {
+          alertMsg('✅ موفق', 'تغییرات روی فاکتور آفلاین ذخیره شد');
+          setEditing(null); setEditRows([]); setDirty(false); load();
+          return;
+        }
+        const metaFallback: any = editing.type === 'sales'
+          ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+          : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
+        if (editing.type === 'sales') {
+          await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        } else {
+          await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+        }
+        alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+        setEditing(null); setEditRows([]); setDirty(false); load();
+        return;
+      }
+
+      // ═══ ذخیره فاکتور سینک‌شده (آفلاین یا آنلاین) ═══
+      const validRows = editRows.filter((r: any) => !r._deleted);
+      const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+      const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
+      const meta: any = editing.type === 'sales'
+        ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
+        : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.accountHolder || '', payerCode: editRows[0]?.accountHolderCode || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 };
+
+      if (editing.type === 'sales') {
+        await updateSale({ invoiceNumber: editing.invoice, rows: editRows, meta });
+      } else {
+        await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta });
+      }
+
+      // آپدیت فوری لیست محلی
+      setList((prev: any[]) => prev.map((x: any) => x.invoice === editing.invoice
+        ? { ...x, total: newTotal, paid: newPaid, name: editing.name, phone: editing.phone }
+        : x));
+
+      
+
+      
+
+      alertMsg('✅ موفق', 'تغییرات ذخیره شد');
+
+      setEditing(null); setEditRows([]); setDirty(false); load();
+
+    } catch (e: any) { alertMsg('❌ خطا', e?.message || String(e)); }
+    finally { savingRef.current = false; setSaving(false); }
+
+  };
+
+
+
+  const remove = async (inv: string, type: string) => {
+    const ok = await confirmMsg('حذف', 'فاکتور ' + inv + ' حذف شود؟');
+    if (!ok) return;
+    try {
+      if (type === 'sales') {
+        await deleteSale(inv);
+      } else {
+        await deletePurchase(inv);
+      }
+      showToast('✅ حذف شد');
+      load();
+    } catch (e: any) { showToast(e.message || 'خطا در حذف', true); }
+  };
+
+
+
+  const [returnReason, setReturnReason] = useState('');
+  const [returnShipping, setReturnShipping] = useState('');
+  const [returnSettlement, setReturnSettlement] = useState('credit');
+  const [returnBank, setReturnBank] = useState('');
+  const [returnHolder, setReturnHolder] = useState('');
+  const [returnDepositDate, setReturnDepositDate] = useState('');
+  const [returnNote, setReturnNote] = useState('');
+
+  const openReturn = async (inv: string, type: string) => {
+    try {
+      const rows = await getInvoiceDetail(inv, type === 'sales' ? 'sales' : 'purchase');
+      if (!rows.length) { showToast('فاکتور پیدا نشد', true); return; }
+      const isSales = type === 'sales';
+      setReturnRows(rows.map((r: any) => ({
+        modelCode: r.model_code || '',
+        modelName: r.model_name || '',
+        quantity: Number(r.quantity) || 0,
+        priceUnit: Number(r.price_unit) || 0,
+        returnQty: 0,
+      })));
+      setReturnInvoice({
+        invoice: inv,
+        type: isSales ? 'sales' : 'purchase',
+        name: isSales ? rows[0].customer_name : rows[0].supplier_name,
+        code: isSales ? rows[0].customer_code : rows[0].supplier_code,
+      });
+      setReturnReason('');
+      setReturnShipping('');
+      setReturnSettlement('credit');
+      setReturnBank('');
+      setReturnHolder('');
+      setReturnDepositDate('');
+      setReturnNote('');
+      setReturnModalOpen(true);
+    } catch (e: any) {
+      showToast(e?.message || 'خطا در باز کردن فاکتور', true);
+    }
+  };
+
+  const submitReturn = async () => {
+    if (!returnInvoice) return;
+    const items = returnRows.filter((r: any) => Number(r.returnQty) > 0);
+    if (!items.length) { showToast('تعداد برگشتی را وارد کنید', true); return; }
+
+    for (const it of items) {
+      if (Number(it.returnQty) > Number(it.quantity)) {
+        showToast('تعداد برگشتی برای ' + (it.modelName || it.modelCode) + ' بیشتر از تعداد اصلی است', true);
+        return;
+      }
+    }
+
+    setReturnSaving(true);
+    const savedType = returnInvoice.type;
+    try {
+      const subtotal = items.reduce((a: number, r: any) => a + (Number(r.returnQty) || 0) * (Number(r.priceUnit) || 0), 0);
+      const shipping = Number(returnShipping) || 0;
+      const total = subtotal + shipping;
+      const settlementAmount = returnSettlement === 'credit' ? 0 : total;
+      const balance = total - settlementAmount;
+      const returnNumber = (savedType === 'sales' ? 'SR-' : 'PR-') + Date.now().toString().slice(-8);
+
+      const payload = {
+        return_number: returnNumber,
+        status: 'approved',
+        original_invoice_number: returnInvoice.invoice,
+        party_name: returnInvoice.name,
+        party_code: returnInvoice.code,
+        type: savedType,
+        date: new Date().toISOString(),
+        reason: returnReason || '',
+        shipping_cost: shipping,
+        settlement_method: returnSettlement,
+        settlement_amount: settlementAmount,
+        balance: balance,
+        bank: returnBank || '',
+        account_holder: returnHolder || '',
+        deposit_date: returnDepositDate || '',
+        note: returnNote || '',
+        subtotal,
+        total,
+        items,
+      };
+
+      if (savedType === 'sales') {
+        await createSalesReturn(payload);
+      } else {
+        await createPurchaseReturn(payload);
+      }
+
+      showToast('✅ برگشت ثبت شد — ' + returnNumber);
+      setReturnModalOpen(false);
+      setReturnInvoice(null);
+      setReturnRows([]);
+
+      if (onReturnSaved) onReturnSaved(savedType);
+      else load();
+    } catch (e: any) {
+      showToast(e?.message || 'خطا در ثبت برگشت', true);
+    } finally {
+      setReturnSaving(false);
+    }
+  };;
+
+;
+
+  // ═══ حالت ویرایش ═══
+
+    if (showInvoice) return (
+    <View style={{ flex: 1, overflow: 'hidden' }}><InvoiceView
+      prods={prods}
+      invoice={showInvoice}
+      onBack={() => { setShowInvoice(null); load(); }}
+      onNew={() => { setShowInvoice(null); setEditing(null); setEditRows([]); setDirty(false); }}
+      showToast={showToast}
+    /></View>
+  );
+
+  if (editing) return (
+
+    <View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+
+        <View style={[s.mgrHead, { backgroundColor: '#c0392b' }]}>
+
+          <TouchableOpacity onPress={async () => { if (dirty) { const ok = await confirmMsg('خروج', 'تغییرات ذخیره نشده — خارج شوی؟'); if (!ok) return; } setEditing(null); setEditRows([]); setDirty(false); }}>
+
+            <EL textKey="← بازگشت" style={{ color: '#fff', fontSize: 16 }} />
+
+          </TouchableOpacity>
+
+          <View style={{ flex: 1, marginRight: 10 }}>
+
+            <Text style={s.mgrHeadTxt}>✏️ {editing.invoice}</Text>
+
+            <Text style={{ color: '#fff', fontSize: 11, opacity: 0.9 }}>{editing.name} | {editing.code} | {toFaNum(editRows.length)} ردیف</Text>
+
+          </View>
+
+        </View>
+
+
+
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+
+          <View>
+
+            <View style={[s.tblHeader, { flexDirection: 'row-reverse' }]}>
+
+              <Text style={[s.thCell, { width: 36, fontSize: 12, fontWeight: 'bold', textAlign: 'center' }]}>#</Text>
+
+              <EL textKey="کد" style={[s.thCell, { width: 90, textAlign: 'center' }]} />
+
+              <EL textKey="نام مدل" style={[s.thCell, { width: 180, textAlign: 'center' }]} />
+
+              <EL textKey="تعداد" style={[s.thCell, { width: 80, textAlign: 'center' }]} />
+              <EL textKey="واحد بسته" style={[s.thCell, { width: 70, textAlign: 'center' }]} />
+
+              <EL textKey="قیمت" style={[s.thCell, { width: 110, textAlign: 'center' }]} />
+
+              <EL textKey="مبلغ" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="پرداخت" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="مانده" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+             <EL textKey="تاریخ واریز" style={[s.thCell, { width: 340, textAlign: 'center' }]} />
+
+              <EL textKey="بانک" style={[s.thCell, { width: 100, textAlign: 'center' }]} />
+
+              <EL textKey="صاحب حساب" style={[s.thCell, { width: 130, textAlign: 'center' }]} />
+
+              <EL textKey="کد صاحب حساب" style={[s.thCell, { width: 110, textAlign: 'center' }]} />
+
+              <EL textKey="شرح" style={[s.thCell, { width: 140, textAlign: 'center' }]} />
+
+              {editing.type === 'sales' && <EL textKey="باربری" style={[s.thCell, { width: 130, textAlign: 'center' }]} />}
+
+              <EL textKey="حذف" style={[s.thCell, { width: 56, textAlign: 'center' }]} />
+
+            </View>
+
+            {editRows.map((r, i) => {
+
+              const lt = ((Number(r.quantity) || 0) * (Number(r.priceUnit) || 0)) - ((Number(r.quantity) || 0) * (Number(r.discount) || 0));
+              // __rowBal: تخفیف فاکتور روی آخرین ردیف (یا ردیف تکی) اعمال می‌شود
+              const __liveRows = editRows.filter((x: any) => !x._deleted);
+              const __invDisc = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+              const __iLive = __liveRows.indexOf(r);
+              const __remOf = (x: any) => Math.max(0, (((Number(x.quantity) || 0) * (Number(x.priceUnit) || 0)) - ((Number(x.quantity) || 0) * (Number(x.discount) || 0))) - (Number(x.payment) || 0));
+              const __rowRem = __remOf(r);
+              const __sumRem = __liveRows.reduce((a2: number, x: any) => a2 + __remOf(x), 0);
+              const __share = __sumRem > 0 ? (__rowRem / __sumRem) : (1 / Math.max(1, __liveRows.length));
+              const lb = Math.max(0, Math.round(lt - (Number(r.payment) || 0) - (__invDisc * __share)));
+
+              return (
+
+                <View key={i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }, r._deleted && { opacity: 0.4 }, r._new && { backgroundColor: C.isDark ? '#2e1065' : '#f5f3ff' }]}>
+
+                  <Text style={[s.tdCell, { width: 36, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+
+                  <View style={{ width: 90, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={r.modelCode} onChangeText={(v) => updRow(i, 'modelCode', v)} editable={!r._deleted} /></View>
+
+                                  <View style={{ width: 180, paddingHorizontal: 3 }}>
+
+                    <CellAutocomplete
+
+                      value={r.modelName}
+
+                      onChange={(v: string) => updRow(i, 'modelName', v)}
+
+                      onSelect={(v: string) => {
+
+                        const p = prods.find((x: any) => x.name === v);
+
+                        if (p) {
+
+                          updRow(i, 'modelCode', p.code || '');
+
+                          updRow(i, 'priceUnit', p.price || 0);
+                          updRow(i, 'base_unit', p.base_unit || '');
+                          updRow(i, 'pack_unit', p.pack_unit || '');
+                          updRow(i, 'pack_size', Number(p.pack_size) || 0);
+                          updRow(i, 'entered_unit', 'base');
+                          updRow(i, 'entered_qty', Number(r.quantity) || 0);
+
+                        }
+
+                      }}
+
+                      options={prods.map(p => p.name).filter(Boolean)}
+
+                      placeholder={term('product') + '...'}
+
+                    />
+
+                  </View>
+
+                  <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.entered_unit === 'pack' ? (r.entered_qty || '') : (r.quantity || ''))} onChangeText={(v) => { const raw = parseNum(v); const u = r.entered_unit || 'base'; updRow(i, 'entered_unit', u); updRow(i, 'entered_qty', raw); updRow(i, 'quantity', (u === 'pack' && Number(r.pack_size) > 0) ? Math.round(raw * Number(r.pack_size) * 1000) / 1000 : raw); }} keyboardType="numeric" editable={!r._deleted} /></View>
+
+                  {Number(r.pack_size) > 0 && (<View style={{ width: 70, paddingHorizontal: 2, flexDirection: 'column', gap: 2 }}><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'base'); updRow(i, 'entered_qty', r.quantity); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#334155' : '#7c3aed') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.base_unit || 'عدد'}</Text></TouchableOpacity><TouchableOpacity onPress={() => { updRow(i, 'entered_unit', 'pack'); updRow(i, 'entered_qty', Number(r.pack_size) > 0 ? r.quantity / Number(r.pack_size) : 0); }} style={{ padding: 2, borderRadius: 3, backgroundColor: (r.entered_unit === 'pack' ? '#7c3aed' : '#334155') }}><Text style={{ color: '#fff', fontSize: 8, textAlign: 'center' }}>{r.pack_unit || 'بسته'}</Text></TouchableOpacity></View>)}
+
+<View style={{ width: 110, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.priceUnit || '')} onChangeText={(v) => updRow(i, 'priceUnit', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+
+                  <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(r.discount || '')} onChangeText={(v) => updRow(i, 'discount', parseNum(v))} keyboardType="numeric" placeholder="تخفیف" placeholderTextColor={C.textMut} editable={!r._deleted} /></View>
+
+                  <Text style={[s.tdCell, { width: 100, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{lt ? fmt(lt) : '—'}</Text>
+
+                  <View style={{ width: 100, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(r.payment || '')} onChangeText={(v) => updRow(i, 'payment', parseNum(v))} keyboardType="numeric" editable={!r._deleted} /></View>
+
+                  <Text style={[s.tdCell, { width: 100, fontSize: 12, color: lb > 0 ? '#dc2626' : '#059669', fontWeight: 'bold' }]}>{lt ? fmt(lb) : '—'}</Text>
+
+                                  <View style={{ width: 340, paddingHorizontal: 3 }}><DateField value={r.depositDate} onChange={(v: string) => updRow(i, 'depositDate', v)} compact /></View>
+
+                                                     <View style={{ width: 100, paddingHorizontal: 2 }}>
+                    <CellAutocomplete
+                      value={r.bankName}
+                      onChange={(v: string) => updRow(i, 'bankName', v)}
+                      options={banksList.filter(Boolean).filter(Boolean).map((b: any) => b.name)}
+                      placeholder="بانک"
+                    />
+                  </View>
+
+                                  <View style={{ width: 130, paddingHorizontal: 2 }}>
+                    <CellAutocomplete
+                      value={r.accountHolder}
+                      onChange={(v: string) => updRow(i, 'accountHolder', v)}
+                      onSelect={async (v: string) => {
+                        try {
+                          const f = await lookupPayerUniversal(v);
+            
+
+=== searchAllInvoices ===
+PINGS, DASH_RANGE_LABELS, getProducts, createProduct, updateProduct, deleteProduct, lookupCustomerByPhone, generateCustomerCode, generateInvoiceNumber, createSale, getSalesGrouped, getUnpaidInvoices, searchAllInvoices, getInvoiceDetail, lookupSupplierByName, lookupCodeByName, createPurchase, getPurchasesGrouped, getDashboardStats, getInventory, getSettings, updateSettings, loadMode, getMode, deleteSaleFromQueue, deletePurchaseFromQueue, updateInvoiceInQueue, Product, SaleItem, PurchaseItem, Settings, getInventoryByModel, getStockAdjustments, createStockAdjustment, deleteStockAdjustment, getSalesRowsForReport, getPurchasesRowsForReport, getParties, createParty, updateParty, deleteParty, lookupPartyByName, suggestPartyCode, suggestProductCode, getPartners, createPartner, updatePartner, deletePartner, getPartnerBankAccounts, createPartnerBankAccount, deletePartnerBankAccount, getPartnerTransactions, createPartnerTransaction, deletePartnerTransaction, getBanks, createBank, deleteBank, getShippings, createShipping, deleteShipping, lookupPayerUniversal, updateSale, updatePurchase, createPartnerAutoTx, findPartnerByNameOrCode, isBusinessLocked, deleteSale, deletePurchase, createSalesReturn, createPurchaseReturn, getSalesReturns, getPurchaseReturns, deleteSalesReturn, deletePurchaseReturn, updateSalesReturn, updatePurchaseReturn , clearInventoryCache } from './lib.offline';
+import { resolvePartyForInvoice } from './lib.partyIdentity';
+
+import { getCalType, parseDateAny, toStorageDateFull , getPackForCodeGlobal, packMapRef, refreshPackMap } from './lib';;
+
+import SuperAssistant from './SuperAssistant';
+
+import BotUI from './BotUI';
+
+import GlobalVoice from './GlobalVoice';
+
+import { registerCommands } from './CommandBus';
+
+import ResetPasswordScreen from './ResetPasswordScreen';
+
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+import { exportBackup, importBackup, autoBackup, getLastAutoBackup } from './lib.backup';
+import SettingsSheets from './SettingsSheets';
+import SettingsAssistant from './SettingsAssistant';
+import AssistantHome from './AssistantHome';
+import SupportSection from './SupportSection';
+import RecoveryPanel from './RecoveryPanel';
+import { syncByDestination } from './lib.sheets';
+
+import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, currencyLabel, mizanSignaturesHtml, mizanComputerNoteHtml } from './lib.share';
+
+import CurrencyField from './lib.currencyfield';
+import { setStorageUserId, canUseDevice, setDeviceLock } from './lib.storage';
+import { AppState as RNAppState } from 'react-native';
+import Storage from './lib.storage';// Safely load expo-notifications (fix for Expo Go)
+
+import { hydrateFromSettings, getCurrencySync } from './lib.currency';let Notifications: any = null;
+import { startAdsWorker } from './lib.ads.worker';
+
+try {
+
+  Notifications = require('expo-notifications');
+
+} catch (e) {
+
+  console.warn('⚠️ expo-notifications native module not found (Expo Go). Using mock.');
+
+  Notifications = {
+
+    setNotificationHandler: () => {},
+
+    getPermissionsAsync: async () => ({ status: 'undetermined' }),
+
+    requestPermissionsAsync: async () => ({ status: 'denied' }),
+
+    getExpoPushTokenAsync: async () => ({ data: '' }),
+
+    addNotificationReceivedListener: () => ({ remove: () => {} }),
+
+    addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+
+    setNotificationChannelAsync: async () => {},
+
+    scheduleNotificationAsync: async () => {},
+
+    dismissAllNotificationsAsync: async () => {},
+
+    cancelAllScheduledNotificationsAsync: async () => {},
+
+  };
+
+}
+
+
+
+// ADMINSCREEN_WEB_ONLY — پنل ادمین فقط روی وب
+
+let AdminScreen: any = null;
+
+if (Platform.OS === 'web') {
+
+  try {
+
+    AdminScreen = require('./AdminScreen').default;
+
+    console.log('🖥️ AdminScreen loaded (web only)');
+
+  } catch (e: any) {
+
+    console.log('AdminScreen load failed:', e?.message || e);
+
+  }
+
+} else {
+
+  console.log('📱 AdminScreen skipped on mobile');
+
+}
+
+
+
+
+
+// ADMIN_WEB_ONLY_LOADER — پنل ادمین فقط روی وب بارگذاری می‌شود
+
+// روی گوشی (iOS/Android) این ماژول هرگز اجرا نمی‌شود
+
+let AdminPanel: any = null;
+
+if (Platform.OS === 'web') {
+
+  try {
+
+    AdminPanel = require('./AdminPanel').default;
+
+    console.log('🖥️ AdminPanel loaded (web only)');
+
+  } catch (e: any) {
+
+    console.log('AdminPanel load failed:', e?.message || e);
+
+  }
+
+} else {
+
+  console.log('📱 AdminPanel skipped on mobile — panel is web-only');
+
+}
+
+
+
+
+
+// ══════════════════════════════════════════════════════════
+
+//  Theme Mode: 🌙 dark | ☀️ light | ⚪ simple
+
+// ══════════════════════════════════════════════════════════
+
+export type ThemeMode = 'dark' | 'light' | 'simple';
+
+let THEME_MODE: ThemeMode = 'light';
+
+(globalThis as any).__getThemeMode = () => THEME_MODE;
+
+export const setThemeMode = (m: ThemeMode) => { THEME_MODE = m; };
+
+export const getThemeMode = () => THEME_MODE;
+
+
+
+const C = {
+
+  get mode() { return THEME_MODE; },
+
+  get isDark() { return THEME_MODE === 'dark'; },
+
+  get isSimple() { return THEME_MODE === 'simple'; },
+
+  get bg()      { return THEME_MODE === 'dark' ? '#0f2438' : '#f5f7fa'; },
+
+  get card()    { return THEME_MODE === 'dark' ? '#1a2332' : '#ffffff'; },
+
+  get cardAlt() { return THEME_MODE === 'dark' ? '#0a1628' : '#f8fafc'; },
+
+  get text()    { return THEME_MODE === 'dark' ? '#ffffff' : '#1a2332'; },
+
+  get textMut() { return THEME_MODE === 'dark' ? '#94a3b8' : '#64748b'; },
+
+  get border()  { return THEME_MODE === 'dark' ? '#334155' : '#e2e8f0'; },
+
+  get input()   { return THEME_MODE === 'dark' ? '#1a2332' : '#ffffff'; },
+
+};
+
+
+
+const alertMsg = (title: string, msg: string) => {
+
+  if (Platform.OS === 'web') window.alert(title + '\n\n' + msg);
+
+  else Alert.alert(title, msg);
+
+};
+
+const confirmMsg = (title: string, msg: string): Promise<boolean> => {
+
+  if (Platform.OS === 'web') return Promise.resolve(window.confirm(title + '\n\n' + msg));
+
+  return new Promise((resolve) => {
+
+    Alert.alert(title, msg, [
+
+      { text: 'انصراف', s
+
+=== _groupSalesRows ===
+NOT FOUND

@@ -1,0 +1,805 @@
+=== updateSale starts: 2 ===
+
+>>> پیاده‌سازی اصلی @211677 <<<
+etAuditEvents();
+    const key = await _auditAckKey();
+    await AsyncStorage.setItem(key, String(Array.isArray(all) ? all.length : 0));
+  } catch {}
+}
+
+export async function clearAuditEvents(): Promise<void> {
+  try { await AsyncStorage.setItem(AUDIT_KEY, '[]'); } catch {}
+}
+
+export async function updateSale(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  _clearInvCache();
+  if (await hasActiveReturns(payload.invoiceNumber, 'sales')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
+  if (await serverBusinessAllowed()) {
+    try { await lib.updateSale(payload); } catch { await enqueue('updateSale', payload); }
+  } else {
+    await enqueue('updateSale', payload);
+  }
+  const list = (await getLocal<any[]>('sales')) || [];
+  const meta = payload.meta || {};
+  const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+  const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const now = new Date().toISOString();
+  const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+    ...template,
+    invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    customer_name: meta.name || template.customer_name || '',
+    customer_code: _normCode(meta.code || template.customer_code),
+    customer_phone: meta.phone || template.customer_phone || '',
+    shipping: meta.shipping || template.shipping || '',
+    model_code: r.modelCode || '',
+    model_name: r.modelName || '',
+    quantity: Number(r.quantity) || 0,
+    price_unit: Number(r.priceUnit) || 0,
+    payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositDate || '',
+    bank_name: r.bankName || '',
+    account_holder: r.accountHolder || '',
+    account_holder_code: r.accountHolderCode || '',
+    shelf: r.shelf || '',
+    updated_at: now,
+    device_id: dev,
+  }));
+  const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
+  await recordInvoiceAudit('sales', payload.invoiceNumber, oldRows, newRows);
+  await setLocal('sales', [...filtered, ...newRows]);
+}
+
+export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
+  _clearInvCache();
+  if (await hasActiveReturns(payload.invoiceNumber, 'purchase')) {
+    throw new Error('برای این فاکتور برگشت فعال وجود دارد. ابتدا برگشت‌ها را حذف کنید.');
+  }
+  if (await serverBusinessAllowed()) {
+    try { await lib.updatePurchase(payload); } catch { await enqueue('updatePurchase', payload); }
+  } else {
+    await enqueue('updatePurchase', payload);
+  }
+  const list = (await getLocal<any[]>('purchases')) || [];
+  const meta = payload.meta || {};
+  const template = list.find((r: any) => String(r.invoice_number) === payload.invoiceNumber) || {};
+  const filtered = list.filter((r: any) => String(r.invoice_number) !== payload.invoiceNumber);
+  const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+  const now = new Date().toISOString();
+  const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+    ...template,
+    invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    supplier_name: meta.name || template.supplier_name || '',
+    supplier
+
+
+=== discount در lib.offline.ts ===
+-- @32122 --
+e_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Numb
+-- @32142 --
+iceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_
+-- @32164 --
+riceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invo
+-- @32185 --
+nit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(
+-- @32216 --
+er(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payl
+-- @32246 --
+scount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+  
+-- @32278 --
+ed ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        co
+-- @32308 --
+e_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment
+-- @32348 --
+ 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return r
+-- @32380 --
+mber(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return rowPay;
+        if (idx !== 0) re
+-- @32408 --
+|| 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return rowPay;
+        if (idx !== 0) return 0;
+        return Numbe
+-- @34793 --
+e_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Numb
+-- @34813 --
+iceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_
+-- @34835 --
+riceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invo
+-- @34856 --
+nit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(
+-- @34887 --
+er(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payl
+-- @34917 --
+scount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+  
+-- @34949 --
+ed ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        co
+-- @34979 --
+e_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment
+-- @35019 --
+ 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return r
+-- @35051 --
+mber(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return rowPay;
+        if (idx !== 0) re
+-- @35079 --
+|| 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return rowPay;
+        if (idx !== 0) return 0;
+        return Numbe
+-- @69865 --
+s(localSalesRows);
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invo
+-- @70018 --
+ring(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) 
+-- @70049 --
+= String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '
+-- @70130 --
+iscount) || 0; } }
+    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invo
+-- @70283 --
+ring(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    const localUpMap: Record<string, number> = {};
+    for (const r of localSalesRows) {
+      const inv = String(r.invoice_numbe
+-- @70314 --
+= String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    const localUpMap: Record<string, number> = {};
+    for (const r of localSalesRows) {
+      const inv = String(r.invoice_number || '').trim();
+      if (!inv
+-- @72192 --
+merName, phone: p.customerPhone,
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      for (const it of
+-- @72218 --
+Phone,
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      for (const it of p.items || []) {
+        
+-- @72240 --
+: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      for (const it of p.items || []) {
+        pendingByInv[inv].tota
+-- @77376 --
+PurchaseRows);
+    for (const _g of groupedFromPurchases) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localPurchaseRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.i
+-- @77532 --
+ring(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromPurchases) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localPurchaseRows.find((r
+-- @77563 --
+= String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromPurchases) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localPurchaseRows.find((r: any) => String(r.invoice_numb
+-- @77648 --
+unt) || 0; } }
+    for (const _g of groupedFromPurchases) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localPurchaseRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.i
+-- @77804 --
+ring(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    const localUpMapP: Record<string, number> = {};
+    for (const r of localPurchaseRows) {
+      const inv = String(r.invoice_n
+-- @77835 --
+= String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    const localUpMapP: Record<string, number> = {};
+    for (const r of localPurchaseRows) {
+      const inv = String(r.invoice_number || '').trim();
+      if (
+-- @79836 --
+         phone: p.supplierPhone,
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      const items = (p
+-- @79862 --
+Phone,
+          total: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      const items = (p.items && p.items.length) 
+-- @79884 --
+: 0, paid: 0, items: [], invoiceDiscount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+          date: new Date(item.ts).toISOString(),
+          _pending: true,
+        };
+      }
+      const items = (p.items && p.items.length) ? p.items : [{ modelNa
+-- @81867 --
+|| '',
+        quantity: it.quantity,
+        price_unit: it.priceUnit,
+        discount: Number(it.discount) || 0,
+        discount_enabled: it.discountEnabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit
+-- @81887 --
+ity: it.quantity,
+        price_unit: it.priceUnit,
+        discount: Number(it.discount) || 0,
+        discount_enabled: it.discountEnabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount
+-- @81911 --
+  price_unit: it.priceUnit,
+        discount: Number(it.discount) || 0,
+        discount_enabled: it.discountEnabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      
+-- @81932 --
+eUnit,
+        discount: Number(it.discount) || 0,
+        discount_enabled: it.discountEnabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: N
+-- @81965 --
+t.discount) || 0,
+        discount_enabled: it.discountEnabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invo
+-- @81995 --
+ount_enabled: it.discountEnabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+        pa
+-- @82029 --
+ 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+        payment: (() => {
+          const ro
+-- @82059 --
+unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+        payment: (() => {
+          const rowPay = Number(it.payment) || 0
+-- @82101 --
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+        payment: (() => {
+          const rowPay = Number(it.payment) || 0;
+          if (rowPay > 0) return rowPay;
+-- @82127 --
+: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+        payment: (() => {
+          const rowPay = Number(it.payment) || 0;
+          if (rowPay > 0) return rowPay;
+          if (idx !== 0) 
+-- @82149 --
+ack_unit) || 0,
+        invoice_discount: Number(p.invoiceDiscount || p.invoice_discount) || 0,
+        payment: (() => {
+          const rowPay = Number(it.payment) || 0;
+          if (rowPay > 0) return rowPay;
+          if (idx !== 0) return 0;
+          re
+-- @212666 --
+) => ({
+    ...template,
+    invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    customer_name: meta.name || template.customer_name 
+-- @212688 --
+e,
+    invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    customer_name: meta.name || template.customer_name || '',
+    customer_co
+-- @212732 --
+,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    customer_name: meta.name || template.customer_name || '',
+    customer_code: _normCode(meta.code || template.customer
+-- @212774 --
+nt !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    customer_name: meta.name || template.customer_name || '',
+    customer_code: _normCode(meta.code || template.customer_code),
+    customer_phone: meta.phone || 
+-- @213233 --
+ price_unit: Number(r.priceUnit) || 0,
+    payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.disc
+-- @213252 --
+(r.priceUnit) || 0,
+    payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 
+-- @213272 --
+    payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: 
+-- @213292 --
+r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+-- @213321 --
+: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositD
+-- @213350 --
+  discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositDate || '',
+    bank_name: r.b
+-- @213380 --
+Enabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositDate || '',
+    bank_name: r.bankName || '',
+    account_hol
+-- @213409 --
+_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositDate || '',
+    bank_name: r.bankName || '',
+    account_holder: r.accountHolder || '',
+ 
+-- @214978 --
+) => ({
+    ...template,
+    invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    supplier_name: meta.name || template.supplier_name 
+-- @215000 --
+e,
+    invoice_number: payload.invoiceNumber,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    supplier_name: meta.name || template.supplier_name || '',
+    supplier_co
+-- @215044 --
+,
+    invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    supplier_name: meta.name || template.supplier_name || '',
+    supplier_code: meta.code || template.supplier_code || '
+-- @215086 --
+nt !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
+    supplier_name: meta.name || template.supplier_name || '',
+    supplier_code: meta.code || template.supplier_code || '',
+    supplier_phone: meta.phone || templ
+-- @215675 --
+ price_unit: Number(r.priceUnit) || 0,
+    payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.disc
+-- @215694 --
+(r.priceUnit) || 0,
+    payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 
+-- @215714 --
+    payment: Number(r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: 
+-- @215734 --
+r.payment) || 0,
+    discount: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+-- @215763 --
+: Number(r.discount) || 0,
+    discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositD
+-- @215792 --
+  discount_enabled: r.discountEnabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositDate || '',
+    bank_name: r.b
+-- @215822 --
+Enabled ? 1 : 0,
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositDate || '',
+    bank_name: r.bankName || '',
+    account_hol
+-- @215851 --
+_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+    description: r.description || '',
+    deposit_date: r.depositDate || '',
+    bank_name: r.bankName || '',
+    account_holder: r.accountHolder || '',
+ 
+
+
+=== _localUpsertSale @30461 ===
+_localUpsertSale(payload: any) {
+  try {
+    const inv = String(payload.invoiceNumber || payload.invoice_number || '').trim();
+    if (!inv) return;
+    const items = payload.items || payload.rows || [];
+    const old = (await getLocal<any[]>('sales')) || [];
+    const filtered = old.filter((r: any) => String(r.invoice_number || '') !== inv);
+    const baseDate = payload.invoiceDate || payload.date || new Date().toISOString();
+    const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
+    const now = new Date().toISOString();
+    const rows = items.map((it: any, idx: number) => ({
+      invoice_number: inv,
+      local_id: 'sale_' + inv + '_' + idx,
+      device_id: dev,
+      updated_at: now,
+      manual_invoice: payload.manualInvoice || '',
+      customer_code: _normCode(payload.customerCode || payload.customer_code || ''),
+      customer_local_id: payload.customerLocalId || payload.customer_local_id || payload.partyLocalId || payload.party_local_id || '',
+      customer_name: payload.customerName || payload.customer_name || '',
+      customer_phone: payload.customerPhone || payload.customer_phone || '',
+      account_holder: payload.holderName || payload.accountHolder || payload.receiverName || it.accountHolder || it.holderName || '',
+      account_holder_code: payload.holderCode || payload.accountHolderCode || payload.receiverCode || it.accountHolderCode || it.holderCode || '',
+      model_code: it.modelCode || it.model_code || '',
+      model_name: it.modelName || it.model_name || '',
+      quantity: Number(it.quantity) || 0,
+      price_unit: Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0,
+      discount: Number(it.discount) || 0,
+      discount_enabled: it.discountEnabled ? 1 : 0,
+      discount_base_unit: Number(it.discount_base_unit) || 0,
+      discount_pack_unit: Number(it.discount_pack_unit) || 0,
+      invoice_discount: Number(payload.invoiceDiscount || payload.invoice_discount) || 0,
+      payment: (() => {
+        const rowPay = Number(it.payment) || 0;
+        if (rowPay > 0) return rowPay;
+        if (idx !== 0) return 0;
+        return Number(payload.paymentAmount ?? payload.payment ?? payload.paid) || 0;
+      })(),
+      total: (Number(it.quantity) || 0) * (Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0),
+      bank_name: payload.bank || payload.bankName || payload.receiverBank || it.bankName || '',
+      deposit_date: payload.depositDate || payload.payDate || payload.paymentDate || it.d
+
+
+=== App.tsx: openEdit برای editRows ===
+hipping, setShipping] = useState('');
+  const [invoice, setInvoice] = useState('');
+  const [status, setStatus] = useState('');
+  const [items, setItems] = useState<any[]>([]);
+  const [prods, setProds] = useState<Product[]>([]);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    getProducts().then(setProds);
+    generateInvoiceNumber().then(setInvoice);
+    setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pack_size: 0, uom_label: '' }]);
+  }, []);
+  const onPhone = async (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 11);
+    setPhone(d); setStatus('');
+    if (d.length === 11) {
+      setStatus('⏳');
+      try { const f = await lookupCustomerByPhone(d); if (f) { setStatus('✅'); if (f.customer_name) setName(f.customer_name); if (f.customer_address) setAddress(f.customer_address); } else { setStatus('🆕'); setName(''); setAddress(''); if (typeof setReceiverName === 'function') { setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAccount(''); } } } catch {}
+    }
+  };
+  const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountHolderCode: '', pack_size: 0, uom_label: '' }]);
+const addEditRow = () => setEditRows([...editRows, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, discount: 0, description: '', depositDate: toStorageDateFull(new Date()), bankName: '', accountHolder: '', accountCode: '', _new: true }]);
+  const upd = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
+  const del = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+  const setModel = (i: number, v: string) => { const n = [...items]; n[i].modelName = v; const p = prods.find((x) => x.name === v); if (p) { n[i].modelCode = p.code || ''; n[i].priceUnit = p.price || 0; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; n[i].base_unit = p.base_unit || ''; n[i].pack_unit = p.pack_unit || ''; n[i].pack_size = Number(p.pack_size) || 0; n[i].uom_label = p.uom_label || ''; } setItems(n); };
+  const grandTotal = items.reduce((a, r) => a + Math.max(0, ((Number(r.quantity) || 0) * (Number(r.priceUnit) || 0)) - ((Number(r.quantity) || 0) * (Number(r.discount) || 0))), 0);
+  const grandQty = items.reduce((a, r) => a + (Number(r.quantity) || 0), 0);
+  const submit = async () => {
+    if (!/^09\d{9}$/.test(phone)) return alertMsg('⚠️ خطا', 'شماره معتبر نیست');
+    if (!name) return alertMsg('⚠️ خطا', 'نام الزامی است');
+    if (!shipping) return alertMsg('⚠️ خطا', 'باربری الزامی است');
+    const valid = items.filter((it) => it.modelName && it.quantity > 0);
+    if (!valid.length) return alertMsg('⚠
+
+
+=== App.tsx: discount در محدودهٔ editRows ===
+-- @64961 --
+tShipping] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+  const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+  const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
+ 
+-- @64981 --
+e('');
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+  const [invoiceDate, setInvoiceDate] = useState(toStorageDateFull(new Date()));
+  const [payDate, setPayDate] = useState(toStorageDateFull(new Date()));
+  const [note, setNot
+-- @67826 --
+ bankName: '', accountHolder: '', accountHolderCode: '', description: '' , shelf: '', pack_size: 0, discount: 0, discountEnabled: false,
+        discount_base_unit: 0,
+        discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+  const updIt
+-- @67839 --
+, accountHolder: '', accountHolderCode: '', description: '' , shelf: '', pack_size: 0, discount: 0, discountEnabled: false,
+        discount_base_unit: 0,
+        discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+  const updItem = (i: numb
+-- @67871 --
+erCode: '', description: '' , shelf: '', pack_size: 0, discount: 0, discountEnabled: false,
+        discount_base_unit: 0,
+        discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+  const updItem = (i: number, f: string, v: any) => { cons
+-- @67902 --
+helf: '', pack_size: 0, discount: 0, discountEnabled: false,
+        discount_base_unit: 0,
+        discount_pack_unit: 0, uom_label: '', base_unit: '', pack_unit: '', entered_unit: 'base', entered_qty: 0 }]);
+  const updItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)
+-- @68985 --
+Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0))), 0);
+  const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+  const balanceDue = Math.max(0, payableAmount - (Number(paymentAmount) || 0));
+  const grand
+-- @69073 --
+ (Number(it.discount) || 0))), 0);
+  const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+  const balanceDue = Math.max(0, payableAmount - (Number(paymentAmount) || 0));
+  const grandQty = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+  const resetForm =
+-- @69393 --
+e('');
+    setName('');
+    setAddress('');
+    setShipping('');
+    setPaymentAmount(0); setInvoiceDiscount(0);
+    setInvoiceDate(toStorageDateFull(new Date()));
+    setPayDate(toStorageDateFull(new Date()));
+    setNote('');
+    setReceiverName('');
+    setReceiverCode('');
+    setReceiverBank(''
+-- @70554 --
+
+    setPendingConfirm({ name, phone, count: valid.length, total: grandTotal, paymentAmount, invoiceDiscount, valid, note });
+    return;
+    if (!mode) return;
+    if (mode === 'full' && !valid.length) {
+      return alertMsg('⚠️ خطا', 'برای ثبت فاکتور، حداقل یک مدل با تعداد معتبر وارد کنید.');
+  
+-- @71321 --
+ateSale({
+        invoiceNumber: inv,
+        customerCode,
+        customerLocalId,
+        invoiceDiscount: Number(invoiceDiscount) || 0, 
+        customerName: name, 
+        customerPhone: phone, 
+        customerAddress: address, 
+        shipping, 
+        items: finalItems, 
+        paymentAm
+-- @71345 --
+eNumber: inv,
+        customerCode,
+        customerLocalId,
+        invoiceDiscount: Number(invoiceDiscount) || 0, 
+        customerName: name, 
+        customerPhone: phone, 
+        customerAddress: address, 
+        shipping, 
+        items: finalItems, 
+        paymentAmount, 
+        invoiceDa
+-- @73467 --
+ setName(''); setAddress(''); setShipping(''); setItems([]);
+        setPaymentAmount(0); setInvoiceDiscount(0); setInvoiceDate(toStorageDateFull(new Date())); setPayDate(toStorageDateFull(new Date()));
+        setNote(''); setReceiverName(''); setReceiverCode(''); setReceiverBank(''); setReceiverAc
+-- @74147 --
+nfirm) return;
+    const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2, invoiceDiscount: _invDisc } = pendingConfirm as any;
+    setPendingConfirm(null);
+    setSaving(true);
+    try {
+      const pr = await resolvePartyForInvoice({ name: n, phone: p, address, type: 'customer' }
+-- @74933 --
+g, items: finalItems,
+        paymentAmount: payAmt, invoiceDate, payDate, note: n2,
+        invoiceDiscount: Number(_invDisc) || 0,
+        receiverName, receiverCode, receiverBank, receiverAccount
+      });
+      // ═══ اگر دریافت‌کننده یکی از شرکا بود، حرکت شریک ثبت شود ═══
+      try {
+        c
+-- @84520 --
+Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
+              return (
+                <View key={i} style={S.itemRow}>
+                  <View style={S.itemRowHeader}>
+                    <View style={S.itemRowNumBadge}>
+   
+-- @88347 --
+ap: 4 }}>
+                          <TextInput style={[S.miniInput, { flex: 1 }]} value={String(it.discount || '')} onChangeText={(v) => updItem(i, 'discount', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
+                          <TouchableOpacity onPress
+-- @88397 --
+yle={[S.miniInput, { flex: 1 }]} value={String(it.discount || '')} onChangeText={(v) => updItem(i, 'discount', parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor="#94a3b8" />
+                          <TouchableOpacity onPress={() => { const p = prods.find(x => x.code === it.
+-- @88655 --
+{ const p = prods.find(x => x.code === it.modelCode); const d = p ? (it.entered_unit === 'pack' ? p.discount_pack_unit : p.discount_base_unit) : 0; updItem(i, 'discount', d || 0); updItem(i, 'discountEnabled', true); }} style={{ backgroundColor: it.discountEnabled ? '#0891b2' : '#e2e8f0', padding: 6
+-- @88678 --
+x => x.code === it.modelCode); const d = p ? (it.entered_unit === 'pack' ? p.discount_pack_unit : p.discount_base_unit) : 0; updItem(i, 'discount', d || 0); updItem(i, 'discountEnabled', true); }} style={{ backgroundColor: it.discountEnabled ? '#0891b2' : '#e2e8f0', padding: 6, borderRadius: 4, just
+-- @88715 --
+d = p ? (it.entered_unit === 'pack' ? p.discount_pack_unit : p.discount_base_unit) : 0; updItem(i, 'discount', d || 0); updItem(i, 'discountEnabled', true); }} style={{ backgroundColor: it.discountEnabled ? '#0891b2' : '#e2e8f0', padding: 6, borderRadius: 4, justifyContent: 'center', alignItems: 'ce
+-- @88747 --
+ck' ? p.discount_pack_unit : p.discount_base_unit) : 0; updItem(i, 'discount', d || 0); updItem(i, 'discountEnabled', true); }} style={{ backgroundColor: it.discountEnabled ? '#0891b2' : '#e2e8f0', padding: 6, borderRadius: 4, justifyContent: 'center', alignItems: 'center', width: 30 }}>
+          
+-- @88804 --
+pdItem(i, 'discount', d || 0); updItem(i, 'discountEnabled', true); }} style={{ backgroundColor: it.discountEnabled ? '#0891b2' : '#e2e8f0', padding: 6, borderRadius: 4, justifyContent: 'center', alignItems: 'center', width: 30 }}>
+                            <Text style={{ fontSize: 12 }}>💰</Text
+-- @91067 --
+flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+            <TouchableOpacity onPress={() => setInvoic
+-- @91115 --
+xt, borderColor: '#f59e0b' }]} value={String(invoiceDiscount || '')} onChangeText={(v) => setInvoiceDiscount(parseNum(v))} keyboardType="numeric" placeholder="0" placeholderTextColor={C.textMut} />
+            <TouchableOpacity onPress={() => setInvoiceDiscount(0)} style={{ backgroundColor: '#fef3c7
+-- @91268 --
+lder="0" placeholderTextColor={C.textMut} />
+            <TouchableOpacity onPress={() => setInvoiceDiscount(0)} style={{ backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 6, paddingHorizontal: 10, justifyContent: 'center' }}><Text style={{ color: '#b45309', fontWeigh
+-- @91867 --
+ndTotal)}</Text>
+            <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text>
+            <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text>
+            <Text style={{ co
+-- @91895 --
+ <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Text>
+            <Text style={{ color: C.text, fontSize: 12, fontWeight: 'bold' }}>قابل پرداخت: {fmt(payableAmount)}</Text>
+            <Text style={{ color: C.text, fontSize: 12 }}
+-- @97930 --
+xt>
+                  <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+            
+-- @97973 --
+ '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoiceDiscount) : '—'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
+                  <Text style={{ color: C.textMut }}>📉

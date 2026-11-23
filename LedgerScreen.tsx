@@ -421,7 +421,7 @@ export default function LedgerScreen({ onBack, showToast }) {
         return true;
       });
 
-      _p.push('<table style="font-size:8px"><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+      _p.push('<table style="font-size:8px"><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
       var tQty = 0, tDebit = 0, tCredit = 0;
       txns.forEach(function(t: any, i: number) {
         tQty += Number(t.qty) || 0;
@@ -473,14 +473,14 @@ export default function LedgerScreen({ onBack, showToast }) {
     _p.push('<div class="title">📄 فاکتور: ' + (invoiceDetailMeta?.invoice || '') + '</div>');
     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + '</div>');
     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
-    _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th></tr>');
+    _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
     var tot = 0, pay = 0;
     (invoiceDetailRows || []).forEach(function(r, i) {
       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
       tot += line; pay += Number(r.payment) || 0;
       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' + (r.model_name || r.modelName || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity)||0) + '</td><td>' + fmt(Number(r.price_unit)||0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment)||0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td></tr>');
     });
-    _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
+    _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="13" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
     _p.push('</table>');
     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
     _p.push(mizanComputerNoteHtml());
@@ -580,15 +580,21 @@ export default function LedgerScreen({ onBack, showToast }) {
     _p.push('<div class="title">📄 فاکتور ' + (meta?.invoice || '') + '</div>');
     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(meta?.date || '') + '</div>');
     _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
-    _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>قیمت</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+    _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
     var td = 0, tc = 0, run = 0, idx = 0;
     (rows || []).forEach(function(r) {
-      var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0, line = qty * pr;
+      var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+      var _rowDisc = Number(r._row_discount_amount) || (qty * (Number(r.discount) || 0));
+      var _invDiscShare = Number(r._invoice_discount_share) || 0;
+      var _gross = qty * pr;
+      var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+      var line = _net;
+      var _discTotal = Math.max(0, _gross - line);
       var d = isP ? 0 : line, c = isP ? line : 0;
       td += d; tc += c; run += c - d; idx++;
-      _p.push('<tr><td>' + idx + '</td><td>' + _safeLedgerDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_invoice || '—') + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + (function(){ const _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU=_u.base_unit||'عدد'; var pS=Number(_u.pack_size)||0; return pS>0?pS+' '+bU:'—'; })() + '</td><td>' + (function(){ var _u=prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU=_u.pack_unit||'بسته'; var pS=Number(_u.pack_size)||0; return pS>0?(qty/pS).toFixed(2).replace(/\.00$/,'')+' '+pU:'—'; })() + '</td><td>' + fmt(pr) + '</td><td>' + fmt(line) + '</td><td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.account_holder || '—') + '</td><td>' + (r.account_holder_code || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td><td style="text-align:right">' + (r.description || '—') + '</td></tr>');
+      _p.push('<tr><td>' + idx + '</td><td>' + _safeLedgerDate(r.date_reg || r.date_factor || '') + '</td><td>' + (isP ? 'خرید' : 'فروش') + '</td><td>' + (r.invoice_number || '—') + '</td><td>' + (r.manual_invoice || '—') + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + fmt(qty) + '</td><td>' + (function(){ const _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU=_u.base_unit||'عدد'; var pS=Number(_u.pack_size)||0; return pS>0?pS+' '+bU:'—'; })() + '</td><td>' + (function(){ var _u=prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU=_u.pack_unit||'بسته'; var pS=Number(_u.pack_size)||0; return pS>0?(qty/pS).toFixed(2).replace(/\.00$/,'')+' '+pU:'—'; })() + '</td><td>' + fmt(pr) + '</td><td style="color:#b45309;font-weight:bold">' + fmt(_discTotal) + '</td><td>' + fmt(line) + '</td><td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td><td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.account_holder || '—') + '</td><td>' + (r.account_holder_code || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td><td style="text-align:right">' + (r.description || '—') + '</td></tr>');
     });
-    _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="10" style="text-align:left">جمع:</td><td style="color:#1e40af">' + fmt(td) + '</td><td style="color:#059669">' + fmt(tc) + '</td><td>' + fmt(Math.abs(td - tc)) + '</td><td colspan="6"></td></tr>');
+    _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="11" style="text-align:left">جمع:</td><td style="color:#1e40af">' + fmt(td) + '</td><td style="color:#059669">' + fmt(tc) + '</td><td>' + fmt(Math.abs(td - tc)) + '</td><td colspan="6"></td></tr>');
     _p.push('</table>');
     var bal = td - tc;
     var stTxt = bal > 0 ? 'ما بستانکاریم' : bal < 0 ? 'ما بدهکاریم' : 'تسویه';
@@ -1220,6 +1226,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                       <Text style={[s.th, { width: 110 }]}>شماره فاکتور</Text>
                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
                       <Text style={[s.th, { width: 100 }]}>جمع</Text>
+                      <Text style={[s.th, { width: 90 }]}>تخفیف</Text>
                       <Text style={[s.th, { width: 100 }]}>پرداخت</Text>
                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
@@ -1232,6 +1239,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{inv.invoice}</Text>
                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{toFaNum(inv.count || 0)}</Text>
                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
+                        <Text style={[s.td, { width: 90, fontSize: 9, color: '#b45309', fontWeight: 'bold' }]}>{fmt(Math.max(0, (Number(inv.total) || 0) - (Number(inv.balance) || 0) - (Number(inv.paid) || 0)))}</Text>
                         <Text style={[s.td, { width: 100, fontSize: 9, color: '#059669' }]}>{fmt(inv.paid)}</Text>
                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(inv.balance))}
                       </Text>
@@ -1247,6 +1255,7 @@ export default function LedgerScreen({ onBack, showToast }) {
                         <Text style={[s.td, { width: 110 }]}></Text>
                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+                        <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.total) || 0) - (Number(x.balance) || 0) - (Number(x.paid) || 0)), 0))}</Text>
                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
                         <Text style={[s.td, { width: 70 }]}></Text>

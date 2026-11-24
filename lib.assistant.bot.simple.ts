@@ -10,6 +10,7 @@ const RUBIKA_BASE = Platform.OS === 'web'
 function normText(s: string) { return String(s || '').trim(); }
 function fmt(n: number): string { return Number(n || 0).toLocaleString('en-US'); }
 
+// ================= ارسال پیام با کیبورد ثابت =================
 async function botSend(t: string, chatId: string, text: string, keypad?: any): Promise<string> {
   const buildBody = () => {
     const body: any = { chat_id: chatId, text: text || '' };
@@ -60,6 +61,7 @@ async function botSend(t: string, chatId: string, text: string, keypad?: any): P
   return '';
 }
 
+// ================= مدیریت State و Cart =================
 async function getCart(chatId: string): Promise<any[]> {
   try { const r = await AsyncStorage.getItem('@mizan_bot_cart_' + chatId); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch { return []; }
 }
@@ -88,6 +90,7 @@ async function setInv(n: string, inv: any): Promise<void> {
   try { await AsyncStorage.setItem('@mizan_bot_inv_' + n, JSON.stringify(inv)); } catch {}
 }
 
+// ================= منوها =================
 async function showMainMenu(t: string, chatId: string) {
   await botSend(t, chatId, '🏠 منوی اصلی:', { rows: [
     { buttons: [{ button_text: '🛍️ مشاهده محصولات' }] },
@@ -98,7 +101,10 @@ async function showMainMenu(t: string, chatId: string) {
 async function showProducts(t: string, chatId: string) {
   try {
     const prods = await getProducts() || [];
-    if (!prods.length) { await botSend(t, chatId, '⚠️ هیچ محصولی ثبت نشده است.'); return; }
+    if (!prods.length) {
+      await botSend(t, chatId, '⚠️ هیچ محصولی در حافظه این دستگاه ثبت نشده است. لطفاً ابتدا از تب «مدیریت > منابع > کالاها» محصول اضافه کنید.');
+      return;
+    }
 
     const pageKey = '@mizan_bot_prodpage_' + chatId;
     let page = 1;
@@ -142,6 +148,7 @@ async function showCart(t: string, chatId: string) {
   await botSend(t, chatId, text, { rows });
 }
 
+// ================= حلقه خودکار Polling =================
 let _pollingTimer: any = null;
 export function startBotPolling(token: string) {
   stopBotPolling();
@@ -169,6 +176,7 @@ async function saveSeen(seen: Set<string>): Promise<void> {
   try { await AsyncStorage.setItem('@mizan_bot_seen', JSON.stringify(Array.from(seen))); } catch {}
 }
 
+// ================= پردازش اصلی پیام‌ها =================
 export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: boolean; processed: number; error?: string }> {
   const t = String(token || '').trim();
   if (!t) return { ok: false, processed: 0, error: 'توکن ربات خالی است' };
@@ -240,7 +248,9 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
           cbData = cbData.trim();
           const replyTo = String(msg?.reply_to_message_id || u.reply_to_message_id || '');
           const action = cbData || msgText;
+          console.log('[INCOMING]', chatId, 'text=', JSON.stringify(msgText), 'cb=', JSON.stringify(cbData));
 
+          // ================= پرداخت ادمین =================
           if (adminChat && chatId === adminChat && replyTo) {
             const map = await getAdminInv(replyTo);
             if (map && map.invoice_number) {
@@ -266,24 +276,14 @@ export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: b
             }
           }
 
-          if (action === 'menu' || action === 'menu_back' || msgText === '/start' || msgText === '🏠 منوی اصلی' || msgText === 'منو') {
+          // ================= منوها =================
+          const lowText = String(msgText || '').toLowerCase().trim();
+          if (action === 'menu' || action === 'menu_back' || lowText === '/start' || lowText === 'start' || lowText.includes('منوی اصلی') || lowText === 'منو') {
             await clearState(chatId);
             await showMainMenu(t, chatId);
             totalProcessed++; continue;
           }
-          
-          if (msgText === 'بعدی ➡️' || msgText === '⬅️ قبلی') {
-            const pageKey = '@mizan_bot_prodpage_' + chatId;
-            let page = 1;
-            try { const p = await AsyncStorage.getItem(pageKey); if (p) page = parseInt(p, 10) || 1; } catch {}
-            if (msgText === 'بعدی ➡️') page += 1;
-            if (msgText === '⬅️ قبلی') page -= 1;
-            if (page < 1) page = 1;
-            try { await AsyncStorage.setItem(pageKey, String(page)); } catch {}
-            await showProducts(t, chatId);
-            totalProcessed++; continue;
-          }
-if (msgText.includes('مشاهده محصولات')) {
+          if (msgText.includes('مشاهده محصولات')) {
             await clearState(chatId);
             await showProducts(t, chatId);
             totalProcessed++; continue;
@@ -312,7 +312,17 @@ if (msgText.includes('مشاهده محصولات')) {
             await botSend(t, chatId, '📝 لطفاً مشخصات خود را در یک پیام و هر مورد در یک خط بفرستید:\n\n1) نام و نام خانوادگی\n2) شماره تماس\n3) آدرس\n4) نام باربری');
             totalProcessed++; continue;
           }
-
+          if (msgText === 'بعدی ➡️' || msgText === '⬅️ قبلی') {
+            const pageKey = '@mizan_bot_prodpage_' + chatId;
+            let page = 1;
+            try { const p = await AsyncStorage.getItem(pageKey); if (p) page = parseInt(p, 10) || 1; } catch {}
+            if (msgText === 'بعدی ➡️') page += 1;
+            if (msgText === '⬅️ قبلی') page -= 1;
+            if (page < 1) page = 1;
+            try { await AsyncStorage.setItem(pageKey, String(page)); } catch {}
+            await showProducts(t, chatId);
+            totalProcessed++; continue;
+          }
           if (msgText.startsWith('🗑️ حذف ')) {
             const name = msgText.replace('🗑️ حذف ', '').trim();
             const c = await getCart(chatId);
@@ -321,6 +331,7 @@ if (msgText.includes('مشاهده محصولات')) {
             totalProcessed++; continue;
           }
 
+          // ================= تایید/انصراف =================
           if (msgText === '✅ تأیید سفارش' || msgText === '✅ تأیید' || action === 'confirm_yes') {
             const state = await getState(chatId);
             const cart = await getCart(chatId);
@@ -389,6 +400,7 @@ if (msgText.includes('مشاهده محصولات')) {
             totalProcessed++; continue;
           }
 
+          // ================= State Machine =================
           const state = await getState(chatId);
           if (state && state.step) {
             if (state.step === 'waiting_qty') {
@@ -440,6 +452,7 @@ if (msgText.includes('مشاهده محصولات')) {
             }
           }
 
+          // ================= کد محصول =================
           const catalog = await getProducts() || [];
           const p = (catalog || []).find((x: any) => String(x.code).trim() === action.trim() || String(x.code).trim() === msgText.trim());
           if (p) {
@@ -452,7 +465,7 @@ if (msgText.includes('مشاهده محصولات')) {
             totalProcessed++; continue;
           }
 
-          await botSend(t, chatId, '🤖 متوجه نشدم. لطفاً /start را بزنید یا کد محصول را دقیقاً وارد کنید.');
+          await botSend(t, chatId, '🤖 متوجه نشدم. متن دریافتی: [' + msgText + '] - طول: ' + msgText.length + ' - تعداد محصولات در حافظه: ' + catalog.length);
 
         } catch (err: any) {
           console.log('[LOOP_ERR]', err?.message || err);

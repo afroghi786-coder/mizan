@@ -13,6 +13,24 @@ import {
 
 const AUDIT_KEY = '@mizan_audit_events';
 
+// [BOT_LOG] درگاه لاگ برای نمایش روی صفحه
+const BOT_LOG = [];
+if (typeof globalThis !== 'undefined') {
+  const orig = console.log;
+  console.log = function() {
+    try {
+      const parts = [];
+      for (let i = 0; i < arguments.length; i++) parts.push(typeof arguments[i] === 'string' ? arguments[i] : JSON.stringify(arguments[i]));
+      const line = new Date().toLocaleTimeString('en-US') + ' │ ' + parts.join(' ');
+      if (line.indexOf('[BOT_') >= 0 || line.indexOf('[SALES_V2') >= 0 || line.indexOf('[HANDLE_ERR') >= 0 || line.indexOf('[TICK_ERR') >= 0 || line.indexOf('[API_') >= 0) {
+        BOT_LOG.unshift(line);
+        if (BOT_LOG.length > 40) BOT_LOG.length = 40;
+      }
+    } catch {}
+    return orig.apply(console, arguments);
+  };
+}
+
 export default function AssistantHome({ showToast }: any) {
 
   // [SALES_V2_SINGLE_POLLER] یک منبع polling برای کل اپ
@@ -41,6 +59,7 @@ export default function AssistantHome({ showToast }: any) {
   }, []);
 
   const [loading, setLoading] = useState(true);
+  const [botLogTick, setBotLogTick] = useState(0);
   const [section, setSection] = useState('dashboard');
 
   const [bot, setBot] = useState<any>({});
@@ -308,8 +327,26 @@ export default function AssistantHome({ showToast }: any) {
         <TouchableOpacity onPress={() => setSection('ads')} style={tabBtn(section === 'ads')}>
           <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>📣 تبلیغات</Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={() => setSection('botlog')} style={tabBtn(section === 'botlog')}>
+          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 11 }}>🧪 لاگ</Text>
+        </TouchableOpacity>
       </View>
 
+      {section === 'botlog' && (
+        <View style={cardStyle}>
+          <Text style={titleStyle}>🧪 وضعیت ربات فروش</Text>
+          <TouchableOpacity onPress={() => setBotLogTick(botLogTick + 1)} style={{ backgroundColor: '#7c3aed', padding: 8, borderRadius: 6, marginBottom: 8 }}>
+            <Text style={{ color: '#fff', textAlign: 'center', fontSize: 11, fontWeight: 'bold' }}>🔄 به‌روزرسانی</Text>
+          </TouchableOpacity>
+          {BOT_LOG.length === 0 ? (
+            <Text style={{ color: '#64748b', fontSize: 11, textAlign: 'right' }}>هنوز لاگی ثبت نشده. ربات را اجرا کن.</Text>
+          ) : (
+            BOT_LOG.map((line, idx) => (
+              <Text key={idx} style={{ color: '#94a3b8', fontSize: 9, textAlign: 'left', marginBottom: 3, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>{line}</Text>
+            ))
+          )}
+        </View>
+      )}
       {section === 'dashboard' && (
         <View>
           <View style={cardStyle}>

@@ -1,0 +1,374 @@
+=== Mizan Project Scan ===
+Root: C:\Users\Froghi\Desktop\mizan
+
+[FOUND] App.tsx | size=540040 | lines=12028
+[FOUND] lib.assistant.bot.simple.ts | size=26064 | lines=493
+[FOUND] lib.assistant.ts | size=16193 | lines=451
+[FOUND] lib.offline.ts | size=248198 | lines=5310
+[FOUND] lib.storage.ts | size=7645 | lines=246
+[FOUND] AssistantHome.tsx | size=37464 | lines=647
+[FOUND] package.json | size=2127 | lines=67
+
+--- Files mentioning bot/rubika/worker ---
+[HIT] add-exchange-bell.js | imports: ./lib.network
+[HIT] AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] assistant-audit-1793352498755\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] assistant-audit-1793352498755\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] assistant-audit-1793352498755\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] assistant-audit-1793352498755\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika
+[HIT] assistant-audit-1793352498755\SettingsAssistant.tsx | imports: ./lib.assistant.rubika, ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.bot.simple, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-3fix-1792092128480\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-admin-btn-final-1793289488634\SettingsAssistant.tsx | imports: ./lib.assistant.rubika, ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] backup-admin-chatid-1793471636578\SettingsAssistant.tsx | imports: ./lib.assistant.rubika, ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] backup-admin-id-channel-method-1793289447294\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-admin-id-channel-method-1793289447294\SettingsAssistant.tsx | imports: ./lib.assistant.rubika, ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] backup-admin-invoice-final-1793252677570\lib.assistant.rubika.ts | imports: ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-admin-invoice-final-1793252677570\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-admin-invoice-final-1793252677570\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-ads-assistant-1793217966487\SettingsAssistant.tsx | imports: ./lib.storage
+[HIT] backup-ads-facebook-1793484669933\AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] backup-ads-facebook-1793484669933\lib.ads.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika, ./lib.assistant.telegram
+[HIT] backup-ads-history-1793484432543\AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] backup-ads-history-details-1793485414260\AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] backup-ads-instagram-1793484785583\AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] backup-ads-instagram-1793484785583\lib.ads.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika, ./lib.assistant.telegram
+[HIT] backup-ads-queue-1793484033159\AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] backup-ads-queue-1793484033159\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-ads-settings-1793483887325\SettingsAssistant.tsx | imports: ./lib.assistant.rubika, ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] backup-ads-share-1793485034777\AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] backup-ads-telegram-1793484564959\AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] backup-ads-telegram-1793484564959\lib.ads.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika
+[HIT] backup-ads-telegram-1793484564959\lib.assistant.telegram.ts | imports: 
+[HIT] backup-ads-whatsapp-1793484924105\AdsSettingsPanel.tsx | imports: ./lib.assistant
+[HIT] backup-ads-whatsapp-1793484924105\lib.ads.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika, ./lib.assistant.telegram
+[HIT] backup-ads-worker-1793484188909\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-assistant-data-1793218662180\lib.assistant.ts | imports: ./lib.storage
+[HIT] backup-assistant-fix-1793466734709\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-assistant-fix-1793466734709\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-assistant-home-1794648603484.tsx | imports: ./lib.offline, ./lib.assistant.bot.simple, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-assistant-home-tabs-1793218834397\AssistantHome.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-assistant-imports-1793470109276\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.bot.simple, ./lib.storage, ./lib.assistant
+[HIT] backup-assistant-invoices-1793228400650\lib.assistant.ts | imports: ./lib.storage
+[HIT] backup-audionew-1792072636134\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-auto-admin-capture-1793285823005\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-auto-admin-capture-1793285823005\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-auto-admin-chat-1793285262866\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-auto-admin-chat-1793285262866\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-auto-polling-offset-1793253339846\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-auto-polling-offset-1793253339846\lib.assistant.rubika.ts | imports: ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-beep-1792068875900\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-before-3in1-1791802212878\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.fx
+[HIT] backup-before-adapter-2026-10-16T13-19-13\ExchangeBell.tsx | imports: ./lib.network
+[HIT] backup-before-adapter-2026-10-16T13-19-13\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-adapter-2026-10-16T13-19-13\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-before-adapter-2026-10-16T13-19-13\PublicMarketScreen.tsx | imports: ./lib.network, ./lib.notifications
+[HIT] backup-before-allfix-1792052255091\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-before-allloc-1792317463163\ExchangeBell.tsx | imports: ./lib.network
+[HIT] backup-before-allloc-1792317463163\lib.network.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-before-allloc-1792317463163\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-before-allloc-1792317463163\PublicMarketScreen.tsx | imports: ./lib.network, ./lib.notifications
+[HIT] backup-before-badges-1791782848134\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-badges-v2-1791784838843\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-badges-v2-1791784838843\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-badges-v3-1791785445239\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-chatroom-1791790025008\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-group-1791787105814\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-group-1791787105814\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-importfinal-1791804522942\LiveMarketScreen.tsx | imports: ./lib.events, ./lib.network, ./lib.fx
+[HIT] backup-before-importlm-1791802864017\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.fx
+[HIT] backup-before-layout-1791798513241\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-livefinal-1792000930411\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-before-livefinal2-1792000984195\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-before-msgctx-1791806373360\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-msgctx-1791806373360\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-before-msgnotif-1791788556486\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-msgnotif-1791788556486\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-msgnotif-v2-1791788600109\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-msgnotif-v2-1791788600109\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-msgupdate-1791812226289\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-msgupdate-1791812226289\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-before-nodup-1791807929399\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-nodup2-1791807963443\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-notifcode-1791796806021\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-phase1-1791795045601\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-phase1-1791795045601\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-phase1-v2-1791795096737\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-phase1-v2-1791795096737\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-phase2-step1-1791796338218\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-phase2-step2-1791797698542\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-phase2-step2-v2-1791797874514\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-phase2data-1791799411296\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-phase2data-1791799411296\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-quickfix-1791795356078\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-rpc-1791813557816\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-simple-1791814430751\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-step4-1791801309792\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-step4-1791801309792\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-step4recv-1791801474120\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.fx
+[HIT] backup-before-storage-1792056235877\lib.network.ts | imports: ./lib.offline
+[HIT] backup-before-tabfix\LiveMarketScreen.tsx | imports: ./lib.network
+[HIT] backup-before-tabfix\PublicMarketScreen.tsx | imports: ./lib.network, ./lib.notifications
+[HIT] backup-bot-callback-1793252403618\lib.assistant.rubika.ts | imports: ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-bot-cart-multi-1793251549700\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-bot-cart-qty-1793251683125\lib.assistant.rubika.ts | imports: ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-bot-complete-1793478488399\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-complete-1794648603481.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-config-async-1793467002933\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-bot-core-1793352874534\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-bot-debug-1793286295682\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-bot-debug-1793286295682\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-bot-debug-1793480576046\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-exact-codes-1794575585787.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-final-1793288290768\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-bot-final-1793288290768\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-bot-final-1793477670249\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-final-v2-1793288362569\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-bot-final-v2-1793288362569\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-bot-fix-buttons-1794636828480.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-full-logic-1794557900793.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-linebased-1793478640283\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-loop-1793479920449\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-loop-1794557626469.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-polling-1794648179247.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-rate-code-1793481030736\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-routing-1793477177559\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-safe-1793478750409\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-safe-1794574567681.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-safe-v2-1794574663322.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-sales-full-1794565148812.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-send-fix-1794645963092.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-simple-payment-1793467934187\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-speed-1793299773844\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-bot-speed-1793299773844\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-bot-targeted-1794565343779.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-targeted-v2-1794565386261.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-ultimate-1794574478538.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-bot-worker-speed-1793347756368\lib.bot.worker.ts | imports: ./lib.storage, ./lib.assistant, ./lib.assistant.rubika
+[HIT] backup-botSend-keypad-1793347094280\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-branding-v3-1793250872974\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-cancel-1792092226631\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-carton-pair-calc-v2-1793253756699\lib.assistant.rubika.ts | imports: ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-catalog-draft-1793227452935\lib.assistant.ts | imports: ./lib.storage
+[HIT] backup-chatkeypad-ah-1794808490626.tsx | imports: ./lib.offline, ./lib.assistant.bot.simple, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-chatkeypad-ah-1794808816919.tsx | imports: ./lib.offline, ./lib.assistant.bot.simple, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-chatkeypad-bot-1794808490626.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] backup-chatkeypad-bot-1794808816919.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] backup-chatkeypad-clean-ah-1795471506170.tsx | imports: ./lib.offline, ./lib.assistant.bot.simple, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-chatkeypad-clean-bot-1795471506170.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] backup-clear-seen-1793461564604\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-critical-bot-1793348750844\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-critical-bot-1793348750844\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika
+[HIT] backup-customer-info-flow-1793253510280\lib.assistant.rubika.ts | imports: ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-debug-incoming-1795475473204.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] backup-debug-keypad-1793237653827\lib.assistant.rubika.ts | imports: 
+[HIT] backup-debug-keypad-1793237653827\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-diagnose-final-1795495419623.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] backup-diagnose-rubika-keypad-1793236166627\lib.assistant.rubika.ts | imports: 
+[HIT] backup-diagnose-rubika-keypad-1793236166627\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-diagnose-rubika-v2-1793236336084\lib.assistant.rubika.ts | imports: 
+[HIT] backup-diagnose-rubika-v2-1793236336084\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-diagnose-rubika-v3-1793236444959\lib.assistant.rubika.ts | imports: 
+[HIT] backup-diagnose-rubika-v3-1793236444959\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-diagnose-rubika-v4-1793236523665\lib.assistant.rubika.ts | imports: 
+[HIT] backup-diagnose-rubika-v4-1793236523665\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-duplicate-notif-1794139454609\lib.network.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-dupnotif-1792073095246\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-exact-python-1793304884320\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-exact-python-v2-1793304939681\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-exact-python-v3-1793305026858\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-final-bot-1793461017953\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-final-polling-1793294283781\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-final-polling-1793294283781\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-fix-bot-log-1793300951958\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-fix-bot-silence-1793283016784\lib.assistant.rubika.ts | imports: ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-fix-cache-1793353620999\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-fix-crash-keypad-1793304161909\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-fix-data-field-1793295669202\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-fix-getproducts-import-1793243512007\AssistantHome.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-fix-import-1793239261893\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-fix-import-force-1793239603128\lib.assistant.rubika.ts | imports: 
+[HIT] backup-fix-import-force-1793239603128\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-fix-imports-1793292171416\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-fix-product-codes-1793299189486\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-fix-product-post-modal-1793243476415\AssistantHome.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-fix-qty-label-1793252197652\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-fix-qty-label-1793252197652\lib.assistant.rubika.ts | imports: ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-fix-remove-webhook-1793287915444\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-fix-smart-post-1793238594700\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-fixed-keypad-1793296044228\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-force-add-buttons-1793288650918\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-FULL-2026-10-16T08-37-57\src\lib.network.ts | imports: ./lib.offline
+[HIT] backup-FULL-2026-10-16T08-37-57\src\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-FULL-2026-10-16T08-37-57\src\PublicMarketScreen.tsx | imports: ./lib.network, ./lib.notifications
+[HIT] backup-FULL-2026-10-16T08-39-04\src\lib.network.ts | imports: ./lib.offline
+[HIT] backup-FULL-2026-10-16T08-39-04\src\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-FULL-2026-10-16T08-39-04\src\PublicMarketScreen.tsx | imports: ./lib.network, ./lib.notifications
+[HIT] backup-full-log-1793356812464\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-full-log-1793356812464\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.bot.simple
+[HIT] backup-full-rewrite-ah-1795498517797.tsx | imports: ./lib.offline, ./lib.assistant.bot.simple, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-full-rewrite-bot-1795498517797.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] backup-full-template-1793284188318\lib.assistant.rubika.ts | imports: ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-full-template-final-1793303750829\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-global-bot-1793300457364\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-heal-bot-1793298332618\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-home-secure-1793218547302\AssistantHome.tsx | imports: ./lib.storage
+[HIT] backup-home-secure-1793218547302\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-import-buildChannelPostText-1793245777856\AssistantHome.tsx | imports: ./lib.offline, ./lib.storage, ./lib.assistant
+[HIT] backup-inline-final-1794658038882.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] backup-keypad-type-1793297218963\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-labels\ExchangeBell.tsx | imports: ./lib.network
+[HIT] backup-labels\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-labels\PublicMarketScreen.tsx | imports: ./lib.network, ./lib.notifications
+[HIT] backup-limit200-1793473232199\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-limit50-1793473671451\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-limit50-1793473909659\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-livesound-1792068764378\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-manual-bot-1793291465994\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-mizan-brand-footer-1793249081283\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-netinfo-app-1794160748537\lib.support.ts | imports: ./lib.storage
+[HIT] backup-no-duplicate-1793486207633\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-no-retry-1793486060449\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-no-retry-1793486060449\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.bot.simple
+[HIT] backup-notif-sound-2-1792074146136\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-offset-1793474919683\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-before-1793457812740\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-by-time-1793458699509\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-callback-speed-1793350420274\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-offset-callback-speed-1793350420274\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika
+[HIT] backup-offset-capture-1793474789325\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-capture-1793475065199\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-capture-1793475154683\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-capture-1793475432659\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-final-1793479202174\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-helpers-1793476107159\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-scoped-1793475560283\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-offset-scoped-1793475714699\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-oldblock-1792073234312\LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] backup-order-mode-settings-1793241145762\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-order-mode-settings-1793241145762\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-plain-text-test-1793236828519\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-plain-text-v2-1793237172585\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-private-chat-logic-1793240372313\AssistantHome.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-private-chat-logic-1793240372313\lib.assistant.rubika.ts | imports: 
+[HIT] backup-product-modal-keyboard-1793244517275\AssistantHome.tsx | imports: ./lib.offline, ./lib.storage, ./lib.assistant
+[HIT] backup-product-modal-keyboard-offline-1793245105950\AssistantHome.tsx | imports: ./lib.offline, ./lib.storage, ./lib.assistant
+[HIT] backup-product-post-modal-1793241395132\AssistantHome.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-product-post-optional-1793243836308\AssistantHome.tsx | imports: ./lib.offline, ./lib.storage, ./lib.assistant
+[HIT] backup-product-post-optional-1793243836308\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-products-pagination-1795471666130.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] backup-python-template-1793296860378\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-raw-update-log-1793351775855\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-remove-webhook-btn-1793287486384\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-remove-webhook-btn-1793287486384\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-rubika-auto-channel-1793230409882\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-auto-channel-1793230409882\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-button-id-1793235774326\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-button-modal-1793223023522\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-c-only-1793232935168\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-channel-id-1793229741089\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-rubika-channel-id-1793229741089\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-channel-send-1793229578931\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-debug-1793221390089\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-extract-chatid-1793231706928\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-file-final-1793248363829\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-rubika-file-final-v2-1793248410647\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-rubika-keypad-object-1793234998226\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-keypad-string-1793234648101\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-keypad-string-1793234648101\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-me-parsing-1793222269682\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-me-parsing-1793222269682\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-me-parsing-v2-1793222351728\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-me-parsing-v2-1793222351728\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-numeric-id-1793235361401\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-photo-upload-1793246147853\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-rubika-photo-upload-1793246147853\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-rubika-photo-upload-v2-1793246199202\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-rubika-photo-upload-v2-1793246199202\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-rubika-ping-1793219427129\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] backup-rubika-product-post-1793234236627\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-proxy-1794643464623.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-rubika-regex-c-1793233870518\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-result-modal-1793222924550\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-scan-c-1793233326269\lib.assistant.rubika.ts | imports: 
+[HIT] backup-rubika-send-btn-1793229884409\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-rubika-upload-fallback-1793247058886\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-rubika-web-formdata-1793247502577\lib.assistant.rubika.ts | imports: ./lib.assistant.catalog
+[HIT] backup-secure-assistant-1793218367323\SettingsAssistant.tsx | imports: ./lib.storage
+[HIT] backup-show-assistant-invoices-1793228626773\AssistantHome.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-show-photo-error-1793246703478\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] backup-simple-bot-1793355454375\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika
+[HIT] backup-simple-bot-v2-1793458314076\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-simple-bot-v3-1793459234733\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-sleep-schedule-1793279478976\lib.assistant.rubika.ts | imports: ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-sleep-schedule-1793279478976\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] backup-sleep-schedule-1793279478976\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-smart-post-1793238537435\lib.assistant.rubika.ts | imports: 
+[HIT] backup-smart-post-1793238537435\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-smart-post-ast-1793238693901\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-smart-text-only-1793239973415\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant.rubika, ./lib.assistant
+[HIT] backup-support-reply-notify-1794133929832\lib.support.ts | imports: ./lib.storage
+[HIT] backup-support-user-profile-1794138430449\lib.support.ts | imports: ./lib.storage
+[HIT] backup-support-user-unread-1794133400790\lib.support.ts | imports: ./lib.storage
+[HIT] backup-telegram-getupdates-1793219101420\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] backup-telegram-getupdates-v2-1793219191523\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] backup-telegram-ping-1793218981496\SettingsAssistant.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-template-cart-1793298753215\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-template-fixed-1793297589669\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-test-admin-id-1793289903934\SettingsAssistant.tsx | imports: ./lib.assistant.rubika, ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] backup-test-invoice-button-1793229035408\AssistantHome.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-tiny-patch-1794558799124.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-too-requests-1793456555375\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] backup-too-requests-1793456555375\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.bot.simple
+[HIT] backup-transfer-assistant-1793228832090\AssistantHome.tsx | imports: ./lib.storage, ./lib.assistant
+[HIT] backup-transfer-assistant-1793228832090\lib.assistant.ts | imports: ./lib.storage
+[HIT] backup-true-chat-keypad-1793297980698\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-true-fixed-keypad-1793296423280\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] backup-user-unread-badges-1794140366335\lib.support.ts | imports: ./lib.storage
+[HIT] backup-worker-status-1793354984050\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika
+[HIT] ExchangeBell.tsx | imports: ./lib.network
+[HIT] fix-exchange-chat.js | imports: ./lib.network
+[HIT] fix-exchange-final.js | imports: ./lib.network
+[HIT] fix-exchange-final2.js | imports: ./lib.network
+[HIT] fix-exchange-full.js | imports: ./lib.network
+[HIT] fix-msg-context.js | imports: 
+[HIT] fix-msg-notif-v2.js | imports: 
+[HIT] fix-msg-notif.js | imports: 
+[HIT] lib.ads.worker.ts | imports: ./lib.assistant, ./lib.assistant.rubika, ./lib.assistant.telegram
+[HIT] lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline
+[HIT] lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] lib.assistant.telegram.ts | imports: 
+[HIT] lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.bot.simple
+[HIT] lib.network.ts | imports: ./lib.storage, ./lib.offline
+[HIT] lib.support.ts | imports: ./lib.storage
+[HIT] LiveMarketScreen.tsx | imports: ./lib.network, ./lib.events, ./lib.fx
+[HIT] PublicMarketScreen.tsx | imports: ./lib.network, ./lib.notifications
+[HIT] rubika-proxy\index.js | imports: 
+[HIT] SettingsAssistant.tsx | imports: ./lib.assistant.rubika, ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+[HIT] whole-app-audit-1793370906969\AssistantHome.tsx | imports: ./lib.offline, ./lib.assistant.rubika, ./lib.storage, ./lib.assistant
+[HIT] whole-app-audit-1793370906969\lib.assistant.bot.simple.ts | imports: ./lib.storage, ./lib.assistant, ./lib.offline, ./lib.assistant.catalog
+[HIT] whole-app-audit-1793370906969\lib.assistant.rubika.ts | imports: ./lib.offline, ./lib.assistant, ./lib.storage, ./lib.assistant.catalog
+[HIT] whole-app-audit-1793370906969\lib.assistant.ts | imports: ./lib.storage, ./lib.offline
+[HIT] whole-app-audit-1793370906969\lib.bot.worker.ts | imports: ./lib.assistant, ./lib.assistant.bot.simple
+[HIT] whole-app-audit-1793370906969\lib.network.ts | imports: ./lib.storage, ./lib.offline
+[HIT] whole-app-audit-1793370906969\SettingsAssistant.tsx | imports: ./lib.assistant.rubika, ./lib.storage, ./lib.assistant.telegram, ./lib.assistant
+
+--- App.tsx anchor counts ---
+function SalesScreen → count=1 firstIndex=62940
+function PurchaseScreen → count=1 firstIndex=108764
+function Dashboard → count=0
+function AssistantHome → count=0
+getBotConfig → count=0
+rubika_token → count=0
+rubika_admin_chat_id → count=0
+startBotPolling → count=0
+processRubikaUpdatesSimple → count=0
+AsyncStorage → count=4 firstIndex=8509
+
+--- package.json ---
+name=mizan-app version=1.0.0
+deps=@expo-google-fonts/orbitron, @expo-google-fonts/share-tech-mono, @expo/metro-runtime, @react-native-async-storage/async-storage, @react-native-community/netinfo, @react-navigation/bottom-tabs, @react-navigation/native, @supabase/supabase-js, buffer, events, expo, expo-build-properties, expo-clipboard, expo-dev-client, expo-document-picker, expo-file-system, expo-image-picker, expo-network, expo-notifications, expo-print, expo-secure-store, expo-sharing, expo-speech, expo-speech-recognition, expo-sqlite, expo-status-bar, firebase, path-browserify, process, react, react-dom, react-native, react-native-background-actions, react-native-safe-area-context, react-native-screens, react-native-url-polyfill, react-native-view-shot, react-native-vosk, react-native-web, readable-stream, string_decoder, url, util, whisper.rn, xlsx
+scripts={"start":"expo start","android":"expo run:android","ios":"expo run:ios","web":"expo start --web","build:secure":"npx expo export -p web && node obfuscate.js","deploy:secure":"npm run build:secure && npx wrangler pages deploy dist --project-name mizan-app"}
+
+=== END ===

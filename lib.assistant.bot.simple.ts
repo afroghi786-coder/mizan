@@ -1,492 +1,419 @@
+// ============ دستیار فروش — هسته نسل ۲ ============
 import AsyncStorage from './lib.storage';
 import { Platform } from 'react-native';
 import { getBotConfig } from './lib.assistant';
-import { getProducts, generateInvoiceNumber, getSalesGrouped, findCustomerByPhoneOffline, generateCustomerCode } from './lib.offline';
+import { getProducts, generateInvoiceNumber, findCustomerByPhoneOffline, generateCustomerCode } from './lib.offline';
 
 const RUBIKA_BASE = Platform.OS === 'web'
   ? 'https://mizan-rubika-proxy.mizan1740.workers.dev'
   : 'https://botapi.rubika.ir/v3';
 
-function normText(s: string) { return String(s || '').trim(); }
-function fmt(n: number): string { return Number(n || 0).toLocaleString('en-US'); }
+const K_OFFSET = '@mz_off_v2';
+const K_SEEN = '@mz_seen_v2';
+const K_LOCK = '@mz_lock_v2';
+const K_STATE = (id) => '@mz_st_v2_' + id;
+const K_CART = (id) => '@mz_ct_v2_' + id;
 
-// ================= ارسال پیام با کیبورد ثابت =================
-async function botSend(t: string, chatId: string, text: string, keypad?: any): Promise<string> {
-  const buildBody = () => {
-    const body: any = { chat_id: chatId, text: text || '' };
-    if (keypad && Array.isArray(keypad.rows)) {
-      const cleanRows = keypad.rows
-        .map((row: any) => ({
-          buttons: (Array.isArray(row.buttons) ? row.buttons : [])
-            .map((btn: any) => {
-              const label = String(btn.button_text || btn.text || '').trim();
-              if (!label) return null;
-              return { button_text: label.slice(0, 30) };
-            })
-            .filter(Boolean),
-        }))
-        .filter((row: any) => row.buttons.length > 0);
-      if (cleanRows.length > 0) {
-        body.chat_keypad = { rows: cleanRows };
-        body.chat_keypad_type = 'NEW';
-        body.keypad = { rows: cleanRows };
-      }
-    }
-    return body;
-  };
+const TICK_FAST = 800;
+const TICK_SLOW = 2500;
+const TICK_ERR = 5000;
+const LOCK_TTL = 20000;
+const SEEN_CAP = 500;
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
+function toLatin(s) {
+  const fa = '\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9';
+  const ar = '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669';
+  return String(s || '').replace(/[\u06F0-\u06F9\u0660-\u0669]/g, (c) => {
+    const i = fa.indexOf(c); if (i >= 0) return String(i);
+    const j = ar.indexOf(c); return j >= 0 ? String(j) : c;
+  });
+}
+function dig(s) { return toLatin(String(s || '')).replace(/[^0-9]/g, ''); }
+function normPhone(raw) {
+  let d = dig(raw);
+  if (d.startsWith('0093')) d = d.slice(4);
+  else if (d.startsWith('93')) d = d.slice(2);
+  if (d.startsWith('0')) d = d.slice(1);
+  return d.length === 9 ? d : '';
+}
+function normText(s) { return String(s || '').replace(/\u200c/g, '').trim(); }
+
+// ---------- شبکه ----------
+async function api(token, method, body, timeout) {
+  const url = RUBIKA_BASE + '/' + token + '/' + method;
+  const ms = timeout || 12000;
+  for (let a = 0; a < 2; a++) {
     try {
-      const res = await fetch(RUBIKA_BASE + '/' + t + '/sendMessage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildBody()),
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const tm = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch {} }, ms) : null;
+      const res = await fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}), signal: ctrl ? ctrl.signal : undefined,
       });
-      const txt = await res.text();
-      let data: any = null;
-      try { data = JSON.parse(txt); } catch {}
-      if (!res.ok) {
-        console.log('[botSend HTTP]', res.status, txt.slice(0, 200));
-        if (attempt === 0) { await new Promise(r => setTimeout(r, 1500)); continue; }
-        return '';
+      if (tm) clearTimeout(tm);
+      const raw = await res.text();
+      let d = null; try { d = JSON.parse(raw); } catch {}
+      const st = String(d && d.status || '');
+      if (st === 'TOO_REQUESTS') { if (a === 0) { await sleep(1500); continue; } return { ok: false, data: null, status: st }; }
+      if (!res.ok) { if (a === 0) { await sleep(700); continue; } return { ok: false, data: null, status: 'HTTP' + res.status }; }
+      return { ok: true, data: d, status: st };
+    } catch (e) { if (a === 0) { await sleep(500); continue; } return { ok: false, data: null, status: 'NET' }; }
+  }
+  return { ok: false, data: null, status: 'FAIL' };
+}
+
+async function botSend(token, chatId, text, keypad) {
+  const body = { chat_id: chatId, text: text || '' };
+  if (keypad && Array.isArray(keypad.rows)) {
+    const rows = keypad.rows
+      .map((r) => ({ buttons: (Array.isArray(r.buttons) ? r.buttons : [])
+        .map((b) => { const l = String(b.button_text || b.text || '').trim(); return l ? { button_text: l.slice(0, 30) } : null; })
+        .filter(Boolean) }))
+      .filter((r) => r.buttons.length > 0);
+    if (rows.length) { body.chat_keypad = { rows }; body.chat_keypad_type = 'NEW'; }
+  }
+  const r = await api(token, 'sendMessage', body);
+  return r.ok ? String((r.data && (r.data.message_id || (r.data.result && r.data.result.message_id))) || '') : '';
+}
+
+// ---------- ذخیره ----------
+let _off = '';
+let _leader = false;
+async function readOff() {
+  if (_off) return _off;
+  try { _off = String((await AsyncStorage.getItem(K_OFFSET)) || ''); } catch {}
+  return _off;
+}
+async function writeOff(v) {
+  const s = String(v || '').trim();
+  if (!s || s === _off) return;
+  _off = s;
+  try { await AsyncStorage.setItem(K_OFFSET, s); } catch {}
+}
+async function lockLeader(id) {
+  const now = Date.now();
+  try {
+    const raw = await AsyncStorage.getItem(K_LOCK);
+    const l = raw ? JSON.parse(raw) : null;
+    if (l && l.o && l.o !== id && now - Number(l.t || 0) < LOCK_TTL) return false;
+    await AsyncStorage.setItem(K_LOCK, JSON.stringify({ o: id, t: now }));
+    _leader = true; return true;
+  } catch { return true; }
+}
+async function bumpLeader(id) {
+  if (!_leader) return;
+  try { await AsyncStorage.setItem(K_LOCK, JSON.stringify({ o: id, t: Date.now() })); } catch {}
+}
+async function dropLeader(id) {
+  if (!_leader) return;
+  try {
+    const raw = await AsyncStorage.getItem(K_LOCK);
+    const l = raw ? JSON.parse(raw) : null;
+    if (l && l.o === id) await AsyncStorage.removeItem(K_LOCK);
+  } catch {}
+  _leader = false;
+}
+async function loadSeen() {
+  try { const r = await AsyncStorage.getItem(K_SEEN); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch { return []; }
+}
+async function saveSeen(a) { try { await AsyncStorage.setItem(K_SEEN, JSON.stringify(a.slice(-SEEN_CAP))); } catch {} }
+async function getCart(id) {
+  try { const r = await AsyncStorage.getItem(K_CART(id)); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch { return []; }
+}
+async function setCart(id, c) { try { await AsyncStorage.setItem(K_CART(id), JSON.stringify(c || [])); } catch {} }
+async function getState(id) {
+  try { const r = await AsyncStorage.getItem(K_STATE(id)); return r ? JSON.parse(r) : null; } catch { return null; }
+}
+async function setState(id, s) { try { await AsyncStorage.setItem(K_STATE(id), JSON.stringify(s || {})); } catch {} }
+async function clearState(id) { try { await AsyncStorage.removeItem(K_STATE(id)); } catch {} }
+
+// ---------- دکمه‌ها ----------
+const B_HOME = '\u{1F3E0} شروع';
+const B_BACK = '\u{1F519} برگشت';
+const B_CART = '\u{1F6D2} سبد من';
+const B_NEXT = '1\uFE0F\u20E3 کد بعدی';
+const B_LIST = '2\uFE0F\u20E3 دیدن محصولات';
+const B_DONE = '\u2705 ثبت سفارش';
+function row(...l) { return { buttons: l.map((x) => ({ button_text: x })) }; }
+
+async function showMenu(t, id) {
+  await botSend(t, id, '\u{1F44B} خوش آمدید\n\nبرای خرید فقط کد محصول را بفرستید.\nمثل: 125\n\nاگر کد را نمی‌دانید دکمه پایین را بزنید.',
+    { rows: [row(B_LIST), row(B_CART)] });
+}
+
+async function showList(t, id, page) {
+  let p = []; try { p = (await getProducts()) || []; } catch {}
+  if (!p.length) { await botSend(t, id, '📦 هنوز محصولی ثبت نشده است.', { rows: [row(B_HOME)] }); return; }
+  const per = 4;
+  const tp = Math.max(1, Math.ceil(p.length / per));
+  let pg = Number(page || 1); if (pg < 1) pg = 1; if (pg > tp) pg = tp;
+  const sl = p.slice((pg - 1) * per, (pg - 1) * per + per);
+  let tx = '\u{1F6CD} محصولات (صفحه ' + pg + ' از ' + tp + ')\n\n';
+  sl.forEach((x, i) => { tx += (i + 1) + '. ' + x.name + '\n   کد ' + x.code + ' — ' + fmt(x.price) + ' افغانی\n\n'; });
+  tx += 'شماره محصول را بفرستید (مثل: 2)';
+  const rows = [];
+  rows.push({ buttons: sl.map((x, i) => ({ button_text: String(i + 1) })) });
+  const nav = [];
+  if (pg > 1) nav.push({ button_text: '⬅️' });
+  if (pg < tp) nav.push({ button_text: '➡️' });
+  if (nav.length) rows.push({ buttons: nav });
+  rows.push(row(B_CART));
+  await setState(id, { step: 'list', page: pg, codes: sl.map((x) => String(x.code)) });
+  await botSend(t, id, tx, { rows });
+}
+
+async function showCart(t, id) {
+  const c = await getCart(id);
+  if (!c.length) { await botSend(t, id, '🛒 سبد شما خالی است.\nکد محصول را بفرستید.', { rows: [row(B_LIST), row(B_HOME)] }); return; }
+  let tot = 0; let tx = '🛒 سبد شما:\n\n';
+  c.forEach((it, i) => {
+    const s = Number(it.price || 0) * Number(it.qty || 0); tot += s;
+    tx += (i + 1) + '. ' + it.name + '\n   × ' + it.qty + ' = ' + fmt(s) + '\n\n';
+  });
+  tx += '\u{1F4B0} جمع: ' + fmt(tot) + ' افغانی';
+  const rows = c.map((x, i) => row('\u{1F5D1} حذف ' + (i + 1)));
+  rows.push(row(B_DONE)); rows.push(row(B_LIST, B_HOME));
+  await botSend(t, id, tx, { rows });
+}
+
+async function askQty(t, id, name, price) {
+  await botSend(t, id, '\u2705 ' + name + '\n\u{1F4B0} ' + fmt(price) + ' افغانی\n\nچند عدد می‌خواهید؟ عدد بفرستید (مثل: 2)\nاگر نمی‌خواهید «0» بفرستید.',
+    { rows: [row('1', '2', '3'), row('0'), row(B_BACK)] });
+}
+
+async function addAndNext(t, id, code, name, price, qty) {
+  const c = await getCart(id);
+  const ex = c.find((x) => String(x.code) === String(code));
+  if (ex) ex.qty = Number(ex.qty || 0) + Number(qty);
+  else c.push({ code, name, price: Number(price || 0), qty: Number(qty) });
+  await setCart(id, c);
+  const tot = c.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 0), 0);
+  await clearState(id);
+  await botSend(t, id, '\u2705 ثبت شد: ' + name + ' × ' + qty + '\n\n🛒 جمع سبد: ' + fmt(tot) + ' افغانی\n\nمحصول دیگری هم می‌خواهید؟',
+    { rows: [row(B_NEXT), row(B_CART, B_DONE)] });
+}
+
+async function issueInv(t, id, st, cart) {
+  const phone = String(st.phone || '');
+  let cc = '';
+  try { const f = await findCustomerByPhoneOffline(phone); if (f) cc = String(f.customer_code || f.code || ''); if (!cc) cc = await generateCustomerCode(); } catch { cc = 'M' + Date.now(); }
+  let inv = '';
+  try { inv = 'BOT-' + (await generateInvoiceNumber()); } catch { inv = 'BOT-' + Date.now(); }
+  let tot = 0; cart.forEach((it) => { tot += Number(it.price || 0) * Number(it.qty || 0); });
+  const items = cart.map((it) => ({ code: String(it.code), name: String(it.name), qty: Number(it.qty || 0), priceUnit: Number(it.price || 0), total: Number(it.price || 0) * Number(it.qty || 0) }));
+  try {
+    const am = await import('./lib.assistant');
+    await am.issueAssistantInvoice({
+      id: 'inv_' + Date.now(), invoice_number: inv, customer_name: String(st.name || ''),
+      customer_phone: phone, customer_address: String(st.address || ''), customer_shipping: String(st.shipping || ''),
+      customer_code: cc, items, total_amount: tot, status: 'issued',
+      created_at: new Date().toISOString(), source: 'rubika',
+    });
+  } catch (e) { console.log('[INV_ERR]', e && e.message); }
+  let tx = '\u{1F9FE} سفارش شما ثبت شد\n\n\u{1F522} شماره سفارش: ' + inv + '\n\u{1F194} کد مشتری: ' + cc + '\n\n';
+  items.forEach((it, i) => { tx += (i + 1) + '. ' + it.name + '\n   ' + it.qty + ' × ' + fmt(it.priceUnit) + ' = ' + fmt(it.total) + '\n'; });
+  tx += '\n\u{1F4B0} مبلغ کل: ' + fmt(tot) + ' افغانی\n\nبا تشکر از خرید شما 🙏';
+  await botSend(t, id, tx, { rows: [row(B_HOME)] });
+  try {
+    const cfg = await getBotConfig();
+    const adm = String((cfg && cfg.rubika_admin_chat_id) || '').trim();
+    if (adm) {
+      let at = '\u{1F4EC} سفارش جدید\n\n\u{1F522} ' + inv + '\n\u{1F464} ' + (st.name || '-') + '\n\u{1F4DE} ' + phone + '\n\u{1F4CD} ' + (st.address || '-') + '\n\u{1F69A} ' + (st.shipping || '-') + '\n\n';
+      items.forEach((it) => { at += '• ' + it.name + ' (' + it.code + ') × ' + it.qty + ' = ' + fmt(it.total) + '\n'; });
+      at += '\n\u{1F4B0} ' + fmt(tot);
+      await botSend(t, adm, at);
+    }
+  } catch {}
+}
+
+// ---------- پردازش پیام ----------
+async function handle(t, id, text) {
+  const raw = normText(text);
+  const low = toLatin(raw);
+  const st = await getState(id);
+
+  if (low === '/start' || raw === B_HOME || raw === 'منو') { await clearState(id); await showMenu(t, id); return; }
+  if (raw === B_CART) { await clearState(id); await showCart(t, id); return; }
+  if (raw === B_LIST) { await showList(t, id, 1); return; }
+  if (raw === '➡️') { await showList(t, id, Number((st && st.page) || 1) + 1); return; }
+  if (raw === '⬅️') { await showList(t, id, Number((st && st.page) || 1) - 1); return; }
+
+  if (raw === B_DONE) {
+    const c = await getCart(id);
+    if (!c.length) { await botSend(t, id, '⚠️ سبد خالی است.', { rows: [row(B_LIST), row(B_HOME)] }); return; }
+    await setState(id, { step: 'ask_name' });
+    await botSend(t, id, '\u{1F4DD} نام و نام خانوادگی خود را بنویسید.', { rows: [row(B_HOME)] });
+    return;
+  }
+
+  if (raw.indexOf('\u{1F5D1} حذف ') === 0) {
+    const i = parseInt(dig(raw.slice(5)), 10) - 1;
+    const c = await getCart(id);
+    if (i >= 0 && i < c.length) { c.splice(i, 1); await setCart(id, c); }
+    await showCart(t, id); return;
+  }
+
+  if (st && st.step) {
+    if (st.step === 'ask_qty') {
+      if (low === '0') { await clearState(id); await botSend(t, id, 'باشه، اضافه نشد.', { rows: [row(B_NEXT), row(B_HOME)] }); return; }
+      const n = parseInt(dig(raw), 10);
+      if (!n || n <= 0 || n > 999) { await botSend(t, id, '⚠️ عدد بین 1 تا 999 بفرستید.', { rows: [row('1', '2', '3'), row(B_BACK)] }); return; }
+      await addAndNext(t, id, st.code, st.name, st.price, n); return;
+    }
+    if (st.step === 'list') {
+      if (raw === B_BACK) { await clearState(id); await showMenu(t, id); return; }
+      const n = parseInt(dig(raw), 10);
+      const codes = Array.isArray(st.codes) ? st.codes : [];
+      if (n >= 1 && n <= codes.length) {
+        let p = []; try { p = (await getProducts()) || []; } catch {}
+        const pr = p.find((x) => String(x.code) === String(codes[n - 1]));
+        if (pr) { await setState(id, { step: 'ask_qty', code: String(pr.code), name: String(pr.name), price: Number(pr.price || 0) }); await askQty(t, id, pr.name, pr.price); return; }
       }
-      if (data && data.status === 'TOO_REQUESTS') throw new Error('TOO_REQUESTS');
-      return String(data?.result?.message_id || data?.message_id || '');
-    } catch (e: any) {
-      console.log('[botSend Error]', e?.message || e);
-      if (attempt === 0) { await new Promise(r => setTimeout(r, 1500)); continue; }
-      return '';
+      await botSend(t, id, '⚠️ شماره معتبر نیست.', { rows: [row(B_LIST), row(B_HOME)] }); return;
+    }
+    if (st.step === 'ask_name') {
+      if (raw.length < 3) { await botSend(t, id, '⚠️ نام کامل را بنویسید.'); return; }
+      await setState(id, { step: 'ask_phone', name: raw.slice(0, 60) });
+      await botSend(t, id, '\u{1F4DE} ' + raw.slice(0, 30) + ' جان، شماره تلفن را بنویسید.\nمثل: 0700000000', { rows: [row(B_HOME)] }); return;
+    }
+    if (st.step === 'ask_phone') {
+      const ph = normPhone(raw);
+      if (!ph) { await botSend(t, id, '⚠️ شماره درست نیست. مثل: 0700000000'); return; }
+      await setState(id, { step: 'ask_address', name: st.name, phone: '0' + ph });
+      await botSend(t, id, '\u{1F4CD} آدرس خود را بنویسید.\nشهر و ولسوالی هم بنویسید.', { rows: [row(B_HOME)] }); return;
+    }
+    if (st.step === 'ask_address') {
+      if (raw.length < 5) { await botSend(t, id, '⚠️ آدرس کامل را بنویسید.'); return; }
+      await setState(id, { step: 'ask_shipping', name: st.name, phone: st.phone, address: raw.slice(0, 200) });
+      await botSend(t, id, '\u{1F69A} با کدام باربری بفرستیم؟\nنام باربری را بنویسید.', { rows: [row('بدون باربری'), row(B_HOME)] }); return;
+    }
+    if (st.step === 'ask_shipping') {
+      const c = await getCart(id);
+      if (!c.length) { await clearState(id); await showMenu(t, id); return; }
+      const finalSt = { step: 'done', name: st.name, phone: st.phone, address: st.address, shipping: raw.slice(0, 80) };
+      await clearState(id); await setCart(id, []);
+      await issueInv(t, id, finalSt, c); return;
     }
   }
-  return '';
+
+  // کد محصول
+  if (low && /^[0-9A-Za-z_-]{1,20}$/.test(low) && /[0-9]/.test(low)) {
+    let p = []; try { p = (await getProducts()) || []; } catch {}
+    const pr = p.find((x) => String(x.code).trim() === low);
+    if (pr) { await setState(id, { step: 'ask_qty', code: String(pr.code), name: String(pr.name), price: Number(pr.price || 0) }); await askQty(t, id, pr.name, pr.price); return; }
+    await botSend(t, id, '\u{1F914} کد «' + raw + '» را پیدا نکردم.\n\nکد را دوباره بفرستید یا دکمه پایین را بزنید.',
+      { rows: [row(B_LIST), row(B_HOME)] }); return;
+  }
+
+  await botSend(t, id, '\u{1F44B} متوجه نشدم.\n\nبرای خرید فقط کد محصول را بفرستید (مثل: 125).\nاگر کد را نمی‌دانید دکمه پایین را بزنید.',
+    { rows: [row(B_LIST), row(B_CART), row(B_HOME)] });
 }
 
-// ================= مدیریت State و Cart =================
-async function getCart(chatId: string): Promise<any[]> {
-  try { const r = await AsyncStorage.getItem('@mizan_bot_cart_' + chatId); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch { return []; }
-}
-async function setCart(chatId: string, cart: any[]): Promise<void> {
-  try { await AsyncStorage.setItem('@mizan_bot_cart_' + chatId, JSON.stringify(cart || [])); } catch {}
-}
-async function getState(chatId: string): Promise<any> {
-  try { const r = await AsyncStorage.getItem('@mizan_bot_state_' + chatId); return r ? JSON.parse(r) : null; } catch { return null; }
-}
-async function setState(chatId: string, state: any): Promise<void> {
-  try { await AsyncStorage.setItem('@mizan_bot_state_' + chatId, JSON.stringify(state || {})); } catch {}
-}
-async function clearState(chatId: string): Promise<void> {
-  try { await AsyncStorage.removeItem('@mizan_bot_state_' + chatId); } catch {}
-}
-async function getAdminInv(id: string): Promise<any> {
-  try { const r = await AsyncStorage.getItem('@mizan_bot_admin_' + id); return r ? JSON.parse(r) : null; } catch { return null; }
-}
-async function setAdminInv(id: string, inv: any): Promise<void> {
-  try { await AsyncStorage.setItem('@mizan_bot_admin_' + id, JSON.stringify(inv)); } catch {}
-}
-async function getInv(n: string): Promise<any> {
-  try { const r = await AsyncStorage.getItem('@mizan_bot_inv_' + n); return r ? JSON.parse(r) : null; } catch { return null; }
-}
-async function setInv(n: string, inv: any): Promise<void> {
-  try { await AsyncStorage.setItem('@mizan_bot_inv_' + n, JSON.stringify(inv)); } catch {}
+// ---------- حلقه ----------
+let _timer = null;
+let _busy = false;
+let _delay = TICK_FAST;
+let _dev = '';
+
+function ensureDev() {
+  if (_dev) return _dev;
+  let ms = Date.now();
+  try { const t = globalThis; if (t && t.performance && t.performance.timeOrigin) ms = Math.floor(t.performance.timeOrigin); } catch {}
+  _dev = (Platform.OS === 'web' ? 'w-' : 'n-') + ms + '-' + Math.floor(Math.random() * 9999);
+  return _dev;
 }
 
-// ================= منوها =================
-async function showMainMenu(t: string, chatId: string) {
-  await botSend(t, chatId, '🏠 منوی اصلی:', { rows: [
-    { buttons: [{ button_text: '🛍️ مشاهده محصولات' }] },
-    { buttons: [{ button_text: '🛒 سبد خرید من' }] }
-  ] });
+function schedule() {
+  if (_timer) { clearTimeout(_timer); _timer = null; }
+  const d = Math.max(400, _delay);
+  _timer = setTimeout(async () => {
+    _timer = null;
+    try { await processRubikaUpdatesSimple('__tick__'); } catch (e) { console.log('[TICK_ERR]', e && e.message); }
+    schedule();
+  }, d);
 }
 
-async function showProducts(t: string, chatId: string) {
-  try {
-    const prods = await getProducts() || [];
-    if (!prods.length) {
-      await botSend(t, chatId, '⚠️ هیچ محصولی در حافظه این دستگاه ثبت نشده است. لطفاً ابتدا از تب «مدیریت > منابع > کالاها» محصول اضافه کنید.');
-      return;
-    }
-
-    const pageKey = '@mizan_bot_prodpage_' + chatId;
-    let page = 1;
-    try { const p = await AsyncStorage.getItem(pageKey); if (p) page = parseInt(p, 10) || 1; } catch {}
-    const perPage = 20;
-    const totalPages = Math.max(1, Math.ceil(prods.length / perPage));
-    if (page < 1) page = 1;
-    if (page > totalPages) page = totalPages;
-
-    const start = (page - 1) * perPage;
-    const slice = prods.slice(start, start + perPage);
-
-    let text = '🛍️ لیست محصولات (صفحه ' + page + ' از ' + totalPages + '):\n\n';
-    slice.forEach((p: any) => { text += 'کد ' + p.code + ': ' + p.name + ' - ' + fmt(p.price) + ' افغانی\n'; });
-    text += '\nبرای انتخاب، روی کد محصول کلیک کنید یا کد را تایپ کنید.';
-
-    const rows: any[] = [];
-    for (const p of slice) rows.push({ buttons: [{ button_text: String(p.code) }] });
-
-    const navRow: any[] = [];
-    if (page > 1) navRow.push({ button_text: '⬅️ قبلی' });
-    if (page < totalPages) navRow.push({ button_text: 'بعدی ➡️' });
-    if (navRow.length) rows.push({ buttons: navRow });
-
-    rows.push({ buttons: [{ button_text: '🏠 منوی اصلی' }] });
-
-    await botSend(t, chatId, text, { rows });
-  } catch (e: any) { await botSend(t, chatId, '❌ خطا: ' + (e?.message || '')); }
-}
-
-async function showCart(t: string, chatId: string) {
-  const cart = await getCart(chatId);
-  if (!cart.length) { await botSend(t, chatId, '🛒 سبد خرید شما خالی است.', { rows: [{ buttons: [{ button_text: '🏠 منوی اصلی' }] }] }); return; }
-  let total = 0; let text = '🛒 سبد خرید شما:\n\n';
-  cart.forEach((it: any, i: number) => { const sub = Number(it.price || 0) * Number(it.qty || 0); total += sub; text += (i + 1) + '. ' + it.name + ' (' + it.code + ') × ' + it.qty + ' = ' + fmt(sub) + ' افغانی\n'; });
-  text += '\n💰 جمع کل: ' + fmt(total) + ' افغانی';
-  const rows: any[] = [];
-  for (const it of cart) rows.push({ buttons: [{ button_text: '🗑️ حذف ' + String(it.name).slice(0, 15) }] });
-  rows.push({ buttons: [{ button_text: '✅ نهایی سازی سفارش' }, { button_text: '🗑️ خالی کردن سبد' }] });
-  rows.push({ buttons: [{ button_text: '🛍️ افزودن محصول جدید' }, { button_text: '🏠 منوی اصلی' }] });
-  await botSend(t, chatId, text, { rows });
-}
-
-// ================= حلقه خودکار Polling =================
-let _pollingTimer: any = null;
-export function startBotPolling(token: string) {
+export function startBotPolling(token) {
   stopBotPolling();
   if (!token) return;
-  console.log('[BOT_POLLING_STARTED]');
-  _pollingTimer = setInterval(async () => {
-    try { await processRubikaUpdatesSimple(token); } catch {}
-  }, 3000);
+  ensureDev(); _delay = TICK_FAST;
+  console.log('[BOT_V2_STARTED]');
+  schedule();
 }
+
 export function stopBotPolling() {
-  if (_pollingTimer) { clearInterval(_pollingTimer); _pollingTimer = null; console.log('[BOT_POLLING_STOPPED]'); }
+  if (_timer) { clearTimeout(_timer); _timer = null; _delay = TICK_FAST; console.log('[BOT_V2_STOPPED]'); }
 }
 
-export let __mizanOffset = '';
-async function getBotOffset(): Promise<string> {
-  try { return (await AsyncStorage.getItem('@mizan_rubika_offset')) || ''; } catch { return ''; }
-}
-async function setBotOffset(v: string): Promise<void> {
-  try { await AsyncStorage.setItem('@mizan_rubika_offset', String(v || '')); } catch {}
-}
-async function loadSeen(): Promise<Set<string>> {
-  try { const r = await AsyncStorage.getItem('@mizan_bot_seen'); return new Set(r ? JSON.parse(r) : []); } catch { return new Set(); }
-}
-async function saveSeen(seen: Set<string>): Promise<void> {
-  try { await AsyncStorage.setItem('@mizan_bot_seen', JSON.stringify(Array.from(seen))); } catch {}
-}
-
-// ================= پردازش اصلی پیام‌ها =================
-export async function processRubikaUpdatesSimple(token: string): Promise<{ ok: boolean; processed: number; error?: string }> {
-  const t = String(token || '').trim();
-  if (!t) return { ok: false, processed: 0, error: 'توکن ربات خالی است' };
-
+export async function processRubikaUpdatesSimple(tokenIn) {
+  if (_busy) return { ok: true, processed: 0 };
+  _busy = true;
+  const dev = ensureDev();
+  let processed = 0;
   try {
-    if (!(globalThis as any).__mizanWebhookRemoved) {
+    let token = String(tokenIn || '').trim();
+    if (!token || token === '__tick__') {
+      const cfg = await getBotConfig();
+      token = String((cfg && cfg.rubika_token) || '').trim();
+    }
+    if (!token) { _delay = TICK_ERR; return { ok: false, processed: 0, error: 'NO_TOKEN' }; }
+
+    if (!(await lockLeader(dev))) { _delay = TICK_SLOW; return { ok: true, processed: 0, error: 'NOT_LEADER' }; }
+
+    if (!globalThis.__mzWebhookCleared) {
       try {
-        await fetch(RUBIKA_BASE + '/' + t + '/updateBotEndpoints', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: '' }) });
-        (globalThis as any).__mizanWebhookRemoved = true;
-        console.log('[WEBHOOK_REMOVED]');
+        await api(token, 'updateBotEndpoints', { url: '' });
+        globalThis.__mzWebhookCleared = true;
       } catch {}
     }
 
-    const cfg = await getBotConfig();
-    const adminChat = String(cfg?.rubika_admin_chat_id || '').trim();
-    const offlineMod: any = await import('./lib.offline');
-    const assistantMod: any = await import('./lib.assistant');
-
-    let offsetId = __mizanOffset;
-    if (!offsetId) { try { offsetId = String((globalThis as any).__mizanOffset || ''); } catch {} }
-    if (!offsetId) { try { offsetId = String(await getBotOffset() || ''); } catch {} }
-
+    let off = await readOff();
     const seen = await loadSeen();
-    let totalProcessed = 0;
-    const MAX_ITER = 5;
+    const seenSet = new Set(seen);
+    let had = false;
 
-    for (let iter = 0; iter < MAX_ITER; iter++) {
-      const body: any = { limit: 50 };
-      if (offsetId) body.offset_id = offsetId;
+    for (let it = 0; it < 4; it++) {
+      const body = { limit: 50 };
+      if (off) body.offset_id = off;
+      const r = await api(token, 'getUpdates', body);
+      if (!r.ok) { _delay = r.status === 'TOO_REQUESTS' ? TICK_ERR : TICK_SLOW; break; }
+      const ups = (r.data && r.data.data && Array.isArray(r.data.data.updates)) ? r.data.data.updates : [];
+      if (!ups.length) break;
+      had = true;
 
-      const res = await fetch(RUBIKA_BASE + '/' + t + '/getUpdates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const txt = await res.text();
-      let data: any = null;
-      try { data = JSON.parse(txt); } catch {}
-
-      if (!data || (data.status !== 'OK' && data.ok !== true)) {
-        const st = String(data?.status || '');
-        if (st === 'TOO_REQUESTS') return { ok: false, processed: totalProcessed, error: 'TOO_REQUESTS' };
-        console.log('[GET_UPDATES_ERR]', st, txt.slice(0, 100));
-        break;
-      }
-
-      const updates = Array.isArray(data.data?.updates) ? data.data.updates : [];
-      if (updates.length === 0) break;
-
-      for (const u of updates) {
+      for (let k = 0; k < ups.length; k++) {
+        const u = ups[k];
         try {
           const msg = u.new_message || u.message || null;
           const cb = u.callback_query || null;
-          const chatId = String(u.chat_id || msg?.chat_id || cb?.chat_id || cb?.message?.chat_id || '');
-          if (!chatId) continue;
-          if (chatId.startsWith('c')) continue;
-
-          const msgId = String(msg?.message_id || cb?.message?.message_id || '');
-          if (msgId && seen.has(msgId)) continue;
-          if (msgId) seen.add(msgId);
-
-          const msgText = normText(msg?.text || msg?.caption || '').trim();
-          let cbData = '';
-          const rawCb = u.data || cb?.data || u.button_id || null;
-          if (typeof rawCb === 'string') cbData = rawCb;
-          else if (rawCb && typeof rawCb === 'object') {
-            cbData = String(rawCb.data || rawCb.id || rawCb.button_id || rawCb.value || JSON.stringify(rawCb));
-          }
-          cbData = cbData.trim();
-          const replyTo = String(msg?.reply_to_message_id || u.reply_to_message_id || '');
-          const action = cbData || msgText;
-          console.log('[INCOMING]', chatId, 'text=', JSON.stringify(msgText), 'cb=', JSON.stringify(cbData));
-
-          // ================= پرداخت ادمین =================
-          if (adminChat && chatId === adminChat && replyTo) {
-            const map = await getAdminInv(replyTo);
-            if (map && map.invoice_number) {
-              const inv = await getInv(map.invoice_number);
-              if (inv) {
-                let amount = Number(String(msgText).replace(/[^0-9]/g, '')) || 0;
-                if (!amount && (msgText === 'تایید' || msgText === 'تأیید')) {
-                  amount = Number(inv.total || 0) - Number(inv.paid || 0);
-                }
-                if (amount > 0) {
-                  inv.paid = Number(inv.paid || 0) + amount;
-                  const remaining = Number(inv.total || 0) - inv.paid;
-                  await setInv(map.invoice_number, inv);
-                  const debtStatus = remaining < 0 ? 'بستانکاری: ' + fmt(Math.abs(remaining)) : 'بدهی: ' + fmt(remaining);
-                  await botSend(t, chatId, '✅ تسویه حساب انجام شد!\n👤 کاربر: ' + inv.customer_name + '\n💰 مبلغ واریز: ' + fmt(amount) + '\n💳 وضعیت حساب: ' + debtStatus);
-                  if (inv.customer_chat_id) {
-                    await botSend(t, inv.customer_chat_id, '✅ تسویه حساب شما تایید شد!\n💰 مبلغ واریز: ' + fmt(amount) + '\n💳 وضعیت حساب: ' + debtStatus);
-                  }
-                  totalProcessed++;
-                  continue;
-                }
-              }
-            }
-          }
-
-          // ================= منوها =================
-          const lowText = String(msgText || '').toLowerCase().trim();
-          if (action === 'menu' || action === 'menu_back' || lowText === '/start' || lowText === 'start' || lowText.includes('منوی اصلی') || lowText === 'منو') {
-            await clearState(chatId);
-            await showMainMenu(t, chatId);
-            totalProcessed++; continue;
-          }
-          if (msgText.includes('مشاهده محصولات')) {
-            await clearState(chatId);
-            await showProducts(t, chatId);
-            totalProcessed++; continue;
-          }
-          if (msgText.includes('سبد خرید')) {
-            await clearState(chatId);
-            await showCart(t, chatId);
-            totalProcessed++; continue;
-          }
-          if (msgText.includes('خالی کردن سبد') || msgText === '🗑️ خالی کردن') {
-            await setCart(chatId, []);
-            await clearState(chatId);
-            await botSend(t, chatId, '🗑️ سبد خرید شما خالی شد.');
-            await showMainMenu(t, chatId);
-            totalProcessed++; continue;
-          }
-          if (msgText.includes('افزودن محصول جدید')) {
-            await clearState(chatId);
-            await showProducts(t, chatId);
-            totalProcessed++; continue;
-          }
-          if (msgText.includes('نهایی سازی سفارش') || msgText.includes('پایان انتخاب محصولات')) {
-            const c = await getCart(chatId);
-            if (!c.length) { await botSend(t, chatId, '⚠️ سبد خرید شما خالی است.'); totalProcessed++; continue; }
-            await setState(chatId, { step: 'waiting_details' });
-            await botSend(t, chatId, '📝 لطفاً مشخصات خود را در یک پیام و هر مورد در یک خط بفرستید:\n\n1) نام و نام خانوادگی\n2) شماره تماس\n3) آدرس\n4) نام باربری');
-            totalProcessed++; continue;
-          }
-          if (msgText === 'بعدی ➡️' || msgText === '⬅️ قبلی') {
-            const pageKey = '@mizan_bot_prodpage_' + chatId;
-            let page = 1;
-            try { const p = await AsyncStorage.getItem(pageKey); if (p) page = parseInt(p, 10) || 1; } catch {}
-            if (msgText === 'بعدی ➡️') page += 1;
-            if (msgText === '⬅️ قبلی') page -= 1;
-            if (page < 1) page = 1;
-            try { await AsyncStorage.setItem(pageKey, String(page)); } catch {}
-            await showProducts(t, chatId);
-            totalProcessed++; continue;
-          }
-          if (msgText.startsWith('🗑️ حذف ')) {
-            const name = msgText.replace('🗑️ حذف ', '').trim();
-            const c = await getCart(chatId);
-            await setCart(chatId, c.filter((x: any) => String(x.name).slice(0, 15) !== name));
-            await showCart(t, chatId);
-            totalProcessed++; continue;
-          }
-
-          // ================= تایید/انصراف =================
-          if (msgText === '✅ تأیید سفارش' || msgText === '✅ تأیید' || action === 'confirm_yes') {
-            const state = await getState(chatId);
-            const cart = await getCart(chatId);
-            if (!state || state.step !== 'confirm' || !cart.length) { await showMainMenu(t, chatId); totalProcessed++; continue; }
-
-            const phone = String(state.phone || '');
-            let customerCode = '';
-            try {
-              const found = await findCustomerByPhoneOffline(phone);
-              if (found) customerCode = String(found.customer_code || found.code || '');
-              if (!customerCode) customerCode = await generateCustomerCode();
-            } catch { customerCode = 'M_' + Date.now(); }
-
-            let prevSales = 0, prevPaid = 0, prevCount = 0;
-            try {
-              const grouped = await getSalesGrouped();
-              const prev = (grouped || []).filter((g: any) => String(g.phone || '') === phone || (state.name && String(g.name || '') === String(state.name)));
-              prev.forEach((g: any) => { prevSales += Number(g.total || 0); prevPaid += Number(g.paid || 0); });
-              prevCount = prev.length;
-            } catch {}
-
-            let invNum = '';
-            try {
-              const baseInv = await generateInvoiceNumber();
-              invNum = 'BOT-' + baseInv;
-            } catch { invNum = 'BOT-INV-' + Date.now(); }
-
-            let total = 0;
-            cart.forEach((it: any) => { total += Number(it.price || 0) * Number(it.qty || 0); });
-            const prevBalance = prevSales - prevPaid;
-            const grandTotal = total + prevBalance;
-
-            let custInvText = '🧾 فاکتور شماره: ' + invNum + '\n🆔 کد مشتری: ' + customerCode + '\n\n';
-            cart.forEach((it: any, i: number) => { custInvText += (i + 1) + '. ' + it.name + ' (' + it.code + ') × ' + it.qty + ' = ' + fmt(Number(it.price || 0) * Number(it.qty || 0)) + '\n'; });
-            custInvText += '\n💰 جمع سفارش: ' + fmt(total) + '\n';
-            if (prevCount > 0) custInvText += '📌 بدهی قبلی: ' + fmt(prevBalance) + '\n';
-            custInvText += '💳 مبلغ قابل پرداخت: ' + fmt(grandTotal) + '\n\n';
-            custInvText += 'لطفاً برای ثبت واریزی، روی همین فاکتور ریپلای بزنید و مبلغ واریزی را ارسال کنید.';
-
-            await botSend(t, chatId, custInvText);
-
-            const adminInvText = '📬 فاکتور جدید از مشتری: ' + (state.name || 'نامشخص') + '\n🆔 کد مشتری: ' + customerCode + '\n💳 بدهی فعلی: ' + fmt(grandTotal);
-            let mid = '';
-            if (adminChat) {
-              mid = await botSend(t, adminChat, adminInvText);
-              if (mid) await setAdminInv(String(mid), { invoice_number: invNum });
-            }
-
-            await setInv(invNum, { invoice_number: invNum, customer_chat_id: chatId, customer_name: state.name || '', customer_code: customerCode, total: grandTotal, paid: 0, items: cart, admin_message_id: mid });
-
-            try {
-              await assistantMod.issueAssistantInvoice({
-                id: 'inv_' + Date.now(), invoice_number: invNum, customer_name: state.name || '', customer_phone: phone, customer_address: state.address || '', customer_shipping: state.shipping || '', customer_code: customerCode, items: cart.map((it: any) => ({ code: it.code, name: it.name, qty: it.qty, priceUnit: it.price, total: Number(it.price || 0) * Number(it.qty || 0) })), total_amount: grandTotal, status: 'issued', created_at: new Date().toISOString(), source: 'rubika'
-              });
-            } catch {}
-
-            await setCart(chatId, []);
-            await setState(chatId, { step: 'waiting_payment', invoice_number: invNum });
-            totalProcessed++; continue;
-          }
-          if (msgText === '❌ انصراف' || msgText === '❌ لغو' || action === 'confirm_no') {
-            await setCart(chatId, []);
-            await clearState(chatId);
-            await botSend(t, chatId, '❌ سفارش لغو شد.');
-            await showMainMenu(t, chatId);
-            totalProcessed++; continue;
-          }
-
-          // ================= State Machine =================
-          const state = await getState(chatId);
-          if (state && state.step) {
-            if (state.step === 'waiting_qty') {
-              const n = parseInt(String(msgText).replace(/[^0-9]/g, ''), 10);
-              if (!n || n <= 0) { await botSend(t, chatId, '⚠️ لطفاً یک عدد معتبر وارد کنید.'); totalProcessed++; continue; }
-              const cart = await getCart(chatId);
-              const existing = cart.find((x: any) => String(x.code) === String(state.code));
-              if (existing) existing.qty += n;
-              else cart.push({ code: state.code, name: state.name, price: state.price, qty: n });
-              await setCart(chatId, cart);
-              await clearState(chatId);
-              await botSend(t, chatId, '✅ به سبد خرید اضافه شد.', { rows: [
-                { buttons: [{ button_text: '🛍️ سفارش بعدی' }, { button_text: '🛒 سبد خرید' }] },
-                { buttons: [{ button_text: '✅ نهایی سازی سفارش' }] }
-              ] });
-              totalProcessed++; continue;
-            }
-
-            if (state.step === 'waiting_details') {
-              const lines = msgText.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-              if (lines.length < 4) {
-                await botSend(t, chatId, '⚠️ لطفاً دقیقاً ۴ خط بفرستید:\n1) نام\n2) تلفن\n3) آدرس\n4) باربری');
-                totalProcessed++; continue;
-              }
-              const name = lines[0];
-              const phone = lines[1];
-              const address = lines[2];
-              const shipping = lines.slice(3).join(' ');
-              const cart = await getCart(chatId);
-              let total = 0; const lines2: string[] = [];
-              cart.forEach((it: any, i: number) => { total += Number(it.price || 0) * Number(it.qty || 0); lines2.push((i + 1) + '. ' + it.name + ' (' + it.code + ') × ' + it.qty + ' = ' + fmt(Number(it.price || 0) * Number(it.qty || 0))); });
-              const reply = '🧾 پیش‌فاکتور سفارش\n\n👤 ' + name + '\n📞 ' + phone + '\n📍 ' + address + '\n🚚 ' + shipping + '\n\n' + lines2.join('\n') + '\n\n💰 مبلغ کل: ' + fmt(total) + ' افغانی\n\nآیا سفارش را تأیید می‌کنید؟';
-              await setState(chatId, { step: 'confirm', name, phone, address, shipping });
-              await botSend(t, chatId, reply, { rows: [{ buttons: [{ button_text: '✅ تأیید سفارش' }, { button_text: '❌ انصراف' }] }] });
-              totalProcessed++; continue;
-            }
-
-            if (state.step === 'waiting_payment') {
-              if (adminChat) {
-                const amount = Number(String(msgText).replace(/[^0-9]/g, '')) || 0;
-                const inv = await getInv(state.invoice_number);
-                if (inv) {
-                  const mid = await botSend(t, adminChat, '📱 پیامک تراکنش از مشتری:\n👤 کاربر: ' + inv.customer_name + '\n💰 مبلغ: ' + fmt(amount) + '\n📝 شماره تراکنش: ' + msgText.slice(0, 100), undefined);
-                  if (mid) await setAdminInv(String(mid), { invoice_number: inv.invoice_number });
-                  await botSend(t, chatId, '✅ پیامک تراکنش شما به حسابدار ارسال شد. پس از تایید، بدهی شما به‌روزرسانی می‌شود.');
-                }
-              }
-              totalProcessed++; continue;
-            }
-          }
-
-          // ================= کد محصول =================
-          const catalog = await getProducts() || [];
-          const p = (catalog || []).find((x: any) => String(x.code).trim() === action.trim() || String(x.code).trim() === msgText.trim());
-          if (p) {
-            await setState(chatId, { step: 'waiting_qty', code: p.code, name: p.name, price: p.price || 0 });
-            await botSend(t, chatId, '📦 ' + p.name + '\n💰 قیمت: ' + fmt(p.price || 0) + '\n📦 قفسه: ' + (p.shelf || '—') + '\n\n🔢 تعداد مورد نظر را انتخاب یا وارد کنید:', { rows: [
-              { buttons: [{ button_text: '۱' }, { button_text: '۲' }, { button_text: '۳' }] },
-              { buttons: [{ button_text: '۵' }, { button_text: '۱۰' }] },
-              { buttons: [{ button_text: '🏠 منوی اصلی' }] }
-            ] });
-            totalProcessed++; continue;
-          }
-
-          await botSend(t, chatId, '🤖 متوجه نشدم. متن دریافتی: [' + msgText + '] - طول: ' + msgText.length + ' - تعداد محصولات در حافظه: ' + catalog.length);
-
-        } catch (err: any) {
-          console.log('[LOOP_ERR]', err?.message || err);
-        }
+          const chatId = String(u.chat_id || (msg && msg.chat_id) || (cb && cb.chat_id) || '');
+          if (!chatId || chatId.charAt(0) === 'c') continue;
+          const mid = String(u.update_id || (msg && msg.message_id) || '');
+          const key = chatId + ':' + mid;
+          if (mid && seenSet.has(key)) continue;
+          const txt = normText((msg && (msg.text || msg.caption)) || '');
+          if (!txt) continue;
+          await handle(token, chatId, txt);
+          if (mid) { seenSet.add(key); seen.push(key); }
+          processed++;
+        } catch (e) { console.log('[HANDLE_ERR]', e && e.message); }
       }
 
-      const nextOffset = String(data.data?.next_offset_id || data.next_offset_id || '').trim();
-      if (!nextOffset || nextOffset === offsetId) break;
-      offsetId = nextOffset;
-      if (updates.length < 50) break;
-    }
-
-    if (offsetId) {
-      __mizanOffset = offsetId;
-      try { (globalThis as any).__mizanOffset = offsetId; } catch {}
-      try { await setBotOffset(offsetId); } catch {}
+      const next = String((r.data && (r.data.next_offset_id || (r.data.data && r.data.data.next_offset_id))) || '').trim();
+      if (next && next !== off) { off = next; await writeOff(next); }
+      else break;
     }
 
     await saveSeen(seen);
-    return { ok: true, processed: totalProcessed };
-  } catch (e: any) {
-    return { ok: false, processed: 0, error: e?.message || 'خطا' };
+    await bumpLeader(dev);
+    _delay = had ? TICK_FAST : TICK_SLOW;
+    return { ok: true, processed };
+  } catch (e) {
+    _delay = TICK_ERR;
+    return { ok: false, processed, error: String((e && e.message) || e) };
+  } finally {
+    _busy = false;
   }
 }

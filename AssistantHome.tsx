@@ -15,74 +15,28 @@ const AUDIT_KEY = '@mizan_audit_events';
 
 export default function AssistantHome({ showToast }: any) {
 
-  // [CHATKEYPAD_AUTO_POLLING]
+  // [SALES_V2_SINGLE_POLLER] یک منبع polling برای کل اپ
   useEffect(() => {
+    let alive = true;
     (async () => {
       try {
         const { getBotConfig } = await import('./lib.assistant');
         const { startBotPolling } = await import('./lib.assistant.bot.simple');
         const cfg = await getBotConfig();
         const token = String(cfg?.rubika_token || '').trim();
-        if (!token) { console.log('[CHATKEYPAD_AUTO_POLLING] no token'); return; }
+        if (!token) { console.log('[SALES_V2] no token'); return; }
+        if (!alive) return;
         startBotPolling(token);
+        console.log('[SALES_V2] single poller started');
       } catch (e: any) {
-        console.log('[CHATKEYPAD_AUTO_POLLING_ERR]', e?.message || e);
-      }
-    })();
-  }, []);
-
-
-  // [AUTO_POLLING_ADDED]
-  useEffect(() => {
-    let timer: any = null;
-    let stopped = false;
-    (async () => {
-      try {
-        const { getBotConfig } = await import('./lib.assistant');
-        const { startBotPolling } = await import('./lib.assistant.bot.simple');
-        const cfg = await getBotConfig();
-        const token = String(cfg?.rubika_token || '').trim();
-        if (!token) { console.log('[AUTO_POLLING] no token'); return; }
-        startBotPolling(token);
-      } catch (e: any) {
-        console.log('[AUTO_POLLING_ERR]', e?.message || e);
-      }
-    })();
-    return () => { stopped = true; if (timer) clearInterval(timer); };
-  }, []);
-
-
-  // [WEB_AUTO_POLLING] شروع خودکار ربات در وب
-  useEffect(() => {
-    let timer: any = null;
-    let stopped = false;
-    (async () => {
-      try {
-        const { getBotConfig } = await import('./lib.assistant');
-        const { processRubikaUpdatesSimple } = await import('./lib.assistant.bot.simple');
-        const cfg = await getBotConfig();
-        const token = String(cfg?.rubika_token || '').trim();
-        if (!token) { console.log('[WEB_AUTO_POLLING] no token'); return; }
-        console.log('[WEB_AUTO_POLLING] started');
-        const tick = async () => {
-          if (stopped) return;
-          try {
-            const r = await processRubikaUpdatesSimple(token);
-            console.log('[WEB_AUTO_POLLING_RESULT]', r);
-          } catch (e: any) {
-            console.log('[WEB_AUTO_POLLING_ERR]', e?.message || e);
-          }
-        };
-        await tick();
-        timer = setInterval(tick, 3000);
-      } catch (e: any) {
-        console.log('[WEB_AUTO_POLLING_INIT_ERR]', e?.message || e);
+        console.log('[SALES_V2_INIT_ERR]', e?.message || e);
       }
     })();
     return () => {
-      stopped = true;
-      if (timer) clearInterval(timer);
-      console.log('[WEB_AUTO_POLLING] stopped');
+      alive = false;
+      import('./lib.assistant.bot.simple')
+        .then((m: any) => m.stopBotPolling && m.stopBotPolling())
+        .catch(() => {});
     };
   }, []);
 
@@ -314,7 +268,6 @@ export default function AssistantHome({ showToast }: any) {
 
   const checkMessages = async () => {
     showToast?.('⏳ در حال بررسی پیام‌های جدید چت خصوصی...');
-    startBotPolling(bot.rubika_token);
     if (r.ok) {
       showToast?.('✅ ' + r.processed + ' پیام پردازش شد');
     } else {

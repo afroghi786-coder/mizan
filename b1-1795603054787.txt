@@ -1,0 +1,137 @@
+### 1-bot-head ###
+1| // ============ دستیار فروش — نسخه ساده و مطمئن ============
+2| import AsyncStorage from './lib.storage';
+3| import { Platform } from 'react-native';
+4| import { getBotConfig } from './lib.assistant';
+5| import { getProducts, generateInvoiceNumber, findCustomerByPhoneOffline, generateCustomerCode } from './lib.offline';
+6| 
+7| const RUBIKA_BASE = Platform.OS === 'web'
+8|   ? 'https://mizan-rubika-proxy.mizan1740.workers.dev'
+9|   : 'https://botapi.rubika.ir/v3';
+10| 
+11| const K_OFFSET = '@mz_off_v3';
+12| const K_STATE = (id) => '@mz_st_v3_' + id;
+13| const K_CART = (id) => '@mz_ct_v3_' + id;
+14| 
+15| function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+16| function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
+17| function toLatin(s) {
+18|   const fa = '\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9';
+19|   const ar = '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669';
+20|   return String(s || '').replace(/[\u06F0-\u06F9\u0660-\u0669]/g, (c) => {
+21|     const i = fa.indexOf(c); if (i >= 0) return String(i);
+22|     const j = ar.indexOf(c); return j >= 0 ? String(j) : c;
+23|   });
+24| }
+25| function dig(s) { return toLatin(String(s || '')).replace(/[^0-9]/g, ''); }
+
+### bot-exports ###
+7| const RUBIKA_BASE = Platform.OS === 'web'
+11| const K_OFFSET = '@mz_off_v3';
+12| const K_STATE = (id) => '@mz_st_v3_' + id;
+13| const K_CART = (id) => '@mz_ct_v3_' + id;
+15| function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+16| function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
+17| function toLatin(s) {
+18| const fa = '\u06F0\u06F1\u06F2\u06F3\u06F4\u06F5\u06F6\u06F7\u06F8\u06F9';
+19| const ar = '\u0660\u0661\u0662\u0663\u0664\u0665\u0666\u0667\u0668\u0669';
+21| const i = fa.indexOf(c); if (i >= 0) return String(i);
+22| const j = ar.indexOf(c); return j >= 0 ? String(j) : c;
+25| function dig(s) { return toLatin(String(s || '')).replace(/[^0-9]/g, ''); }
+26| function normPhone(raw) {
+27| let d = dig(raw);
+33| function normText(s) { return String(s || '').replace(/\u200c/g, '').trim(); }
+35| async function api(token, method, body) {
+36| const url = RUBIKA_BASE + '/' + token + '/' + method;
+39| const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+40| const tm = ctrl ? setTimeout(() => { try { ctrl.abort(); } catch {} }, 12000) : null;
+41| const res = await fetch(url, {
+46| const raw = await res.text();
+47| let d = null; try { d = JSON.parse(raw); } catch {}
+48| const st = String((d && d.status) || '');
+57| async function botSend(token, chatId, text, keypad) {
+58| const body = { chat_id: chatId, text: text || '' };
+60| const rows = keypad.rows
+67| const r = await api(token, 'sendMessage', body);
+71| async function getCart(id) {
+74| async function setCart(id, c) { try { await AsyncStorage.setItem(K_CART(id), JSON.stringify(c || [])); } catch {} }
+75| async function getState(id) {
+78| async function setState(id, s) { try { await AsyncStorage.setItem(K_STATE(id), JSON.stringify(s || {})); } catch {} }
+79| async function clearState(id) { try { await AsyncStorage.removeItem(K_STATE(id)); } catch {} }
+81| const B_HOME = '\u{1F3E0} شروع';
+82| const B_BACK = '\u{1F519} برگشت';
+83| const B_CART = '\u{1F6D2} سبد من';
+84| const B_NEXT = '1\uFE0F\u20E3 کد بعدی';
+85| const B_LIST = '2\uFE0F\u20E3 دیدن محصولات';
+86| const B_DONE = '\u2705 ثبت سفارش';
+87| function row() { const out = []; for (let i = 0; i < arguments.length; i++) out.push({ button_text: String(arguments[i])
+89| async function showMenu(t, id) {
+93| async function showList(t, id, page) {
+94| let p = []; try { p = (await getProducts()) || []; } catch {}
+96| const per = 4;
+97| const tp = Math.max(1, Math.ceil(p.length / per));
+98| let pg = Number(page || 1); if (pg < 1) pg = 1; if (pg > tp) pg = tp;
+99| const sl = p.slice((pg - 1) * per, (pg - 1) * per + per);
+100| let tx = '\u{1F6CD} محصولات (صفحه ' + pg + ' از ' + tp + ')\n\n';
+103| const rows = [];
+105| const nav = [];
+114| async function showCart(t, id) {
+115| const c = await getCart(id);
+117| let tot = 0; let tx = '🛒 سبد شما:\n\n';
+119| const s = Number(it.price || 0) * Number(it.qty || 0); tot += s;
+123| const rows = c.map((x, i) => row('\u{1F5D1} حذف ' + (i + 1)));
+128| async function askQty(t, id, name, price) {
+133| async function addAndNext(t, id, code, name, price, qty) {
+134| const c = await getCart(id);
+135| const ex = c.find((x) => String(x.code) === String(code));
+139| const tot = c.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 0), 0);
+145| async function issueInv(t, id, st, cart) {
+146| const phone = String(st.phone || '');
+147| let cc = '';
+149| let inv = '';
+151| let tot = 0; cart.forEach((it) => { tot += Number(it.price || 0) * Number(it.qty || 0); });
+152| const items = cart.map((it) => ({ code: String(it.code), name: String(it.name), qty: Number(it.qty || 0), priceUnit: Num
+154| const am = await import('./lib.assistant');
+162| let tx = '\u{1F9FE} سفارش شما ثبت شد\n\n\u{1F522} شماره سفارش: ' + inv + '\n\u{1F194} کد مشتری: ' + cc + '\n\n';
+167| const cfg = await getBotConfig();
+168| const adm = String((cfg && cfg.rubika_admin_chat_id) || '').trim();
+170| let at = '\u{1F4EC} سفارش جدید\n\n\u{1F522} ' + inv + '\n\u{1F464} ' + (st.name || '-') + '\n\u{1F4DE} ' + phone + '\n\u
+178| async function handle(t, id, text) {
+179| const raw = normText(text);
+180| const low = toLatin(raw);
+181| const st = await getState(id);
+190| const c = await getCart(id);
+198| const i = parseInt(dig(raw.slice(5)), 10) - 1;
+199| const c = await getCart(id);
+207| const n = parseInt(dig(raw), 10);
+213| const n = parseInt(dig(raw), 10);
+214| const codes = Array.isArray(st.codes) ? st.codes : [];
+216| let p = []; try { p = (await getProducts()) || []; } catch {}
+217| const pr = p.find((x) => String(x.code) === String(codes[n - 1]));
+228| const ph = normPhone(raw);
+239| const c = await getCart(id);
+241| const finalSt = { step: 'done', name: st.name, phone: st.phone, address: st.address, shipping: raw.slice(0, 80) };
+248| let p = []; try { p = (await getProducts()) || []; } catch {}
+249| const pr = p.find((x) => String(x.code).trim() === low);
+260| let _timer = null;
+261| let _busy = false;
+262| let _delay = 1500;
+264| function schedule() {
+266| const d = Math.max(500, _delay);
+274| export function startBotPolling(token) {
+282| export function stopBotPolling() {
+286| export async function processRubikaUpdatesSimple(tokenIn) {
+289| let processed = 0;
+291| let token = String(tokenIn || '').trim();
+293| const cfg = await getBotConfig();
+305| let off = '';
+307| let had = false;
+310| const body = { limit: 50 };
+313| let r;
+318| const ups = (r.data && r.data.data && Array.isArray(r.data.data.updates)) ? r.data.data.updates : [];
+324| const u = ups[k];
+326| const msg = u.new_message || u.message || null;
+327| const cb = u.callback_query || null;
+328| const chatId = String(u.chat_id || (msg && msg.chat_id) || (cb && cb.chat_id) || '');
+330| const txt = normText((msg && (msg.text || msg.caption)) || '');
+338| const next = String((r.data && (r.data.next_offset_id || (r.data.data && r.data.data.next_offset_id))) || '').trim();

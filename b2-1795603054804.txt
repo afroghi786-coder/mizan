@@ -1,0 +1,6 @@
+### 2-bot-anchors ###
+KEY "offset" count=2  lines=311,338
+KEY "متوجه نشدم" count=1  lines=255
+KEY "getUpdates" count=3  lines=312,314,316
+KEY "RUBIKA_BASE" count=3  lines=7,36,298
+KEY "botSend" count=23  lines=57,90,95,111,116,125,129,141,165,173,191,193,206,208,220,223,225,229,231,234,236,251,255

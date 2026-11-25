@@ -1,0 +1,48 @@
+lines=352
+7| const RUBIKA_BASE = Platform.OS === 'web'
+9| : 'https://botapi.rubika.ir/v3';
+11| const K_OFFSET = '@mz_off_v3';
+15| function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+16| function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
+17| function toLatin(s) {
+25| function dig(s) { return toLatin(String(s || '')).replace(/[^0-9]/g, ''); }
+26| function normPhone(raw) {
+33| function normText(s) { return String(s || '').replace(/\u200c/g, '').trim(); }
+35| async function api(token, method, body) {
+36| const url = RUBIKA_BASE + '/' + token + '/' + method;
+41| const res = await fetch(url, {
+57| async function botSend(token, chatId, text, keypad) {
+65| if (rows.length) { body.chat_keypad = { rows }; body.chat_keypad_type = 'NEW'; }
+67| const r = await api(token, 'sendMessage', body);
+71| async function getCart(id) {
+74| async function setCart(id, c) { try { await AsyncStorage.setItem(K_CART(id), JSON.stringify(c || [])); } catch
+75| async function getState(id) {
+78| async function setState(id, s) { try { await AsyncStorage.setItem(K_STATE(id), JSON.stringify(s || {})); } cat
+79| async function clearState(id) { try { await AsyncStorage.removeItem(K_STATE(id)); } catch {} }
+87| function row() { const out = []; for (let i = 0; i < arguments.length; i++) out.push({ button_text: String(arg
+89| async function showMenu(t, id) {
+93| async function showList(t, id, page) {
+114| async function showCart(t, id) {
+128| async function askQty(t, id, name, price) {
+133| async function addAndNext(t, id, code, name, price, qty) {
+145| async function issueInv(t, id, st, cart) {
+178| async function handle(t, id, text) {
+264| function schedule() {
+274| export function startBotPolling(token) {
+276| if (!token) { console.log('[BOT_SIMPLE] NO TOKEN — polling not started'); return; }
+278| console.log('[BOT_SIMPLE] STARTED with token ' + String(token).slice(0, 5) + '...');
+282| export function stopBotPolling() {
+286| export async function processRubikaUpdatesSimple(tokenIn) {
+291| let token = String(tokenIn || '').trim();
+292| if (!token) {
+294| token = String((cfg && cfg.rubika_token) || '').trim();
+295| console.log('[BOT_SIMPLE] token from config: ' + (token ? 'FOUND len=' + token.length : 'EMPTY'));
+297| if (!token) { _delay = 5000; return { ok: false, processed: 0, error: 'NO_TOKEN' }; }
+298| console.log('[BOT_SIMPLE][TRACE] token OK, len=' + token.length + ' base=' + RUBIKA_BASE);
+302| try { await api(token, 'updateBotEndpoints', { url: '' }); globalThis.__mzWebhookCleared = true; console.log('
+306| try { off = String((await AsyncStorage.getItem(K_OFFSET)) || ''); } catch {}
+311| if (off) body.offset_id = off;
+314| try { r = await api(token, 'getUpdates', body); }
+333| await handle(token, chatId, txt);
+338| const next = String((r.data && (r.data.next_offset_id || (r.data.data && r.data.data.next_offset_id))) || '').
+339| if (next && next !== off) { off = next; try { await AsyncStorage.setItem(K_OFFSET, next); } catch {} }

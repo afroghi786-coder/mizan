@@ -1,0 +1,127 @@
+===== handle (178..265) =====
+178| async function handle(t, id, text) {
+179|   const raw = normText(text);
+180|   const low = toLatin(raw);
+181|   const st = await getState(id);
+182| 
+183|   if (low === '/start' || raw === B_HOME || raw === 'منو') { await clearState(id); await showMenu(t, id); return; }
+184|   if (raw === B_CART) { await clearState(id); await showCart(t, id); return; }
+185|   if (raw === B_LIST) { await showList(t, id, 1); return; }
+186|   if (raw === '➡️') { await showList(t, id, Number((st && st.page) || 1) + 1); return; }
+187|   if (raw === '⬅️') { await showList(t, id, Number((st && st.page) || 1) - 1); return; }
+188| 
+189|   if (raw === B_DONE) {
+190|     const c = await getCart(id);
+191|     if (!c.length) { await botSend(t, id, '⚠️ سبد خالی است.', { rows: [row(B_LIST), row(B_HOME)] }); return; }
+192|     await setState(id, { step: 'ask_name' });
+193|     await botSend(t, id, '\u{1F4DD} نام و نام خانوادگی خود را بنویسید.', { rows: [row(B_HOME)] });
+194|     return;
+195|   }
+196| 
+197|   if (raw.indexOf('\u{1F5D1} حذف ') === 0) {
+198|     const i = parseInt(dig(raw.slice(5)), 10) - 1;
+199|     const c = await getCart(id);
+200|     if (i >= 0 && i < c.length) { c.splice(i, 1); await setCart(id, c); }
+201|     await showCart(t, id); return;
+202|   }
+203| 
+204|   if (st && st.step) {
+205|     if (st.step === 'ask_qty') {
+206|       if (low === '0') { await clearState(id); await botSend(t, id, 'باشه، اضافه نشد.', { rows: [row(B_NEXT), row(B_HOME)] }); return; }
+207|       const n = parseInt(dig(raw), 10);
+208|       if (!n || n <= 0 || n > 999) { await botSend(t, id, '\u26A0\uFE0F عدد بین 1 تا 999 بفرستید.', { rows: [row('1', '2', '3'), row(B_BACK)] }); return; }
+209|       await addAndNext(t, id, st.code, st.name, st.price, n); return;
+210|     }
+211|     if (st.step === 'list') {
+212|       if (raw === B_BACK) { await clearState(id); await showMenu(t, id); return; }
+213|       const n = parseInt(dig(raw), 10);
+214|       const codes = Array.isArray(st.codes) ? st.codes : [];
+215|       if (n >= 1 && n <= codes.length) {
+216|         let p = []; try { p = (await getProducts()) || []; } catch {}
+217|         const pr = p.find((x) => String(x.code) === String(codes[n - 1]));
+218|         if (pr) { await setState(id, { step: 'ask_qty', code: String(pr.code), name: String(pr.name), price: Number(pr.price || 0) }); await askQty(t, id, pr.name, pr.price); return; }
+219|       }
+220|       await botSend(t, id, '\u26A0\uFE0F شماره معتبر نیست.', { rows: [row(B_LIST), row(B_HOME)] }); return;
+221|     }
+222|     if (st.step === 'ask_name') {
+223|       if (raw.length < 3) { await botSend(t, id, '\u26A0\uFE0F نام کامل را بنویسید.'); return; }
+224|       await setState(id, { step: 'ask_phone', name: raw.slice(0, 60) });
+225|       await botSend(t, id, '\u{1F4DE} ' + raw.slice(0, 30) + ' جان، شماره تلفن را بنویسید.\nمثل: 0700000000', { rows: [row(B_HOME)] }); return;
+226|     }
+227|     if (st.step === 'ask_phone') {
+228|       const ph = normPhone(raw);
+229|       if (!ph) { await botSend(t, id, '\u26A0\uFE0F شماره درست نیست. مثل: 0700000000'); return; }
+230|       await setState(id, { step: 'ask_address', name: st.name, phone: '0' + ph });
+231|       await botSend(t, id, '\u{1F4CD} آدرس خود را بنویسید.\nشهر و ولسوالی هم بنویسید.', { rows: [row(B_HOME)] }); return;
+232|     }
+233|     if (st.step === 'ask_address') {
+234|       if (raw.length < 5) { await botSend(t, id, '\u26A0\uFE0F آدرس کامل را بنویسید.'); return; }
+235|       await setState(id, { step: 'ask_shipping', name: st.name, phone: st.phone, address: raw.slice(0, 200) });
+236|       await botSend(t, id, '\u{1F69A} با کدام باربری بفرستیم؟\nنام باربری را بنویسید.', { rows: [row('بدون باربری'), row(B_HOME)] }); return;
+237|     }
+238|     if (st.step === 'ask_shipping') {
+239|       const c = await getCart(id);
+240|       if (!c.length) { await clearState(id); await showMenu(t, id); return; }
+241|       const finalSt = { step: 'done', name: st.name, phone: st.phone, address: st.address, shipping: raw.slice(0, 80) };
+242|       await clearState(id); await setCart(id, []);
+243|       await issueInv(t, id, finalSt, c); return;
+244|     }
+245|   }
+246| 
+247|   if (low && /^[0-9A-Za-z_-]{1,20}$/.test(low) && /[0-9]/.test(low)) {
+248|     let p = []; try { p = (await getProducts()) || []; } catch {}
+249|     const pr = p.find((x) => String(x.code).trim() === low);
+250|     if (pr) { await setState(id, { step: 'ask_qty', code: String(pr.code), name: String(pr.name), price: Number(pr.price || 0) }); await askQty(t, id, pr.name, pr.price); return; }
+251|     await botSend(t, id, '\u{1F914} کد «' + raw + '» را پیدا نکردم.\n\nکد را دوباره بفرستید یا دکمه پایین را بزنید.',
+252|       { rows: [row(B_LIST), row(B_HOME)] }); return;
+253|   }
+254| 
+255|   await botSend(t, id, '\u{1F44B} متوجه نشدم.\n\nبرای خرید فقط کد محصول را بفرستید (مثل: 125).\nاگر کد را نمی‌دانید دکمه پایین را بزنید.',
+256|     { rows: [row(B_LIST), row(B_CART), row(B_HOME)] });
+257| }
+258| 
+259| // ============ حلقه polling ============
+260| let _timer = null;
+261| let _busy = false;
+262| let _delay = 1500;
+263| 
+264| function schedule() {
+265|   if (_timer) { clearTimeout(_timer); _timer = null; }
+===== schedule+start (264..300) =====
+264| function schedule() {
+265|   if (_timer) { clearTimeout(_timer); _timer = null; }
+266|   const d = Math.max(500, _delay);
+267|   _timer = setTimeout(async () => {
+268|     _timer = null;
+269|     try { await processRubikaUpdatesSimple(''); } catch (e) { console.log('[TICK_ERR]', e && e.message); }
+270|     schedule();
+271|   }, d);
+272| }
+273| 
+274| export function startBotPolling(token) {
+275|   stopBotPolling();
+276|   if (!token) { console.log('[BOT_SIMPLE] NO TOKEN — polling not started'); return; }
+277|   _delay = 1500;
+278|   console.log('[BOT_SIMPLE] STARTED with token ' + String(token).slice(0, 5) + '...');
+279|   schedule();
+280| }
+281| 
+282| export function stopBotPolling() {
+283|   if (_timer) { clearTimeout(_timer); _timer = null; console.log('[BOT_SIMPLE] STOPPED'); }
+284| }
+285| 
+286| export async function processRubikaUpdatesSimple(tokenIn) {
+287|   if (_busy) return { ok: true, processed: 0 };
+288|   _busy = true;
+289|   let processed = 0;
+290|   try {
+291|     let token = String(tokenIn || '').trim();
+292|     if (!token) {
+293|       const cfg = await getBotConfig();
+294|       token = String((cfg && cfg.rubika_token) || '').trim();
+295|       console.log('[BOT_SIMPLE] token from config: ' + (token ? 'FOUND len=' + token.length : 'EMPTY'));
+296|     }
+297|     if (!token) { _delay = 5000; return { ok: false, processed: 0, error: 'NO_TOKEN' }; }
+298|     console.log('[BOT_SIMPLE][TRACE] token OK, len=' + token.length + ' base=' + RUBIKA_BASE);
+299| 
+300|     if (!globalThis.__mzWebhookCleared) {

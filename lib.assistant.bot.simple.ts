@@ -260,21 +260,32 @@ async function handle(t, id, text) {
 let _timer = null;
 let _busy = false;
 let _delay = 1500;
+let _errCount = 0;
 
 function schedule() {
   if (_timer) { clearTimeout(_timer); _timer = null; }
   const d = Math.max(500, _delay);
   _timer = setTimeout(async () => {
     _timer = null;
-    try { await processRubikaUpdatesSimple(''); } catch (e) { console.log('[TICK_ERR]', e && e.message); }
-    schedule();
+    try {
+      await processRubikaUpdatesSimple('');
+      _errCount = 0;
+    } catch (e) {
+      _errCount = (_errCount || 0) + 1;
+      _delay = Math.min(8000, 900 * Math.pow(2, Math.min(_errCount, 4)));
+      console.log('[TICK_ERR]', e && e.message, '| next=' + _delay);
+    } finally {
+      _busy = false;
+      schedule();
+    }
   }, d);
 }
 
 export function startBotPolling(token) {
   stopBotPolling();
   if (!token) { console.log('[BOT_SIMPLE] NO TOKEN — polling not started'); return; }
-  _delay = 1500;
+  _delay = 800;
+  _errCount = 0;
   console.log('[BOT_SIMPLE] STARTED with token ' + String(token).slice(0, 5) + '...');
   schedule();
 }
@@ -312,9 +323,21 @@ export async function processRubikaUpdatesSimple(tokenIn) {
       console.log('[BOT_SIMPLE][TRACE] getUpdates call, off=' + (off || 'none'));
       let r;
       try { r = await api(token, 'getUpdates', body); }
-      catch (ge) { console.log('[BOT_SIMPLE][GETUPD_ERR]', String(ge && ge.message || ge)); _delay = 3000; break; }
+      catch (ge) {
+        _errCount = (_errCount || 0) + 1;
+        _delay = Math.min(8000, 1200 * Math.pow(2, Math.min(_errCount, 4)));
+        console.log('[BOT_SIMPLE][GETUPD_ERR]', String(ge && ge.message || ge), '| next=' + _delay);
+        break;
+      }
       console.log('[BOT_SIMPLE][TRACE] getUpdates returned ok=' + r.ok + ' status=' + (r.status || '?'));
-      if (!r.ok) { console.log('[BOT_SIMPLE][FAIL] status=' + r.status + ' body=' + JSON.stringify(r.data).slice(0, 300)); _delay = r.status === 'TOO_REQUESTS' ? 5000 : 3000; break; }
+      if (!r.ok) {
+        _errCount = (_errCount || 0) + 1;
+        _delay = r.status === 'TOO_REQUESTS'
+          ? Math.min(15000, 2000 * Math.pow(2, Math.min(_errCount, 3)))
+          : Math.min(8000, 1200 * Math.pow(2, Math.min(_errCount, 4)));
+        console.log('[BOT_SIMPLE][FAIL] status=' + r.status + ' body=' + JSON.stringify(r.data).slice(0, 300), '| next=' + _delay);
+        break;
+      }
       const ups = (r.data && r.data.data && Array.isArray(r.data.data.updates)) ? r.data.data.updates : [];
       if (!ups.length) break;
       had = true;
@@ -340,7 +363,7 @@ export async function processRubikaUpdatesSimple(tokenIn) {
       else break;
     }
 
-    _delay = had ? 900 : 2500;
+    _delay = processed > 0 ? 900 : 1800;
     return { ok: true, processed };
   } catch (e) {
     _delay = 5000;

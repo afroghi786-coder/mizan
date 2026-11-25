@@ -1,0 +1,53 @@
+300|     if (!globalThis.__mzWebhookCleared) {
+301|       console.log('[BOT_SIMPLE][TRACE] clearing webhook...');
+302|       try { await api(token, 'updateBotEndpoints', { url: '' }); globalThis.__mzWebhookCleared = true; console.log('[BOT_SIMPLE] webhook cleared'); } catch (we) { console.log('[BOT_SIMPLE][WEBHOOK_ERR]', String(we && we.message || we)); }
+303|     }
+304| 
+305|     let off = '';
+306|     try { off = String((await AsyncStorage.getItem(K_OFFSET)) || ''); } catch {}
+307|     let had = false;
+308| 
+309|     for (let it = 0; it < 4; it++) {
+310|       const body = { limit: 50 };
+311|       if (off) body.offset_id = off;
+312|       console.log('[BOT_SIMPLE][TRACE] getUpdates call, off=' + (off || 'none'));
+313|       let r;
+314|       try { r = await api(token, 'getUpdates', body); }
+315|       catch (ge) { console.log('[BOT_SIMPLE][GETUPD_ERR]', String(ge && ge.message || ge)); _delay = 3000; break; }
+316|       console.log('[BOT_SIMPLE][TRACE] getUpdates returned ok=' + r.ok + ' status=' + (r.status || '?'));
+317|       if (!r.ok) { console.log('[BOT_SIMPLE][FAIL] status=' + r.status + ' body=' + JSON.stringify(r.data).slice(0, 300)); _delay = r.status === 'TOO_REQUESTS' ? 5000 : 3000; break; }
+318|       const ups = (r.data && r.data.data && Array.isArray(r.data.data.updates)) ? r.data.data.updates : [];
+319|       if (!ups.length) break;
+320|       had = true;
+321|       console.log('[BOT_SIMPLE] got ' + ups.length + ' updates');
+322| 
+323|       for (let k = 0; k < ups.length; k++) {
+324|         const u = ups[k];
+325|         try {
+326|           const msg = u.new_message || u.message || null;
+327|           const cb = u.callback_query || null;
+328|           const chatId = String(u.chat_id || (msg && msg.chat_id) || (cb && cb.chat_id) || '');
+329|           if (!chatId || chatId.charAt(0) === 'c') continue;
+330|           const txt = normText((msg && (msg.text || msg.caption)) || '');
+331|           if (!txt) continue;
+332|           console.log('[BOT_SIMPLE] msg from ' + chatId + ': ' + txt.slice(0, 30));
+333|           await handle(token, chatId, txt);
+334|           processed++;
+335|         } catch (e) { console.log('[HANDLE_ERR]', e && e.message); }
+336|       }
+337| 
+338|       const next = String((r.data && (r.data.next_offset_id || (r.data.data && r.data.data.next_offset_id))) || '').trim();
+339|       if (next && next !== off) { off = next; try { await AsyncStorage.setItem(K_OFFSET, next); } catch {} }
+340|       else break;
+341|     }
+342| 
+343|     _delay = had ? 900 : 2500;
+344|     return { ok: true, processed };
+345|   } catch (e) {
+346|     _delay = 5000;
+347|     return { ok: false, processed, error: String((e && e.message) || e) };
+348|   } finally {
+349|     _busy = false;
+350|   }
+351| }
+352| 

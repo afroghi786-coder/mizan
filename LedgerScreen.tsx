@@ -480,7 +480,7 @@ export default function LedgerScreen({ onBack, showToast }) {
       tot += line; pay += Number(r.payment) || 0;
       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' + (r.model_name || r.modelName || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity)||0) + '</td><td>' + fmt(Number(r.price_unit)||0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment)||0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td></tr>');
     });
-    _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="13" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
+    _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="16" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
     _p.push('</table>');
     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
     _p.push(mizanComputerNoteHtml());
@@ -589,6 +589,7 @@ export default function LedgerScreen({ onBack, showToast }) {
       var _gross = qty * pr;
       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
       var line = _net;
+      if (typeof _gross === 'undefined') { var _gross = qty * pr; }
       var _discTotal = Math.max(0, _gross - line);
       var d = isP ? 0 : line, c = isP ? line : 0;
       td += d; tc += c; run += c - d; idx++;

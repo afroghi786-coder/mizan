@@ -1,0 +1,15 @@
+1268: <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1269: </View>
+1270: {(invoiceList || []).map((inv: any, i: number) => (
+1271: <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1272: <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1273: <Text style={[s.td, { width: 90, fontSize: 9 }]}>{_safeLedgerDate(inv.date)}</Text>
+1274: <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
+1275: <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{inv.invoice}</Text>
+1276: <Text style={[s.td, { width: 80, fontSize: 9 }]}>{toFaNum(inv.count || 0)}</Text>
+1277: <Text style={[s.td, { width: 90, fontSize: 9, color: '#b45309', fontWeight: 'bold' }]}>{fmt(Math.max(0, (Number(inv.quantity)||0)*(Number(inv.price_unit)||0) - (Number(inv.total)||0)))}</Text>
+1278: <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
+1279: <Text style={[s.td, { width: 90, fontSize: 9, color: '#b45309', fontWeight: 'bold' }]}>{fmt(Math.max(0, (Number(inv.quantity)||0)*(Number(inv.price_unit)||0) - (Number(inv.total)||0)))}</Text>
+1280: <Text style={[s.td, { width: 100, fontSize: 9, color: '#059669' }]}>{fmt(inv.paid)}</Text>
+1281: <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(inv.balance))}
+1282: </Text>

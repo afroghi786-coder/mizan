@@ -1,0 +1,51 @@
+
+=== PDF 1 جمع و انتهای جدول (428..440) ===
+428:       var tQty = 0, tDebit = 0, tCredit = 0;
+429:       txns.forEach(function(t: any, i: number) {
+430:         tQty += Number(t.qty) || 0;
+431:         tDebit += Number(t.debit) || 0;
+432:         tCredit += Number(t.credit) || 0;
+433:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||'—') + '</td><td>' + (t.manualInvoice||'—') + '</td><td>' + (t.modelCode||'—') + '</td><td style="text-align:right">' + (t.modelName||'—') + '</td><td>' + (t.qty?toFaNum(t.qty):'—') + '</td><td>' + (function(){ const _u = prodMap.get(String(t.modelCode || '')) || {}; const bU = _u.base_unit || 'عدد'; const pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + bU : '—'; })() + '</td><td>' + (function(){ const _u = prodMap.get(String(t.modelCode || '')) || {}; const pU = _u.pack_unit || 'بسته'; const pS = Number(_u.pack_size) || 0; const qty = Number(t.qty) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\.00$/, '') + ' ' + pU : '—'; })() + '</td><td>' + (t.priceUnit?fmt(t.priceUnit):'—') + '</td><td style="color:#b45309;font-weight:bold">' + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? fmt((t.discountAmount != null) ? Number(t.discountAmount) : Math.max(0, ((Number(t.qty)||0)*(Number(t.priceUnit)||0)) - (Number(t.lineTotal)||0))) : '—') + '</td><td>' + (t.lineTotal?fmt(t.lineTotal):'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t.runningBalance||0)) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td><td>' + (t.holderCode||'—') + '</td><td>' + (t.depositDate?_safeLedgerDate(t.depositDate):'—') + '</td><td>' + (t.shipping||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td></tr>');
+434:       });
+435:       _p.push('<tr class="total"><td colspan="9" style="text-align:left;font-weight:bold">جمع:</td><td style="font-weight:bold">' + fmt(tQty) + '</td><td></td><td></td><td style="color:#1e40af;font-weight:bold">' + fmt(tDebit) + '</td><td style="color:#059669;font-weight:bold">' + fmt(tCredit) + '</td><td style="font-weight:bold">' + fmt(Math.abs(tCredit - tDebit)) + '</td><td colspan="6"></td></tr>');
+436:       _p.push('</table>');
+437:       _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(tCredit - tDebit)) + ' ' + curLabel + '</div>');
+438:     }
+439:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+440:     _p.push(mizanComputerNoteHtml());
+
+=== تب همه ردیف جمع (1233..1260) ===
+1233:                       </View>
+1234:                     ))}
+1235:                   
+1236:                     <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1237:                       <Text style={[s.td, { width: 30 }]}></Text>
+1238:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1239:                       <Text style={[s.td, { width: 75 }]}></Text>
+1240:                       <Text style={[s.td, { width: 90 }]}></Text>
+1241:                       <Text style={[s.td, { width: 85 }]}></Text>
+1242:                       <Text style={[s.td, { width: 60 }]}></Text>
+1243:                       <Text style={[s.td, { width: 120 }]}></Text>
+1244:                       <Text style={[s.td, { width: 45, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.qty) || 0), 0))}</Text>
+1245:                       <Text style={[s.td, { width: 65 }]}></Text>
+1246:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) ? (Number(t.lineTotal) || 0) : 0), 0))}</Text>
+1247:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#1e40af' }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.debit) || 0), 0))}</Text>
+1248:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0), 0))}</Text>
+1249:                       <Text style={[s.td, { width: 75, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((filteredPartyDetails || []).reduce((a: number, t: any) => a + (Number(t.credit) || 0) - (Number(t.debit) || 0), 0)))}</Text>
+1250:                       <Text style={[s.td, { width: 80 }]}></Text>
+1251:                       <Text style={[s.td, { width: 90 }]}></Text>
+1252:                       <Text style={[s.td, { width: 65 }]}></Text>
+1253:                       <Text style={[s.td, { width: 90 }]}></Text>
+1254:                       <Text style={[s.td, { width: 85 }]}></Text>
+1255:                       <Text style={[s.td, { width: 120 }]}></Text>
+1256:                       <Text style={[s.td, { width: 70 }]}></Text>
+1257:                     </View></View>
+1258:                 </ScrollView>
+1259:               ) : (selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in') ? (
+1260:                 <ScrollView horizontal>
+runningBalance @ 433: _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||
+runningBalance @ 463: sheets = [{ name: (activeCounterparty || 'طرف').slice(0, 28), data: treeTxns.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDat
+runningBalance @ 465: sheets = [{ name: 'ریز', data: filteredPartyDetails.map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LA
+runningBalance @ 955: <Text style={[s.td, { width: 85, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}
+runningBalance @ 1070: <Text style={[s.td, { width: 80, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}</Text>
+runningBalance @ 1217: <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}</Text>

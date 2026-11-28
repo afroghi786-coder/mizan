@@ -261,7 +261,6 @@ let _timer = null;
 let _busy = false;
 let _delay = 1500;
 let _errCount = 0;
-
 function schedule() {
   if (_timer) { clearTimeout(_timer); _timer = null; }
   const d = Math.max(500, _delay);

@@ -1,0 +1,45 @@
+214:   function buildInvoicesList(p: any) {
+215:     const map: any = {};
+216:     (p?.transactions || []).forEach((t: any) => {
+217:       const inv = String(t.invoice || '').trim();
+218:       if (!inv) return;
+219:       const ty = String(t.type || '');
+220:       const isSale = ty === 'sale';
+221:       const isPurchase = ty === 'purchase';
+222:       const isPay = ty === 'payment_received' || ty === 'payment_sent' || ty === 'triangular_received';
+223:       if (isSale || isPurchase) {
+224:         if (!map[inv]) map[inv] = { invoice: inv, type: isPurchase ? 'purchase' : 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+225:         map[inv].total += Number(t.lineTotal) || 0;
+226:         map[inv].count += 1;
+227:       } else if (isPay) {
+228:         if (!map[inv]) map[inv] = { invoice: inv, type: 'sales', date: t.date, total: 0, paid: 0, balance: 0, count: 0 };
+229:         map[inv].paid += Number(t.lineTotal) || 0;
+230:       }
+231:     });
+232:     return Object.values(map).map((x: any) => ({ ...x, balance: x.total - x.paid })).sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)));
+233:   }
+234: 
+235:   function buildPartyTransactions(p: any) {
+236:     let run = 0;
+237:     return (p?.transactions || []).map((t: any) => {
+238:       const d = Number(t.debit) || 0;
+239:       const c = Number(t.credit) || 0;
+240:       run += c - d;
+241:       return { ...t, _running: run };
+242:     });
+243:   }
+244:   function buildPaymentsList(p: any) {
+245:     return (p?.transactions || [])
+246:       .filter((t: any) => t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received')
+247:       .sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')));
+248:   }
+249: 
+250:   const openParty = (p: any) => {
+251:   if (activeTab === 'parties') {
+252:     setSelectedParty(p);
+253:     setInvoiceList(buildInvoicesList(p));
+254:     setInvoiceDetailRows([]);
+255:     setInvoiceDetailMeta(null);
+256:     setPartyViewMode(String(p?.type || '').includes('مشتری') ? 'out' : 'in');
+257:     setInvoiceModalVisible(true);
+258:     return;

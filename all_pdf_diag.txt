@@ -1,0 +1,246 @@
+Match @ 7: import { buildStandardHtml, shareHtmlAsPdf, printHtml, exportExcel, numToWords, mizanSignaturesHtml, mizanComputerNoteHt
+Match @ 367: // PDF builder
+Match @ 370: _p.push('<div class="info"><b>📅 تاریخ:</b> ' + _safeLedgerDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLab
+Match @ 372: _p.push('<div class="title">📊 ترازنامه (کلی)</div>');
+Match @ 373: _p.push('<table style="width:100%; table-layout:fixed; border-collapse:collapse;">');
+Match @ 374: _p.push('<thead><tr style="background:#0f2438; color:#fff;">');
+Match @ 375: _p.push('<th style="width:4%">#</th><th style="width:14%">نوع</th><th style="width:20%">نام</th>');
+Match @ 376: _p.push('<th style="width:14%">کدها</th><th style="width:12%">تلفن</th>');
+Match @ 377: _p.push('<th style="width:10%">بدهکار</th><th style="width:10%">بستانکار</th>');
+Match @ 378: _p.push('<th style="width:10%">مانده</th><th style="width:10%">وضعیت</th>');
+Match @ 379: _p.push('</tr></thead><tbody>');
+Match @ 399: _p.push(rows);
+Match @ 400: _p.push('<tr style="background:#f1f5f9; font-weight:bold;">');
+Match @ 401: _p.push('<td colspan="5" style="text-align:left; padding:8px">جمع کل:</td>');
+Match @ 402: _p.push('<td style="text-align:center">' + fmt(data.reduce((a, r) => a + r.totalDebit, 0)) + '</td>');
+Match @ 403: _p.push('<td style="text-align:center">' + fmt(data.reduce((a, r) => a + r.totalCredit, 0)) + '</td>');
+Match @ 404: _p.push('<td style="text-align:center">' + fmt(tdSum + tcSum) + '</td>');
+Match @ 405: _p.push('<td style="text-align:center">طرف بدهکار: ' + fmt(tdSum) + '<br>ما بدهکار: ' + fmt(tcSum) + '</td>');
+Match @ 406: _p.push('</tr></tbody></table>');
+Match @ 408: _p.push('<div class="title">📋 کارت حساب: ' + (selectedParty?.name || '—') + '</div>');
+Match @ 409: _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + 
+Match @ 415: _p.push('<div id="status-top" style="margin:8px 0;padding:10px;background:' + _stBg + ';border:1px solid ' + _stCol + ';
+Match @ 416: _p.push('<div style="font-size:12px;font-weight:bold;color:#0f2438">💵 مانده نهایی: ' + fmt(Math.abs(_stBal)) + ' ' + cu
+Match @ 417: _p.push('<div style="font-size:11px;color:#475569;margin-top:4px">🔤 به حروف: ' + numToWords(Math.abs(_stBal)) + ' ' + c
+Match @ 418: _p.push('<div style="font-size:12px;font-weight:bold;color:' + _stCol + ';margin-top:4px">📌 وضعیت: ' + _stTxt + '</div>
+Match @ 419: _p.push('</div>');
+Match @ 427: _p.push('<table style="font-size:8px"><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد 
+Match @ 433: _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td>
+Match @ 435: _p.push('<tr class="total"><td colspan="9" style="text-align:left;font-weight:bold">جمع:</td><td style="font-weight:bold
+Match @ 436: _p.push('</table>');
+Match @ 437: _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(tCredit - tDebit)) + ' ' + curLabel + '</div>'
+Match @ 439: _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+Match @ 440: _p.push(mizanComputerNoteHtml());
+Match @ 446: const pdfAll = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(false), 'ledger-' + Date.now() + '.pdf'); if 
+Match @ 447: const printAll = async () => { try { var r = await printHtml(_buildHtml(false)); if (showToast) showToast(r.ok ? '✅ ' + 
+Match @ 451: const pdfParty = async () => { try { var r = await shareHtmlAsPdf(_buildHtml(true), 'statement-' + selectedParty.code + 
+Match @ 452: const printParty = async () => { try { var r = await printHtml(_buildHtml(true)); if (showToast) showToast(r.ok ? '✅ ' +
+Match @ 475: _p.push('<div class="info"><b>📅 تاریخ:</b> ' + _safeLedgerDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLab
+Match @ 476: _p.push('<div class="title">📄 فاکتور: ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+Match @ 477: _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetail
+Match @ 478: _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+Match @ 479: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>ت
+Match @ 484: _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' +
+Match @ 486: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="17" style="text-align:left">جمع:</td><td>' + fmt(t
+Match @ 487: _p.push('</table>');
+Match @ 488: _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+Match @ 489: _p.push(mizanComputerNoteHtml());
+Match @ 501: _p.push('<div class="title">' + title + '</div>');
+Match @ 502: _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + 
+Match @ 503: _p.push('<table style="width:100%;border-collapse:collapse;font-size:9px">');
+Match @ 505: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><
+Match @ 507: _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td>
+Match @ 510: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>م
+Match @ 514: _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' :
+Match @ 516: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>'
+Match @ 518: _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</th></tr>');
+Match @ 523: _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (t.invoice||'—') + '</td><td style="t
+Match @ 525: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td>' + fmt(to
+Match @ 527: _p.push('</table>');
+Match @ 529: if (_bal !== 0) { _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(_bal)) + ' ' + curLabel + '<
+Match @ 530: _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+Match @ 531: _p.push(mizanComputerNoteHtml());
+Match @ 538: _p.push('<div class="title">📄 فاکتور ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+Match @ 539: _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailM
+Match @ 540: _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+Match @ 541: _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th
+Match @ 546: _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name 
+Match @ 548: _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(to
+Match @ 549: _p.push('</table>');
+Match @ 551: if (_balD !== 0) { _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(_balD)) + ' ' + curLabel + 
+Match @ 552: _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+Match @ 553: _p.push(mizanComputerNoteHtml());
+Match @ 558: const pdfInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml
+Match @ 559: const printInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHt
+Match @ 587: _p.push('<div class="info"><b>طرف:</b> ' + _h(selectedParty?.name) + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فر
+Match @ 588: _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
+Match @ 589: _p.push('<thead><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</t
+Match @ 590: _p.push('<tbody>');
+Match @ 602: _p.push('<tr>' +
+Match @ 627: _p.push('</tbody>');
+Match @ 628: _p.push('<tfoot><tr style="background:#f1f5f9;font-weight:bold"><td colspan="13" style="text-align:left">جمع:</td><td st
+Match @ 629: _p.push('</table>');
+Match @ 633: _p.push('<div style="margin-top:8px;padding:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;text-alig
+Match @ 634: _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+Match @ 635: _p.push(mizanComputerNoteHtml());
+Match @ 641: const pdfInvoice = async () => { try { var html = _buildInvoiceHTMLInline(invoiceDetailMeta, invoiceDetailRows); var r =
+Match @ 642: const printInvoice = async () => { try { var html = _buildInvoiceHTMLInline(invoiceDetailMeta, invoiceDetailRows); var r
+Match @ 679: <TouchableOpacity onPress={pdfAll} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text><
+Match @ 680: <TouchableOpacity onPress={printAll} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت</T
+Match @ 806: <TouchableOpacity onPress={pdfParty} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Text
+Match @ 807: <TouchableOpacity onPress={printParty} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرینت<
+Match @ 1103: <TouchableOpacity onPress={pdfInvoice} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF</Te
+Match @ 1104: <TouchableOpacity onPress={printInvoice} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ پرین
+Match @ 1122: <TouchableOpacity onPress={pdfInvoiceList} style={[s.btn, { backgroundColor: '#8e44ad' }]}><Text style={s.btnTxt}>📄 PDF
+Match @ 1123: <TouchableOpacity onPress={printInvoiceList} style={[s.btn, { backgroundColor: '#0ea5e9' }]}><Text style={s.btnTxt}>🖨️ 
+Match @ 1149: <Text style={[s.th, { width: 90 }]}>تخفیف</Text>
+Match @ 1189: <Text style={[s.th, { width: 75 }]}>تخفیف</Text>
+Match @ 1268: <Text style={[s.th, { width: 90 }]}>تخفیف</Text>
+
+=== محدوده PDF و تخفیف ردیف (خط 470 تا 615) ===
+470:   };
+471: 
+472:   
+473:   const _buildInvoiceHtml = () => {
+474:     var _p = [];
+475:     _p.push('<div class="info"><b>📅 تاریخ:</b> ' + _safeLedgerDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
+476:     _p.push('<div class="title">📄 فاکتور: ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+477:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + '</div>');
+478:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+479:     _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+480:     var tot = 0, pay = 0;
+481:     (invoiceDetailRows || []).forEach(function(r, i) {
+482:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+483:       tot += line; pay += Number(r.payment) || 0;
+484:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' + (r.model_name || r.modelName || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity)||0) + '</td><td>' + fmt(Number(r.price_unit)||0) + '</td><td style="color:#b45309;font-weight:bold">' + fmt((function(){ var _g=(Number(r.quantity)||0)*(Number(r.price_unit)||0); var _n=Number(r.total); if(!(_n>=0)) _n=_g; return Math.max(0,_g-_n); })()) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment)||0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td></tr>');
+485:     });
+486:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="17" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
+487:     _p.push('</table>');
+488:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+489:     _p.push(mizanComputerNoteHtml());
+490:     var html = buildStandardHtml('فاکتور', _p.join(''), '📄 فاکتور');
+491:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+492:     return html;
+493:   };
+494: 
+495:   const _buildInvoiceListHtml = () => {
+496:     var _p = [];
+497:     var title = '';
+498:     if (partyViewMode === 'all') title = '📋 همه حرکات ' + (selectedParty?.name || '');
+499:     else if (partyViewMode === 'in') title = '📥 ورودی‌های ' + (selectedParty?.name || '');
+500:     else title = '📤 خروجی‌های ' + (selectedParty?.name || '');
+501:     _p.push('<div class="title">' + title + '</div>');
+502:     _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + '</div>');
+503:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:9px">');
+504:     if (partyViewMode === 'all') {
+505:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+506:       (buildPartyTransactions(selectedParty) || []).forEach(function(t: any, i: number) {
+507:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t._running||0)) + '</td></tr>');
+508:       });
+509:     } else if ((selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in')) {
+510:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
+511:       var tot = 0, paid = 0;
+512:       (invoiceList || []).forEach(function(inv: any, i: number) {
+513:         tot += Number(inv.total) || 0; paid += Number(inv.paid) || 0;
+514:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>' + fmt(inv.paid) + '</td><td>' + fmt(Math.abs(inv.balance)) + '</td></tr>');
+515:       });
+516:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td>' + fmt(Math.abs(tot-paid)) + '</td></tr>');
+517:     } else {
+518:       _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</th></tr>');
+519:       var totP = 0;
+520:       (buildPaymentsList(selectedParty) || []).forEach(function(t: any, i: number) {
+521:         var amt = Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0;
+522:         totP += amt;
+523:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (t.invoice||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="font-weight:bold">' + fmt(amt) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td></tr>');
+524:       });
+525:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td>' + fmt(totP) + '</td><td colspan="2"></td></tr>');
+526:     }
+527:     _p.push('</table>');
+528:     var _bal = Number(selectedParty?.balance || 0);
+529:     if (_bal !== 0) { _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(_bal)) + ' ' + curLabel + '</div>'); }
+530:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+531:     _p.push(mizanComputerNoteHtml());
+532:     var html = buildStandardHtml('گزارش', _p.join(''), '📋 گزارش');
+533:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+534:     return html;
+535:   };
+536:   const _buildInvoiceDetailHtml = () => {
+537:     var _p = [];
+538:     _p.push('<div class="title">📄 فاکتور ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+539:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(invoiceDetailMeta?.date || '') + '</div>');
+540:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+541:     _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th><th>باربری</th></tr>');
+542:     var tot = 0, paid = 0;
+543:     (invoiceDetailRows || []).forEach(function(r: any, i: number) {
+544:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+545:       tot += line; paid += Number(r.payment) || 0;
+546:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity) || 0) + '</td><td>' + (function(){ var _u=prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU=_u.base_unit||'عدد'; var pS=Number(_u.pack_size)||0; return pS>0?pS+' '+bU:'—'; })() + '</td><td>' + (function(){ var _u=prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU=_u.pack_unit||'بسته'; var pS=Number(_u.pack_size)||0; var qty=Number(r.quantity)||0; return pS>0?(qty/pS).toFixed(2).replace(/\.00$/,'')+' '+pU:'—'; })() + '</td><td>' + fmt(Number(r.price_unit) || 0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment) || 0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td></tr>');
+547:     });
+548:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td colspan="3"></td></tr>');
+549:     _p.push('</table>');
+550:     var _balD = (Number(td) || 0) - (Number(tc) || 0);
+551:     if (_balD !== 0) { _p.push('<div class="net-words">💵 مانده به حروف: ' + numToWords(Math.abs(_balD)) + ' ' + curLabel + '</div>'); }
+552:     _p.push(mizanSignaturesHtml(['مدیر مالی', 'حسابدار', 'مهر شرکت']));
+553:     _p.push(mizanComputerNoteHtml());
+554:     var _h = buildStandardHtml('فاکتور', _p.join(''), '📄 فاکتور');
+555:     _h = _h.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+556:     return _h;
+557:   };
+558:   const pdfInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await shareHtmlAsPdf(html, 'statement-' + (selectedParty?.code || 'party') + '.pdf'); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };;;
+559:   const printInvoiceList = async () => { try { var html = partyViewMode === 'all' ? _buildHtml(true) : _buildInvoiceListHtml(); var r = await printHtml(html); if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok); } catch (e: any) { if (showToast) showToast(e.message, true); } };;;
+560:   const imgInvoiceList = async () => { try { if (!invoiceModalRef.current) return; const uri = await captureRef(invoiceModalRef, { format: 'jpg', quality: 0.95 }); if (Platform.OS === 'web') { await Share.share({ message: 'فاکتورها', url: uri }); } else if (await require('expo-sharing').isAvailableAsync()) { await require('expo-sharing').shareAsync(uri); } } catch (e: any) { if (showToast) showToast(e.message, true); } };
+561: 
+562:   const xlsInvoiceList = async () => {
+563:     try {
+564:       let rows: any[] = [];
+565:       let name = 'گزارش';
+566:       if (partyViewMode === 'all') {
+567:         name = 'همه';
+568:         rows = (buildPartyTransactions(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t._running || 0) }));
+569:       } else if (partyViewMode === 'in') {
+570:         name = 'ورودی‌ها';
+571:         rows = (invoiceList || []).map((inv: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(inv.date), 'نوع': inv.type === 'purchase' ? 'خرید' : 'فروش', 'شماره فاکتور': inv.invoice, 'تعداد': inv.count || 0, 'مبلغ کل': inv.total, 'پرداخت': inv.paid, 'مانده': Math.abs(inv.balance) }));
+572:       } else {
+573:         name = 'خروجی‌ها';
+574:         rows = (buildPaymentsList(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'سند': t.invoice || '', 'شرح': cleanDesc(t), 'مبلغ پرداخت': Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0, 'بانک': t.bank || '', 'صاحب حساب': t.holder || '' }));
+575:       }
+576:       const r = await exportExcel([{ name, data: rows }], 'party-' + (selectedParty?.code || 'p') + '-' + Date.now() + '.xlsx');
+577:       if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+578:     } catch (e: any) { if (showToast) showToast(e.message, true); }
+579:   };
+580:   function _buildInvoiceHTMLInline(meta: any, rows: any[]) {
+581:     var _p = [];
+582:     var _h = function _htmlEscape(s: any, fallback?: string): string {
+583:       if (s == null || s === '') return (fallback !== undefined) ? fallback : '—';
+584:       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+585:     };
+586:     var isP = (meta?.type === 'purchase');
+587:     _p.push('<div class="info"><b>طرف:</b> ' + _h(selectedParty?.name) + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _h(_safeLedgerDate(meta?.date || '')) + '</div>');
+588:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
+589:     _p.push('<thead><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr></thead>');
+590:     _p.push('<tbody>');
+591:     var td = 0, tc = 0, run = 0, idx = 0;
+592:     (rows || []).forEach(function(r) {
+593:       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+594:       var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) || 0));
+595:       var _invDiscShare = Number(r._invoice_discount_share) || 0;
+596:       var _gross = qty * pr;
+597:       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+598:       var line = _net;
+599:       var _discTotal = Math.max(0, _gross - line);
+600:       var d = isP ? 0 : line, c = isP ? line : 0;
+601:       td += d; tc += c; run += c - d; idx++;
+602:       _p.push('<tr>' +
+603:         '<td>' + idx + '</td>' +
+604:         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+605:         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+606:         '<td>' + _h(r.invoice_number) + '</td>' +
+607:         '<td>' + _h(r.manual_invoice) + '</td>' +
+608:         '<td>' + _h(r.model_code) + '</td>' +
+609:         '<td style="text-align:right">' + _h(r.model_name) + '</td>' +
+610:         '<td>' + fmt(qty) + '</td>' +
+611:         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU = _u.base_unit || 'عدد'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + _h(bU) : '—'; })() + '</td>' +
+612:         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU = _u.pack_unit || 'بسته'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\\.00$/, '') + ' ' + _h(pU) : '—'; })() + '</td>' +
+613:         '<td>' + fmt(pr) + '</td>' +
+614:         '<td style="color:#b45309;font-weight:bold">' + fmt(_discTotal) + '</td>' +
+615:         '<td>' + fmt(line) + '</td>' +

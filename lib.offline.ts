@@ -611,10 +611,23 @@ async function _applyTombstones(table: string, arr: any[]) {
   } catch { return arr; }
 }
 
+function _normalizeProductFields(p: any) {
+  if (!p || typeof p !== 'object') return p;
+  const nameStr = String(p.name || p.model_name || '');
+  const mMatch = nameStr.match(/(\d+(?:\.\d+)?)\s*(?:ج|جفت|عدد|دانه|بسته|کارتن|رول|متر)/);
+  const parsedPack = Number(p.pack_size ?? p.packSize ?? p.items_per_pack ?? (mMatch ? mMatch[1] : 0)) || 0;
+  const baseUnit = String(p.base_unit || p.baseUnit || p.unit || 'عدد').trim() || 'عدد';
+  const packUnit = String(p.pack_unit || p.packUnit || (parsedPack > 0 ? 'بسته' : 'بسته')).trim() || 'بسته';
+  const discBase = Number(p.discount_base_unit ?? p.discountBaseUnit ?? p.discount_unit ?? p.discount ?? 0) || 0;
+  const discPack = Number(p.discount_pack_unit ?? p.discountPackUnit ?? (parsedPack > 0 && discBase > 0 ? discBase * parsedPack : 0)) || 0;
+  return { ...p, base_unit: baseUnit, pack_unit: packUnit, pack_size: parsedPack, discount_base_unit: discBase, discount_unit: discBase, discount_pack_unit: discPack };
+}
+
 export async function getProducts() {
-  // BUSINESS_LOCAL_AND_SHEET_ONLY — کالاها فقط محلی
+  // BUSINESS_LOCAL_AND_SHEET_ONLY - کالاها فقط محلی
   const local = await getLocal<any[]>('products');
-  return _applyTombstones('products', local || []);
+  const rows = await _applyTombstones('products', local || []);
+  return (rows || []).map(_normalizeProductFields);
 }
 export async function createProduct(p: any) {
   const devPr = (await AsyncStorage.getItem('@mizan_device_id')) || '';
@@ -1639,7 +1652,22 @@ export async function getSalesGrouped() {
   const localSalesRows = (await getLocal<any[]>('sales')) || [];
   if (localSalesRows.length) {
     const groupedFromSales = _groupSalesRows(localSalesRows);
-    for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
+    for (const _g of groupedFromSales) {
+      if (!_g) continue;
+      const _items = Array.isArray(_g.items) ? _g.items : [];
+      let _gross = 0, _rowD = 0;
+      for (const _it of _items) {
+        const _q = Math.abs(Number(_it.quantity) || 0);
+        const _p = Math.abs(Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0);
+        const _d = Math.abs(Number(_it.discount ?? _it.discount_base_unit ?? _it.discount_amount ?? 0) || 0);
+        _gross += _q * _p;
+        _rowD += _q * _d;
+      }
+      const _invD = Math.max(0, Number(_g.invoiceDiscount ?? _g.invoice_discount) || 0);
+      _g.total = Math.max(0, _gross - _rowD - _invD);
+      _g.grossTotal = _gross;
+      _g.rowDiscount = _rowD;
+    }
     for (const _g of groupedFromSales) { if (_g && _g.invoiceDiscount === undefined) { const _raw = localSalesRows.find((r: any) => String(r.invoice_number || '') === String(_g.invoice || '')); if (_raw) _g.invoiceDiscount = Number(_raw.invoice_discount) || 0; } }
     const localUpMap: Record<string, number> = {};
     for (const r of localSalesRows) {
@@ -1699,15 +1727,35 @@ export async function getSalesGrouped() {
         };
       }
       for (const it of p.items || []) {
-        pendingByInv[inv].total += (Number(it.quantity) || 0) * (Number(it.priceUnit) || 0);
+        pendingByInv[inv].total += ((Number(it.quantity) || 0) * (Number(it.priceUnit) || 0)) - ((Number(it.quantity) || 0) * (Number(it.discount) || 0));
         pendingByInv[inv].paid += Number(it.payment) || 0;
         pendingByInv[inv].items.push(it);
       }
+      pendingByInv[inv].total = Math.max(0, pendingByInv[inv].total - (Number(p.invoiceDiscount || p.invoice_discount) || 0));
       if (!pendingByInv[inv].paid) {
         pendingByInv[inv].paid = Number(p.paymentAmount ?? p.payment ?? p.paid) || 0;
       }
     }
   }
+  // 🟢 بازمحاسبه خالص برای فاکتورهای فروش داخل صف (جدید)
+  {
+    for (const _k in pendingByInv) {
+      const _p = pendingByInv[_k];
+      let _gross = 0, _rowD = 0;
+      for (const _it of (_p.items || [])) {
+        const _q = Math.abs(Number(_it.quantity) || 0);
+        const _pr = Math.abs(Number(_it.priceUnit != null ? _it.priceUnit : _it.price_unit) || 0);
+        const _d = Math.abs(Number(_it.discount ?? _it.discount_base_unit ?? _it.discount_amount ?? 0) || 0);
+        _gross += _q * _pr;
+        _rowD += _q * _d;
+      }
+      const _invD = Math.max(0, Number(_p.invoiceDiscount ?? _p.invoice_discount) || 0);
+      _p.total = Math.max(0, _gross - _rowD - _invD);
+      _p.grossTotal = _gross;
+      _p.rowDiscount = _rowD;
+    }
+  }
+
 
   const cleanedServer = serverList.filter((g: any) => !deletedInvs.has(String(g.invoice || '')));
   const finalMap: Record<string, any> = {};
@@ -1719,7 +1767,9 @@ export async function getSalesGrouped() {
     const k = String((g as any).invoice || '');
     if (k) finalMap[k] = g;
   }
-  return Object.values(finalMap);
+  
+  // 🟢 
+return Object.values(finalMap);
 }
 
 // ═══════════════════════════════════════════
@@ -1730,38 +1780,112 @@ export async function getSalesGrouped() {
 //  searchAllInvoices — با ادغام صف آفلاین
 // ═══════════════════════════════════════════
 export async function searchAllInvoices(q: string) {
-  const [sales, purchases, salesRowsRaw] = await Promise.all([
+  const [sales, purchases, salesRowsRaw, purchaseRowsRaw] = await Promise.all([
     getSalesGrouped(),
     getPurchasesGrouped(),
     getLocal<any[]>('sales'),
+    getLocal<any[]>('purchases'),
   ]);
   const query = (q || '').toLowerCase().trim();
 
-  // مجموع تخفیف ردیفی هر فاکتور (از ردیف‌های محلی)
-  const __rowDiscByInv: Record<string, number> = {};
-  for (const r of (salesRowsRaw || [])) {
-    const inv = String(r && r.invoice_number || '').trim();
-    if (!inv) continue;
-    const qty = Number(r.quantity) || 0;
-    let per = Number(r.discount) || 0;
-    if (!per) per = Number(r.discount_base_unit) || 0;
-    const d = Math.abs(qty * per);
-    if (d) __rowDiscByInv[inv] = (__rowDiscByInv[inv] || 0) + d;
-  }
+  const calcRowDiscMap = (rowsArr: any[]) => {
+    const map: Record<string, number> = {};
+    for (const r of (rowsArr || [])) {
+      const inv = String(r && r.invoice_number || '').trim();
+      if (!inv) continue;
+      const qty = Math.abs(Number(r.quantity) || 0);
+      const per = Math.abs(Number(r.discount ?? r.discount_base_unit ?? r.discount_amount ?? 0) || 0);
+      const d = qty * per;
+      if (d) map[inv] = (map[inv] || 0) + d;
+    }
+    return map;
+  };
 
-  const __applyDisc = (r: any) => {
-    const inv = Number(r && (r.invoiceDiscount ?? r.invoice_discount)) || 0;
-    const rowDisc = __rowDiscByInv[String(r && r.invoice || '').trim()] || 0;
+  const salesRowDiscMap = calcRowDiscMap(salesRowsRaw || []);
+  const purchaseRowDiscMap = calcRowDiscMap(purchaseRowsRaw || []);
+
+  const enrichRow = (r: any, type: string) => {
+    const invKey = String(r && r.invoice || '').trim();
+    const invDisc = Math.max(0, Number(r && (r.invoiceDiscount ?? r.invoice_discount)) || 0);
+    const rowDisc = type === 'sales' ? (salesRowDiscMap[invKey] || 0) : (purchaseRowDiscMap[invKey] || 0);
     const t = Number(r.total) || 0;
-    const net = t - inv - rowDisc;
-    if (!inv && !rowDisc) return r;
-    return { ...r, total: net, invoiceDiscount: inv, rowDiscount: rowDisc };
+    let net = t;
+    let _gross = t;
+    let _rowD = rowDisc;
+    let _invD = invDisc;
+    let _paid = Number(r && (r.paid ?? r.payment ?? r.paidAmount)) || 0;
+
+    if (type === 'purchases' || type === 'purchase') {
+      const _rawRows = (purchaseRowsRaw || []).filter((x: any) => String(x.invoice_number || '').trim() === invKey);
+      if (_rawRows.length) {
+        _gross = 0; _rowD = 0; _paid = 0;
+        for (const _r of _rawRows) {
+          const _q = Math.abs(Number(_r.quantity) || 0);
+          const _p = Math.abs(Number(_r.price_unit ?? _r.priceUnit) || 0);
+          const _d = Math.abs(Number(_r.discount ?? _r.discount_base_unit ?? _r.discount_amount ?? 0) || 0);
+          _gross += _q * _p;
+          _rowD += _q * _d;
+          _paid += Math.abs(Number(_r.payment ?? _r.paid ?? 0) || 0);
+          const _ri = Number(_r.invoice_discount ?? _r.invoiceDiscount);
+          if (Number.isFinite(_ri) && _ri > 0) _invD = _ri;
+        }
+      } else {
+        const _items = Array.isArray(r.items) ? r.items : [];
+        if (_items.length) {
+          _gross = 0; _rowD = 0;
+          for (const it of _items) {
+            const _q = Math.abs(Number(it.quantity) || 0);
+            const _p = Math.abs(Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0);
+            const _d = Math.abs(Number(it.discount ?? it.discount_base_unit ?? it.discount_amount ?? 0) || 0);
+            _gross += _q * _p;
+            _rowD += _q * _d;
+          }
+        } else {
+          _gross = t; _rowD = rowDisc;
+        }
+      }
+      net = Math.max(0, _gross - _rowD - _invD);
+    } else {
+      const _items = Array.isArray(r.items) ? r.items : [];
+      if (_items.length) {
+        _gross = 0; _rowD = 0;
+        for (const it of _items) {
+          const _q = Math.abs(Number(it.quantity) || 0);
+          const _p = Math.abs(Number(it.priceUnit != null ? it.priceUnit : it.price_unit) || 0);
+          const _d = Math.abs(Number(it.discount) || 0);
+          _gross += _q * _p;
+          _rowD += _q * _d;
+        }
+      }
+      _invD = Math.max(0, Number(r && (r.invoiceDiscount ?? r.invoice_discount)) || 0);
+      net = Math.max(0, _gross - _rowD - _invD);
+    }
+
+    return {
+      ...r,
+      total: net,
+      ...(type === 'sales' || type === 'sale' ? {} : {
+        amount: net,
+        paid: _paid,
+        payment: _paid,
+        remaining: Math.max(0, net - _paid),
+        balance: Math.max(0, net - _paid),
+      }),
+      grossTotal: _gross,
+      invoiceDiscount: _invD,
+      rowDiscount: _rowD,
+      type,
+      sheetType: type,
+    };
+    
   };
 
   const filt = (arr: any[], type: string) =>
-    arr.map((r) => ({ ...__applyDisc(r), type, sheetType: type }))
+    (arr || [])
+      .map((r) => enrichRow(r, type))
       .filter((r) => !query ||
         (String(r.invoice) + ' ' + String(r.name || '') + ' ' + String(r.phone || '')).toLowerCase().includes(query));
+
   return [...filt(sales, 'sales'), ...filt(purchases, 'purchases')];
 }
 
@@ -2001,6 +2125,11 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
           shelf: it.shelf || '',
           quantity: it.quantity,
           price_unit: it.priceUnit,
+          discount: Number(it.discount ?? it.discount_base_unit ?? it.discount_amount ?? 0) || 0,
+          discount_enabled: it.discountEnabled ? 1 : 0,
+          discount_base_unit: Number(it.discount_base_unit) || 0,
+          discount_pack_unit: Number(it.discount_pack_unit) || 0,
+          invoice_discount: Number(p.invoiceDiscount ?? p.invoice_discount ?? 0) || 0,
           payment: (() => {
             const rowPay = Number(it.payment) || 0;
             if (rowPay > 0) return rowPay;
@@ -2051,6 +2180,11 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
         supplier_code: isPurchase ? (g.supplierCode || g.code || '') : '',
         supplier_name: isPurchase ? (g.name || '') : '',
         supplier_phone: isPurchase ? (g.phone || '') : '',
+        discount: Number(it.discount ?? it.discount_base_unit ?? it.discount_amount ?? 0) || 0,
+        discount_enabled: it.discountEnabled || it.discount_enabled ? 1 : 0,
+        discount_base_unit: Number(it.discount_base_unit) || 0,
+        discount_pack_unit: Number(it.discount_pack_unit) || 0,
+        invoice_discount: Number(g.invoiceDiscount ?? g.invoice_discount ?? it.invoice_discount ?? it.invoiceDiscount ?? 0) || 0,
         model_code: it.modelCode || it.model_code || '',
         model_name: it.modelName || it.model_name || '',
         shelf: it.shelf || '',
@@ -2106,83 +2240,68 @@ export async function getInvoiceDetail(invoiceNumber: string, type?: string) {
 // ═══════════════════════════════════════════
 //  updateInvoiceInQueue — ویرایش آفلاین
 // ═══════════════════════════════════════════
-export async function updateInvoiceInQueue_original(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
-  const queue = await getQueue();
-  const op = type === 'sales' ? 'createSale' : 'createPurchase';
-  let found = false;
+export async function updateInvoiceInQueue(invoiceNumber: string, type: string, rows: any[], meta?: any) {
+  meta = meta || {};
+  const _invDisc = Number(meta.invoiceDiscount) || 0;
+  const _updatedRows = rows.map((r: any) => ({
+    ...r,
+    discount: Number(r.discount) || 0,
+    discountEnabled: r.discountEnabled ? 1 : (Number(r.discount_enabled) || 0),
+    discount_base_unit: Number(r.discount_base_unit) || 0,
+    discount_pack_unit: Number(r.discount_pack_unit) || 0,
+  }));
 
-  for (const item of queue) {
-    if (item.op !== op) continue;
-
-    let match = false;
-    if (type === 'sales') {
-      match = item.payload?.invoiceNumber === invoiceNumber;
-    } else {
-      match = (item.payload?._pendingInvNumber === invoiceNumber)
-        || (item.payload?.invoiceNumber === invoiceNumber);
-    }
-
-    if (match) {
-      found = true;
-      const validRows = rows.filter((r: any) => !r._deleted);
-      if (type === 'sales') {
-        item.payload.items = validRows.map((r: any) => ({
-          modelCode: r.modelCode,
-          modelName: r.modelName,
-          quantity: r.quantity,
-          priceUnit: r.priceUnit,
-          payment: r.payment,
-          depositDate: r.depositDate,
-          bankName: r.bankName,
-          accountHolder: r.accountHolder,
-          accountHolderCode: r.accountHolderCode,
-          description: r.description,
-        }));
-      } else {
-        item.payload.items = validRows.map((r: any) => ({
-          modelCode: r.modelCode,
-          modelName: r.modelName,
-          quantity: r.quantity,
-          priceUnit: r.priceUnit,
-          description: r.description,
-        }));
-        if (validRows[0]) {
-          item.payload.paymentAmount = validRows[0].payment || 0;
-          item.payload.paymentDate = validRows[0].depositDate || '';
-          item.payload.bankAccount = validRows[0].bankName || '';
-          item.payload.payerName = validRows[0].accountHolder || '';
-          item.payload.payerCode = validRows[0].accountHolderCode || '';
-        }
+  const q = await getQueue();
+  let changed = false;
+  for (let i = 0; i < q.length; i++) {
+    const item = q[i];
+    if (type === 'sales' && item.op === 'createSale' && (item.payload?.invoiceNumber === invoiceNumber || item.payload?._pendingInvNumber === invoiceNumber)) {
+      item.payload.items = _updatedRows;
+      item.payload.invoiceDiscount = _invDisc;
+      if (meta) {
+        item.payload.customerName = meta.name || item.payload.customerName;
+        item.payload.customerPhone = meta.phone || item.payload.customerPhone;
+        item.payload.shipping = meta.shipping || item.payload.shipping;
       }
-
-      // BUSINESS_LOCAL_AND_SHEET_ONLY — به‌روزرسانی محلی تا دفتر معین فوراً تغییر را ببیند
-      const key = type === 'sales' ? 'sales' : 'purchases';
-      const list = (await getLocal<any[]>(key)) || [];
-      const template = list.find((r: any) => String(r.invoice_number || '') === invoiceNumber) || {};
-      const filtered = list.filter((r: any) => String(r.invoice_number || '') !== invoiceNumber);
-      const newRows = validRows.map((r: any) => ({
-        ...template,
-        invoice_number: invoiceNumber,
-        model_code: r.modelCode || '',
-        model_name: r.modelName || '',
-        quantity: Number(r.quantity) || 0,
-        price_unit: Number(r.priceUnit) || 0,
-        payment: Number(r.payment) || 0,
-        description: r.description || '',
-        deposit_date: r.depositDate || template.deposit_date || '',
-        bank_name: r.bankName || template.bank_name || '',
-        account_holder: r.accountHolder || template.account_holder || '',
-        account_holder_code: r.accountHolderCode || template.account_holder_code || '',
-      }));
-      await setLocal(key, [...filtered, ...newRows]);
+      changed = true;
+      break;
+    }
+    if (type === 'purchase' && item.op === 'createPurchase' && (item.payload?.invoiceNumber === invoiceNumber || item.payload?._pendingInvNumber === invoiceNumber)) {
+      item.payload.items = _updatedRows;
+      item.payload.invoiceDiscount = _invDisc;
+      if (meta) {
+        item.payload.supplierName = meta.name || item.payload.supplierName;
+        item.payload.supplierPhone = meta.phone || item.payload.supplierPhone;
+        item.payload.manualInvoice = meta.manualInv || item.payload.manualInvoice;
+        item.payload.payerName = meta.payerName || item.payload.payerName;
+        item.payload.payerCode = meta.payerCode || item.payload.payerCode;
+      }
+      changed = true;
       break;
     }
   }
 
-  if (found) {
-    await AsyncStorage.setItem('@mizan_queue', JSON.stringify(queue));
+  if (changed && type === 'sales') {
+    const matchedItem = q.find((it: any) =>
+      it.op === 'createSale' &&
+      (it.payload?.invoiceNumber === invoiceNumber || it.payload?._pendingInvNumber === invoiceNumber)
+    );
+    if (matchedItem && matchedItem.payload) {
+      await _localUpsertSale({
+        ...matchedItem.payload,
+        invoiceNumber: matchedItem.payload.invoiceNumber || matchedItem.payload._pendingInvNumber || invoiceNumber,
+        items: matchedItem.payload.items || [],
+        rows: matchedItem.payload.items || [],
+        invoiceDiscount: Number(matchedItem.payload.invoiceDiscount) || 0,
+      });
+    }
   }
-  return found;
+
+  if (changed) {
+    await AsyncStorage.setItem(QUEUE, JSON.stringify(q));
+    return true;
+  }
+  return false;
 }
 
 // ═══════════════════════════════════════════
@@ -2688,30 +2807,7 @@ export async function updateFxTrade(localId: string, p: any) {
 // ═══════════════════════════════════════════
 //  updateInvoiceInQueue — wrapper با fallback برای synced
 // ═══════════════════════════════════════════
-export async function updateInvoiceInQueue(invoiceNumber: string, type: 'sales' | 'purchases', rows: any[]) {
-  try {
-    await updateInvoiceInQueue_original(invoiceNumber, type, rows);
-  } catch (e) {
-    console.log('updateInvoiceInQueue_original error:', e);
-  }
-  const q = await getQueue();
-  const createOp = type === 'sales' ? 'createSale' : 'createPurchase';
-  const updateOp = type === 'sales' ? 'updateSale' : 'updatePurchase';
-  const hasCreate = q.some((item: any) => item.op === createOp && item.payload?.invoiceNumber === invoiceNumber);
-  const hasUpdate = q.some((item: any) => item.op === updateOp && item.payload?.invoiceNumber === invoiceNumber);
-  if (!hasCreate && !hasUpdate) {
-    const newQ = [...q, { op: updateOp, payload: { invoiceNumber, rows }, ts: Date.now() }];
-    await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
-  } else if (hasUpdate) {
-    const newQ = q.map((item: any) => {
-      if (item.op === updateOp && item.payload?.invoiceNumber === invoiceNumber) {
-        return { ...item, payload: { invoiceNumber, rows } };
-      }
-      return item;
-    });
-    await AsyncStorage.setItem(QUEUE, JSON.stringify(newQ));
-  }
-}
+
 
 
 // Queue details + retry + clear failed
@@ -3364,6 +3460,10 @@ export async function getLedgerData(): Promise<any[]> {
           bank_name: _g.bank || _g.bank_name || '',
           deposit_date: _g.depositDate || _g.deposit_date || '',
           shipping: _g.shipping || '',
+          discount: Number(_it.discount ?? _it.discount_base_unit ?? _it.discount_amount ?? 0) || 0,
+          discount_enabled: _it.discountEnabled || _it.discount_enabled ? 1 : 0,
+          discount_base_unit: Number(_it.discount_base_unit ?? _it.discount ?? 0) || 0,
+          invoice_discount: Number(_g.invoiceDiscount ?? _g.invoice_discount ?? _it.invoice_discount ?? _it.invoiceDiscount ?? 0) || 0,
           description: _it.description || '',
         });
       }
@@ -3514,7 +3614,7 @@ export async function getLedgerData(): Promise<any[]> {
     }
     if (item.op === 'createSale' && item.payload) {
       const inv = item.payload.invoiceNumber || item.payload.invoice_number || item.payload._pendingInvNumber || '';
-      if (inv && allSales.some((s: any) => String(s.invoice_number || '') === String(inv))) continue;
+      if (inv) allSales = allSales.filter((s: any) => String(s.invoice_number || '') !== String(inv));
       const rows = item.payload.rows || item.payload.items || [];
       const baseDate = item.payload.invoiceDate || item.payload.date || new Date(item.ts || Date.now()).toISOString();
       for (const r of rows) {
@@ -3650,7 +3750,7 @@ export async function getLedgerData(): Promise<any[]> {
     };
 
     if (total > 0) {
-      acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0, discount: Number(s.discount) || 0, discount_amount: (Number(s._row_discount_amount) || 0) + (Number(s._invoice_discount_share) || 0), invoice_discount: Number(s.invoice_discount) || 0 });
+      acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, discountAmount: Number(s._row_discount_amount || 0) + Number(s._invoice_discount_share || 0), lineTotal: total, debit: total, credit: 0, discount: Number(s.discount) || 0, discount_amount: (Number(s._row_discount_amount) || 0) + (Number(s._invoice_discount_share) || 0), invoice_discount: Number(s.invoice_discount) || 0 });
     }
     if (payment > 0) {
       acc.transactions.push({ ...common, type: 'payment_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: 0, credit: payment, description: 'دریافت وجه' });
@@ -4824,6 +4924,8 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
   const dev = (await AsyncStorage.getItem('@mizan_device_id')) || '';
   const now = new Date().toISOString();
   const newRows = payload.rows.filter((r: any) => !r._deleted).map((r: any) => ({
+      invoice_discount: Number(meta.invoiceDiscount) || 0,
+      total: Math.max(0, (Number(r.quantity) || 0) * (Number(r.priceUnit != null ? r.priceUnit : r.price_unit) || 0) - (Number(r.quantity) || 0) * (Number(r.discount) || 0)),
     ...template,
     invoice_number: payload.invoiceNumber,
     invoice_discount: meta.invoiceDiscount !== undefined ? Number(meta.invoiceDiscount) || 0 : (Number(template.invoice_discount) || 0),
@@ -4837,6 +4939,9 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
     price_unit: Number(r.priceUnit) || 0,
     payment: Number(r.payment) || 0,
     discount: Number(r.discount) || 0,
+    total: Math.max(0, (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0) - (Number(r.quantity) || 0) * (Number(r.discount) || 0)),
+    account_holder: meta.payerName || r.accountHolder || template.account_holder || '',
+    payer_name: meta.payerName || r.accountHolder || template.account_holder || '',
     discount_enabled: r.discountEnabled ? 1 : 0,
     discount_base_unit: Number(r.discount_base_unit) || 0,
     discount_pack_unit: Number(r.discount_pack_unit) || 0,
@@ -4852,6 +4957,44 @@ export async function updateSale(payload: { invoiceNumber: string; rows: any[]; 
   const oldRows = list.filter((r: any) => String(r.invoice_number) === payload.invoiceNumber);
   await recordInvoiceAudit('sales', payload.invoiceNumber, oldRows, newRows);
   await setLocal('sales', [...filtered, ...newRows]);
+  try {
+    const sgList = (await getLocal<any[]>('sales_grouped')) || [];
+    const invKey = String(payload.invoiceNumber).trim();
+    const gIdx = sgList.findIndex((x: any) => String(x.invoice || '').trim() === invKey);
+    if (gIdx !== -1 && newRows.length > 0) {
+      const firstRow = newRows[0];
+      const invDiscVal = Number(firstRow.invoice_discount) || 0;
+      const netSum = newRows.reduce((acc: number, r: any) => {
+        const q = Number(r.quantity) || 0;
+        const p = Number(r.price_unit) || 0;
+        const d = Number(r.discount) || 0;
+        return acc + Math.max(0, q * p - q * d);
+      }, 0);
+      const paidSum = newRows.reduce((acc: number, r: any) => acc + (Number(r.payment) || 0), 0);
+      sgList[gIdx] = {
+        ...sgList[gIdx],
+        name: firstRow.customer_name || sgList[gIdx].name || '',
+        customerCode: firstRow.customer_code || sgList[gIdx].customerCode || '',
+        phone: firstRow.customer_phone || sgList[gIdx].phone || '',
+        invoiceDiscount: invDiscVal,
+        invoice_discount: invDiscVal,
+        total: Math.max(0, netSum - invDiscVal),
+        paid: paidSum,
+        items: newRows.map((r: any) => ({
+          modelCode: r.model_code,
+          modelName: r.model_name,
+          quantity: r.quantity,
+          priceUnit: r.price_unit,
+          discount: r.discount,
+          discountEnabled: Boolean(r.discount_enabled),
+          discount_base_unit: r.discount_base_unit,
+          payment: r.payment,
+          description: r.description,
+        })),
+      };
+      await setLocal('sales_grouped', sgList);
+    }
+  } catch {}
 }
 
 export async function updatePurchase(payload: { invoiceNumber: string; rows: any[]; meta?: any }) {
@@ -4918,8 +5061,8 @@ export async function updatePurchase(payload: { invoiceNumber: string; rows: any
       paid,
       manual: meta.manualInv || template.manual_invoice || '',
       bank: meta.bank || template.bank_name || '',
-      holder: meta.holder || template.account_holder || '',
-      holderCode: meta.holderCode || template.account_holder_code || '',
+      holder: meta.payerName || meta.holder || template.account_holder || '',
+      holderCode: meta.payerCode || meta.holderCode || template.account_holder_code || '',
       depositDate: meta.depositDate || template.deposit_date || '',
       shipping: meta.shipping || template.shipping || '',
       local_id: 'grp_purchase_' + payload.invoiceNumber,

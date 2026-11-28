@@ -1,0 +1,26 @@
+*** LedgerScreen.tsx
+119: const [invoiceList, setInvoiceList] = useState<any[] | null>(null);
+476: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل
+502: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>م
+507: _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت
+509: (invoiceList || []).forEach(function(inv: any, i: number) {
+515: _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</t
+538: _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>
+568: rows = (invoiceList || []).map((inv: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(inv.date), 'نوع'
+591: var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) 
+1270: {(invoiceList || []).map((inv: any, i: number) => (
+1293: <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: 
+1294: <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || [
+1295: <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: num
+1296: <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || [
+1297: <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || 
+1298: <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduc
+*** lib.offline.ts
+1588: function __mzApplyDiscounts(rows: any[]) {
+1624: r._row_discount_amount = rowDiscAmt;
+3295: __mzApplyDiscounts(customer);
+3296: __mzApplyDiscounts(triang);
+3319: __mzApplyDiscounts(supplier);
+3588: try { __mzApplyDiscounts(allSales); __mzApplyDiscounts(allPurchases); } catch (_e) { console.log('__MZ_DISC_NO
+3653: acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit
+3699: acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit

@@ -2868,7 +2868,7 @@ function SalesScreen({ showToast }: any) {
         invoiceNumber: inv,
         customerCode,
         customerLocalId,
-        invoiceDiscount: Number(invoiceDiscount) || 0, 
+                invoiceDiscount: Number(invObj && (invObj.invoiceDiscount ?? invObj.invoice_discount)) || __firstInvDisc || 0,
         customerName: name, 
         customerPhone: phone, 
         customerAddress: address, 
@@ -5828,10 +5828,15 @@ function InventoryScreen({ showToast }: any) {
   const [invRef] = useState({ current: null as any });
 
   const [prodMap, setProdMap] = useState(new Map());
+  const [fastProdByCode, setFastProdByCode] = useState<Map<string, any>>(new Map());
+  const [showAllRows, setShowAllRows] = useState(false);
   useEffect(() => {
     getProducts().then(prods => {
       const m = new Map();
+      const codeIdx = new Map<string, any>();
       (prods || []).forEach((p: any) => {
+        if (p && p.code) codeIdx.set(String(p.code), p);
+      setFastProdByCode(codeIdx);
         m.set(String(p.code || ''), {
           pack_size: Number(p.pack_size) || 0,
           base_unit: String(p.base_unit || 'عدد'),
@@ -6269,29 +6274,24 @@ function InventoryScreen({ showToast }: any) {
 
 
   const saveShelf = async () => {
-
     if (!editItem) return;
-
     try {
-
-      const _prods = await getProducts();
-
-      const _found = _prods.find((x: any) => x.code === editItem.code);
-
+      const cached = fastProdByCode.get(String(editItem.code || ''));
+      const _prods = cached ? [cached] : await getProducts();
+      const _found = cached || _prods.find((x: any) => x.code === editItem.code);
+      const packSizeVal = Number(editItem.pack_size ?? _found?.pack_size ?? 0) || 0;
+      const baseUnitVal = String(editItem.base_unit || _found?.base_unit || 'عدد').trim() || 'عدد';
+      const packUnitVal = String(editItem.pack_unit || _found?.pack_unit || 'بسته').trim() || 'بسته';
+      const discBaseVal = Number(editItem.discount_base_unit ?? editItem.discount_unit ?? _found?.discount_base_unit ?? 0) || 0;
+      const discPackVal = Number(editItem.discount_pack_unit ?? _found?.discount_pack_unit ?? (packSizeVal > 0 ? discBaseVal * packSizeVal : 0)) || 0;
+      const payloadFields = { code: editItem.code, name: editItem.name, price: editItem.lastPrice || 0, shelf: shelfVal, base_unit: baseUnitVal, pack_unit: packUnitVal, pack_size: packSizeVal, discount_base_unit: discBaseVal, discount_unit: discBaseVal, discount_pack_unit: discPackVal };
       if (_found && (_found.id || _found._localId || _found.local_id)) {
-
-        await updateProduct(_found.id || _found._localId || _found.local_id, { shelf: shelfVal });
-
+        await updateProduct(_found.id || _found._localId || _found.local_id, payloadFields);
       } else {
-
-        await createProduct({ code: editItem.code, name: editItem.name, price: editItem.lastPrice || 0, shelf: shelfVal });
-
+        await createProduct(payloadFields);
       }
-
       showToast('✅ ذخیره شد'); setEditItem(null); load();
-
     } catch (e: any) { showToast(e.message, true); }
-
   };
 
 
@@ -7719,7 +7719,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
         priceUnit: r.price_unit || 0,
 
         payment: r.payment || 0,
-        discount: Number(r.discount) || 0,
+        discount: Number(r.discount ?? r.discount_base_unit ?? r.discount_amount ?? 0) || 0,
         discountEnabled: r.discount_enabled ? true : false,
         discount_base_unit: Number(r.discount_base_unit) || 0,
         discount_pack_unit: Number(r.discount_pack_unit) || 0,
@@ -7734,8 +7734,8 @@ function SearchSection({ showToast, onReturnSaved }: any) {
         depositDate: r.deposit_date || '',
 
         bankName: r.bank_name || r.receiver_bank || '',
-        accountHolder: r.account_holder || r.receiver_name || '',
-        accountHolderCode: isSales ? (r.account_holder_code || r.receiver_code || '') : (r.payer_code || ''),
+        accountHolder: isSales ? (r.account_holder || r.receiver_name || '') : (r.account_holder || r.payer_name || r.holder || r.receiver_name || ''),
+        accountHolderCode: isSales ? (r.account_holder_code || r.receiver_code || '') : (r.account_holder_code || r.payer_code || r.holderCode || ''),
 
         shipping: isSales ? (r.shipping || '') : '',
 
@@ -7749,6 +7749,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
         String(x.code || '') === String(_code || '') ||
         (String(x.phone || '').replace(/[^0-9]/g, '') && String(x.phone || '').replace(/[^0-9]/g, '') === String(_oldPhone || '').replace(/[^0-9]/g, ''))
       );
+      const __firstInvDisc = rows.reduce((m: number, x: any) => Math.max(m, Number(x && (x.invoice_discount ?? x.invoiceDiscount)) || 0), 0);
       setEditing({
         invoice: inv,
         type,
@@ -7756,7 +7757,7 @@ function SearchSection({ showToast, onReturnSaved }: any) {
         code: _code,
         phone: _p?.phone || (isSales ? (rows[0].customer_phone || '') : (rows[0].supplier_phone || '')),
         manualInv: isSales ? '' : (rows[0].manual_invoice || ''),
-        invoiceDiscount: Math.max(0, ...rows.map((r: any) => Number(r.invoice_discount) || 0)),
+        invoiceDiscount: Math.max(0, __firstInvDisc, ...rows.map((r: any) => Number(r && (r.invoice_discount ?? r.invoiceDiscount)) || 0)),
       });
 
       setDirty(false);
@@ -7876,7 +7877,9 @@ function SearchSection({ showToast, onReturnSaved }: any) {
 
       // ═══ ذخیره فاکتور سینک‌شده (آفلاین یا آنلاین) ═══
       const validRows = editRows.filter((r: any) => !r._deleted);
-      const newTotal = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0);
+      const _rowDisc = validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.discount) || 0), 0);
+      const _invDisc = Number(editing.invoiceDiscount) || 0;
+      const newTotal = Math.max(0, validRows.reduce((a: number, r: any) => a + (Number(r.quantity) || 0) * (Number(r.priceUnit) || 0), 0) - _rowDisc - _invDisc);
       const newPaid = validRows.reduce((a: number, r: any) => a + (Number(r.payment) || 0), 0);
       const meta: any = editing.type === 'sales'
         ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount: Number(editing.invoiceDiscount) || 0 }
@@ -10740,54 +10743,71 @@ function ProductsSection({ showToast }: any) {
     } catch {}
     finally { setLoading(false); }
   };
+
   useEffect(() => { load(); }, []);
 
-  const filtered = q
-    ? list.filter((p: any) => (String(p.code || '') + ' ' + String(p.name || '') + ' ' + String(p.shelf || '')).toLowerCase().includes(q.toLowerCase()))
-    : list;
+  const normQ = q.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    if (!normQ) return list;
+    return list.filter((p: any) =>
+      (String(p.code || '') + ' ' + String(p.name || '') + ' ' + String(p.shelf || '') + ' ' + String(p.pack_unit || '') + ' ' + String(p.base_unit || '')).toLowerCase().includes(normQ)
+    );
+  }, [list, normQ]);
 
-  const getNextProductCode = (listData: any[], draftData: any[], excludeIdx: number = -1) => {
-    const codes = [
-      ...listData.map(x => String(x.code || '')),
-      ...draftData.filter((_, i) => i !== excludeIdx).map(x => String(x.code || ''))
-    ].filter(Boolean);
-    if (!codes.length) return '';
-    let best: any = null;
-    codes.forEach(c => {
-      const m = c.match(/^(.*?)(\d+)$/);
+  const getNextProductCode = useCallback((listData: any[], draftData: any[], excludeIdx: number = -1) => {
+    let best: { prefix: string; n: number; width: number } | null = null;
+    let lastCode = '';
+    const scanCode = (c: any) => {
+      const str = String(c || '').trim();
+      if (!str) return;
+      lastCode = str;
+      const m = str.match(/^(.*?)(\d+)$/);
       if (m) {
         const n = parseInt(m[2], 10);
         if (!best || n > best.n) best = { prefix: m[1], n, width: m[2].length };
       }
-    });
+    };
+    for (let i = 0; i < listData.length; i++) scanCode(listData[i]?.code);
+    for (let i = 0; i < draftData.length; i++) if (i !== excludeIdx) scanCode(draftData[i]?.code);
+    if (!best && !lastCode) return '';
     if (best) return best.prefix + String(best.n + 1).padStart(best.width, '0');
-    return codes[codes.length - 1] + '-2';
-  };
+    return lastCode + '-2';
+  }, []);
 
-  const autoProductCode = () => {
+  const autoProductCode = useCallback(() => {
     if (!editing || editing.id || editing.local_id) return;
     if (String(editing.code || '').trim()) return;
-    const next = getNextProductCode(list, [], -1);
-    if (next) setEditing({ ...editing, code: next });
-  };
+    const next = getNextProductCode(list, drafts, -1);
+    if (next) setEditing((prev: any) => (prev ? { ...prev, code: next } : prev));
+  }, [editing, list, drafts, getNextProductCode]);
 
-  const checkDuplicateName = (name: string, excludeLocalId?: string, excludeId?: string) => {
+  const checkDuplicateName = useCallback((name: string, excludeLocalId?: string, excludeId?: string) => {
     const n = String(name || '').trim();
     if (!n) return null;
     return list.find((x: any) => (x.local_id !== excludeLocalId) && (x.id !== excludeId) && String(x.name || '').trim() === n) || null;
-  };
+  }, [list]);
 
   const save = async () => {
     if (!editing) return;
     if (!editing.name) { showToast('نام الزامی است', true); return; }
-    const dupName = checkDuplicateName(editing.name, editing.local_id, editing.id);
-    if (dupName) { showToast('⚠️ این نام کالا قبلاً ثبت شده', true); return; }
+    if (checkDuplicateName(editing.name, editing.local_id, editing.id)) { showToast('⚠️ این نام کالا قبلاً ثبت شده', true); return; }
     const dupCode = list.find((x: any) => (x.local_id !== editing.local_id) && (x.id !== editing.id) && String(x.code || '').trim() === String(editing.code || '').trim());
     if (dupCode && editing.code) { showToast('⚠️ این کد کالا قبلاً ثبت شده', true); return; }
-    let finalCode = editing.code;
-    if (!finalCode) finalCode = getNextProductCode(list, [], -1);
+    const finalCode = editing.code || getNextProductCode(list, drafts, -1);
     try {
-      const payload: any = { ...editing, code: finalCode };
+      const packSizeNum = Number(editing.pack_size) || 0;
+      const discBaseNum = Number(editing.discount_base_unit) || 0;
+      const discPackNum = Number(editing.discount_pack_unit) || (packSizeNum > 0 && discBaseNum > 0 ? discBaseNum * packSizeNum : 0);
+      const payload: any = {
+        ...editing,
+        code: finalCode,
+        pack_size: packSizeNum,
+        base_unit: String(editing.base_unit || 'عدد').trim() || 'عدد',
+        pack_unit: String(editing.pack_unit || 'بسته').trim() || 'بسته',
+        discount_base_unit: discBaseNum,
+        discount_unit: discBaseNum,
+        discount_pack_unit: discPackNum,
+      };
       delete payload.id;
       if (editing.id || editing.local_id) await updateProduct(editing.local_id || editing.id, payload);
       else await createProduct(payload);
@@ -10798,12 +10818,16 @@ function ProductsSection({ showToast }: any) {
     } catch (e: any) { showToast(e?.message || String(e), true); }
   };
 
-  const remove = async (p: any) => {
+  const remove = useCallback(async (p: any) => {
     const ok = await confirmMsg('حذف کالا', '«' + (p.name || '') + '» حذف شود؟');
     if (!ok) return;
-    try { await deleteProduct(p.local_id || p.id || p._localId || p.code); clearInventoryCache(); load(); showToast('✅ حذف شد'); }
-    catch (e: any) { showToast(e?.message || String(e), true); }
-  };
+    try {
+      await deleteProduct(p.local_id || p.id || p._localId || p.code);
+      clearInventoryCache();
+      load();
+      showToast('✅ حذف شد');
+    } catch (e: any) { showToast(e?.message || String(e), true); }
+  }, []);
 
   const startNew = () => {
     const nextCode = getNextProductCode(list, drafts);
@@ -10822,38 +10846,51 @@ function ProductsSection({ showToast }: any) {
     if (!drafts.length) return;
     for (const d of drafts) if (!d.name) { showToast('نام در همه ردیف‌ها الزامی است', true); return; }
 
-    // چک نام تکراری
     for (let i = 0; i < drafts.length; i++) {
       const name = String(drafts[i].name || '').trim();
-      const existing = list.find((x: any) => String(x.name || '').trim() === name);
-      if (existing) {
+      if (list.find((x: any) => String(x.name || '').trim() === name)) {
         showToast('⚠️ نام «' + name + '» قبلاً ثبت شده است', true);
         return;
       }
-      const otherDraft = drafts.find((x: any, j: number) => j !== i && String(x.name || '').trim() === name);
-      if (otherDraft) {
+      if (drafts.find((x: any, j: number) => j !== i && String(x.name || '').trim() === name)) {
         showToast('⚠️ نام «' + name + '» در ردیف‌های دیگر تکراری است', true);
         return;
       }
     }
 
-    const newDrafts = [...drafts];
-    for (let i = 0; i < newDrafts.length; i++) {
-      let d = newDrafts[i];
-      if (!d.code) d.code = getNextProductCode(list, newDrafts, i);
-    }
-
+    const newDrafts = drafts.map((d, i) => (d.code ? d : { ...d, code: getNextProductCode(list, drafts, i) }));
     let success = 0;
     for (const d of newDrafts) {
       try { await createProduct(d); success++; }
       catch (e: any) { showToast('خطا: ' + (e?.message || String(e)), true); }
     }
     if (success) {
+      clearInventoryCache();
       showToast('✅ ' + success + ' کالا ذخیره شد');
       setDrafts([]);
       load();
     }
   };
+
+  const renderProductRow = useCallback(({ item: p, index: i }: { item: any; index: number }) => (
+    <View style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
+      <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
+      <Text style={[s.tdCell, { width: 200, fontSize: 12, color: C.text, fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{p.name || '—'}</Text>
+      <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(p.price || 0)}</Text>
+      <Text style={[s.tdCell, { width: 120, fontSize: 12, color: C.text }]}>{p.shelf || '—'}</Text>
+      <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0ea5e9', fontWeight: 'bold' }]}>{p.uom_label || p.base_unit || p.unit_label || 'عدد'}</Text>
+      <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_size ? toFaNum(p.pack_size) : '—'}</Text>
+      <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.base_unit || 'عدد'}</Text>
+      <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_unit || 'بسته'}</Text>
+      <Text style={[s.tdCell, { width: 95, fontSize: 11, color: '#0891b2', textAlign: 'center' }]}>{p.discount_base_unit ? fmt(p.discount_base_unit) : '—'}</Text>
+      <Text style={[s.tdCell, { width: 95, fontSize: 11, color: '#0891b2', textAlign: 'center' }]}>{p.discount_pack_unit ? fmt(p.discount_pack_unit) : '—'}</Text>
+      <Text style={[s.tdCell, { width: 140, fontSize: 11, color: '#7c3aed' }]}>{p.code || '—'}</Text>
+      <View style={[s.tdCell, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
+        <TouchableOpacity onPress={() => setEditing({ ...p, pack_unit: p.pack_unit || 'بسته', base_unit: p.base_unit || 'عدد', discount_base_unit: Number(p.discount_base_unit) || 0, discount_pack_unit: Number(p.discount_pack_unit) || 0 })} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>✏️</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => remove(p)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>🗑</Text></TouchableOpacity>
+      </View>
+    </View>
+  ), [remove]);
 
   return (
     <View>
@@ -10867,9 +10904,6 @@ function ProductsSection({ showToast }: any) {
           </TouchableOpacity>
         )}
       </View>
-
-                
-                
 
       <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={setQ} placeholder="🔍 جستجو در کالاها..." placeholderTextColor={C.textMut} />
       <Text style={s.secT}>📦 کالاها ({toFaNum(filtered.length)})</Text>
@@ -10885,143 +10919,112 @@ function ProductsSection({ showToast }: any) {
             <Text style={[s.thCell, { width: 90 }]}>تعداد در بسته</Text>
             <Text style={[s.thCell, { width: 90 }]}>واحد پایه</Text>
             <Text style={[s.thCell, { width: 90 }]}>واحد بسته</Text>
+            <Text style={[s.thCell, { width: 95 }]}>تخفیف پایه</Text>
+            <Text style={[s.thCell, { width: 95 }]}>تخفیف بسته</Text>
             <Text style={[s.thCell, { width: 140 }]}>کد</Text>
             <Text style={[s.thCell, { width: 100 }]}>عملیات</Text>
           </View>
 
-          <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
-            {drafts.map((d, idx) => (
-              <View key={'draft-' + idx} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
-                <Text style={[s.tdCell, { width: 40, textAlign: 'center', color: '#d4af37', fontWeight: 'bold' }]}>D{idx + 1}</Text>
-                <View style={{ width: 200, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v: string) => updateDraft(idx, 'name', v)} placeholder="نام *" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 130, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.price || '')} onChangeText={(v: string) => updateDraft(idx, 'price', parseFloat(v) || 0)} keyboardType="numeric" placeholder="قیمت" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 120, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.shelf || '')} onChangeText={(v: string) => updateDraft(idx, 'shelf', v)} placeholder="قفسه" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 110, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.uom_label || '')} onChangeText={(v: string) => updateDraft(idx, 'uom_label', v)} placeholder="واحد" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 90, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_size || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_size', parseFloat(v) || 0)} keyboardType="numeric" placeholder="در بسته" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 90, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'base_unit', v)} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 90, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_unit', v)} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
-                </View>
-        {/* فیلدهای تخفیف - فقط در صورت تعریف pack_size */}
-        {Number(d.pack_size) > 0 && (
-          <>
-            <View style={{ width: 90, paddingHorizontal: 2 }}>
-              <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_base_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'discount_base_unit', parseNum(v))} keyboardType="numeric" placeholder="تخفیف واحد پایه" placeholderTextColor={C.textMut} />
-            </View>
-            <View style={{ width: 90, paddingHorizontal: 2 }}>
-              <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_pack_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'discount_pack_unit', parseNum(v))} keyboardType="numeric" placeholder="تخفیف واحد بسته" placeholderTextColor={C.textMut} />
-            </View>
-          </>
-        )}
-
-                <View style={{ width: 140, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: string) => updateDraft(idx, 'code', v)} placeholder="کد" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
-                  <TouchableOpacity onPress={() => removeDraft(idx)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>✕</Text></TouchableOpacity>
-                </View>
+          {drafts.map((d, idx) => (
+            <View key={'draft-' + idx} style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+              <Text style={[s.tdCell, { width: 40, textAlign: 'center', color: '#d4af37', fontWeight: 'bold' }]}>D{idx + 1}</Text>
+              <View style={{ width: 200, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name || '')} onChangeText={(v: string) => updateDraft(idx, 'name', v)} placeholder="نام *" placeholderTextColor={C.textMut} />
               </View>
-            ))}
-
-            {editing && (
-              <View style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
-                <Text style={[s.tdCell, { width: 40 }]}>✏️</Text>
-                <View style={{ width: 200, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.name || '')} onChangeText={(v: string) => setEditing({ ...editing, name: v })} onEndEditing={autoProductCode} placeholder="نام *" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 130, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.price || '')} onChangeText={(v: string) => setEditing({ ...editing, price: parseFloat(v) || 0 })} keyboardType="numeric" placeholder="قیمت" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 120, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.shelf || '')} onChangeText={(v: string) => setEditing({ ...editing, shelf: v })} placeholder="قفسه" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 110, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.uom_label || '')} onChangeText={(v: string) => setEditing({ ...editing, uom_label: v })} placeholder="واحد" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 90, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_size || '')} onChangeText={(v: string) => setEditing({ ...editing, pack_size: parseFloat(v) || 0 })} keyboardType="numeric" placeholder="در بسته" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 90, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.base_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, base_unit: v })} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 90, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_unit || '')} onChangeText={(v: string) => setEditing({ ...editing, pack_unit: v , discount_base_unit: Number(p.discount_base_unit) || 0, discount_pack_unit: Number(p.discount_pack_unit) || 0})} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
-                </View>
-        {/* فیلدهای تخفیف - فقط در صورت تعریف pack_size */}
-        {Number(editing.pack_size) > 0 && (
-          <>
-            <View style={{ width: 90, paddingHorizontal: 2 }}>
-              <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_base_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_base_unit: parseNum(v)})} keyboardType="numeric" placeholder="تخفیف واحد پایه" placeholderTextColor={C.textMut} />
-            </View>
-            <View style={{ width: 90, paddingHorizontal: 2 }}>
-              <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_pack_unit || '')} onChangeText={(v: string) => setEditing({...editing, discount_pack_unit: parseNum(v)})} keyboardType="numeric" placeholder="تخفیف واحد بسته" placeholderTextColor={C.textMut} />
-            </View>
-
-          </>
-        )}
-
-                <View style={{ width: 140, paddingHorizontal: 2 }}>
-                  <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.code || '')} onChangeText={(v: string) => setEditing({ ...editing, code: v })} placeholder="کد" placeholderTextColor={C.textMut} />
-                </View>
-                <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
-                  <TouchableOpacity onPress={save} style={{ backgroundColor: '#059669', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>💾</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => setEditing(null)} style={{ backgroundColor: '#64748b', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>✕</Text></TouchableOpacity>
-                </View>
+              <View style={{ width: 130, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.price || '')} onChangeText={(v: string) => updateDraft(idx, 'price', parseFloat(v) || 0)} keyboardType="numeric" placeholder="قیمت" placeholderTextColor={C.textMut} />
               </View>
-            )}
-
-            {loading ? <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} /> : filtered.map((p: any, i: number) => (
-              <View key={p.local_id || p.id || i} style={[s.tblRow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: C.cardAlt }]}>
-                <Text style={[s.tdCell, { width: 40, fontSize: 12, color: '#d4af37', fontWeight: 'bold' }]}>{i + 1}</Text>
-                <Text style={[s.tdCell, { width: 200, fontSize: 12, color: C.text, fontWeight: 'bold', textAlign: 'right' }]} numberOfLines={1}>{p.name || '—'}</Text>
-                <Text style={[s.tdCell, { width: 130, fontSize: 12, color: '#00ff88', fontWeight: 'bold' }]}>{fmt(p.price || 0)}</Text>
-                <Text style={[s.tdCell, { width: 120, fontSize: 12, color: C.text }]}>{p.shelf || '—'}</Text>
-                <Text style={[s.tdCell, { width: 110, fontSize: 12, color: '#0ea5e9', fontWeight: 'bold' }]}>{p.uom_label || p.base_unit || p.unit_label || 'عدد'}</Text>
-                <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_size ? toFaNum(p.pack_size) : '—'}</Text>
-                <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.base_unit || 'عدد'}</Text>
-                <Text style={[s.tdCell, { width: 90, fontSize: 12, color: C.text }]}>{p.pack_unit || '—'}</Text>
-        {/* ستون‌های تخفیف در لیست اصلی */}
-        {Number(p.pack_size) > 0 && (
-          <>
-            <Text style={[s.tdCell, { width: 90, fontSize: 11, color: '#0891b2', textAlign: 'center' }]}>
-              {p.discount_base_unit ? fmt(p.discount_base_unit) : '—'}
-            </Text>
-            <Text style={[s.tdCell, { width: 90, fontSize: 11, color: '#0891b2', textAlign: 'center' }]}>
-              {p.discount_pack_unit ? fmt(p.discount_pack_unit) : '—'}
-            </Text>
-          </>
-        )}
-                <Text style={[s.tdCell, { width: 140, fontSize: 11, color: '#7c3aed' }]}>{p.code || '—'}</Text>
-                <View style={[s.tdCell, { width: 100, flexDirection: 'row', gap: 4, justifyContent: 'center' }]}>
-                  <TouchableOpacity onPress={() => setEditing({ ...p })} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>✏️</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => remove(p)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ fontSize: 12 }}>🗑</Text></TouchableOpacity>
-                </View>
+              <View style={{ width: 120, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.shelf || '')} onChangeText={(v: string) => updateDraft(idx, 'shelf', v)} placeholder="قفسه" placeholderTextColor={C.textMut} />
               </View>
-            ))}
-          </ScrollView>
+              <View style={{ width: 110, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.uom_label || '')} onChangeText={(v: string) => updateDraft(idx, 'uom_label', v)} placeholder="واحد" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 90, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_size || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_size', parseFloat(v) || 0)} keyboardType="numeric" placeholder="در بسته" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 90, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'base_unit', v)} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 90, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'pack_unit', v)} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 95, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_base_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'discount_base_unit', parseNum(v))} keyboardType="numeric" placeholder="تخفیف پایه" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 95, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.discount_pack_unit || '')} onChangeText={(v: string) => updateDraft(idx, 'discount_pack_unit', parseNum(v))} keyboardType="numeric" placeholder="تخفیف بسته" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 140, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code || '')} onChangeText={(v: string) => updateDraft(idx, 'code', v)} placeholder="کد" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
+                <TouchableOpacity onPress={() => removeDraft(idx)} style={{ backgroundColor: '#fee2e2', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>✕</Text></TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          {editing && (
+            <View style={[s.tblRow, { flexDirection: 'row-reverse', backgroundColor: C.cardAlt }]}>
+              <Text style={[s.tdCell, { width: 40 }]}>✏️</Text>
+              <View style={{ width: 200, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.name || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, name: v }))} onEndEditing={autoProductCode} placeholder="نام *" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 130, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.price || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, price: parseFloat(v) || 0 }))} keyboardType="numeric" placeholder="قیمت" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 120, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.shelf || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, shelf: v }))} placeholder="قفسه" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 110, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.uom_label || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, uom_label: v }))} placeholder="واحد" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 90, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_size || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, pack_size: parseFloat(v) || 0 }))} keyboardType="numeric" placeholder="در بسته" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 90, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.base_unit || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, base_unit: v }))} placeholder="واحد پایه" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 90, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.pack_unit || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, pack_unit: v }))} placeholder="واحد بسته" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 95, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_base_unit || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, discount_base_unit: parseNum(v) }))} keyboardType="numeric" placeholder="تخفیف پایه" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 95, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.discount_pack_unit || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, discount_pack_unit: parseNum(v) }))} keyboardType="numeric" placeholder="تخفیف بسته" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 140, paddingHorizontal: 2 }}>
+                <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing.code || '')} onChangeText={(v: string) => setEditing((prev: any) => ({ ...prev, code: v }))} placeholder="کد" placeholderTextColor={C.textMut} />
+              </View>
+              <View style={{ width: 100, flexDirection: 'row-reverse', gap: 4, justifyContent: 'center' }}>
+                <TouchableOpacity onPress={save} style={{ backgroundColor: '#059669', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>💾</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setEditing(null)} style={{ backgroundColor: '#64748b', padding: 6, borderRadius: 6 }}><Text style={{ color: '#fff', fontSize: 12 }}>✕</Text></TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {loading ? (
+            <ActivityIndicator color="#d4af37" style={{ marginTop: 20 }} />
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item: any, idx: number) => String(item.local_id || item.id || item.code || idx)}
+              renderItem={renderProductRow}
+              style={{ maxHeight: 440 }}
+              nestedScrollEnabled
+              initialNumToRender={16}
+              maxToRenderPerBatch={16}
+              windowSize={7}
+              removeClippedSubviews
+            />
+          )}
         </View>
       </ScrollView>
     </View>
   );
 }
 
-// ══════════════════════════════════════════════════════════
-
-//  INVOICE A5 VIEW
-
-// ══════════════════════════════════════════════════════════
 
 function InvoiceView({ invoice, prods, onBack, onNew, showToast }: any) {
 

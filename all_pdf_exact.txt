@@ -1,0 +1,101 @@
+
+=== تب همه (1185..1235) ===
+1185:                       <Text style={[s.th, { width: 60 }]}>کد مدل</Text>
+1186:                       <Text style={[s.th, { width: 120, textAlign: 'right' }]}>نام مدل</Text>
+1187:                       <Text style={[s.th, { width: 45 }]}>تعداد</Text>
+1188:                       <Text style={[s.th, { width: 65 }]}>قیمت</Text>
+1189:                       <Text style={[s.th, { width: 75 }]}>تخفیف</Text>
+1190:                       <Text style={[s.th, { width: 75 }]}>جمع مبلغ</Text>
+1191:                       <Text style={[s.th, { width: 75 }]}>بدهکار</Text>
+1192:                       <Text style={[s.th, { width: 75 }]}>بستانکار</Text>
+1193:                       <Text style={[s.th, { width: 75 }]}>مانده</Text>
+1194:                       <Text style={[s.th, { width: 80 }]}>بانک</Text>
+1195:                       <Text style={[s.th, { width: 90 }]}>صاحب حساب</Text>
+1196:                       <Text style={[s.th, { width: 65 }]}>کد صاحب</Text>
+1197:                       <Text style={[s.th, { width: 90 }]}>تاریخ واریز</Text>
+1198:                       <Text style={[s.th, { width: 85 }]}>باربری</Text>
+1199:                       <Text style={[s.th, { width: 120, textAlign: 'right' }]}>شرح</Text>
+1200:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1201:                     </View>
+1202:                     {filteredPartyDetails.map((t: any, i: number) => (
+1203:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1204:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1205:                         <Text style={[s.td, { width: 75, fontSize: 9 }]}>{_safeLedgerDate(t.date)}</Text>
+1206:                         <Text style={[s.td, { width: 75, color: TYPE_COLOR[t.type] || '#0f2438', fontWeight: 'bold', fontSize: 9 }]}>{TYPE_LABEL[t.type] || t.type}</Text>
+1207:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#7c3aed' }]}>{t.invoice || '—'}</Text>
+1208:                         <Text style={[s.td, { width: 85, fontSize: 9 }]}>{t.manualInvoice || '—'}</Text>
+1209:                         <Text style={[s.td, { width: 60, fontSize: 9 }]}>{t.modelCode || '—'}</Text>
+1210:                         <Text style={[s.td, { width: 120, fontSize: 9, textAlign: 'right' }]} numberOfLines={1}>{t.modelName || '—'}</Text>
+1211:                         <Text style={[s.td, { width: 45, fontSize: 9 }]}>{t.qty ? toFaNum(t.qty) : '—'}</Text>
+1212:                         <Text style={[s.td, { width: 65, fontSize: 9 }]}>{t.priceUnit ? fmt(t.priceUnit) : '—'}</Text>
+1213:                         <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{['sale','purchase','sale_return','purchase_return'].includes(String(t.type || '')) && t.lineTotal ? fmt(t.lineTotal) : '—'}</Text>
+1214:                         <Text style={[s.td, { width: 75, fontSize: 9, color: t.debit ? '#1e40af' : '#475569', fontWeight: 'bold' }]}>{t.debit ? fmt(t.debit) : '—'}</Text>
+1215:                         <Text style={[s.td, { width: 75, fontSize: 9, color: t.credit ? '#059669' : '#475569', fontWeight: 'bold' }]}>{t.credit ? fmt(t.credit) : '—'}</Text>
+1216:                         <Text style={[s.td, { width: 75, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(t.runningBalance || 0))}</Text>
+1217:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{t.bank || '—'}</Text>
+1218:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.holder || '—'}</Text>
+1219:                         <Text style={[s.td, { width: 65, fontSize: 9 }]}>{t.holderCode || '—'}</Text>
+1220:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{t.depositDate ? _safeLedgerDate(t.depositDate) : '—'}</Text>
+1221:                         <Text style={[s.td, { width: 85, fontSize: 9 }]}>{t.shipping || '—'}</Text>
+1222:                         <Text style={[s.td, { width: 120, fontSize: 9, textAlign: 'right' }]} numberOfLines={2}>{cleanDesc(t) || '—'}</Text>
+1223:                         <View style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1224:                           {t.invoice && (t.type === 'sale' || t.type === 'purchase' || t.type === 'payment_received' || t.type === 'payment_sent' || t.type === 'triangular_received') ? (
+1225:                             <TouchableOpacity onPress={() => openInvoiceDetail({ invoice: t.invoice, type: (t.type === 'purchase' || t.type === 'payment_sent') ? 'purchase' : 'sales' })}>
+1226:                               <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>👁️</Text>
+1227:                             </TouchableOpacity>
+1228:                           ) : (
+1229:                             <Text style={{ color: '#94a3b8', fontSize: 10 }}>—</Text>
+1230:                           )}
+1231:                         </View>
+1232:                       </View>
+1233:                     ))}
+1234:                   
+1235:                     <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+
+=== PDF 1 (426..436) ===
+426: 
+427:       _p.push('<table style="font-size:8px"><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+428:       var tQty = 0, tDebit = 0, tCredit = 0;
+429:       txns.forEach(function(t: any, i: number) {
+430:         tQty += Number(t.qty) || 0;
+431:         tDebit += Number(t.debit) || 0;
+432:         tCredit += Number(t.credit) || 0;
+433:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||'—') + '</td><td>' + (t.manualInvoice||'—') + '</td><td>' + (t.modelCode||'—') + '</td><td style="text-align:right">' + (t.modelName||'—') + '</td><td>' + (t.qty?toFaNum(t.qty):'—') + '</td><td>' + (function(){ const _u = prodMap.get(String(t.modelCode || '')) || {}; const bU = _u.base_unit || 'عدد'; const pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + bU : '—'; })() + '</td><td>' + (function(){ const _u = prodMap.get(String(t.modelCode || '')) || {}; const pU = _u.pack_unit || 'بسته'; const pS = Number(_u.pack_size) || 0; const qty = Number(t.qty) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\.00$/, '') + ' ' + pU : '—'; })() + '</td><td>' + (t.priceUnit?fmt(t.priceUnit):'—') + '</td><td>' + (t.lineTotal?fmt(t.lineTotal):'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t.runningBalance||0)) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td><td>' + (t.holderCode||'—') + '</td><td>' + (t.depositDate?_safeLedgerDate(t.depositDate):'—') + '</td><td>' + (t.shipping||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td></tr>');
+434:       });
+435:       _p.push('<tr class="total"><td colspan="9" style="text-align:left;font-weight:bold">جمع:</td><td style="font-weight:bold">' + fmt(tQty) + '</td><td></td><td></td><td style="color:#1e40af;font-weight:bold">' + fmt(tDebit) + '</td><td style="color:#059669;font-weight:bold">' + fmt(tCredit) + '</td><td style="font-weight:bold">' + fmt(Math.abs(tCredit - tDebit)) + '</td><td colspan="6"></td></tr>');
+436:       _p.push('</table>');
+
+=== PDF 2 (478..487) ===
+478:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+479:     _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+480:     var tot = 0, pay = 0;
+481:     (invoiceDetailRows || []).forEach(function(r, i) {
+482:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+483:       tot += line; pay += Number(r.payment) || 0;
+484:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' + (r.model_name || r.modelName || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity)||0) + '</td><td>' + fmt(Number(r.price_unit)||0) + '</td><td style="color:#b45309;font-weight:bold">' + fmt((function(){ var _g=(Number(r.quantity)||0)*(Number(r.price_unit)||0); var _n=Number(r.total); if(!(_n>=0)) _n=_g; return Math.max(0,_g-_n); })()) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment)||0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td></tr>');
+485:     });
+486:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="17" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
+487:     _p.push('</table>');
+
+=== PDF 3 (588..608) ===
+588:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
+589:     _p.push('<thead><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr></thead>');
+590:     _p.push('<tbody>');
+591:     var td = 0, tc = 0, run = 0, idx = 0;
+592:     (rows || []).forEach(function(r) {
+593:       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+594:       var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) || 0));
+595:       var _invDiscShare = Number(r._invoice_discount_share) || 0;
+596:       var _gross = qty * pr;
+597:       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+598:       var line = _net;
+599:       var _discTotal = Math.max(0, _gross - line);
+600:       var d = isP ? 0 : line, c = isP ? line : 0;
+601:       td += d; tc += c; run += c - d; idx++;
+602:       _p.push('<tr>' +
+603:         '<td>' + idx + '</td>' +
+604:         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+605:         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+606:         '<td>' + _h(r.invoice_number) + '</td>' +
+607:         '<td>' + _h(r.manual_invoice) + '</td>' +
+608:         '<td>' + _h(r.model_code) + '</td>' +

@@ -1,0 +1,223 @@
+=== جستجوی هدفمند در LedgerScreen.tsx ===
+
+--- "function renderLedgerRow" → یافت نشد ---
+
+--- "function LedgerRow" → یافت نشد ---
+
+--- "function ledgerColumns" → یافت نشد ---
+
+--- "const ledgerColumns" → یافت نشد ---
+
+--- "function partyLedger" → یافت نشد ---
+
+--- "const discountCol" → یافت نشد ---
+
+--- "function calcDiscount" → یافت نشد ---
+
+--- "discount" → 2 مورد در خطوط 591, 592 ---
+589|     (rows || []).forEach(function(r) {
+590|       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+591|       var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) || 0));
+592|       var _invDiscShare = Number(r._invoice_discount_share) || 0;
+593|       var _gross = qty * pr;
+594|       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+595|       var line = _net;
+596|       var _discTotal = Math.max(0, _gross - line);
+597|       var d = isP ? 0 : line, c = isP ? line : 0;
+598|       td += d; tc += c; run += c - d; idx++;
+599|       _p.push('<tr>' +
+600|         '<td>' + idx + '</td>' +
+601|         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+602|         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+603|         '<td>' + _h(r.invoice_number) + '</td>' +
+604|         '<td>' + _h(r.manual_invoice) + '</td>' +
+605|         '<td>' + _h(r.model_code) + '</td>' +
+606|         '<td style="text-align:right">' + _h(r.model_name) + '</td>' +
+607|         '<td>' + fmt(qty) + '</td>' +
+608|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU = _u.base_unit || 'عدد'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + _h(bU) : '—'; })() + '</td>' +
+609|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU = _u.pack_unit || 'بسته'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\\.00$/, '') + ' ' + _h(pU) : '—'; })() + '</td>' +
+610|         '<td>' + fmt(pr) + '</td>' +
+611|         '<td style="color:#b45309;font-weight:bold">' + fmt(_discTotal) + '</td>' +
+612|         '<td>' + fmt(line) + '</td>' +
+613|         '<td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td>' +
+614|         '<td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td>' +
+615|         '<td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td>' +
+...
+590|       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+591|       var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) || 0));
+592|       var _invDiscShare = Number(r._invoice_discount_share) || 0;
+593|       var _gross = qty * pr;
+594|       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+595|       var line = _net;
+596|       var _discTotal = Math.max(0, _gross - line);
+597|       var d = isP ? 0 : line, c = isP ? line : 0;
+598|       td += d; tc += c; run += c - d; idx++;
+599|       _p.push('<tr>' +
+600|         '<td>' + idx + '</td>' +
+601|         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+602|         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+603|         '<td>' + _h(r.invoice_number) + '</td>' +
+604|         '<td>' + _h(r.manual_invoice) + '</td>' +
+605|         '<td>' + _h(r.model_code) + '</td>' +
+606|         '<td style="text-align:right">' + _h(r.model_name) + '</td>' +
+607|         '<td>' + fmt(qty) + '</td>' +
+608|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU = _u.base_unit || 'عدد'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + _h(bU) : '—'; })() + '</td>' +
+609|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU = _u.pack_unit || 'بسته'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\\.00$/, '') + ' ' + _h(pU) : '—'; })() + '</td>' +
+610|         '<td>' + fmt(pr) + '</td>' +
+611|         '<td style="color:#b45309;font-weight:bold">' + fmt(_discTotal) + '</td>' +
+612|         '<td>' + fmt(line) + '</td>' +
+613|         '<td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td>' +
+614|         '<td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td>' +
+615|         '<td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td>' +
+616|         '<td>' + _h(r.bank_name || r.receiver_bank) + '</td>' +
+...
+
+--- "_row_discount" → 1 مورد در خطوط 591 ---
+589|     (rows || []).forEach(function(r) {
+590|       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+591|       var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) || 0));
+592|       var _invDiscShare = Number(r._invoice_discount_share) || 0;
+593|       var _gross = qty * pr;
+594|       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+595|       var line = _net;
+596|       var _discTotal = Math.max(0, _gross - line);
+597|       var d = isP ? 0 : line, c = isP ? line : 0;
+598|       td += d; tc += c; run += c - d; idx++;
+599|       _p.push('<tr>' +
+600|         '<td>' + idx + '</td>' +
+601|         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+602|         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+603|         '<td>' + _h(r.invoice_number) + '</td>' +
+604|         '<td>' + _h(r.manual_invoice) + '</td>' +
+605|         '<td>' + _h(r.model_code) + '</td>' +
+606|         '<td style="text-align:right">' + _h(r.model_name) + '</td>' +
+607|         '<td>' + fmt(qty) + '</td>' +
+608|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU = _u.base_unit || 'عدد'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + _h(bU) : '—'; })() + '</td>' +
+609|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU = _u.pack_unit || 'بسته'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\\.00$/, '') + ' ' + _h(pU) : '—'; })() + '</td>' +
+610|         '<td>' + fmt(pr) + '</td>' +
+611|         '<td style="color:#b45309;font-weight:bold">' + fmt(_discTotal) + '</td>' +
+612|         '<td>' + fmt(line) + '</td>' +
+613|         '<td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td>' +
+614|         '<td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td>' +
+615|         '<td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td>' +
+...
+
+--- "invoice_discount" → 1 مورد در خطوط 592 ---
+590|       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+591|       var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) || 0));
+592|       var _invDiscShare = Number(r._invoice_discount_share) || 0;
+593|       var _gross = qty * pr;
+594|       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+595|       var line = _net;
+596|       var _discTotal = Math.max(0, _gross - line);
+597|       var d = isP ? 0 : line, c = isP ? line : 0;
+598|       td += d; tc += c; run += c - d; idx++;
+599|       _p.push('<tr>' +
+600|         '<td>' + idx + '</td>' +
+601|         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+602|         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+603|         '<td>' + _h(r.invoice_number) + '</td>' +
+604|         '<td>' + _h(r.manual_invoice) + '</td>' +
+605|         '<td>' + _h(r.model_code) + '</td>' +
+606|         '<td style="text-align:right">' + _h(r.model_name) + '</td>' +
+607|         '<td>' + fmt(qty) + '</td>' +
+608|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU = _u.base_unit || 'عدد'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + _h(bU) : '—'; })() + '</td>' +
+609|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU = _u.pack_unit || 'بسته'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\\.00$/, '') + ' ' + _h(pU) : '—'; })() + '</td>' +
+610|         '<td>' + fmt(pr) + '</td>' +
+611|         '<td style="color:#b45309;font-weight:bold">' + fmt(_discTotal) + '</td>' +
+612|         '<td>' + fmt(line) + '</td>' +
+613|         '<td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td>' +
+614|         '<td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td>' +
+615|         '<td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td>' +
+616|         '<td>' + _h(r.bank_name || r.receiver_bank) + '</td>' +
+...
+
+--- "isP ?" → 3 مورد در خطوط 584, 597, 602 ---
+582|     };
+583|     var isP = (meta?.type === 'purchase');
+584|     _p.push('<div class="info"><b>طرف:</b> ' + _h(selectedParty?.name) + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _h(_safeLedgerDate(meta?.date || '')) + '</div>');
+585|     _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
+586|     _p.push('<thead><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr></thead>');
+587|     _p.push('<tbody>');
+588|     var td = 0, tc = 0, run = 0, idx = 0;
+589|     (rows || []).forEach(function(r) {
+590|       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+591|       var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) || 0));
+592|       var _invDiscShare = Number(r._invoice_discount_share) || 0;
+593|       var _gross = qty * pr;
+594|       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+595|       var line = _net;
+596|       var _discTotal = Math.max(0, _gross - line);
+597|       var d = isP ? 0 : line, c = isP ? line : 0;
+598|       td += d; tc += c; run += c - d; idx++;
+599|       _p.push('<tr>' +
+600|         '<td>' + idx + '</td>' +
+601|         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+602|         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+603|         '<td>' + _h(r.invoice_number) + '</td>' +
+604|         '<td>' + _h(r.manual_invoice) + '</td>' +
+605|         '<td>' + _h(r.model_code) + '</td>' +
+606|         '<td style="text-align:right">' + _h(r.model_name) + '</td>' +
+607|         '<td>' + fmt(qty) + '</td>' +
+608|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU = _u.base_unit || 'عدد'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + _h(bU) : '—'; })() + '</td>' +
+...
+595|       var line = _net;
+596|       var _discTotal = Math.max(0, _gross - line);
+597|       var d = isP ? 0 : line, c = isP ? line : 0;
+598|       td += d; tc += c; run += c - d; idx++;
+599|       _p.push('<tr>' +
+600|         '<td>' + idx + '</td>' +
+601|         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+602|         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+603|         '<td>' + _h(r.invoice_number) + '</td>' +
+604|         '<td>' + _h(r.manual_invoice) + '</td>' +
+605|         '<td>' + _h(r.model_code) + '</td>' +
+606|         '<td style="text-align:right">' + _h(r.model_name) + '</td>' +
+607|         '<td>' + fmt(qty) + '</td>' +
+608|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU = _u.base_unit || 'عدد'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + _h(bU) : '—'; })() + '</td>' +
+609|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU = _u.pack_unit || 'بسته'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\\.00$/, '') + ' ' + _h(pU) : '—'; })() + '</td>' +
+610|         '<td>' + fmt(pr) + '</td>' +
+611|         '<td style="color:#b45309;font-weight:bold">' + fmt(_discTotal) + '</td>' +
+612|         '<td>' + fmt(line) + '</td>' +
+613|         '<td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td>' +
+614|         '<td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td>' +
+615|         '<td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td>' +
+616|         '<td>' + _h(r.bank_name || r.receiver_bank) + '</td>' +
+617|         '<td>' + _h(r.account_holder) + '</td>' +
+618|         '<td>' + _h(r.account_holder_code) + '</td>' +
+619|         '<td>' + (r.deposit_date ? _h(_safeLedgerDate(r.deposit_date)) : '—') + '</td>' +
+620|         '<td>' + _h(r.shipping) + '</td>' +
+621|         '<td style="text-align:right">' + _h(r.description) + '</td>' +
+...
+600|         '<td>' + idx + '</td>' +
+601|         '<td>' + _h(_safeLedgerDate(r.date_reg || r.date_factor || '')) + '</td>' +
+602|         '<td>' + (isP ? 'خرید' : 'فروش') + '</td>' +
+603|         '<td>' + _h(r.invoice_number) + '</td>' +
+604|         '<td>' + _h(r.manual_invoice) + '</td>' +
+605|         '<td>' + _h(r.model_code) + '</td>' +
+606|         '<td style="text-align:right">' + _h(r.model_name) + '</td>' +
+607|         '<td>' + fmt(qty) + '</td>' +
+608|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU = _u.base_unit || 'عدد'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? pS + ' ' + _h(bU) : '—'; })() + '</td>' +
+609|         '<td>' + (function(){ var _u = prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU = _u.pack_unit || 'بسته'; var pS = Number(_u.pack_size) || 0; return pS > 0 ? (qty / pS).toFixed(2).replace(/\\.00$/, '') + ' ' + _h(pU) : '—'; })() + '</td>' +
+610|         '<td>' + fmt(pr) + '</td>' +
+611|         '<td style="color:#b45309;font-weight:bold">' + fmt(_discTotal) + '</td>' +
+612|         '<td>' + fmt(line) + '</td>' +
+613|         '<td style="color:#1e40af;font-weight:bold">' + (d ? fmt(d) : '—') + '</td>' +
+614|         '<td style="color:#059669;font-weight:bold">' + (c ? fmt(c) : '—') + '</td>' +
+615|         '<td style="font-weight:bold">' + fmt(Math.abs(run)) + '</td>' +
+616|         '<td>' + _h(r.bank_name || r.receiver_bank) + '</td>' +
+617|         '<td>' + _h(r.account_holder) + '</td>' +
+618|         '<td>' + _h(r.account_holder_code) + '</td>' +
+619|         '<td>' + (r.deposit_date ? _h(_safeLedgerDate(r.deposit_date)) : '—') + '</td>' +
+620|         '<td>' + _h(r.shipping) + '</td>' +
+621|         '<td style="text-align:right">' + _h(r.description) + '</td>' +
+622|         '</tr>');
+623|     });
+624|     _p.push('</tbody>');
+625|     _p.push('<tfoot><tr style="background:#f1f5f9;font-weight:bold"><td colspan="13" style="text-align:left">جمع:</td><td style="color:#1e40af">' + fmt(td) + '</td><td style="color:#059669">' + fmt(tc) + '</td><td>' + fmt(Math.abs(td - tc)) + '</td><td colspan="6"></td></tr></tfoot>');
+626|     _p.push('</table>');
+...
+
+--- "bدهکار" → یافت نشد ---
+
+--- "بستانکار" → 24 مورد در خطوط 374, 409, 410, 424, 446, 456, 458, 460, 462, 476 ---

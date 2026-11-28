@@ -1,0 +1,47 @@
+1259:                 <ScrollView horizontal>
+1260:                   <View>
+1261:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+1262:                       <Text style={[s.th, { width: 30 }]}>#</Text>
+1263:                       <Text style={[s.th, { width: 90 }]}>تاریخ</Text>
+1264:                       <Text style={[s.th, { width: 80 }]}>نوع</Text>
+1265:                       <Text style={[s.th, { width: 110 }]}>شماره فاکتور</Text>
+1266:                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
+1267:                       <Text style={[s.th, { width: 100 }]}>جمع</Text>
+1268:                       <Text style={[s.th, { width: 90 }]}>تخفیف</Text>
+1269:                       <Text style={[s.th, { width: 100 }]}>پرداخت</Text>
+1270:                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
+1271:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1272:                     </View>
+1273:                     {(invoiceList || []).map((inv: any, i: number) => (
+1274:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1275:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1276:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{_safeLedgerDate(inv.date)}</Text>
+1277:                         <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
+1278:                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{inv.invoice}</Text>
+1279:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{toFaNum(inv.count || 0)}</Text>
+1280:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#b45309', fontWeight: 'bold' }]}>{fmt(Number(inv.discount) || 0)}</Text>
+1281:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
+1282:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#b45309', fontWeight: 'bold' }]}>{fmt(Number(inv.discount) || 0)}</Text>
+1283:                         <Text style={[s.td, { width: 100, fontSize: 9, color: '#059669' }]}>{fmt(inv.paid)}</Text>
+1284:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(inv.balance))}
+1285:                       </Text>
+1286:                         <TouchableOpacity onPress={() => openInvoiceDetail(inv)} style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1287:                           <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>👁️</Text>
+1288:                         </TouchableOpacity>
+1289:                       </View>
+1290:                     ))}
+1291:                       <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1292:                         <Text style={[s.td, { width: 30 }]}></Text>
+1293:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1294:                         <Text style={[s.td, { width: 80 }]}></Text>
+1295:                         <Text style={[s.td, { width: 110 }]}></Text>
+1296:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1297:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1298:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1299:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1300:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1301:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1302:                         <Text style={[s.td, { width: 70 }]}></Text>
+1303:                       </View>
+1304:                   </View>
+1305:                 </ScrollView>

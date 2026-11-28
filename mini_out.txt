@@ -1,0 +1,64 @@
+=== setInvoiceList ===
+117:   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
+118:   const [partyViewMode, setPartyViewMode] = useState<'all' | 'in' | 'out'>('all');
+119:   const [invoiceList, setInvoiceList] = useState<any[] | null>(null);
+120:   const [invoiceDetailRows, setInvoiceDetailRows] = useState<any[] | null>(null);
+121:   const [invoiceDetailMeta, setInvoiceDetailMeta] = useState<any>(null);
+122:   const [invoiceLoading, setInvoiceLoading] = useState(false);
+123:   const invoiceModalRef = useRef(null);
+124:   const invoiceRef = useRef(null);
+125:   const [treeMode, setTreeMode] = useState<'flat'|'groups'|'group'|'counterparty'>('flat');
+126:   const [activeGroup, setActiveGroup] = useState('');
+127:   const [activeCounterparty, setActiveCounterparty] = useState('');
+128:   const ref = useRef(null);
+129:   const modalRef = useRef(null);
+130: 
+131:   const load = async () => {
+132:     setLoading(true);
+133:     try {
+134:       const result = await getLedgerData();
+135:       let _displayData: any = result;
+136:       try {
+137:         const _parties = await getParties();
+---
+251:   if (activeTab === 'parties') {
+252:     setSelectedParty(p);
+253:     setInvoiceList(buildInvoicesList(p));
+254:     setInvoiceDetailRows([]);
+255:     setInvoiceDetailMeta(null);
+256:     setPartyViewMode(String(p?.type || '').includes('مشتری') ? 'out' : 'in');
+257:     setInvoiceModalVisible(true);
+258:     return;
+259:   }
+260:   setSelectedParty(p);
+261:   setPartyFilter('all');
+262:   setTreeMode('flat');
+263:   setActiveGroup('');
+264:   setActiveCounterparty('');
+265:   setModalVisible(true);
+266: };;;
+267:   const partyDetails = selectedParty ? selectedParty.transactions : [];
+268:   const filteredPartyDetails = (partyDetails || []).filter((t: any) => {
+269:     if (partyFilter === 'all') return true;
+270:     if (partyFilter === 'in') return (Number(t.credit) || 0) > 0;
+271:     if (partyFilter === 'out') return (Number(t.debit) || 0) > 0;
+---
+=== modal row 1268..1285 ===
+1268:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1269:                     </View>
+1270:                     {(invoiceList || []).map((inv: any, i: number) => (
+1271:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1272:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1273:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{_safeLedgerDate(inv.date)}</Text>
+1274:                         <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
+1275:                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{inv.invoice}</Text>
+1276:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{toFaNum(inv.count || 0)}</Text>
+1277:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#b45309', fontWeight: 'bold' }]}>{fmt(Math.max(0, (Number(inv.quantity)||0)*(Number(inv.price_unit)||0) - (Number(inv.total)||0)))}</Text>
+1278:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
+1279:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#b45309', fontWeight: 'bold' }]}>{fmt(Math.max(0, (Number(inv.quantity)||0)*(Number(inv.price_unit)||0) - (Number(inv.total)||0)))}</Text>
+1280:                         <Text style={[s.td, { width: 100, fontSize: 9, color: '#059669' }]}>{fmt(inv.paid)}</Text>
+1281:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(Math.abs(inv.balance))}
+1282:                       </Text>
+1283:                         <TouchableOpacity onPress={() => openInvoiceDetail(inv)} style={{ width: 70, alignItems: 'center', justifyContent: 'center' }}>
+1284:                           <Text style={{ color: '#2563eb', fontWeight: 'bold', fontSize: 13 }}>👁️</Text>
+1285:                         </TouchableOpacity>

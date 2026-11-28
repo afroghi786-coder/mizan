@@ -1,0 +1,436 @@
+
+=== LedgerScreen.tsx (total lines: 1374) ===
+--- Match "invoiceList" at line 119 ---
+111: 
+112:   const [searchQuery, setSearchQuery] = useState('');
+113:   const [activeTab, setActiveTab] = useState<'parties' | 'partners' | 'employees' | 'expenses'>('parties');
+114:   const [selectedParty, setSelectedParty] = useState(null);
+115:   const [modalVisible, setModalVisible] = useState(false);
+116:   const [partyFilter, setPartyFilter] = useState('all');
+117:   const [invoiceModalVisible, setInvoiceModalVisible] = useState(false);
+118:   const [partyViewMode, setPartyViewMode] = useState<'all' | 'in' | 'out'>('all');
+119:   const [invoiceList, setInvoiceList] = useState<any[] | null>(null);
+120:   const [invoiceDetailRows, setInvoiceDetailRows] = useState<any[] | null>(null);
+121:   const [invoiceDetailMeta, setInvoiceDetailMeta] = useState<any>(null);
+122:   const [invoiceLoading, setInvoiceLoading] = useState(false);
+123:   const invoiceModalRef = useRef(null);
+124:   const invoiceRef = useRef(null);
+125:   const [treeMode, setTreeMode] = useState<'flat'|'groups'|'group'|'counterparty'>('flat');
+126:   const [activeGroup, setActiveGroup] = useState('');
+127:   const [activeCounterparty, setActiveCounterparty] = useState('');
+--- Match "invoiceList" at line 509 ---
+501:     if (partyViewMode === 'all') {
+502:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+503:       (buildPartyTransactions(selectedParty) || []).forEach(function(t: any, i: number) {
+504:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t._running||0)) + '</td></tr>');
+505:       });
+506:     } else if ((selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in')) {
+507:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
+508:       var tot = 0, paid = 0;
+509:       (invoiceList || []).forEach(function(inv: any, i: number) {
+510:         tot += Number(inv.total) || 0; paid += Number(inv.paid) || 0;
+511:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>' + fmt(inv.paid) + '</td><td>' + fmt(Math.abs(inv.balance)) + '</td></tr>');
+512:       });
+513:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td>' + fmt(Math.abs(tot-paid)) + '</td></tr>');
+514:     } else {
+515:       _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</th></tr>');
+516:       var totP = 0;
+517:       (buildPaymentsList(selectedParty) || []).forEach(function(t: any, i: number) {
+--- Match "invoiceList" at line 568 ---
+560:     try {
+561:       let rows: any[] = [];
+562:       let name = 'گزارش';
+563:       if (partyViewMode === 'all') {
+564:         name = 'همه';
+565:         rows = (buildPartyTransactions(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'نوع': TYPE_LABEL[t.type] || t.type, 'سند': t.invoice || t.sourceId || '', 'شرح': cleanDesc(t), 'بدهکار': t.debit || 0, 'بستانکار': t.credit || 0, 'مانده': Math.abs(t._running || 0) }));
+566:       } else if (partyViewMode === 'in') {
+567:         name = 'ورودی‌ها';
+568:         rows = (invoiceList || []).map((inv: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(inv.date), 'نوع': inv.type === 'purchase' ? 'خرید' : 'فروش', 'شماره فاکتور': inv.invoice, 'تعداد': inv.count || 0, 'مبلغ کل': inv.total, 'پرداخت': inv.paid, 'مانده': Math.abs(inv.balance) }));
+569:       } else {
+570:         name = 'خروجی‌ها';
+571:         rows = (buildPaymentsList(selectedParty) || []).map((t: any, i: number) => ({ '#': i+1, 'تاریخ': _safeLedgerDate(t.date), 'سند': t.invoice || '', 'شرح': cleanDesc(t), 'مبلغ پرداخت': Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0, 'بانک': t.bank || '', 'صاحب حساب': t.holder || '' }));
+572:       }
+573:       const r = await exportExcel([{ name, data: rows }], 'party-' + (selectedParty?.code || 'p') + '-' + Date.now() + '.xlsx');
+574:       if (showToast) showToast(r.ok ? '✅ ' + r.message : '❌ ' + r.message, !r.ok);
+575:     } catch (e: any) { if (showToast) showToast(e.message, true); }
+576:   };
+--- Match "invoiceList" at line 1270 ---
+1262:                       <Text style={[s.th, { width: 110 }]}>شماره فاکتور</Text>
+1263:                       <Text style={[s.th, { width: 80 }]}>تعداد</Text>
+1264:                       <Text style={[s.th, { width: 100 }]}>جمع</Text>
+1265:                       <Text style={[s.th, { width: 90 }]}>تخفیف</Text>
+1266:                       <Text style={[s.th, { width: 100 }]}>پرداخت</Text>
+1267:                       <Text style={[s.th, { width: 100 }]}>مانده</Text>
+1268:                       <Text style={[s.th, { width: 70 }]}>عملیات</Text>
+1269:                     </View>
+1270:                     {(invoiceList || []).map((inv: any, i: number) => (
+1271:                       <View key={i} style={[s.trow, { flexDirection: 'row-reverse' }, i % 2 === 0 && { backgroundColor: '#f8fafc' }]}>
+1272:                         <Text style={[s.td, { width: 30 }]}>{i + 1}</Text>
+1273:                         <Text style={[s.td, { width: 90, fontSize: 9 }]}>{_safeLedgerDate(inv.date)}</Text>
+1274:                         <Text style={[s.td, { width: 80, fontSize: 9, color: inv.type === 'purchase' ? '#ea580c' : '#059669', fontWeight: 'bold' }]}>{inv.type === 'purchase' ? 'خرید' : 'فروش'}</Text>
+1275:                         <Text style={[s.td, { width: 110, fontSize: 9, color: '#7c3aed' }]}>{inv.invoice}</Text>
+1276:                         <Text style={[s.td, { width: 80, fontSize: 9 }]}>{toFaNum(inv.count || 0)}</Text>
+1277:                         <Text style={[s.td, { width: 90, fontSize: 9, color: '#b45309', fontWeight: 'bold' }]}>{fmt(Math.max(0, (Number(inv.quantity)||0)*(Number(inv.price_unit)||0) - (Number(inv.total)||0)))}</Text>
+1278:                         <Text style={[s.td, { width: 100, fontSize: 9, fontWeight: 'bold' }]}>{fmt(inv.total)}</Text>
+--- Match "invoiceList" at line 1293 ---
+1285:                         </TouchableOpacity>
+1286:                       </View>
+1287:                     ))}
+1288:                       <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1289:                         <Text style={[s.td, { width: 30 }]}></Text>
+1290:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1291:                         <Text style={[s.td, { width: 80 }]}></Text>
+1292:                         <Text style={[s.td, { width: 110 }]}></Text>
+1293:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1294:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1295:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1296:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1297:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1298:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1299:                         <Text style={[s.td, { width: 70 }]}></Text>
+1300:                       </View>
+1301:                   </View>
+--- Match "invoiceList" at line 1294 ---
+1286:                       </View>
+1287:                     ))}
+1288:                       <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1289:                         <Text style={[s.td, { width: 30 }]}></Text>
+1290:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1291:                         <Text style={[s.td, { width: 80 }]}></Text>
+1292:                         <Text style={[s.td, { width: 110 }]}></Text>
+1293:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1294:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1295:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1296:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1297:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1298:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1299:                         <Text style={[s.td, { width: 70 }]}></Text>
+1300:                       </View>
+1301:                   </View>
+1302:                 </ScrollView>
+--- Match "invoiceList" at line 1295 ---
+1287:                     ))}
+1288:                       <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1289:                         <Text style={[s.td, { width: 30 }]}></Text>
+1290:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1291:                         <Text style={[s.td, { width: 80 }]}></Text>
+1292:                         <Text style={[s.td, { width: 110 }]}></Text>
+1293:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1294:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1295:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1296:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1297:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1298:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1299:                         <Text style={[s.td, { width: 70 }]}></Text>
+1300:                       </View>
+1301:                   </View>
+1302:                 </ScrollView>
+1303:               ) : (
+--- Match "invoiceList" at line 1296 ---
+1288:                       <View style={[s.trow, { backgroundColor: '#e2e8f0', borderTopWidth: 2, borderTopColor: '#0f2438', flexDirection: 'row-reverse' }]}>
+1289:                         <Text style={[s.td, { width: 30 }]}></Text>
+1290:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1291:                         <Text style={[s.td, { width: 80 }]}></Text>
+1292:                         <Text style={[s.td, { width: 110 }]}></Text>
+1293:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1294:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1295:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1296:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1297:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1298:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1299:                         <Text style={[s.td, { width: 70 }]}></Text>
+1300:                       </View>
+1301:                   </View>
+1302:                 </ScrollView>
+1303:               ) : (
+1304:                 <ScrollView horizontal>
+--- Match "invoiceList" at line 1297 ---
+1289:                         <Text style={[s.td, { width: 30 }]}></Text>
+1290:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1291:                         <Text style={[s.td, { width: 80 }]}></Text>
+1292:                         <Text style={[s.td, { width: 110 }]}></Text>
+1293:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1294:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1295:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1296:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1297:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1298:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1299:                         <Text style={[s.td, { width: 70 }]}></Text>
+1300:                       </View>
+1301:                   </View>
+1302:                 </ScrollView>
+1303:               ) : (
+1304:                 <ScrollView horizontal>
+1305:                   <View>
+--- Match "invoiceList" at line 1298 ---
+1290:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10 }]}>جمع</Text>
+1291:                         <Text style={[s.td, { width: 80 }]}></Text>
+1292:                         <Text style={[s.td, { width: 110 }]}></Text>
+1293:                         <Text style={[s.td, { width: 80, fontWeight: 'bold', fontSize: 10 }]}>{toFaNum((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.count) || 0), 0))}</Text>
+1294:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1295:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.total) || 0), 0))}</Text>
+1296:                         <Text style={[s.td, { width: 90, fontWeight: 'bold', fontSize: 10, color: '#b45309' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + Math.max(0, (Number(x.quantity)||0)*(Number(x.price_unit)||0) - (Number(x.total)||0)), 0))}</Text>
+1297:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10, color: '#059669' }]}>{fmt((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.paid) || 0), 0))}</Text>
+1298:                         <Text style={[s.td, { width: 100, fontWeight: 'bold', fontSize: 10 }]}>{fmt(Math.abs((invoiceList || []).reduce((a: number, x: any) => a + (Number(x.balance) || 0), 0)))}</Text>
+1299:                         <Text style={[s.td, { width: 70 }]}></Text>
+1300:                       </View>
+1301:                   </View>
+1302:                 </ScrollView>
+1303:               ) : (
+1304:                 <ScrollView horizontal>
+1305:                   <View>
+1306:                     <View style={[s.thead, { backgroundColor: '#334155', flexDirection: 'row-reverse' }]}>
+--- Match "discount_amount" at line 591 ---
+583:     var isP = (meta?.type === 'purchase');
+584:     _p.push('<div class="info"><b>طرف:</b> ' + _h(selectedParty?.name) + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (isP ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _h(_safeLedgerDate(meta?.date || '')) + '</div>');
+585:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:7px">');
+586:     _p.push('<thead><tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr></thead>');
+587:     _p.push('<tbody>');
+588:     var td = 0, tc = 0, run = 0, idx = 0;
+589:     (rows || []).forEach(function(r) {
+590:       var qty = Number(r.quantity) || 0, pr = Number(r.price_unit) || 0;
+591:       var _rowDisc = (r._row_discount_amount != null) ? Number(r._row_discount_amount) : (qty * (Number(r.discount) || 0));
+592:       var _invDiscShare = Number(r._invoice_discount_share) || 0;
+593:       var _gross = qty * pr;
+594:       var _net = (r.total != null && Number(r.total) >= 0) ? Number(r.total) : Math.max(0, _gross - _rowDisc - _invDiscShare);
+595:       var line = _net;
+596:       var _discTotal = Math.max(0, _gross - line);
+597:       var d = isP ? 0 : line, c = isP ? line : 0;
+598:       td += d; tc += c; run += c - d; idx++;
+599:       _p.push('<tr>' +
+--- Match "_p.push('<tr><th>#</th>" at line 476 ---
+468: 
+469:   
+470:   const _buildInvoiceHtml = () => {
+471:     var _p = [];
+472:     _p.push('<div class="info"><b>📅 تاریخ:</b> ' + _safeLedgerDate(new Date()) + ' &nbsp;|&nbsp; <b>💱 واحد:</b> ' + curLabel + '</div>');
+473:     _p.push('<div class="title">📄 فاکتور: ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+474:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '—') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + '</div>');
+475:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+476:     _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>فاکتور</th><th>فاکتور دستی</th><th>کد مدل</th><th>نام مدل</th><th>تعداد</th><th>واحد پایه</th><th>واحد بسته</th><th>قیمت</th><th>تخفیف</th><th>جمع مبلغ</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>بانک</th><th>صاحب حساب</th><th>کد صاحب</th><th>تاریخ واریز</th><th>باربری</th><th>شرح</th></tr>');
+477:     var tot = 0, pay = 0;
+478:     (invoiceDetailRows || []).forEach(function(r, i) {
+479:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+480:       tot += line; pay += Number(r.payment) || 0;
+481:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || r.modelCode || '—') + '</td><td style="text-align:right">' + (r.model_name || r.modelName || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity)||0) + '</td><td>' + fmt(Number(r.price_unit)||0) + '</td><td style="color:#b45309;font-weight:bold">' + fmt((function(){ var _g=(Number(r.quantity)||0)*(Number(r.price_unit)||0); var _n=Number(r.total); if(!(_n>=0)) _n=_g; return Math.max(0,_g-_n); })()) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment)||0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td></tr>');
+482:     });
+483:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="17" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(pay) + '</td><td colspan="2"></td></tr>');
+484:     _p.push('</table>');
+--- Match "_p.push('<tr><th>#</th>" at line 502 ---
+494:     var title = '';
+495:     if (partyViewMode === 'all') title = '📋 همه حرکات ' + (selectedParty?.name || '');
+496:     else if (partyViewMode === 'in') title = '📥 ورودی‌های ' + (selectedParty?.name || '');
+497:     else title = '📤 خروجی‌های ' + (selectedParty?.name || '');
+498:     _p.push('<div class="title">' + title + '</div>');
+499:     _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + '</div>');
+500:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:9px">');
+501:     if (partyViewMode === 'all') {
+502:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+503:       (buildPartyTransactions(selectedParty) || []).forEach(function(t: any, i: number) {
+504:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t._running||0)) + '</td></tr>');
+505:       });
+506:     } else if ((selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in')) {
+507:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
+508:       var tot = 0, paid = 0;
+509:       (invoiceList || []).forEach(function(inv: any, i: number) {
+510:         tot += Number(inv.total) || 0; paid += Number(inv.paid) || 0;
+--- Match "_p.push('<tr><th>#</th>" at line 507 ---
+499:     _p.push('<div class="info"><b>کدها:</b> ' + (selectedParty?.allCodes||[]).join(', ') + ' &nbsp;|&nbsp; <b>تلفن:</b> ' + (selectedParty?.allPhones||[]).join(', ') + '</div>');
+500:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:9px">');
+501:     if (partyViewMode === 'all') {
+502:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr>');
+503:       (buildPartyTransactions(selectedParty) || []).forEach(function(t: any, i: number) {
+504:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (TYPE_LABEL[t.type]||t.type) + '</td><td>' + (t.invoice||t.sourceId||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="color:#1e40af;font-weight:bold">' + (t.debit?fmt(t.debit):'—') + '</td><td style="color:#059669;font-weight:bold">' + (t.credit?fmt(t.credit):'—') + '</td><td style="font-weight:bold">' + fmt(Math.abs(t._running||0)) + '</td></tr>');
+505:       });
+506:     } else if ((selectedParty?.type === 'مشتری' ? partyViewMode === 'out' : partyViewMode === 'in')) {
+507:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
+508:       var tot = 0, paid = 0;
+509:       (invoiceList || []).forEach(function(inv: any, i: number) {
+510:         tot += Number(inv.total) || 0; paid += Number(inv.paid) || 0;
+511:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>' + fmt(inv.paid) + '</td><td>' + fmt(Math.abs(inv.balance)) + '</td></tr>');
+512:       });
+513:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td>' + fmt(Math.abs(tot-paid)) + '</td></tr>');
+514:     } else {
+515:       _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</th></tr>');
+--- Match "_p.push('<tr><th>#</th>" at line 515 ---
+507:       _p.push('<tr><th>#</th><th>تاریخ</th><th>نوع</th><th>شماره فاکتور</th><th>تعداد</th><th>مبلغ کل</th><th>پرداخت</th><th>مانده</th></tr>');
+508:       var tot = 0, paid = 0;
+509:       (invoiceList || []).forEach(function(inv: any, i: number) {
+510:         tot += Number(inv.total) || 0; paid += Number(inv.paid) || 0;
+511:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(inv.date) + '</td><td>' + (inv.type === 'purchase' ? 'خرید' : 'فروش') + '</td><td>' + inv.invoice + '</td><td>' + toFaNum(inv.count || 0) + '</td><td>' + fmt(inv.total) + '</td><td>' + fmt(inv.paid) + '</td><td>' + fmt(Math.abs(inv.balance)) + '</td></tr>');
+512:       });
+513:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td></td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td>' + fmt(Math.abs(tot-paid)) + '</td></tr>');
+514:     } else {
+515:       _p.push('<tr><th>#</th><th>تاریخ</th><th>سند</th><th>شرح</th><th>مبلغ پرداخت</th><th>بانک</th><th>صاحب حساب</th></tr>');
+516:       var totP = 0;
+517:       (buildPaymentsList(selectedParty) || []).forEach(function(t: any, i: number) {
+518:         var amt = Number(t.lineTotal) || Number(t.debit) || Number(t.credit) || 0;
+519:         totP += amt;
+520:         _p.push('<tr><td>' + (i+1) + '</td><td>' + _safeLedgerDate(t.date) + '</td><td>' + (t.invoice||'—') + '</td><td style="text-align:right">' + (cleanDesc(t)||'—') + '</td><td style="font-weight:bold">' + fmt(amt) + '</td><td>' + (t.bank||'—') + '</td><td>' + (t.holder||'—') + '</td></tr>');
+521:       });
+522:       _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="4" style="text-align:left">جمع:</td><td>' + fmt(totP) + '</td><td colspan="2"></td></tr>');
+523:     }
+--- Match "_p.push('<tr><th>#</th>" at line 538 ---
+530:     html = html.replace('</head>', '<style>@page{size:A4 landscape;margin:8mm}</style></head>');
+531:     return html;
+532:   };
+533:   const _buildInvoiceDetailHtml = () => {
+534:     var _p = [];
+535:     _p.push('<div class="title">📄 فاکتور ' + (invoiceDetailMeta?.invoice || '') + '</div>');
+536:     _p.push('<div class="info"><b>طرف:</b> ' + (selectedParty?.name || '') + ' &nbsp;|&nbsp; <b>نوع:</b> ' + (invoiceDetailMeta?.type === 'purchase' ? 'خرید' : 'فروش') + ' &nbsp;|&nbsp; <b>تاریخ:</b> ' + _safeLedgerDate(invoiceDetailMeta?.date || '') + '</div>');
+537:     _p.push('<table style="width:100%;border-collapse:collapse;font-size:8px">');
+538:     _p.push('<tr><th>#</th><th>کد مدل</th><th>نام مدل</th><th>قفسه</th><th>تعداد</th><th>قیمت</th><th>جمع</th><th>پرداخت</th><th>بانک</th><th>تاریخ واریز</th><th>باربری</th></tr>');
+539:     var tot = 0, paid = 0;
+540:     (invoiceDetailRows || []).forEach(function(r: any, i: number) {
+541:       var line = (Number(r.quantity) || 0) * (Number(r.price_unit) || 0);
+542:       tot += line; paid += Number(r.payment) || 0;
+543:       _p.push('<tr><td>' + (i+1) + '</td><td>' + (r.model_code || '—') + '</td><td style="text-align:right">' + (r.model_name || '—') + '</td><td>' + (r.shelf || '—') + '</td><td>' + toFaNum(Number(r.quantity) || 0) + '</td><td>' + (function(){ var _u=prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var bU=_u.base_unit||'عدد'; var pS=Number(_u.pack_size)||0; return pS>0?pS+' '+bU:'—'; })() + '</td><td>' + (function(){ var _u=prodMap.get(String(r.model_code || r.modelCode || r.code || '')) || {}; var pU=_u.pack_unit||'بسته'; var pS=Number(_u.pack_size)||0; var qty=Number(r.quantity)||0; return pS>0?(qty/pS).toFixed(2).replace(/\.00$/,'')+' '+pU:'—'; })() + '</td><td>' + fmt(Number(r.price_unit) || 0) + '</td><td style="font-weight:bold">' + fmt(line) + '</td><td>' + fmt(Number(r.payment) || 0) + '</td><td>' + (r.bank_name || r.receiver_bank || '—') + '</td><td>' + (r.deposit_date ? _safeLedgerDate(r.deposit_date) : '—') + '</td><td>' + (r.shipping || '—') + '</td></tr>');
+544:     });
+545:     _p.push('<tr style="background:#f1f5f9;font-weight:bold"><td colspan="6" style="text-align:left">جمع:</td><td>' + fmt(tot) + '</td><td>' + fmt(paid) + '</td><td colspan="3"></td></tr>');
+546:     _p.push('</table>');
+
+=== lib.offline.ts (total lines: 5310) ===
+--- Match "discount_amount" at line 1624 ---
+1616:       const rowDiscAmt = Math.max(0, q * d);
+1617:       const rowRem = remOf(r);
+1618:       const share = sumRem > 0 ? (rowRem / sumRem) : (1 / Math.max(1, list.length));
+1619:       const invAmt = Math.max(0, Math.round(invDisc * share));
+1620:       const net = Math.max(0, Math.round(gross - rowDiscAmt - invAmt));
+1621:       r.discount = d;
+1622:       r.discount_enabled = (r.discount_enabled != null ? r.discount_enabled : (r.discountEnabled ? 1 : 0));
+1623:       r.invoice_discount = invDisc;
+1624:       r._row_discount_amount = rowDiscAmt;
+1625:       r._invoice_discount_share = invAmt;
+1626:       r.total = net;
+1627:     }
+1628:   }
+1629:   return rows;
+1630: }
+1631: 
+1632: 
+--- Match "discount_amount" at line 3653 ---
+3645:       holder: s.account_holder || '',
+3646:       holderCode: s.account_holder_code || '',
+3647:       depositDate: s.deposit_date || '',
+3648:       shipping: s.shipping || '',
+3649:       description: s.description || '',
+3650:     };
+3651: 
+3652:     if (total > 0) {
+3653:       acc.transactions.push({ ...common, type: 'sale', qty, priceUnit: price, lineTotal: total, debit: total, credit: 0, discount: Number(s.discount) || 0, discount_amount: (Number(s._row_discount_amount) || 0) + (Number(s._invoice_discount_share) || 0), invoice_discount: Number(s.invoice_discount) || 0 });
+3654:     }
+3655:     if (payment > 0) {
+3656:       acc.transactions.push({ ...common, type: 'payment_received', qty: 0, priceUnit: 0, lineTotal: payment, debit: 0, credit: payment, description: 'دریافت وجه' });
+3657: 
+3658:       const hCode = String(s.account_holder_code || '').trim();
+3659:       const hName = String(s.account_holder || '').trim();
+3660:       if (hCode && hCode !== code) {
+3661:         const hAcc = getOrCreate(hName, hCode, '');
+--- Match "discount_amount" at line 3699 ---
+3691:       holder: p.account_holder || '',
+3692:       holderCode: p.payer_code || '',
+3693:       depositDate: p.deposit_date || '',
+3694:       shipping: p.shipping || '',
+3695:       description: p.description || '',
+3696:     };
+3697: 
+3698:     if (total > 0) {
+3699:       acc.transactions.push({ ...common, type: 'purchase', qty, priceUnit: price, lineTotal: total, debit: 0, credit: total, discount: Number(p.discount) || 0, discount_amount: (Number(p._row_discount_amount) || 0) + (Number(p._invoice_discount_share) || 0), invoice_discount: Number(p.invoice_discount) || 0 });
+3700:     }
+3701:     if (payment > 0) {
+3702:       acc.transactions.push({ ...common, type: 'payment_sent', qty: 0, priceUnit: 0, lineTotal: payment, debit: payment, credit: 0, description: 'پرداخت به تأمین‌کننده' });
+3703:     }
+3704:   });
+3705: 
+3706:   // ─── اثر برگشت از فروش روی دفتر معین: بستانکار مشتری ───
+3707:   try {
+--- Match "__mzApplyDiscounts" at line 1588 ---
+1580: }
+1581: 
+1582: function _tsLocal(v: any): number {
+1583:   const t = Date.parse(String(v || ''));
+1584:   return isNaN(t) ? 0 : t;
+1585: }
+1586: 
+1587: // __MZ_DISC_NORM__ — همان الگوریتم ویرایش‌فرم برای تخفیف ردیفی و فاکتور
+1588: function __mzApplyDiscounts(rows: any[]) {
+1589:   if (!Array.isArray(rows) || !rows.length) return rows;
+1590:   // گروه‌بندی بر اساس شماره فاکتور
+1591:   const byInv: Record<string, any[]> = {};
+1592:   for (const r of rows) {
+1593:     const inv = String(r.invoice_number || r.invoice || '').trim();
+1594:     if (!inv) continue;
+1595:     (byInv[inv] = byInv[inv] || []).push(r);
+1596:   }
+--- Match "__mzApplyDiscounts" at line 3295 ---
+3287:     if (item.op !== 'createSale') continue;
+3288:     const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+3289:     for (const r of rows) {
+3290:       const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', customer_name: item.payload.customerName || '', customer_code: item.payload.customerCode || '', customer_phone: item.payload.customerPhone || '', account_holder: item.payload.holderName || '', account_holder_code: item.payload.holderCode || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+3291:       if (row.customer_code === c2) customer.push(row);
+3292:       if (row.account_holder_code === c2) triang.push(row);
+3293:     }
+3294:   }
+3295:   __mzApplyDiscounts(customer);
+3296:   __mzApplyDiscounts(triang);
+3297:   return { customer: customer, triang: triang };
+3298: }
+3299: export async function getPurchasesRowsForReport(code: string) {
+3300:   const c2 = String(code || '').trim();
+3301:   if (!c2) return { supplier: [] };
+3302:   if (MODE === 'online') {
+3303:     try {
+--- Match "__mzApplyDiscounts" at line 3296 ---
+3288:     const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+3289:     for (const r of rows) {
+3290:       const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', customer_name: item.payload.customerName || '', customer_code: item.payload.customerCode || '', customer_phone: item.payload.customerPhone || '', account_holder: item.payload.holderName || '', account_holder_code: item.payload.holderCode || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+3291:       if (row.customer_code === c2) customer.push(row);
+3292:       if (row.account_holder_code === c2) triang.push(row);
+3293:     }
+3294:   }
+3295:   __mzApplyDiscounts(customer);
+3296:   __mzApplyDiscounts(triang);
+3297:   return { customer: customer, triang: triang };
+3298: }
+3299: export async function getPurchasesRowsForReport(code: string) {
+3300:   const c2 = String(code || '').trim();
+3301:   if (!c2) return { supplier: [] };
+3302:   if (MODE === 'online') {
+3303:     try {
+3304:       const r = await lib.supabase.from('purchases').select('*').eq('supplier_code', c2).order('created_at');
+--- Match "__mzApplyDiscounts" at line 3319 ---
+3311:   for (const item of q) {
+3312:     if (item.op !== 'createPurchase') continue;
+3313:     const rows = (item.payload && (item.payload.rows || item.payload.items)) || [];
+3314:     for (const r of rows) {
+3315:       const row = { ...r, invoice_number: item.payload.invoiceNumber || item.payload.invoice_number || '', supplier_name: item.payload.supplierName || '', supplier_code: item.payload.supplierCode || '', supplier_phone: item.payload.supplierPhone || '', date_reg: r.date_reg || item.payload.date || new Date(item.ts || Date.now()).toISOString(), date_factor: r.date_factor || item.payload.date || new Date(item.ts || Date.now()).toISOString() };
+3316:       if (row.supplier_code === c2) supplier.push(row);
+3317:     }
+3318:   }
+3319:   __mzApplyDiscounts(supplier);
+3320:   return { supplier: supplier };
+3321: }
+3322: 
+3323: 
+3324: // ═══════════════════════════════════════════
+3325: //  getLedgerData — ترازنامه یکپارچه با مثلثی
+3326: // ═══════════════════════════════════════════
+3327: export async function getLedgerData(): Promise<any[]> {
+--- Match "__mzApplyDiscounts" at line 3588 ---
+3580:           payer_code: item.payload.payerCode || '',
+3581:           _pending: true,
+3582:         });
+3583:       }
+3584:     }
+3585:   }
+3586: 
+3587:   // __MZ_LEDGER_DISC__ Apply discounts to queue rows too
+3588:   try { __mzApplyDiscounts(allSales); __mzApplyDiscounts(allPurchases); } catch (_e) { console.log('__MZ_DISC_NORM__ ledger queue fail', _e); }
+3589: 
+3590:   const normPhone = function(p: any) { return String(p || '').replace(/[^\d]/g, ''); };
+3591:   const makeKey = function(name: string, code: string, phone: string): string | null {
+3592:     const np = normPhone(phone);
+3593:     if (np && np.length >= 7) return 'P:' + np;
+3594:     if (code) return 'C:' + String(code).trim();
+3595:     if (name) return 'N:' + String(name).trim();
+3596:     return null;

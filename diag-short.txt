@@ -1,0 +1,233 @@
+--- searchAllInvoices ---
+1745: //  getPurchasesGrouped — با ادغام صف
+1749: //  searchAllInvoices — با ادغام صف آفلاین
+1751: export async function searchAllInvoices(q: string) {
+1754: getPurchasesGrouped(),
+1761: const __rowDiscByInv: Record<string, number> = {};
+1769: if (d) __rowDiscByInv[inv] = (__rowDiscByInv[inv] || 0) + d;
+1772: const __applyDisc = (r: any, type?: string) => {
+1774: const rowDisc = __rowDiscByInv[String(r && r.invoice || '').trim()] || 0;
+1790: arr.map((r) => ({ ...__applyDisc(r, type), type, sheetType: type }))
+1871: //  getPurchasesGrouped — با شماره P-
+1873: export async function getPurchasesGrouped() {
+
+--- App.tsx edit/save/holder ---
+71: import {              supabase, fmt, parseNum, toFaNum, pad2, setCalType, loadCalType, saveCalType, CalType, toStorageDa
+2213: <TextInput accessibilityLabel="••••" style={s.pinInp} value={pin} onChangeText={(v) => setPin(v.replace(/\D/g, '').slice
+2239: function Autocomplete({ value, onChange, onSelect, options, placeholder, label, containerStyle }) {
+2261: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={value} placeholder
+2299: function CellAutocomplete({ value, onChange, onSelect, options, placeholder, containerStyle, inputStyle }: any) {
+2365: {value || placeholder || 'انتخاب...'}
+2381: <Text style={s.modalHeadTxt}>{placeholder || 'انتخاب'}</Text>
+2401: placeholder="🔍 جستجو..."
+2403: placeholderTextColor={C.textMut}
+2720: const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+2797: const addItem = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, deposit
+2811: const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+2831: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, depositDate: '', bankName: '', accountH
+2847: setPendingConfirm({ name, phone, count: valid.length, total: grandTotal, paymentAmount, invoiceDiscount, valid, note });
+2871: invoiceDiscount: Number(invObj && (invObj.invoiceDiscount ?? invObj.invoice_discount)) || __firstInvDisc || 0,
+2929: const { valid, total, name: n, phone: p, paymentAmount: payAmt, note: n2, invoiceDiscount: _invDisc } = pendingConfirm a
+2947: invoiceDiscount: Number(_invDisc) || 0,
+3116: placeholder="مثلاً 14050612-1001"
+3118: placeholderTextColor="#94a3b8"
+3192: placeholder="09121234567"
+3194: placeholderTextColor="#94a3b8"
+3210: placeholder={term('customer')}
+3212: placeholderTextColor="#94a3b8"
+3228: placeholder="اختیاری"
+3230: placeholderTextColor="#94a3b8"
+3246: placeholder="تایپ یا انتخاب..."
+3299: <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options
+3319: <TextInput style={S.miniInput} value={String(it.entered_unit === 'pack' ? (it.entered_qty || '') : (it.quantity || ''))}
+3331: <TextInput style={S.miniInput} value={String(it.priceUnit || '')} onChangeText={(v) => updItem(i, 'priceUnit', parseNum(
+3345: <TextInput style={[S.miniInput, { flex: 1 }]} value={String(it.discount || '')} onChangeText={(v) => updItem(i, 'discoun
+3401: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(paymentAmou
+3404: <TextInput style={[s.inp, { flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String
+3409: <Text style={{ color: '#b45309', fontSize: 12 }}>تخفیف فاکتور: {invoiceDiscount ? '−' + fmt(invoiceDiscount) : '—'}</Tex
+3415: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border, minHeight: 60, textAlignVert
+3430: placeholder="تایپ یا انتخاب..."
+3433: <TextInput style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.border }]} value={receiverCode}
+3435: <Autocomplete value={receiverBank} onChange={setReceiverBank} options={banksList.filter(Boolean).filter(Boolean).map((b:
+3437: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={receiverAccount} o
+3512: <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoic
+3517: const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.paymentAmount || 0);
+4156: const [invoiceDiscount, setInvoiceDiscount] = useState(0);
+4164: const [payerName, setPayerName] = useState('');
+4248: const payableAmount = Math.max(0, grandTotal - (Number(invoiceDiscount) || 0));
+4266: setPendingConfirm({ name: sName, inv: manualInv, count: valid.length, total, payAmt: amt, invoiceDiscount });
+4278: finalItems = [{ modelCode: '', modelName: 'پرداخت به تأمین‌کننده', quantity: 0, priceUnit: 0, payment: 0, depositDate: '
+4280: const inv = await createPurchase({ invoiceNumber: '', manualInvoice: manualInv, supplierName: sName, supplierCode: sCode
+4284: const partner = await findPartnerByNameOrCode(payerName || payerCode);
+4332: <Autocomplete label="🏭 نام تأمین‌کننده *" value={sName} onChange={setSName} onSelect={onSupplierPick} options={[...new 
+4336: <TextInput accessibilityLabel="خودکار" style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }
+4340: <TextInput accessibilityLabel="09..." style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]
+4344: <TextInput accessibilityLabel="شماره روی فاکتور" style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: 
+4376: <Autocomplete value={it.modelName} onChange={(v) => updItem(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options
+4396: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.en
+4406: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.pr
+4417: placeholder="0"
+4460: <TextInput accessibilityLabel="اختیاری" style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.b
+4494: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={payAmt} onChangeTe
+4498: <TextInput style={[s.inp, { flex: 1, backgroundColor: '#fffbeb', color: C.text, borderColor: '#f59e0b' }]} value={String
+4522: value={payerName}
+4546: placeholder="تایپ یا انتخاب..."
+4551: <TextInput accessibilityLabel="خودکار" style={[s.inp, { backgroundColor: C.cardAlt, color: C.textMut, borderColor: C.bor
+4555: <Autocomplete value={bankAcc} onChange={setBankAcc} options={banksList.filter(Boolean).filter(Boolean).map((b: any) => b
+4559: <TextInput accessibilityLabel="اختیاری" style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border 
+4563: <TextInput accessibilityLabel="توضیحات..." style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.bord
+4606: <Text style={{ color: '#b45309', fontWeight: 'bold' }}>{pendingConfirm.invoiceDiscount ? '−' + fmt(pendingConfirm.invoic
+4611: const _bal = (pendingConfirm.total || 0) - (pendingConfirm.invoiceDiscount || 0) - (pendingConfirm.payAmt || 0);
+4733: || triangRecv?.[0]?.account_holder || '—';
+4753: bank: r.bank_name || '', holder: r.account_holder || '',
+4755: holderCode: r.account_holder_code || '',
+4779: bank: r.bank_name || '', holder: r.account_holder || '',
+4799: bank: r.bank_name || '', holder: r.account_holder || '',
+4890: 'بانک': r.bank, 'صاحب حساب': r.holder, 'کد صاحب حساب': r.holderCode,
+4916: 'بانک': r.bank, 'صاحب حساب': r.holder, 'کد پرداخت‌کننده': r.payerCode,
+4938: 'مبلغ': r.amount, 'بانک': r.bank, 'گیرنده': r.holder,
+5023: <td>${r.holder || '-'}</td>
+5051: <td>${r.holder || '-'}</td>
+5186: <TextInput accessibilityLabel="M_1001" style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }
+5273: <Text style={{ width: 90, color: '#475569', fontSize: 11, textAlign: 'center' }}>{r.holder || '—'}</Text>
+5354: <Text style={{ width: 90, color: '#475569', fontSize: 11, textAlign: 'center' }}>{r.holder || '—'}</Text>
+5435: <Text style={{ width: 90, color: '#475569', fontSize: 11, textAlign: 'center' }}>{r.holder || '—'}</Text>
+6519: <TextInput accessibilityLabel="🔍 جستجو: کد، نام، قفسه..." style={[s.inp, { marginTop: 10, backgroundColor: C.input, col
+6625: <TextInput style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 12, fo
+6639: <TextInput value={String(adjForm.unit_cost || '')} onChangeText={(v) => setAdjForm({ ...adjForm, unit_cost: v })} placeh
+7305: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorage
+7327: const addRow = () => setItems([...items, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, descript
+7328: const addEditRow = () => setEditRows([...editRows, { modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0
+7402: setItems([{ modelCode: '', modelName: '', quantity: 0, priceUnit: 0, payment: 0, description: '', depositDate: toStorage
+7420: <TextInput accessibilityLabel="09121234567" style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.bor
+7424: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={name} onChangeText
+7428: <TextInput accessibilityLabel="اختیاری" style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border 
+7430: <Autocomplete label="🚚 باربری" value={shipping} onChange={setShipping} options={SHIPPINGS} placeholder="تایپ..." />
+7466: <Autocomplete value={it.modelName} onChange={(v) => upd(i, 'modelName', v)} onSelect={(v) => setModel(i, v)} options={pr
+7486: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.en
+7496: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.pr
+7510: <TextInput style={[s.miniInput, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={Str
+7538: <TextInput style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(it.pa
+7562: <TextInput accessibilityLabel="اختیاری" style={[s.miniInput, { backgroundColor: C.input, color: C.text, borderColor: C.b
+7644: updRow(i, 'accountHolder', v);
+7648: updRow(i, 'accountHolderCode', f.code || '');
+7699: const openEdit = async (inv: string, type: string) => {
+7737: accountHolder: r.account_holder || r.receiver_name || '',
+7738: accountHolderCode: isSales ? (r.account_holder_code || r.receiver_code || '') : (r.payer_code || ''),
+7752: const __firstInvDisc = rows.reduce((m: number, x: any) => Math.max(m, Number(x && (x.invoice_discount ?? x.invoiceDiscou
+7760: invoiceDiscount: Math.max(0, ...rows.map((r: any) => Number(r && (r.invoice_discount ?? r.invoiceDiscount)) || 0)),
+7773: const addRow = () => { setEditRows([...editRows, { rowId: null, modelCode: '', modelName: '', quantity: 0, priceUnit: 0,
+7784: const editDiscount = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+7857: ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount
+7858: : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.
+7859: const ok = await updateInvoiceInQueue(editing.invoice, editing.type, editRows, _metaQ);
+7866: ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount
+7867: : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.
+7871: await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta: metaFallback });
+7881: const _invDisc = Number(editing.invoiceDiscount) || 0;
+7885: ? { name: editing.name, code: editing.code, phone: editing.phone, shipping: editRows[0]?.shipping || '', invoiceDiscount
+7886: : { name: editing.name, code: editing.code, phone: editing.phone, manualInv: editing.manualInv, payerName: editRows[0]?.
+7891: await updatePurchase({ invoiceNumber: editing.invoice, rows: editRows, meta });
+7895: setList((prev: any[]) => prev.map((x: any) => x.invoice === editing.invoice ? { ...x, total: newTotal, paid: newPaid, in
+8003: account_holder: returnHolder || '',
+8114: const __invDisc = Math.max(0, Number(editing && editing.invoiceDiscount) || 0);
+8159: placeholder={term('product') + '...'}
+8171: <View style={{ width: 80, paddingHorizontal: 3 }}><TextInput style={[s.tdInput, { backgroundColor: '#fffbeb', color: C.t
+8186: placeholder="بانک"
+8192: value={r.accountHolder}
+8193: onChange={(v: string) => updRow(i, 'accountHolder', v)}
+8198: updRow(i, 'accountHolderCode', f.code || '');
+8202: updRow(i, 'accountHolderCode', code);
+8211: placeholder="صاحب حساب"
+8218: value={r.accountHolderCode || ''}
+8220: placeholder="خودکار"
+8233: placeholder="باربری"
+8257: <TextInput style={[s.tdInput, { flex: 1, backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={Strin
+8258: <TouchableOpacity onPress={() => { if (editing) { setEditing({ ...editing, invoiceDiscount: 0 }); setDirty(true); } }} s
+8301: <TextInput accessibilityLabel="🔍 فاکتور، نام، تلفن..." style={[s.inp, { backgroundColor: C.input, color: C.text, border
+8397: <TouchableOpacity onPress={() => openEdit(r.invoice, r.type)} style={{ backgroundColor: '#dbeafe', padding: 6, borderRad
+8427: placeholder="خرابی، اشتباه، مرجوعی، عدم مطابقت"
+8436: placeholder="0"
+8452: <TextInput value={returnBank} onChangeText={setReturnBank} placeholder="نام بانک" style={{ borderWidth: 1, borderColor: 
+8455: <TextInput value={returnHolder} onChangeText={setReturnHolder} placeholder="نام صاحب حساب" style={{ borderWidth: 1, bord
+8475: placeholder="برگشت"
+8486: placeholder="توضیحات"
+8573: const openEditReturn = (r: any) => {
+8579: setEditHolder(r.account_holder || '');
+8615: account_holder: editHolder || '',
+8624: else await updatePurchaseReturn(id, payload);
+8746: <TouchableOpacity onPress={() => openEditReturn(r)} style={{ backgroundColor: '#dbeafe', padding: 6, borderRadius: 6 }}>
+9431: <TextInput accessibilityLabel="ایمیل معتبر..." style={[s.inp, { flex: 1, backgroundColor: C.input, color: C.text, border
+9478: placeholder="4242"
+9479: placeholderTextColor={C.textMut}
+9849: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={s
+9872: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name 
+9875: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.phone
+9878: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code 
+9895: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.addre
+9898: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.conta
+9901: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.note 
+9913: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+9916: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+9919: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+9936: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+9939: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+9942: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10097: const addBankDraft = () => setBankDrafts(prev => [...prev, { local_id: '', bank_name: '', currency: 'AFN', account_numbe
+10196: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={s
+10214: <View style={{ width: 110, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10215: <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10216: <View style={{ width: 130, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10217: <View style={{ width: 100, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10225: <View style={{ width: 110, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10226: <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10227: <View style={{ width: 130, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10228: <View style={{ width: 100, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10281: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.bank_
+10291: <View style={{ width: 160, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10292: <View style={{ width: 160, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10293: <View style={{ width: 160, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10303: <Text style={{ width: 160, fontSize: 11, textAlign: 'center' }}>{b.holder_name || '—'}</Text>
+10336: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(txnForm.amo
+10380: placeholder="اختیاری / خودکار"
+10403: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(txnForm.to_
+10421: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={txnForm.note} onCh
+10528: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={s
+10543: <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10544: <View style={{ width: 120, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10545: <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10552: <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10553: <View style={{ width: 120, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10554: <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10639: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={s
+10654: <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10655: <View style={{ width: 150, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10656: <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10663: <View style={{ width: 250, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10664: <View style={{ width: 150, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10665: <View style={{ width: 200, paddingHorizontal: 2 }}><TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.te
+10906: <TextInput style={[s.inp, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={q} onChangeText={s
+10930: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.name 
+10933: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.price
+10936: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.shelf
+10939: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.uom_l
+10942: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_
+10945: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.base_
+10948: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.pack_
+10951: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.disco
+10954: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.disco
+10957: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(d.code 
+10969: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10972: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10975: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10978: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10981: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10984: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10987: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10990: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10993: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+10996: <TextInput style={[s.tdInput, { backgroundColor: C.input, color: C.text, borderColor: C.border }]} value={String(editing
+11423: const openEditor = () => { setTmp(lbl); setShowEdit(true); };
+11435: <TouchableOpacity onPress={openEditor} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+11539: <TextInput accessibilityLabel="ایمیل" style={s.loginInp} value={email} onChangeText={setEmail} placeholder="ایمیل" place
+11541: <TextInput accessibilityLabel="رمز (حداقل ۶ کاراکتر)" style={s.loginInp} value={pass} onChangeText={setPass} placeholder
